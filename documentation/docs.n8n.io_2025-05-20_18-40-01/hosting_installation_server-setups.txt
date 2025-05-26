@@ -1,0 +1,20 @@
+URL: https://docs.n8n.io/hosting/installation/server-setups/
+Scraped_At: 2025-05-20T18:44:26.412503
+
+Server setups
+#
+Self-host with Docker Compose:
+Digital Ocean
+Heroku
+Hetzner Cloud
+Starting points for a Kubernetes setup:
+AWS
+Azure
+Google Cloud Platform
+Configuration guides to help you get started on other platforms:
+Docker Compose
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

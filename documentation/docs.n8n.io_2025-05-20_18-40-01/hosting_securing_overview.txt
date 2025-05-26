@@ -1,0 +1,29 @@
+URL: https://docs.n8n.io/hosting/securing/overview/
+Scraped_At: 2025-05-20T18:45:11.452547
+
+Securing n8n
+#
+Securing your n8n instance can take several forms.
+At a high level, you can:
+Conduct a
+security audit
+to identify security risks.
+Set up SSL
+to enforce secure connections.
+Set up Single Sign-On
+for user account management.
+Use
+two-factor authentication (2FA)
+for your users.
+More granularly, consider blocking or opting out of features or data collection you don't want:
+Disable the public API
+if you aren't using it.
+Opt out of data collection
+of the anonymous data n8n collects automatically.
+Block certain nodes
+from being available to your users.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

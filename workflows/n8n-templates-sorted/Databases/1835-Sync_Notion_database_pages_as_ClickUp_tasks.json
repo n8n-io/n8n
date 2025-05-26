@@ -1,0 +1,427 @@
+{
+  "workflow": {
+    "id": 1835,
+    "name": "Sync Notion database pages as ClickUp tasks",
+    "views": 2080,
+    "recentViews": 0,
+    "totalViews": 2080,
+    "createdAt": "2022-12-09T09:46:31.068Z",
+    "description": "This workflow creates/updates ClickUp tasks when Notion database pages are created/updated. All fields in the Notion database are mapped to a ClickUp property.\n\nNotion database will require setup before the workflow can be used. See the list of fields available in the setup below.\n\n# Prerequisites\n\n- Notion account and [Notion credentials](https://docs.n8n.io/integrations/builtin/credentials/notion/).\n- ClickUp account and [ClickUp credentials](https://docs.n8n.io/integrations/builtin/credentials/clickup/).\n\n# How it works\n\n1. When a new database page is created in Notion, the workflow creates a new task in ClickUp with all required fields.\n2. The new ClickUp task's ID is saved in the Notion database page's \"ClickUp ID\" field.\n3. Then, when the database page is updated in Notion, the workflow updates the specific ClickUp task identified by the \"ClickUp ID\" field in Notion.\n\n# Setup\n\nThis workflow requires that you set up a Notion database. To do so, follow the steps below:\n\n1. In Notion, create a new database.\n2. Add the following columns to the database:\n    - Task name (renamed from \"Name\")\n    - Status (with type \"Select\" with the following options: \"to do\", \"in progress\", \"review\", \"revision\", \"complete\")\n    - Deadline (with type \"Date\")\n    - ClickUp ID (with type \"Text\")\n    - Add any other fields you require.\n3. Share the database to n8n.\n4. By default, the workflow will fill all the fields provided above, except for any other additional fields you add.",
+    "workflow": {
+      "meta": {
+        "instanceId": "237600ca44303ce91fa31ee72babcdc8493f55ee2c0e8aa2b78b3b4ce6f70bd9"
+      },
+      "nodes": [
+        {
+          "id": "22e8e117-2475-4b06-966c-9b35c9c749f8",
+          "name": "On updated database page",
+          "type": "n8n-nodes-base.notionTrigger",
+          "position": [
+            180,
+            620
+          ],
+          "parameters": {
+            "event": "pagedUpdatedInDatabase",
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "databaseId": "38aa89c7-defd-4268-be2d-9119590521a9"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "9",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6938eddf-39ec-46c4-a9a9-082ee0edd836",
+          "name": "Update an existing task",
+          "type": "n8n-nodes-base.clickUp",
+          "position": [
+            400,
+            620
+          ],
+          "parameters": {
+            "id": "={{$node[\"On updated database page\"].json[\"ClickUp ID\"]}}",
+            "operation": "update",
+            "updateFields": {
+              "name": "={{$node[\"On updated database page\"].json[\"Task name\"]}}",
+              "status": "={{$node[\"On updated database page\"].json[\"Status\"]}}",
+              "dueDate": "={{$node[\"On updated database page\"].json[\"Deadline\"][\"start\"]}}"
+            }
+          },
+          "credentials": {
+            "clickUpApi": {
+              "id": "29",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "84cd269a-e732-408e-8b1a-66b1a7623fc1",
+          "name": "On task status updated",
+          "type": "n8n-nodes-base.clickUpTrigger",
+          "position": [
+            180,
+            820
+          ],
+          "webhookId": "86d6bbce-1591-4db9-9ccb-214ab0977ae8",
+          "parameters": {
+            "team": "2627397",
+            "events": [
+              "taskStatusUpdated"
+            ],
+            "filters": {}
+          },
+          "credentials": {
+            "clickUpApi": {
+              "id": "29",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a5d6cee8-9dae-45ca-9540-4835365a4ab1",
+          "name": "Get database page by ClickUp ID",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            400,
+            820
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "key": "ClickUp ID|rich_text",
+                  "condition": "equals",
+                  "richTextValue": "={{$node[\"On task status updated\"].json[\"task_id\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": "38aa89c7-defd-4268-be2d-9119590521a9",
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "9",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "eeaff75d-8c47-4e2d-b2e2-87d5b6e59499",
+          "name": "Update the status of found database page",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            620,
+            820
+          ],
+          "parameters": {
+            "pageId": "={{$node[\"Get database page by ClickUp ID\"].json[\"id\"]}}",
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Status|select",
+                  "selectValue": "={{$node[\"On task status updated\"].json[\"history_items\"][0][\"after\"][\"status\"]}}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "9",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 2
+        }
+      ],
+      "connections": {
+        "On task status updated": {
+          "main": [
+            [
+              {
+                "node": "Get database page by ClickUp ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On updated database page": {
+          "main": [
+            [
+              {
+                "node": "Update an existing task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get database page by ClickUp ID": {
+          "main": [
+            [
+              {
+                "node": "Update the status of found database page",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.notion": {
+          "count": 2
+        },
+        "n8n-nodes-base.clickUp": {
+          "count": 1
+        },
+        "n8n-nodes-base.notionTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.clickUpTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 129,
+        "icon": "file:clickup.svg",
+        "name": "n8n-nodes-base.clickUp",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clickup/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clickUp/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "ClickUp"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMCAwIDE1NSAxNTUiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYSIgeDE9IjAlIiB5MT0iNjguMDElIiB5Mj0iNjguMDElIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjODkzMEZEIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNDlDQ0Y5Ii8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImIiIHgxPSIwJSIgeTE9IjY4LjAxJSIgeTI9IjY4LjAxJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI0ZGMDJGMCIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0ZGQzgwMCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxnIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Im0uNCAxMTkuMTIgMjMuODEtMTguMjRDMzYuODYgMTE3LjM5IDUwLjMgMTI1IDY1LjI2IDEyNWMxNC44OCAwIDI3Ljk0LTcuNTIgNDAuMDItMjMuOWwyNC4xNSAxNy44QzExMiAxNDIuNTIgOTAuMzQgMTU1IDY1LjI2IDE1NWMtMjUgMC00Ni44Ny0xMi40LTY0Ljg2LTM1Ljg4Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTY1LjE4IDM5Ljg0IDIyLjggNzYuMzYgMy4yMSA1My42NCA2NS4yNy4xNmw2MS41NyA1My41Mi0xOS42OCAyMi42NHoiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "ClickUp",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 130,
+        "icon": "file:clickup.svg",
+        "name": "n8n-nodes-base.clickUpTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.clickuptrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clickUp/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "ClickUp Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMCAwIDE1NSAxNTUiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYSIgeDE9IjAlIiB5MT0iNjguMDElIiB5Mj0iNjguMDElIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjODkzMEZEIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNDlDQ0Y5Ii8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImIiIHgxPSIwJSIgeTE9IjY4LjAxJSIgeTI9IjY4LjAxJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI0ZGMDJGMCIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0ZGQzgwMCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxnIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Im0uNCAxMTkuMTIgMjMuODEtMTguMjRDMzYuODYgMTE3LjM5IDUwLjMgMTI1IDY1LjI2IDEyNWMxNC44OCAwIDI3Ljk0LTcuNTIgNDAuMDItMjMuOWwyNC4xNSAxNy44QzExMiAxNDIuNTIgOTAuMzQgMTU1IDY1LjI2IDE1NWMtMjUgMC00Ni44Ny0xMi40LTY0Ljg2LTM1Ljg4Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTY1LjE4IDM5Ljg0IDIyLjggNzYuMzYgMy4yMSA1My42NCA2NS4yNy4xNmw2MS41NyA1My41Mi0xOS42OCAyMi42NHoiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "ClickUp Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 488,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notionTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.notiontrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Notion Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": []
+  }
+}

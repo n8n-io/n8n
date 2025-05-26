@@ -1,0 +1,1491 @@
+{
+  "workflow": {
+    "id": 2393,
+    "name": "Save n8n Cloud invoices received in Gmail in Google Drive",
+    "views": 2904,
+    "recentViews": 0,
+    "totalViews": 2904,
+    "createdAt": "2024-08-28T15:06:47.448Z",
+    "description": "## Who this is for\nThis template is for everyone that wants to download their n8n Cloud invoices automatically as a PDF instead of downloading them manually.\n## How it works\nThis workflow checks your Gmail inbox for new n8n invoice emails from n8n's payment provider Paddle. Once it finds something, it converts the URL into a PDF using pdflayer and saves it in Google Drive.\n## Setup\n1. Setup your **Gmail** and **Google Drive** credentials\n1. Create a free account at https://pdflayer.com/\n2. Insert your **pdflayer** API key into the `Setup` node\n3. Insert the URL to the wanted drive folder into the setup node (make sure to remove everything after the `?`)\n## How to adjust it to your need\nInstead of saving the PDF in Google drive, you could also save it in your local system, any other storage provider or send the PDF automatically to the right person in your company.",
+    "workflow": {
+      "meta": {
+        "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+      },
+      "nodes": [
+        {
+          "id": "3102dc76-7123-4e87-b30f-e15c240e77da",
+          "name": "Gmail Trigger",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "simple": false,
+            "filters": {},
+            "options": {},
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "H4Vkp5Iwb0wrQOR6",
+              "name": "Nik's gmail"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "1e4a55e5-289e-4d67-a161-9109bd430e75",
+          "name": "Only n8n Paddle invoice mails",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            420,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "229200d1-ec13-4970-ae0e-2c8e17da0bdf",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.from.value[0].address }}",
+                  "rightValue": "help@paddle.com"
+                },
+                {
+                  "id": "1830d49a-5ee0-472c-bb9d-0090c0e1f5a4",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.subject }}",
+                  "rightValue": "Your invoice"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a87ed337-a582-44ed-9185-ea0dd9486245",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            820,
+            -120
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "link"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3a4dd56b-3177-4364-ac48-ce9e475b773f",
+          "name": "Only keep invoice link",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1000,
+            -120
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "d8a78835-46bd-40c0-b9ef-c1a631ab0a00",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.link }}",
+                  "rightValue": "/receipt/"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "2da9e7c0-8954-442a-a33c-a942cd634b27",
+          "name": "Do nothing on other emails",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            640,
+            80
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "dd837661-97af-4abc-8b44-a10931cda54c",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            160,
+            -280
+          ],
+          "parameters": {
+            "height": 440,
+            "content": "## Setup\n1. Setup your **Gmail** and **Google Drive** credentials\n1. Create a free account at https://pdflayer.com/\n2. Insert your **pdflayer** API key into the `Setup` node\n3. Insert the URL to the wanted drive folder into the setup node (make sure to remove everything after the `?`)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8de9b630-0a5f-4d2c-ac7f-e3264314a97c",
+          "name": "Setup",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            220,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "86a22cf3-262a-4089-88ab-fafc01307bb4",
+                  "name": "api_key",
+                  "type": "string",
+                  "value": "{{ your_key_here }}"
+                },
+                {
+                  "id": "4cca07a2-6a70-4011-a025-65246e652fb9",
+                  "name": "url_to_drive_folder",
+                  "type": "string",
+                  "value": "{{ folder_URL }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b06860a4-3895-4a28-9365-71c31f220d10",
+          "name": "Download Invoice PDF from URL",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1200,
+            -120
+          ],
+          "parameters": {
+            "url": "http://api.pdflayer.com/api/convert",
+            "options": {},
+            "sendQuery": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "access_key",
+                  "value": "={{ $('Setup').first().json.api_key }}"
+                },
+                {
+                  "name": "document_url",
+                  "value": "={{ $json.link }}"
+                },
+                {
+                  "name": "page_size",
+                  "value": "A4"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "c2be351e-76ce-4bfa-8965-e41d59a6c49a",
+          "name": "Rename file",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1580,
+            -120
+          ],
+          "parameters": {
+            "fileId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "options": {},
+            "operation": "update",
+            "newUpdatedFileName": "=n8n_cloud_invoice_{{ $now.format('yyyy-MM-dd') }}.pdf"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "jMxk7HGWZs6ucm5P",
+              "name": "Nik's Google Drive"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "20b90e38-dd17-462c-8007-e83dcc2dc8df",
+          "name": "Move to the correct folder",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1760,
+            -120
+          ],
+          "parameters": {
+            "fileId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "driveId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "My Drive"
+            },
+            "folderId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Setup').item.json.url_to_drive_folder }}"
+            },
+            "operation": "move"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "jMxk7HGWZs6ucm5P",
+              "name": "Nik's Google Drive"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "5c2930eb-90f8-4f4f-ae6a-638a01faccd3",
+          "name": "Upload PDF to Drive",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1400,
+            -120
+          ],
+          "parameters": {
+            "url": "https://www.googleapis.com/upload/drive/v3/files",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "sendQuery": true,
+            "contentType": "binaryData",
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "uploadType",
+                  "value": "media"
+                }
+              ]
+            },
+            "inputDataFieldName": "data",
+            "nodeCredentialType": "googleDriveOAuth2Api"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "jMxk7HGWZs6ucm5P",
+              "name": "Nik's Google Drive"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "1806abe4-d80e-4ab8-8303-6b92d569aac5",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1353.6776457357505,
+            -255.65646735405625
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 608.5129596994967,
+            "height": 306.2353014680544,
+            "content": "## Adjust me\nYou can adjust this part and save the file wherever you want. E.g. you could save it in your local file system by using the `Read/Write Files from Disk` node or save it in Dropbox by using the `Dropbox` node. You could even email the PDF to the right person instead."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "efa55724-3b42-4abd-a30a-ad7e9836ede5",
+          "name": "Extract \"a-tags\" from email",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            640,
+            -120
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "dataPropertyName": "html",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "link",
+                  "attribute": "href",
+                  "cssSelector": "a",
+                  "returnArray": true,
+                  "returnValue": "attribute"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        }
+      ],
+      "pinData": {
+        "Gmail Trigger": [
+          {
+            "id": "19198ee012d8f882",
+            "to": {
+              "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Niklas Hatje</span> &lt;<a href=\"mailto:niklas@n8n.io\" class=\"mp_address_email\">niklas@n8n.io</a>&gt;</span>",
+              "text": "\"Niklas Hatje\" <niklas@n8n.io>",
+              "value": [
+                {
+                  "name": "Niklas Hatje",
+                  "address": "niklas@n8n.io"
+                }
+              ]
+            },
+            "date": "2024-08-28T12:20:20.000Z",
+            "from": {
+              "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Niklas Hatje</span> &lt;<a href=\"mailto:niklas@n8n.io\" class=\"mp_address_email\">niklas@n8n.io</a>&gt;</span>",
+              "text": "\"Niklas Hatje\" <niklas@n8n.io>",
+              "value": [
+                {
+                  "name": "Niklas Hatje",
+                  "address": "help@paddle.com"
+                }
+              ]
+            },
+            "html": "<div dir=\"ltr\"><br><br><div class=\"gmail_quote\"><div dir=\"ltr\" class=\"gmail_attr\">---------- Forwarded message ---------<br>From: <strong class=\"gmail_sendername\" dir=\"auto\">n8n Sandbox (via Paddle.com)</strong> <span dir=\"auto\">&lt;<a href=\"mailto:help@paddle.com\">help@paddle.com</a>&gt;</span><br>Date: Thu, Oct 12, 2023 at 3:30 AM<br>Subject: Your invoice<br>To:  &lt;<a href=\"mailto:niklas%2B12may2023@n8n.io\">niklas+12may2023@n8n.io</a>&gt;<br></div><br><br><div class=\"msg940821289515909318\">\n        \n        \n  \n        \n        \n        \n        \n      \n      \n      \n      <div style=\"letter-spacing:0;background-color:#f5f5f8;margin:0;padding:0;font-family:Lato,Helvetica,Roboto,sans-serif\"><center style=\"margin:0\">\n    <table cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" style=\"max-width:600px;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n        <tbody><tr>\n            <td height=\"100%\" width=\"100%\" style=\"padding:0\">\n                <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:0\">\n                    <tbody><tr>\n                        <td height=\"30\" class=\"m_940821289515909318mJJIf\" style=\"height:30px\"></td>\n                    </tr>\n                </tbody></table>\n                <center style=\"margin:0\">\n                    <table cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" style=\"max-width:600px;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                        <tbody><tr>\n                            <td height=\"100%\" width=\"100%\" style=\"padding:0\">\n                                <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin:0;border-top:0;border-radius:0;background-color:#ffffff\" bgcolor=\"#FFFFFF\">\n                                    <tbody><tr>\n                                        <td align=\"center\" valign=\"top\">\n                                            <table cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                <tbody><tr>\n                                                    <td style=\"padding:50px\" class=\"m_940821289515909318dsRHJY\">\n                                                        <table style=\"max-width:none;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n                                                            <tbody><tr>\n                                                                <td align=\"center\" style=\"text-align:left\"><img height=\"70\" src=\"https://sandbox-static.paddle.com/assets/images/checkout/default_product_icon.png\" style=\"display:block;margin:auto;margin-bottom:28px\">\n                                                                    <div>\n                                                                        \n                                                                    </div>\n                                                                    <h3 style=\"font-weight:900;font-size:24px;line-height:32px;margin-bottom:12px;text-align:center;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Beleg für Ihr Cloud Pro-1-Abonnement</h3>\n                                                                    <p style=\"font-size:14px;font-weight:500;line-height:24px;margin-bottom:24px;text-align:center;margin-top:0;margin-right:0;margin-left:0;color:#73809c;font-family:Lato,Helvetica,Roboto,sans-serif\">Beleg Nr. 624743-6710887</p>\n                                                                    <table cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                        <tbody><tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                            <td class=\"m_940821289515909318ecARAV\" style=\"vertical-align:top;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" valign=\"top\">\n                                                                                <p style=\"font-size:12px;font-weight:500;line-height:24px;margin-bottom:0;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Betrag</p>\n                                                                                <p style=\"font-size:14px;font-weight:900;line-height:24px;margin-bottom:4px;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">50,00 $</p>\n                                                                            </td>\n                                                                            <td class=\"m_940821289515909318dnuTcc\" style=\"vertical-align:top;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" valign=\"top\">\n                                                                                <p style=\"font-size:12px;font-weight:500;line-height:24px;margin-bottom:0;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Beleg Datum</p>\n                                                                                <p style=\"font-size:14px;font-weight:900;line-height:24px;margin-bottom:4px;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">12. Oktober 2023</p>\n                                                                            </td>\n                                                                            <td class=\"m_940821289515909318dnuTcc\" style=\"vertical-align:top;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" valign=\"top\">\n                                                                                <p style=\"font-size:12px;font-weight:500;line-height:24px;margin-bottom:0;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Bezahlmethode</p>\n                                                                                <table role=\"presentation\" style=\"min-width:150px\">\n                                                                                    <tbody>\n                                                                                        <tr>\n                                                                                            <td style=\"vertical-align:middle;margin-right:4px\"><img height=\"28\" src=\"https://cdn.paddle.com/email-templates/images/icon-visa.png\" alt=\"visa\" style=\"display:block\"></td>\n                                                                                            <td style=\"vertical-align:middle\"><img height=\"28\" alt=\"visa\" src=\"https://cdn.paddle.com/email-templates/images/icon-visa.png\" style=\"display:none;margin-right:4px\"></td>\n                                                                                            <td style=\"vertical-align:middle\"><img height=\"28\" alt=\"visa\" src=\"https://cdn.paddle.com/email-templates/images/icon-visa-dark-mode.png\" style=\"display:none\"></td>\n                                                                                                <td style=\"vertical-align:middle\">\n                                                                                                    <p style=\"font-size:14px;font-weight:900;line-height:24px;margin-bottom:4px;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">mit Endziffern 4242</p>\n                                                                                                </td>\n                                                                                        </tr>\n                                                                                    </tbody>\n                                                                                </table>\n                                                                            </td>\n                                                                        </tr>\n                                                                    </tbody></table>\n                                                                    <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:0\">\n                                                                        <tbody><tr>\n                                                                            <td height=\"26\" class=\"m_940821289515909318bibbXQ\" style=\"height:26px\"></td>\n                                                                        </tr>\n                                                                    </tbody></table>                                                                    <table cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" class=\"m_940821289515909318dNxHHs\" style=\"border:1px solid #d2d4de;border-top-right-radius:4px;border-top-left-radius:4px;border-bottom-right-radius:0;border-bottom-left-radius:0;border-collapse:separate;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                        <tbody style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                <tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                    <td class=\"m_940821289515909318idljME\" style=\"color:#45567c;line-height:20px;padding:20px 28px 16px 28px;text-align:left;font-weight:900;font-size:14px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"left\">\n                                                                                        <p style=\"margin-top:0;margin-bottom:0;font-size:14px;font-weight:500;line-height:20px;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Cloud Pro-1 </p>\n                                                                                    </td>\n                                                                                    <td class=\"m_940821289515909318cwzaMf\" style=\"color:#45567c;line-height:20px;padding:20px 28px 16px 28px;text-align:right;font-weight:900;font-size:14px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"right\">\n                                                                                        <p style=\"margin-top:0;margin-bottom:0;font-size:14px;font-weight:500;line-height:20px;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">42,02 $</p>\n                                                                                    </td>\n                                                                                </tr>                                                                                \n                                                                                                                                                            \n                                                                            <tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                <td class=\"m_940821289515909318joqGUf\" style=\"color:#45567c;line-height:20px;padding:20px 28px 0 28px;text-align:left;font-weight:200;font-size:11px;border-top:1px solid #d2d4de;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"left\"></td>\n                                                                                <td class=\"m_940821289515909318joqGUf\" style=\"color:#45567c;line-height:20px;padding:20px 28px 0 28px;text-align:left;font-weight:200;font-size:11px;border-top:1px solid #d2d4de;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"left\"></td>\n                                                                            </tr>\n                                                                                <tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                    <td class=\"m_940821289515909318kTjnKY\" style=\"color:#45567c;line-height:20px;padding:0 28px 12px 28px;text-align:left;font-weight:500;font-size:14px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"left\">\n                                                                                        <p style=\"margin-top:0;margin-bottom:0;font-size:14px;font-weight:500;line-height:20px;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">MwSt. (19%)</p>\n                                                                                    </td>\n                                                                                    <td class=\"m_940821289515909318cGUKLL\" style=\"color:#45567c;line-height:20px;padding:0 28px 12px 28px;text-align:right;font-weight:500;font-size:14px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"right\">\n                                                                                        <p style=\"margin-top:0;margin-bottom:0;font-size:14px;font-weight:500;line-height:20px;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">7,98 $</p>\n                                                                                    </td>\n                                                                                </tr>\n                                                                            <tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                <td class=\"m_940821289515909318fVuKma\" style=\"color:#45567c;line-height:20px;padding:0 28px 20px 28px;text-align:left;font-weight:500;font-size:14px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"left\">\n                                                                                    <p style=\"margin-top:0;margin-bottom:0;font-size:14px;font-weight:900;line-height:20px;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Betrag</p>\n                                                                                </td>\n                                                                                <td class=\"m_940821289515909318bWUSjt\" style=\"color:#45567c;line-height:20px;padding:0 28px 20px 28px;text-align:right;font-weight:900;font-size:14px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"right\">\n                                                                                    <p style=\"margin-top:0;margin-bottom:0;font-size:14px;font-weight:900;line-height:20px;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">50,00 $</p>\n                                                                                </td>\n                                                                            </tr>\n                                                                        </tbody>\n                                                                    </table>\n                                                                    <table style=\"border:1px solid #d2d4de;border-top-right-radius:0;border-top-left-radius:0;border-bottom-right-radius:4px;border-bottom-left-radius:4px;border-collapse:separate;margin-bottom:40px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" class=\"m_940821289515909318kpydUo\">\n                                                                        <tbody style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                            <tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                <td class=\"m_940821289515909318bORRIC\" style=\"color:#45567c;line-height:20px;padding:15px;text-align:center;font-weight:200;font-size:11px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"center\">\n                                                                                    <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" style=\"text-align:center;width:100%\" width=\"100%\" align=\"center\">\n                                                                                        <tbody><tr>\n                                                                                            <td style=\"border-radius:&#39;50px&#39;;text-align:&#39;center&#39;\" align=\"&#39;center&#39;\">\n                                                                                                <div>\n                                                                                                    <div>\n                                                                                                        \n                                                                                                    </div><a href=\"http://sandbox-my.paddle.com/receipt/624743-6710887/1448886-chre844ceca16cc-47fea87994\" width=\"216px\" class=\"m_940821289515909318icPhtA\" style=\"background-color:#0096ff;border:2px solid none;border-radius:4px;color:#ffffff;display:inline-block;font-size:16px;font-weight:900;line-height:44px;padding-top:0;padding-right:0;padding-left:0;padding-bottom:0;margin-bottom:0;text-align:center;text-decoration:none;width:216px;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" target=\"_blank\"><span style=\"color:#ffffff\">Beleg ansehen</span></a>\n                                                                                                </div>\n                                                                                            </td>\n                                                                                        </tr>\n                                                                                    </tbody></table>\n                                                                                        <p style=\"font-size:12px;font-weight:500;line-height:20px;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0;color:#73809c;margin:12px 13px 5px 13px;font-family:Lato,Helvetica,Roboto,sans-serif\">Die 50,00 $-Zahlung wird auf Ihrem Kontoauszug/Ihrer Kreditkartenabrechnung wie folgt angezeigt: <br><b style=\"font-weight:700\"><a href=\"http://PADDLE.NET\" target=\"_blank\">PADDLE.NET</a>* N8N STAGE</b></p>\n                                                                                </td>\n                                                                            </tr><tr style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                                                                                <td class=\"m_940821289515909318iXHUu\" style=\"color:#45567c;line-height:20px;padding:0px;text-align:left;font-weight:200;font-size:11px;border-top:0;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" align=\"left\"></td>\n                                                                            </tr>\n                                                            </tbody></table></td></tr>\n                                                            \n                                                        </tbody></table>                                                        <hr style=\"margin:40px 0;border:none;border-bottom:1px solid #a2abbd;margin-top:0;margin-bottom:10px;border-bottom-color:#d2d4de\">\n                                                        <p style=\"font-size:14px;font-weight:500;line-height:24px;margin-top:0;margin-right:0;margin-bottom:10px;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Falls Sie Hilfe mit Ihrem Cloud Pro-1-Abonnement benötigen, kontaktieren Sie uns bitte unter <a href=\"https://paddle.net?h=5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5\" style=\"text-decoration:none;color:#3fb0ff\" target=\"_blank\">paddle.net</a> oder antworten Sie auf diese <a href=\"mailto:help@paddle.com?subject=Re:+Your++invoice\" style=\"text-decoration:none;color:#3fb0ff\" target=\"_blank\">E-Mail</a>.</p>\n                                                        <hr style=\"margin:40px 0;border:none;border-bottom:1px solid #a2abbd;margin-top:2px;margin-bottom:28px;border-bottom-color:#d2d4de\">                                                        <p style=\"font-size:14px;font-weight:500;line-height:24px;margin-bottom:0;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">Mit freundlichen Grüßen,</p>\n                                                        <p style=\"font-size:14px;font-weight:500;line-height:24px;margin-bottom:0;margin-top:0;margin-right:0;margin-left:0;color:#45567c;font-family:Lato,Helvetica,Roboto,sans-serif\">n8n Sandbox</p>\n                                                    </td>\n                                                </tr>\n                                            </tbody></table>\n                                        </td>\n                                    </tr>\n                                </tbody></table>\n                            </td>\n                        </tr>\n                    </tbody></table>\n            </center></td>\n        </tr>\n    </tbody></table>\n</center>\n<table class=\"m_940821289515909318footerContainer\" cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin:0;border-top:0;border-radius:0;background-color:#f5f5f8\" bgcolor=\"#F5F5F8\">\n    <tbody><tr>\n        <td align=\"center\" valign=\"top\">\n            <table cellspacing=\"0\" cellpadding=\"0\" width=\"100%\" style=\"font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\">\n                <tbody><tr>\n                    <td style=\"padding:35px\" class=\"m_940821289515909318dsRHJY\">\n                        <table style=\"max-width:none;font-family:&#39;Lato&#39;,&#39;Helvetica&#39;,&#39;Roboto&#39;,sans-serif\" cellspacing=\"0\" cellpadding=\"0\" width=\"100%\">\n                            <tbody><tr>\n                                <td align=\"center\"><img width=\"95\" height=\"30\" src=\"https://cdn.paddle.com/email-templates/images/paddle-logo-light.png\" alt=\"logo\" style=\"margin-bottom:10px\">\n                                    <div style=\"display:none\"><img width=\"95\" height=\"30\" src=\"https://cdn.paddle.com/email-templates/images/paddle-logo-light.png\" alt=\"logo\" style=\"display:none;margin-bottom:10px\"></div>\n                                    <div style=\"display:none\"><img width=\"95\" height=\"30\" src=\"https://cdn.paddle.com/email-templates/images/paddle-logo-dark.png\" alt=\"logo\" style=\"display:none;margin-bottom:10px\"></div>\n                                    <div class=\"m_940821289515909318jKMVET\" style=\"display:none\">\n                                        <p style=\"margin-bottom:0;font-weight:500;font-size:12px;line-height:20px;margin-top:0;margin-right:0;margin-left:0;color:#a2abbd;font-family:Lato,Helvetica,Roboto,sans-serif\">Paddle.com Market Ltd, Judd House, 18-29 Mora Street, London EC1V 8BT. © 2023 Paddle. All rights reserved.</p>\n                                    </div>\n                                    <div class=\"m_940821289515909318hNHNzH\" style=\"display:block\">\n                                        <p style=\"margin-bottom:0;font-weight:500;font-size:12px;line-height:20px;margin-top:0;margin-right:0;margin-left:0;color:#a2abbd;font-family:Lato,Helvetica,Roboto,sans-serif\">Paddle.com Market Ltd, Judd House, 18-29 Mora Street, London EC1V 8BT </p>\n                                        <p style=\"margin-bottom:0;font-weight:500;font-size:12px;line-height:20px;margin-top:0;margin-right:0;margin-left:0;color:#a2abbd;font-family:Lato,Helvetica,Roboto,sans-serif\">© 2023 Paddle. All rights reserved.</p>\n                                    </div>\n                                        <table cellpadding=\"0\" cellspacing=\"0\" width=\"100%\" style=\"margin-top:0\">\n                                            <tbody><tr>\n                                                <td height=\"10\" class=\"m_940821289515909318hSDLeU\" style=\"height:10px\"></td>\n                                            </tr>\n                                        </tbody></table>\n                                        <p id=\"m_940821289515909318order-id\" style=\"margin-bottom:0;font-weight:500;font-size:12px;line-height:20px;margin-top:0;margin-right:0;margin-left:0;color:#a2abbd;font-family:Lato,Helvetica,Roboto,sans-serif\">624743-6710887</p>\n                                    <div style=\"display:none\">\n                                        <u></u>Your invoice<u></u>\n                                        <div id=\"m_940821289515909318paddle-lang\">de</div>\n                                        <div id=\"m_940821289515909318paddle-type\">subscription-receipt</div>\n                                        <div id=\"m_940821289515909318paddle-sub-type\">recurring</div>\n                                        <div id=\"m_940821289515909318paddle-hash\">5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5</div>\n                                    </div>\n                                </td>\n                            </tr>\n                        </tbody></table>\n                    </td>\n                </tr>\n            </tbody></table>\n        </td>\n    </tr>\n</tbody></table>\n\n\n\n<img src=\"https://ea.pstmrk.it/open?m=v3_1.qcT0BSoIS8So_NHmVqXvsQ.W2XinJpIizdNVDECCGgn99CzpHs6N8NLNJJ4IgiOd46xuf6yKLgk7mLXkeHmXAZJkNfzXusj-7f_LdlDA4qWujrr0tpiQvgZvMNBlziAzes7Ebf8RRztySfwp2x58IHuexri7mOvl2ol1Nbp7pbW5zjtkrWOEo-GHOOhNdRWcb-gx846QnXn0PqD9OZAhujKYIx2Gtb7GAmY9lOdRStvEZW_D5AS2ArYQU3voRNIsr_ZsU3wPIei-J96GzvWrG7zdSRP2kaqaY9uthTqmPcl2DeNGiespHR7e_qCwlhaeKvLUHeC7ot9Dgx6X185wbz3fCvaQebDsv9beDJHweppkc5AT0a54EqEeBW5maLWAo2RnEqIOK-icYjVgbtpKuHDdIcnFp6MqbWm6HyYQyPgy_RS6-YpzE3KUBMN77ME7o30VEA3izNgSyesQDk3JZG7zqn4ndjsTIrT0uxMXekFjNOs38vDwwJ8_1FBwokJUxZUO6JNrWTpDiXu2nDK5iH_pC8LhChw97Yo7FQA8f44ag\" width=\"1\" height=\"1\" border=\"0\" alt=\"\"></div></div></div></div>\n",
+            "text": "---------- Forwarded message ---------\nFrom: n8n Sandbox (via Paddle.com) <help@paddle.com>\nDate: Thu, Oct 12, 2023 at 3:30 AM\nSubject: Your invoice\nTo: <niklas+12may2023@n8n.io>\n\n\nBeleg für Ihr Cloud Pro-1-Abonnement\n\nBeleg Nr. 624743-6710887\n\nBetrag\n\n50,00 $\n\nBeleg Datum\n\n12. Oktober 2023\n\nBezahlmethode\n[image: visa] [image: visa] [image: visa]\n\nmit Endziffern 4242\n\nCloud Pro-1\n\n42,02 $\n\nMwSt. (19%)\n\n7,98 $\n\nBetrag\n\n50,00 $\nBeleg ansehen\n<http://sandbox-my.paddle.com/receipt/624743-6710887/1448886-chre844ceca16cc-47fea87994>\n\nDie 50,00 $-Zahlung wird auf Ihrem Kontoauszug/Ihrer Kreditkartenabrechnung\nwie folgt angezeigt:\n*PADDLE.NET <http://PADDLE.NET>* N8N STAGE*\n------------------------------\n\nFalls Sie Hilfe mit Ihrem Cloud Pro-1-Abonnement benötigen, kontaktieren\nSie uns bitte unter paddle.net\n<https://paddle.net?h=5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5>\noder antworten Sie auf diese E-Mail\n<help@paddle.com?subject=Re:+Your++invoice>.\n------------------------------\n\nMit freundlichen Grüßen,\n\nn8n Sandbox\n[image: logo]\n[image: logo]\n[image: logo]\n\nPaddle.com Market Ltd, Judd House, 18-29 Mora Street, London EC1V 8BT. ©\n2023 Paddle. All rights reserved.\n\nPaddle.com Market Ltd, Judd House, 18-29 Mora Street, London EC1V 8BT\n\n© 2023 Paddle. All rights reserved.\n\n624743-6710887\nYour invoice\nde\nsubscription-receipt\nrecurring\n5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5\n",
+            "headers": {
+              "to": "To: Niklas Hatje <niklas@n8n.io>",
+              "date": "Date: Wed, 28 Aug 2024 14:20:20 +0200",
+              "from": "From: Niklas Hatje <niklas@n8n.io>",
+              "subject": "Subject: Fwd: Your invoice",
+              "message-id": "Message-ID: <CAMmGHAVOEo4znp5x=XdDHsaqsPC+Kvg70f6YqiO9DsuAS_d4Jg@mail.gmail.com>",
+              "references": "References: <2a560e95-b888-44fd-99f6-3b2ef12e8d95@mtasv.net>",
+              "in-reply-to": "In-Reply-To: <2a560e95-b888-44fd-99f6-3b2ef12e8d95@mtasv.net>",
+              "content-type": "Content-Type: multipart/alternative; boundary=\"000000000000b159ff0620bd6127\"",
+              "mime-version": "MIME-Version: 1.0"
+            },
+            "subject": "Fwd: Your invoice",
+            "labelIds": [
+              "UNREAD",
+              "IMPORTANT",
+              "SENT",
+              "INBOX"
+            ],
+            "threadId": "18b21819526d9ccc",
+            "inReplyTo": "<2a560e95-b888-44fd-99f6-3b2ef12e8d95@mtasv.net>",
+            "messageId": "<CAMmGHAVOEo4znp5x=XdDHsaqsPC+Kvg70f6YqiO9DsuAS_d4Jg@mail.gmail.com>",
+            "references": "<2a560e95-b888-44fd-99f6-3b2ef12e8d95@mtasv.net>",
+            "textAsHtml": "<p>---------- Forwarded message ---------<br/>From: n8n Sandbox (via <a href=\"http://Paddle.com\">Paddle.com</a>) &lt;<a href=\"mailto:help@paddle.com\">help@paddle.com</a>&gt;<br/>Date: Thu, Oct 12, 2023 at 3:30&#x202F;AM<br/>Subject: Your invoice<br/>To: &lt;<a href=\"mailto:niklas+12may2023@n8n.io\">niklas+12may2023@n8n.io</a>&gt;</p><p>Beleg f&uuml;r Ihr Cloud Pro-1-Abonnement</p><p>Beleg Nr. 624743-6710887</p><p>Betrag</p><p>50,00 $</p><p>Beleg Datum</p><p>12. Oktober 2023</p><p>Bezahlmethode<br/>[image: visa] [image: visa] [image: visa]</p><p>mit Endziffern 4242</p><p>Cloud Pro-1</p><p>42,02 $</p><p>MwSt. (19%)</p><p>7,98 $</p><p>Betrag</p><p>50,00 $<br/>Beleg ansehen<br/>&lt;<a href=\"http://sandbox-my.paddle.com/receipt/624743-6710887/1448886-chre844ceca16cc-47fea87994\">http://sandbox-my.paddle.com/receipt/624743-6710887/1448886-chre844ceca16cc-47fea87994</a>&gt;</p><p>Die 50,00 $-Zahlung wird auf Ihrem Kontoauszug/Ihrer Kreditkartenabrechnung<br/>wie folgt angezeigt:<br/>*<a href=\"http://PADDLE.NET\">PADDLE.NET</a> &lt;<a href=\"http://PADDLE.NET\">http://PADDLE.NET</a>&gt;* N8N STAGE*<br/>------------------------------</p><p>Falls Sie Hilfe mit Ihrem Cloud Pro-1-Abonnement ben&ouml;tigen, kontaktieren<br/>Sie uns bitte unter <a href=\"http://paddle.net\">paddle.net</a><br/>&lt;<a href=\"https://paddle.net?h=5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5\">https://paddle.net?h=5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5</a>&gt;<br/>oder antworten Sie auf diese E-Mail<br/>&lt;<a href=\"mailto:help@paddle.com\">help@paddle.com</a>?subject=Re:+Your++invoice&gt;.<br/>------------------------------</p><p>Mit freundlichen Gr&uuml;&szlig;en,</p><p>n8n Sandbox<br/>[image: logo]<br/>[image: logo]<br/>[image: logo]</p><p><a href=\"http://Paddle.com\">Paddle.com</a> Market Ltd, Judd House, 18-29 Mora Street, London EC1V 8BT. &copy;<br/>2023 Paddle. All rights reserved.</p><p><a href=\"http://Paddle.com\">Paddle.com</a> Market Ltd, Judd House, 18-29 Mora Street, London EC1V 8BT</p><p>&copy; 2023 Paddle. All rights reserved.</p><p>624743-6710887<br/>Your invoice<br/>de<br/>subscription-receipt<br/>recurring<br/>5ff337a9e53874c895f99e498a540988a2ce498555eb6029bc33f138f3042d3950d915ee7d8146ceaef5</p>",
+            "sizeEstimate": 30783
+          }
+        ]
+      },
+      "connections": {
+        "Setup": {
+          "main": [
+            [
+              {
+                "node": "Only n8n Paddle invoice mails",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Only keep invoice link",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Rename file": {
+          "main": [
+            [
+              {
+                "node": "Move to the correct folder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail Trigger": {
+          "main": [
+            [
+              {
+                "node": "Setup",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload PDF to Drive": {
+          "main": [
+            [
+              {
+                "node": "Rename file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only keep invoice link": {
+          "main": [
+            [
+              {
+                "node": "Download Invoice PDF from URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract \"a-tags\" from email": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download Invoice PDF from URL": {
+          "main": [
+            [
+              {
+                "node": "Upload PDF to Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only n8n Paddle invoice mails": {
+          "main": [
+            [
+              {
+                "node": "Extract \"a-tags\" from email",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Do nothing on other emails",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 13,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.html": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 2
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.gmailTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Niklas Hatje",
+      "username": "nik8n",
+      "bio": "Product Manager at n8n - Responsible for the creator program",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/niklashatje/"
+      ],
+      "avatar": "https://gravatar.com/avatar/e16a4426e166713c34626bdde856b1cd15bb6787481a7ead9b74318f19e6259d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 824,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmailTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gmailtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Gmail Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

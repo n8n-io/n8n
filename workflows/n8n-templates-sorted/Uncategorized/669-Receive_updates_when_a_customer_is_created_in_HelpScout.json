@@ -1,0 +1,183 @@
+{
+  "workflow": {
+    "id": 669,
+    "name": "Receive updates when a customer is created in HelpScout",
+    "views": 266,
+    "recentViews": 0,
+    "totalViews": 266,
+    "createdAt": "2020-09-16T14:10:06.402Z",
+    "description": "![workflow-screenshot](fileId:244)",
+    "workflow": {
+      "id": "61",
+      "name": "Receive updates when a customer is created in HelpScout",
+      "nodes": [
+        {
+          "name": "HelpScout Trigger",
+          "type": "n8n-nodes-base.helpScoutTrigger",
+          "position": [
+            690,
+            260
+          ],
+          "webhookId": "aaaf8b3f-8247-4d98-ae65-8c6626aade95",
+          "parameters": {
+            "events": [
+              "customer.created"
+            ]
+          },
+          "credentials": {
+            "helpScoutOAuth2Api": "helpscout"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.helpScoutTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 319,
+        "icon": "file:helpScout.svg",
+        "name": "n8n-nodes-base.helpScoutTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.helpscouttrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/helpScout/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Help Scout Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMzEwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzMwNEREQiIgZD0ibTE4LjQzMiAxODAuOTY5IDkwLjQ4NC05MC40ODVhNjMuNzIgNjMuNzIgMCAwIDAgMTguOTktNDUuNDI4QTY0LjI1IDY0LjI1IDAgMCAwIDEwOS40NzYgMEwxOC45OSA5MC40ODRBNjMuNzIgNjMuNzIgMCAwIDAgMCAxMzUuOTEzYzAgMTcuNjg3IDcuMDc1IDMzLjUxMiAxOC40MzIgNDUuMDU2bTIxOS4xMzYtNTIuODc2LTkwLjQ4NCA5MC40ODRhNjMuNzIgNjMuNzIgMCAwIDAtMTguOTkgNDUuNDI5IDY0LjI1IDY0LjI1IDAgMCAwIDE4LjQzMSA0NS4wNTZsOTAuNDg0LTkwLjQ4NUE2My43MiA2My43MiAwIDAgMCAyNTYgMTczLjE1YzAtMTcuNjg3LTcuMDc1LTMzLjUxMy0xOC40MzItNDUuMDU2em0tLjU1OS0zNy40MjJBNjMuNzIgNjMuNzIgMCAwIDAgMjU2IDQ1LjI0MiA2NC4yNSA2NC4yNSAwIDAgMCAyMzcuNTY4LjE4NkwxOC45OTEgMjE4LjU3N0M3LjI2IDIzMC4zMDcgMCAyNDYuMzIgMCAyNjQuMTkyYTY0LjI1IDY0LjI1IDAgMCAwIDE4LjQzMiA0NS4wNTZ6Ii8+PC9zdmc+Cg=="
+        },
+        "displayName": "Help Scout Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 13,
+        "name": "Support"
+      }
+    ],
+    "image": [
+      {
+        "id": 244,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/7d4d4d324492483481fe57a307056494.png"
+      }
+    ]
+  }
+}

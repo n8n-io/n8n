@@ -1,0 +1,112 @@
+{
+  "workflow": {
+    "id": 547,
+    "name": "Receive updates on an order created in Shopify",
+    "views": 1560,
+    "recentViews": 0,
+    "totalViews": 1560,
+    "createdAt": "2020-07-22T01:55:43.348Z",
+    "description": "Companion workflow for Shopify Trigger node docs\n\n![workflow-screenshot](fileId:145)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Shopify Trigger",
+          "type": "n8n-nodes-base.shopifyTrigger",
+          "position": [
+            450,
+            450
+          ],
+          "webhookId": "fd11b3d8-ff82-4902-89cc-c93b36ae38e7",
+          "parameters": {
+            "topic": "orders/create"
+          },
+          "credentials": {
+            "shopifyApi": "shopify_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.shopifyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 107,
+        "icon": "file:shopify.svg",
+        "name": "n8n-nodes-base.shopifyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.shopifytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/shopify/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Shopify Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNTggNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzk1YmY0NyIgZD0iTTQ5LjI1NSAxMi40ODRhLjYzLjYzIDAgMCAwLS41NjQtLjUyN2MtLjIyNS0uMDM3LTUuMTctLjM3Ni01LjE3LS4zNzZsLTMuNzctMy43N2MtLjM0LS4zNzYtMS4wOTItLjI2Ni0xLjM3Ni0uMTg4LS4wMzcgMC0uNzUyLjIyNS0xLjkyMi42MDUtMS4xMzctMy4zLTMuMTUtNi4zMDYtNi42OTYtNi4zMDZoLS4zMDNDMjguNDM4LjYwNSAyNy4xOTQgMCAyNi4xNDQgMGMtOC4yNTYuMDM3LTEyLjIgMTAuMzMzLTEzLjQzNCAxNS41OTRsLTUuNzcgMS43N2MtMS43Ny41NjQtMS44MzUuNjA1LTIuMDczIDIuMjkzTDAgNTcuMTc1IDM2LjQ2OCA2NGwxOS43NjMtNC4yNmMwLS4wMzctNi45NC00Ni44OTctNi45NzYtNDcuMjU1ek0zNC40MzEgOC44NmMtLjkxNy4zMDMtMS45NjMuNjA1LTMuMS45NDV2LS42OGExNSAxNSAwIDAgMC0uNzUyLTQuOTk5YzEuODQ4LjI4NCAzLjEgMi4zNTcgMy44NDMgNC43MzN6bS02LjA2OC00LjI5OGMuNjAzIDEuNzc4Ljg4MyAzLjY1LjgyNiA1LjUyN3YuMzRsLTYuMzc1IDEuOTYzYzEuMjQ4LTQuNjYgMy41NS02Ljk2MiA1LjU1LTcuODN6bS0yLjQ1LTIuMjkzYTEuOTQgMS45NCAwIDAgMSAxLjA1NS4zMzljLTIuNjYgMS4yMzgtNS40NzIgNC4zNjYtNi42NzggMTAuNjI3bC01LjA0NSAxLjU0NkMxNi42NjggMTAuMDMgMTkuOTg4IDIuMjYgMjUuOTEgMi4yNnoiLz48cGF0aCBmaWxsPSIjNWU4ZTNlIiBkPSJNNDguNjkxIDExLjk1N2MtLjIyNS0uMDM3LTUuMTctLjM3Ni01LjE3LS4zNzZsLTMuNzctMy43N2EuNzUuNzUgMCAwIDAtLjUyNy0uMjI1TDM2LjQ3MiA2NGwxOS43NjMtNC4yNi02Ljk4LTQ3LjIxOGEuNjguNjggMCAwIDAtLjU2NC0uNTY0eiIvPjxwYXRoIGQ9Im0yOS43NTggMjIuOS0yLjQ1NCA3LjI0MmExMS40IDExLjQgMCAwIDAtNC43NTItMS4xMzNjLTMuODQ4IDAtNC4wMzYgMi40MTItNC4wMzYgMy4wMTggMCAzLjI5OCA4LjYzNiA0LjU2NCA4LjYzNiAxMi4zMzMgMCA2LjEtMy44ODUgMTAuMDMtOS4xIDEwLjAzLTYuMjYgMC05LjQ2Ny0zLjg4NS05LjQ2Ny0zLjg4NWwxLjY2NS01LjU1czMuMjggMi44MyA2LjA3MyAyLjgzYTIuNDcgMi40NyAwIDAgMCAyLjU2NC0yLjQ5YzAtNC4zNC03LjEtNC41MjctNy4xLTExLjYxOCAwLTUuOTYyIDQuMjk4LTExLjc3IDEyLjkzNC0xMS43NyAzLjM5NC4wNSA1LjAxOCAxIDUuMDE4IDF6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Shopify Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 145,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/c0fdb4bbab9a4cd5bf78bbc12c8eca59.png"
+      }
+    ]
+  }
+}

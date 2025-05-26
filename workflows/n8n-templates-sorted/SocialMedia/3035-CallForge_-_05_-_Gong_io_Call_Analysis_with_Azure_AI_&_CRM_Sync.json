@@ -1,0 +1,1516 @@
+{
+  "workflow": {
+    "id": 3035,
+    "name": "CallForge - 05 - Gong.io Call Analysis with Azure AI & CRM Sync",
+    "views": 1215,
+    "recentViews": 5,
+    "totalViews": 1215,
+    "createdAt": "2025-02-28T06:41:38.496Z",
+    "description": "![callforgecompressed.png](fileId:1007)\n\n---\n\n# **CallForge - AI Sales Call Processing & Insights Extraction**  \nAutomate **sales call analysis** with AI-powered insights for **sales, marketing, and product teams**.\n\n## **Who is This For?**  \nThis workflow is designed for:  \n✅ **Sales teams** looking to extract structured insights from Gong call transcripts.  \n✅ **Marketing professionals** seeking AI-driven customer pain points & content strategy.  \n✅ **Product teams** needing feedback from sales calls to **prioritize feature development**.  \n\n## **🔍 What Problem Does This Workflow Solve?**  \nManually analyzing **Gong.io sales call transcripts** is slow, inconsistent, and lacks **structured insights**.  \n\nWith **CallForge**, you can:  \n✔ **Extract AI-powered insights** about **use cases, objections, competitors, and next steps**.  \n✔ **Provide structured marketing & product intelligence** to enhance strategy.  \n✔ **Automatically store call insights in Notion and Salesforce** for easy access.  \n✔ **Ensure resilience** with **automated reruns on failed workflows** (handling Notion API limits).  \n✔ **Improve decision-making** with AI-powered **competitor and sentiment analysis**.  \n\n---\n\n## **📌 Key Workflow Features**  \n\n### **🎤 AI-Powered Transcript Analysis**  \n- Uses AI to **identify use cases, objections, competitors, and customer pain points**.  \n- Categorizes insights for **sales, marketing, and product teams**.  \n\n### **📌 AI Agent Breakdown**  \n🔹 **Sales AI Agent** – Extracts **customer objections, pain points, competitors, and next steps**.  \n🔹 **Marketing AI Agent** – Identifies **recurring topics, keyword trends, and content opportunities**.  \n🔹 **Product AI Agent** – Captures **feature requests and AI/ML-related references**.  \n\n### **📊 Structured Output Processing**  \n- **Sales Data Processor** → Stores insights in **Notion & Salesforce** for sales tracking.  \n- **Marketing Data Processor** → Extracts **SEO & content strategy insights** for marketing teams.  \n- **Product AI Data Processor** → Logs **customer feedback** to prioritize **feature development**.  \n\n### **💡 Competitor & Integration Analysis**  \n- **Tracks competing products mentioned in calls**.  \n- **Identifies integration needs**, flagging workarounds used by prospects.  \n\n### **📢 Real-Time Slack Notifications**  \n- **Alerts teams on workflow progress** and completed call analyses.  \n\n### **🔄 Failure Resilience & Automated Re-Runs**  \n- If a **Notion API limit is reached**, the process **resumes automatically**.  \n\n---\n\n## **🚀 How This Works**  \n\n### **🛠 1. Trigger & Call Data Processing**  \n- The workflow **retrieves Gong call transcripts and metadata**.  \n- **Normalizes data**, correcting common mispronunciations like \"n8n.\"  \n\n### **🤖 2. AI Agents Analyze the Call**  \n- **Sales Agent** – Extracts actionable insights for sales follow-ups.  \n- **Marketing Agent** – Identifies **recurring themes** and **keyword trends**.  \n- **Product Agent** – Captures **feature requests and AI/ML usage mentions**.  \n\n### **📡 3. Data is Stored in Notion & Salesforce**  \n- **Logs AI-extracted insights** in **Notion** for structured tracking.  \n- **Pushes sales-related data** to **Salesforce** for team accessibility.  \n\n### **🔔 4. Slack Alerts for Teams**  \n- **Notifies sales, marketing, and product teams** about extracted insights. \n\n- [CallForge - 01 - Filter Gong Calls Synced to Salesforce by Opportunity Stage](https://n8n.io/workflows/3031-callforge-01-filter-gong-calls-synced-to-salesforce-by-opportunity-stage/)\n- [CallForge - 02 - Prep Gong Calls with Sheets & Notion for AI Summarization](https://n8n.io/workflows/3032-callforge-02-prep-gong-calls-with-sheets-and-notion-for-ai-summarization/)\n- [CallForge - 03 - Gong Transcript Processor and Salesforce Enricher](https://n8n.io/workflows/3033-callforge-03-gong-transcript-processor-and-salesforce-enricher/)\n- [CallForge - 04 - AI Workflow for Gong.io Sales Calls](https://n8n.io/workflows/3034-callforge-04-ai-workflow-for-gongio-sales-calls/)\n- [CallForge - 05 - Gong.io Call Analysis with Azure AI & CRM Sync](https://n8n.io/workflows/3035-callforge-05-gongio-call-analysis-with-azure-ai-and-crm-sync/)\n- [CallForge - 06 - Automate Sales Insights with Gong.io, Notion & AI](https://n8n.io/workflows/3036-callforge-06-automate-sales-insights-with-gongio-notion-and-ai/)\n- [CallForge - 07 - AI Marketing Data Processing with Gong & Notion](https://n8n.io/workflows/3037-callforge-07-ai-marketing-data-processing-with-gong-and-notion/)\n- [CallForge - 08 - AI Product Insights from Sales Calls with Notion](https://n8n.io/workflows/3039-callforge-08-ai-product-insights-from-sales-calls-with-notion/)\n\n \n\n---\n\n## **📊 Sample Output Data**  \n\n### **1️⃣ Sales Insights**  \n```json\n{\n  \"UseCases\": [\n    {\n      \"Summary\": \"A manufacturing company wants to automate inventory tracking and reduce manual entry delays.\",\n      \"DepartmentTags\": [\"Operations\"],\n      \"IndustryTags\": [\"Manufacturing\"],\n      \"ImplementationStatus\": \"Evaluating\"\n    }\n  ],\n  \"Objection\": {\n    \"ObjectionTags\": [\"Feature Limitation\"],\n    \"Nature\": \"The prospect wanted a deeper integration with their ERP system, which n8n currently lacks.\"\n  },\n  \"CallSummary\": \"The call focused on automation for supply chain processes. The prospect expressed interest but wanted confirmation on ERP integration capabilities.\",\n  \"NextSteps\": [\"Schedule a follow-up demo for ERP integration.\"]\n}\n```\n\n### **2️⃣ Marketing Insights**  \n```json\n{\n  \"MarketingInsights\": [\n    {\n      \"Tag\": \"Workflow Template Request\",\n      \"Summary\": \"The prospect requested a template for automating CRM lead tracking.\"\n    }\n  ],\n  \"RecurringTopics\": [\n    {\n      \"Topic\": \"CRM Integration\",\n      \"Mentions\": 3,\n      \"Context\": \"Discussed how n8n could sync CRM data automatically.\"\n    }\n  ],\n  \"ActionableInsights\": [\n    {\n      \"RecommendationType\": \"Tutorial\",\n      \"Title\": \"How to Automate CRM Lead Tracking with n8n\",\n      \"Topic\": \"CRM Integration\",\n      \"Rationale\": \"The prospect expressed a need for CRM automation templates.\"\n    }\n  ]\n}\n```\n\n### **3️⃣ Product Feedback**  \n```json\n{\n  \"ProductFeedback\": [\n    {\n      \"Sentiment\": \"Positive\",\n      \"Feedback\": \"The external speaker praised the simplicity of n8n's UI, making it easier for non-developers to automate tasks.\"\n    },\n    {\n      \"Sentiment\": \"Negative\",\n      \"Feedback\": \"The external speaker mentioned frustration over the lack of a dedicated ERP integration node.\"\n    }\n  ],\n  \"AI_ML_References\": {\n    \"Exist\": true,\n    \"Context\": \"The external speaker mentioned using AI for automating customer ticket categorization.\",\n    \"Details\": {\n      \"DevelopmentStatus\": \"Building\",\n      \"Department\": \"Support\",\n      \"RequiresAgents\": true,\n      \"RequiresRAG\": false,\n      \"RequiresChat\": \"Yes: External App (e.g., Slack)\"\n    }\n  }\n}\n```\n\n---\n\n## **🔧 How to Customize This Workflow**  \n💡 **🔗 Change Data Storage** – Swap **Notion for Airtable, HubSpot, or another CRM**.  \n💡 **📩 Customize Slack Notifications** – Send alerts via **email, webhook, or another channel**.  \n💡 **🛠 Modify AI Processing** – Adjust AI models or processing prompts.  \n💡 **📊 Add More Integrations** – Sync insights with **Pipedrive, HubSpot, or another CRM**.  \n\n---\n\n## **🚀 Why Use This Workflow?**  \n✔ **Automates Gong call transcript analysis**, eliminating manual work.  \n✔ **Improves collaboration** by structuring insights for sales, marketing, and product teams.  \n✔ **Boosts sales conversions** by identifying objections and next steps.  \n✔ **Enhances marketing and SEO strategy** with AI-driven insights.  \n✔ **Optimizes product roadmap decisions** based on customer feedback.  \n\nThis workflow **scales AI-powered sales intelligence** for better **decision-making, content strategy, and sales enablement**. 🚀  ",
+    "workflow": {
+      "meta": {
+        "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "b092ac6b-f12a-4eaa-9424-5cbfc51acc7e",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -700,
+            -100
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6c0aba3a-4e0c-443f-a08b-d871daa36839",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            -20,
+            260
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n    \"MarketingInsights\": [\n        {\n            \"Tag\": \"Landing Page Opportunity\",\n            \"Summary\": \"The prospect mentioned needing more detailed information about how n8n ensures GDPR compliance, suggesting a landing page dedicated to security features.\"\n        },\n        {\n            \"Tag\": \"Workflow Template Request\",\n            \"Summary\": \"The prospect asked if there is a template for automating Slack notifications based on CRM updates, which would streamline their sales process.\"\n        },\n        {\n            \"Tag\": \"Brand Advocate Potential\",\n            \"Summary\": \"The prospect expressed excitement about n8n, saying, 'This is exactly what we've been looking for,' and mentioned they would be happy to share their experience if it works well.\"\n        }\n    ],\n    \"RecurringTopics\": [\n        {\n            \"Topic\": \"Data Security\",\n            \"Mentions\": 6,\n            \"Context\": \"The organization emphasized the importance of secure integrations to comply with GDPR and protect customer data in cloud-based workflows.\"\n        },\n        {\n            \"Topic\": \"Customer Support Automation\",\n            \"Mentions\": 4,\n            \"Context\": \"Discussions focused on automating ticket assignment and resolution workflows to improve response times and customer satisfaction.\"\n        },\n        {\n            \"Topic\": \"Slack Integration\",\n            \"Mentions\": 3,\n            \"Context\": \"The organization wanted to explore how n8n could automate notifications and task updates through Slack for better team collaboration.\"\n        }\n    ],\n    \"ActionableInsights\": [\n        {\n            \"RecommendationType\": \"Blog Post\",\n            \"Title\": \"Ensuring GDPR Compliance in Workflow Automation\",\n            \"Topic\": \"Data Security\",\n            \"Rationale\": \"Data security was the most frequently mentioned topic, with specific interest in GDPR compliance and secure integrations.\"\n        },\n        {\n            \"RecommendationType\": \"Tutorial\",\n            \"Title\": \"Automating Slack Notifications with n8n\",\n            \"Topic\": \"Slack Integration\",\n            \"Rationale\": \"The prospect requested guidance on setting up automated Slack notifications for team workflows, indicating strong demand for this feature.\"\n        },\n        {\n            \"RecommendationType\": \"Case Study\",\n            \"Title\": \"How Automated Customer Support Workflows Boosted Efficiency\",\n            \"Topic\": \"Customer Support Automation\",\n            \"Rationale\": \"Customer support automation was highlighted as a major challenge, suggesting value in showcasing real-world success stories.\"\n        }\n    ]\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e928f8b7-0775-43f6-815e-d872663818d5",
+          "name": "Marketing AI Agent Processor",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -200,
+            40
+          ],
+          "parameters": {
+            "text": "={{ $json.prompt.transcript }}",
+            "options": {
+              "systemMessage": "=You are an AI assistant specializing in analyzing sales call transcripts. Your task is to extract structured information about the call, including use cases, objections, summaries, and other relevant insights for the marketing team at n8n. Pay close attention to action-oriented language and specific requests made by the external participants.\n\n\n1. **Marketing Insights**: Summarize any marketing-related insights from the external speaker, organized by specific tags that correspond to different areas of marketing focus (e.g., website work, workflow templates, video content, community forum). Each piece of insight should include a Tag field with the specific marketing area and a Summary field that provides a brief description of the insight. Only use the below list of tags when creating insights and ensure the insight is specific to insights from the list below. For example do not give pricing insight for marketing insights. If no marketing insights that match the tags below are not found, output an empty array. Please do not output any tags that are not defined below in the numbered list. Include relevant quotes from the transcript to explain why the marketing tag is relevant in the summary output.\nTags:\n1. **Landing Page Opportunity**: Indicates a need for a new or improved landing page targeting a specific enterprise demographic. For example, if a prospect mentions needing more detailed information about security or scalability, this could prompt the creation of a dedicated landing page.\n2. **Workflow Template Request**: Indicates a specific workflow template that a prospect or customer would find helpful. This could be based on mentions of repetitive tasks or automation needs that aren't yet covered by your existing templates.\n3. **Video Tutorial Request**: Prospects asking for video tutorials or walkthroughs on how to set up specific workflows, integrations, or advanced features.\n4. **Feature Explanation**: Indicates a need for video or text based content explaining the benefits or setup of specific n8n features. For example, if a prospect doesn’t understand how the HTTP request node works, a video or blog post could be created to explain this.\n5. **Success Story Request**: Prospects interested in seeing content showcasing how other companies have successfully implemented n8n. Try to include details in the summary of what success looks like for the external speaker.\n6. **Customer Success Story**: Stories that the external speaker gave of success they have found using the n8n platform. In the summary include any direct quotes taken from the transcript about this story.\n7. **FAQ Gap**: Questions or concerns raised during calls that are not covered or easily found in the existing forum FAQ or website.\n8. **Event/Conference Mention**: Capture mentions of events, conferences, or industry meetups where n8n could have a presence. Try to get name, location, and date if possible from the transcript.\n9. **Brand Advocate Potential**: Identify prospects who sound excited or enthusiastic about using n8n and could become brand advocates. Use this to prioritize follow-ups for case studies, testimonials, or involvement in community events. It could also inform who to reach out to for co-marketing opportunities.\n9. **Documentation Gap**: Use this tag anytime an external speaker mentions a lack or frustration with the n8n documentation pages, and any suggestions to improve them. Include the suggestion in the summary if mentioned.\nA. Expected example Format: \"MarketingInsights\": [\n{\n\"Tag\": \"Landing Page Opportunity\",\n\"Summary\": \"The prospect mentioned wanting more information about data security, suggesting a need for a dedicated landing page on security features.\"\n},\n{\n\"Tag\": \"WorkFlow Template Request\",\n\"Summary\": \"The external speaker asked if there was a workflow template for automating CRM data entry.\"\n}\n]\nB. Expected Example Format for no insights: \"MarketingInsights\": []\n\n---\n\n### **2. Marketing Insights: Keyword and Topic Analysis**\n\nAnalyze the call transcript to identify recurring topics or phrases that were mentioned multiple times by the external speaker or other participants. This analysis will be used to match recurring topics with keyword volume data and adapt **n8n's** blog content accordingly.\n\n1. **Identify Recurring Topics or Phrases**:\n   - Extract key topics, phrases, or keywords mentioned more than once during the call.\n   - Focus on phrases related to:\n     - Pain points or challenges.\n     - Desired features or solutions.\n     - Industry-specific terminology.\n     - Automation goals or use case ideas.\n\n2. **Provide a Frequency Analysis**:\n   - Rank the identified topics or phrases by the number of times they were mentioned during the call.\n   - Group similar phrases under a unified topic if they are variations of the same concept (e.g., \"CRM integration\" and \"integrating with CRM\").\n\n3. **Include Context**:\n   - For each topic or phrase, summarize its context within the conversation. Example contexts could include:\n     - Pain points the topic addresses.\n     - Solutions or workflows discussed.\n     - Broader goals or industry-specific needs.\n\n4. **Output Format**:\n   - **Recurring Topics**:\n     ```json\n     {\n         \"RecurringTopics\": [\n             {\n                 \"Topic\": \"Data Security\",\n                 \"Mentions\": 5,\n                 \"Context\": \"Discussed in relation to GDPR compliance and secure integrations with cloud platforms.\"\n             },\n             {\n                 \"Topic\": \"Customer Support Automation\",\n                 \"Mentions\": 3,\n                 \"Context\": \"Focused on improving ticket resolution times through automated workflows.\"\n             },\n             {\n                 \"Topic\": \"CRM Integration\",\n                 \"Mentions\": 2,\n                 \"Context\": \"Talked about syncing Salesforce data with email campaigns.\"\n             }\n         ]\n     }\n     ```\n\nIf there are no recurring topics, use this output format: \n     ```json\n     {\n         \"RecurringTopics\": []\n     }\n     ```\n\n   - **Actionable Insights**:\n     ```json\n     {\n         \"ActionableInsights\": [\n             {\n                 \"RecommendationType\": \"Blog Post\",\n                 \"Title\": \"Top 5 Ways to Ensure Data Security in Workflow Automation\",\n                 \"Topic\": \"Data Security\",\n                 \"Rationale\": \"Data security was mentioned frequently in the context of compliance and cloud integrations, indicating high interest.\"\n             },\n             {\n                 \"RecommendationType\": \"Tutorial\",\n                 \"Title\": \"How to Automate Customer Support with n8n\",\n                 \"Topic\": \"Customer Support Automation\",\n                 \"Rationale\": \"Customer support automation was discussed as a key challenge, suggesting value in a step-by-step guide.\"\n             },\n             {\n                 \"RecommendationType\": \"Marketing Campaign\",\n                 \"Title\": \"CRM Integration as a Cornerstone for Workflow Automation\",\n                 \"Topic\": \"CRM Integration\",\n                 \"Rationale\": \"CRM integration was highlighted as a critical feature, making it a strong focus for targeted marketing campaigns.\"\n             }\n         ]\n     }\n     ```\n\nIf there are no actionable insights, use the following output format: \n\n     ```json\n     {\n         \"ActionableInsights\": []\n     }\n     ```\n\n---\n"
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "7db7a2d6-055f-47b2-aabc-1f1016e7d817",
+          "name": "Structured Output Parser2",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            0,
+            860
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n    \"ProductFeedback\": [\n        {\n            \"Sentiment\": \"Positive\",\n            \"Feedback\": \"The external speaker mentioned that 'n8n's interface is very intuitive and user-friendly,' highlighting how quickly their team was able to set up workflows without prior experience.\"\n        },\n        {\n            \"Sentiment\": \"Negative\",\n            \"Feedback\": \"The external speaker expressed frustration about the lack of a native integration for their HR platform, saying, 'It adds complexity when we have to rely on HTTP requests instead of a dedicated node.'\"\n        }\n    ],\n    \"AI_ML_References\": {\n        \"Exist\": true,\n        \"Context\": \"The external speaker discussed using AI to prioritize and categorize support tickets based on urgency and customer sentiment, mentioning that n8n could potentially integrate with their existing AI model for automated ticket routing.\",\n        \"Details\": {\n            \"DevelopmentStatus\": \"Building\",\n            \"Department\": \"Support\",\n            \"RequiresAgents\": true,\n            \"RequiresRAG\": true,\n            \"RequiresChat\": \"Yes: External App (e.g. Slack)\"\n        }\n    }\n}\n"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e97e1e48-52ba-4cbd-ac97-78ac756aa792",
+          "name": "Product AI Agent Processor",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -200,
+            640
+          ],
+          "parameters": {
+            "text": "={{ $json.prompt.transcript }}",
+            "options": {
+              "systemMessage": "=You are an AI assistant specializing in analyzing sales call transcripts. Your task is to extract structured information about the call, including use cases, objections, summaries, and other relevant insights for the product team at n8n. Pay close attention to action-oriented language and specific requests made by the external participants.\n\n**Product Feedback**: Summarize any feedback given about the n8n automation platform from the external speaker in a structured JSON format. Each piece of feedback should include a **Sentiment** field that can be either \"Positive\" or \"Negative\" and a **Feedback** field that summarizes the comment. **For Positive Feedback**: Look for praise about features or aspects such as ease of use, performance, scalability, support, or cost-effectiveness. Positive feedback may include phrases like \"we love,\" \"the best part,\" \"a game-changer,\" or \"it's very intuitive.\" Capture comments that highlight what the external speaker appreciates about n8n or how it solves a problem for them. **For Negative Feedback**: Focus on areas where the product is lacking, or specific requests for new features or improvements. Use cues such as phrases from the internal speaker like \"we don't offer that,\" \"we don't support that,\" or mentions of the product \"Roadmap.\" Also, note instances where the internal speaker invites the external attendee to explain a requirement, using phrases like \"we can bring this to our product team\" or \"if you can explain your requirement, I can bring this to our product department.\"\n    A.  Expected Format: \"ProductFeedback\": [ { \"Sentiment\": \"Positive\", \"Feedback\": \"Summary of the positive feedback provided by the external speaker\" }, { \"Sentiment\": \"Negative\", \"Feedback\": \"Summary of the negative feedback or unmet needs described by the external speaker\" } ]\n    B. Expected Format for no feedback: \"ProductFeedback\": []\n\n\n---\n\n**AI/ML References**\nIdentify any mentions of AI or machine learning in the conversation from the external speaker. Summarize the context in which these technologies are discussed and capture additional details about their development status, department, and specific requirements.\n\n1. **What to Extract**:\n   - **Mentions of AI/ML**: Determine whether AI or machine learning was mentioned in the conversation.\n   - **Context**: Summarize how the external speaker plans to use these technologies with n8n, focusing on their goals, challenges, or implementation strategies.\n   - **Additional Details**:\n     - **Development Status**: Is this an idea, currently being built, or already in production? (output only one of these options exactly as they are shown here: \"Idea\", \"Building\", \"In Production\")\n     - **Department**: Which department will use this AI/ML solution? (output only one of these options exactly as they are shown here: \"Support\", \"Marketing\", \"Security\", \"Sales\", \"BI\", \"Engineering\")\n     - **Requires Agents**: Does this AI/ML use case require agents for interaction or execution? (Options: true/false)\n     - **Requires RAG**: Does this use case require Retrieval-Augmented Generation (RAG) for AI? (Options: true/false)\n     - **Requires Chat**: Does this use case involve chat functionality? Specify the type. Output only one of these options exactly as they are shown here: \n- \"Yes: Custom Chat\"\n- \"Yes: External App (e.g. Slack)\"\n- \"Yes: n8n chat\"\n- \"No\", \"Yes\"\n\n2. **Output Format**:\n   \njson\n   {\n       \"AI_ML_References\": {\n           \"Exist\": true,\n           \"Context\": \"The external speaker mentioned using AI to automate data classification, stating that they would like to explore how n8n could support machine learning models for more accurate data tagging.\",\n           \"Details\": {\n               \"DevelopmentStatus\": \"Idea\",\n               \"Department\": \"Support\",\n               \"RequiresAgents\": true,\n               \"RequiresRAG\": false,\n               \"RequiresChat\": \"Yes: External App (e.g. Slack)\"\n           }\n       }\n   }\n\n\n3. **If No AI/ML Mentioned**:\n   \njson\n{\n    \"AI_ML_References\": {\n        \"Exist\": false,\n        \"Context\": \"null\",\n        \"Details\": {\n            \"DevelopmentStatus\": \"null\",\n            \"Department\": \"null\",\n            \"RequiresAgents\": false,\n            \"RequiresRAG\": false,\n            \"RequiresChat\": \"null\"\n        }\n    }\n}\n"
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "1d3c0b6c-0b1a-42d4-914f-0f3b08eb505a",
+          "name": "Sales Data Processor",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            620,
+            -660
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "I6lNpYOK5i8SXhPU",
+              "cachedResultName": "Sales AI Data Processor Demo"
+            },
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "778cfa90-4a19-424b-aeb2-71bc1cf61848",
+          "name": "Marketing Data Processor",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            620,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "enqv6mILqxzIW5TV",
+              "cachedResultName": "Marketing AI Data Processor Demo"
+            },
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "22950eb8-5c89-4a17-91fc-f40e543c69b8",
+          "name": "Product AI Data Processor",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            640,
+            640
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "sn0DvsN0Wqpkrxjv",
+              "cachedResultName": "Product AI Data Processor Demo"
+            },
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "24989b3a-03bc-496b-9d0c-dd64a40816fd",
+          "name": "Data Recall Sales",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            260,
+            -620
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d8d3bef7-4e05-4dc0-8108-b2a7b5b7cb73",
+                  "name": "AIoutput",
+                  "type": "object",
+                  "value": "={{ $json.output }}"
+                },
+                {
+                  "id": "044e7d52-d025-45e6-af14-6cf255be1b2f",
+                  "name": "metaData",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.metaData }}"
+                },
+                {
+                  "id": "be5c1891-77b6-4bfd-b4ab-11e2e54470f6",
+                  "name": "Attendees",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.Attendees }}"
+                },
+                {
+                  "id": "f35dbafc-5090-4ac0-b291-a99ceeca80dd",
+                  "name": "PeopleDataLabs",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.PeopleDataLabs }}"
+                },
+                {
+                  "id": "a17df98b-5227-48f5-9d8f-2fdd8073f7ac",
+                  "name": "sfOpp",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.sfOpp }}"
+                },
+                {
+                  "id": "d041a535-c654-4f4a-b00a-c57f801da80e",
+                  "name": "pipedrive",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.pipedrive }}"
+                },
+                {
+                  "id": "e9336d46-11fc-46b1-9e9f-1fa1432a38dc",
+                  "name": "notionData",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.notionData }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b710f198-ead4-46ae-8bbc-ac50d8533dbc",
+          "name": "Data Recall Marketing",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d8d3bef7-4e05-4dc0-8108-b2a7b5b7cb73",
+                  "name": "AIoutput",
+                  "type": "object",
+                  "value": "={{ $json.output }}"
+                },
+                {
+                  "id": "044e7d52-d025-45e6-af14-6cf255be1b2f",
+                  "name": "metaData",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.metaData }}"
+                },
+                {
+                  "id": "be5c1891-77b6-4bfd-b4ab-11e2e54470f6",
+                  "name": "Attendees",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.Attendees }}"
+                },
+                {
+                  "id": "f35dbafc-5090-4ac0-b291-a99ceeca80dd",
+                  "name": "PeopleDataLabs",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.PeopleDataLabs }}"
+                },
+                {
+                  "id": "a17df98b-5227-48f5-9d8f-2fdd8073f7ac",
+                  "name": "sfOpp",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.sfOpp }}"
+                },
+                {
+                  "id": "d041a535-c654-4f4a-b00a-c57f801da80e",
+                  "name": "pipedrive",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.pipedrive }}"
+                },
+                {
+                  "id": "e9336d46-11fc-46b1-9e9f-1fa1432a38dc",
+                  "name": "notionData",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.notionData }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ad407809-2281-4f54-a363-6a3b32392818",
+          "name": "Data Recall Product",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            640
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d8d3bef7-4e05-4dc0-8108-b2a7b5b7cb73",
+                  "name": "AIoutput",
+                  "type": "object",
+                  "value": "={{ $json.output }}"
+                },
+                {
+                  "id": "044e7d52-d025-45e6-af14-6cf255be1b2f",
+                  "name": "metaData",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.metaData }}"
+                },
+                {
+                  "id": "be5c1891-77b6-4bfd-b4ab-11e2e54470f6",
+                  "name": "Attendees",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.Attendees }}"
+                },
+                {
+                  "id": "f35dbafc-5090-4ac0-b291-a99ceeca80dd",
+                  "name": "PeopleDataLabs",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.PeopleDataLabs }}"
+                },
+                {
+                  "id": "a17df98b-5227-48f5-9d8f-2fdd8073f7ac",
+                  "name": "sfOpp",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.sfOpp }}"
+                },
+                {
+                  "id": "d041a535-c654-4f4a-b00a-c57f801da80e",
+                  "name": "pipedrive",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.pipedrive }}"
+                },
+                {
+                  "id": "e9336d46-11fc-46b1-9e9f-1fa1432a38dc",
+                  "name": "notionData",
+                  "type": "array",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.notionData }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9ee91a9b-0175-4a02-bc44-2e37302dc28c",
+          "name": "SF Sales Data Processor",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "disabled": true,
+          "position": [
+            620,
+            -480
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "22QS6tCywKY2LN2K"
+            },
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "7ee72c9f-19ab-4f9b-95ee-7292c8490464",
+          "name": "Azure OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+          "position": [
+            -180,
+            -380
+          ],
+          "parameters": {
+            "model": "gpt-4o-mini",
+            "options": {}
+          },
+          "credentials": {
+            "azureOpenAiApi": {
+              "id": "xACmWh9xl7axP5Rc",
+              "name": "Self-hosted GPT4o-mini [PII Approved]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "31ac033f-ded5-459c-b427-a3cd39325439",
+          "name": "Azure OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+          "position": [
+            -200,
+            260
+          ],
+          "parameters": {
+            "model": "gpt-4o-mini",
+            "options": {}
+          },
+          "credentials": {
+            "azureOpenAiApi": {
+              "id": "xACmWh9xl7axP5Rc",
+              "name": "Self-hosted GPT4o-mini [PII Approved]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bc64a18b-3d30-46ff-a983-683dfc481a9d",
+          "name": "Azure OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+          "position": [
+            -200,
+            840
+          ],
+          "parameters": {
+            "model": "gpt-4o-mini",
+            "options": {}
+          },
+          "credentials": {
+            "azureOpenAiApi": {
+              "id": "xACmWh9xl7axP5Rc",
+              "name": "Self-hosted GPT4o-mini [PII Approved]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "009c4b72-1cb6-4c27-8749-6a905f2d210e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -760,
+            -360
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 480,
+            "height": 600,
+            "content": "## Receive Call Data and standardize User Prompt\nThis node gets the call data passed into it, and it creates a single user prompt that is passed into all 3 AI agents. This allows for standardizing things such as name misprononciation and integration data to be set in one node that can easily be updated and automatically be sent to the 3 AI agents. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bcb43542-eef3-46ee-8610-b2a9ddda382b",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1120,
+            -580
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 340,
+            "height": 820,
+            "content": "![Callforge](https://uploads.n8n.io/templates/callforgeshadow.png)\n## CallForge - The AI Gong Sales Call Processor\nCallForge allows you to extract important information for different departments from your Sales Gong Calls. \n\n### AI Agent Processor\nThis is where the AI magic happens. In this workflow, we take the final transcript blog and pass it into the AI Prompt for analysis and data extraction. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aba37121-e48f-4e81-91af-78ee00f02276",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            -780
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1160,
+            "height": 580,
+            "content": "## Process Sales Agent\nThe Sales agent structured output is passed to both the notion processor and the Salesforce processor, thereby feeding the data back to the main platform where the sales team works. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c2827dbe-229d-425a-b5fb-f47ceefc6f70",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            -180
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1160,
+            "height": 600,
+            "content": "## Process Marketing Agent\nThe marketing agent outputs to a subworkflow that feeds to a notion database. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b8e816ca-1ac7-4445-8a84-9bc4f4f5e037",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            440
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1160,
+            "height": 600,
+            "content": "## Process Product Agent\nThe product team also uses notion so the output is fed to a subworkflow that outputs to Notion as well. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "859734c7-efc7-42d5-b597-aaea00beb71c",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            -200
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 700,
+            "height": 440,
+            "content": "## Process Queue Logic\nIf the run fails for any reason, it can be rerun on only the remaining calls, allowing for greater resilisience in api calls. The main issue I ran into was Notion rate limiting."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aa9c227b-74f8-4e30-a89c-2dfb505fbbb4",
+          "name": "Create User Prompt",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -480,
+            -100
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d843f262-a7b9-44be-802e-56e5e2c7be3f",
+                  "name": "prompt.transcript",
+                  "type": "string",
+                  "value": "=Analyze the following call transcript for a sales call between an n8n sales representative (denoted as \"Internal\") and external attendees (denoted as \"External\" or \"Unknown\"). Provide the following details in a structured JSON format in English. Please note that the company n8n is sometimes incorrectly called NADN, NATN, NAN, NITEN, NNN, or Nathan in the transcript, so keep this in mind when reading the transcript. To help make the transcription more precise, see context details below:\n\nCall Context:\nCompany Domain: {{ $json.metaData.CompanyName }}\nCall Title: {{ $json.metaData.title }}\nCall Attendee Names:\nInternal: {{ $json.Attendees.internalNames }}\nExternal: {{ $json.Attendees.externalNames }}\n\nDue to potential errors in the the transcript, here is a list of our competitors to ensure accuracy. If a misspelled word is used in a competitor context similar sounding to one of these competitors, assume they are talking about this competitor: {{ $json.metaData.Competitors }}\n\nAnd here is a list of our current integrations as well to ensure transcript accuracy. If a misspelled word is used in an integration context similar sounding to one of these integrations, assume they are talking about this integration: {{ $json.metaData.Integrations }}\n\nCall Transcript:\n{{ $json.Conversation }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "978479c2-29c7-4a47-b9f2-5e1a181d25e8",
+          "name": "Success Status Generated",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1480,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f106901a-9970-475c-80d8-356fb71d2e18",
+                  "name": "status",
+                  "type": "string",
+                  "value": "=Successfully ran AI Process on Call for {{ $('Execute Workflow Trigger').item.json.metaData.title }} for Gong ID {{ $('Execute Workflow Trigger').item.json.metaData.GongCallID }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0269ec40-4935-44d8-bab1-c76bf9cac82c",
+          "name": "AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -180,
+            -620
+          ],
+          "parameters": {
+            "text": "=You have no tools, do not attempt to use an ai tool. {{ $json.prompt.transcript }}",
+            "options": {
+              "systemMessage": "You are an AI assistant specializing in analyzing sales call transcripts. Your task is to extract structured information about the call, including use cases, objections, summaries, and other relevant insights for the sales and marketing teams. Pay close attention to action-oriented language and specific requests made by the external participants. You have no tools, do not attempt to use an ai tool. \n\n---\n\n### **1. UseCases**\n**Prompt**:  \n**Objective**: Extract structured information about the use cases discussed during the call. Each use case should focus on a distinct goal, challenge, or project mentioned by the external speaker. Include a detailed summary, relevant department and industry tags, and the current status of implementation.\n\n---\n\n**Instructions**:\n\n1. **Identify Use Cases**:\n   - Look for distinct goals, challenges, or projects mentioned by the external or unknown speaker during the call.  \n   - Pay attention to action-oriented phrases, such as:  \n     - *“We need…”*  \n     - *“Our goal is…”*  \n     - *“We’re building…”*  \n     - *“We’re trying to…”*  \n     - *“We’d like to explore…”*\n\n2. **Summarize Each Use Case**: Summary\n   - Provide a concise paragraph in the style of a **white paper**, but do not mention Customer names or organization names, for the sake of privacy.  \n   - Structure the summary as follows:\n     - **Start with the problem or goal**: Briefly describe the challenge or objective. Avoid mentioning the company name and use generic industry references, e.g., *“An organization in the financial industry…”*.  \n     - **Describe the solution or Idea**: Explain how **n8n** or automation in general is used to solve the problem or achieve the goal, focusing on key capabilities and value.  \n     - **Conclude with the benefits**: Highlight tangible outcomes or improvements, using metrics or specific results when possible, as well as quotes from the call where possible.\n\n3. **Implementation Status**: ImplementationStatus\n   - Assign an **ImplementationStatus** tag to indicate the progress of the use case. Use only one of the following tags:\n     - **\"Idea\"**: The use case is in the conceptual phase.  \n     - **\"Building\"**: The use case is actively under development.  \n     - **\"Deployed\"**: The use case is fully implemented and live.  \n     - **\"Stalled\"**: The use case has been paused or is facing challenges.  \n     - **\"Evaluating\"**: The use case is being assessed for feasibility or ROI.  \n\n4. **Assign Department Tags**: DepartmentTags\n   - Select one or more departments that align with the use case. Only output a department tag from the following list based on the context of the use case and company info provided:  \n     - **Engineering**: Automating bug tracking, notifying CI/CD pipeline failures, syncing documentation.\n     - **Finance**: Automating invoice processing, syncing financial data with CRMs, generating financial reports.\n     - **HR**: Managing onboarding workflows, automating reminders for reviews, syncing hiring pipelines.\n     - **Other**: General automations like syncing data between tools, creating APIs, or one-off utilities.\n     - **Product**: Collecting user feedback, automating competitive analysis, updating feature request lists.\n     - **Support**: Automating ticket assignment, summarizing customer feedback, generating FAQs.\n     - **Marketing**: Automating lead capture, scheduling social media posts, tracking campaign metrics.\n     - **DevOps**: Automating infrastructure alerts, streamlining log aggregation, deploying changes.\n     - **IT Ops**: Managing user provisioning, automating network monitoring, syncing asset data.\n     - **Design**: Automating feedback collection, generating image thumbnails, syncing design assets.\n     - **SecOps**: Automating vulnerability scans, sending security alerts, tracking compliance tasks.\n     - **AI**: Integrating AI models, automating data preparation, building AI-powered chatbots.\n     - **Sales**: Automating lead qualification, scheduling follow-ups, generating proposals.\n     - **Building Blocks**: Fundamental workflows like data transformation, API integration, error handling.\n\n5. **Assign Industry Tags**: IndustryTags\n   - Choose one or more industries relevant to the use case.  Only output an industry tag from the following list based on the context of the use case and company info provided:  \n     - **Technology & Software Development**: Automating CI/CD pipelines, bug tracking, syncing tools.\n     - **E-commerce & Retail**: Automating order processing, inventory updates, abandoned cart recovery.\n     - **Financial Services & Banking**: Automating compliance workflows, fraud detection, financial reporting.\n     - **Healthcare**: Scheduling appointments, syncing medical records, automating billing workflows.\n     - **Education & E-learning**: Automating course enrollment, syncing student data, sending reminders.\n     - **Manufacturing**: Managing supply chain workflows, automating equipment monitoring, processing orders.\n     - **Real Estate**: Syncing property listings, automating lead follow-ups, generating trend reports.\n     - **Marketing & Advertising**: Campaign tracking, social media scheduling, lead generation.\n     - **Media & Entertainment**: Content publishing automation, royalty management, audience engagement.\n     - **Transportation & Logistics**: Automating shipment tracking, fleet management, route optimization.\n     - **Nonprofits & NGOs**: Automating donor communication, volunteer coordination, grant reporting.\n     - **Legal & Compliance**: Managing contracts, sending alerts for deadlines, automating legal research.\n     - **Travel & Hospitality**: Booking confirmations, guest communication, feedback management.\n     - **Telecommunications**: Customer onboarding, outage monitoring, automating ticket workflows.\n     - **Energy & Utilities**: Meter readings, billing automation, equipment monitoring.\n     - **Agriculture**: Automating crop monitoring, syncing weather data, managing supply chains.\n     - **Gaming**: Automating in-game event notifications, user onboarding, analytics tracking.\n     - **Aerospace & Defense**: Maintenance reporting, compliance checks, resource coordination.\n     - **Insurance**: Claims processing, policy management, risk assessment reporting.\n     - **Food & Beverage**: Order processing, inventory management, customer loyalty programs.\n     - **Government**: Service request handling, interdepartmental data sharing, citizen engagement.\n\n---\n\n### **Expected Output Format**:\n\n**If Use Cases are identified**:\n```json\n{\n  \"UseCases\": [\n    {\n      \"Summary\": \"A brief paragraph summarizing the specific use case.\",\n      \"DepartmentTags\": [\"RelevantDepartment1\", \"RelevantDepartment2\"],\n      \"IndustryTags\": [\"RelevantIndustry\"],\n      \"ImplementationStatus\": \"Idea\"\n    },\n    {\n      \"Summary\": \"A second distinct use case.\",\n      \"DepartmentTags\": [\"RelevantDepartment\"],\n      \"IndustryTags\": [\"RelevantIndustry\"],\n      \"ImplementationStatus\": \"Building\"\n    }\n  ]\n}\n```\n\n**If no Use Cases are identified**:\n```json\n{\n  \"UseCases\": []\n}\n```\n\n---\n\n### **2. Objection**\n**Prompt**:  \n**Objective**: Identify and categorize objections raised by the external or unknown speaker during the call. Summarize the nature of these objections and tag them based on specific categories to ensure clear insights for the sales and product teams.\n\n---\n\n**Instructions**:\n\n1. **Identify Objections**:\n   - Pay attention to language that conveys reluctance, concerns, or hesitations about using n8n.\n   - Common objection indicators include:\n     - **Pricing Concerns**: *“It’s too expensive,”* *“We don’t have the budget,”* *“Are there cheaper plans?”*\n     - **Feature or Fit Concerns**: *“We don’t need all these features,”* *“It’s not what we’re looking for,”* *“Does it integrate with our system?”*\n     - **Scalability or Complexity Concerns**: *“Will it scale with us?”* *“It’s too complicated to set up.”*\n     - **Other Concerns**: *“We’ll revisit this later,”* *“We need more time to evaluate.”*\n\n2. **Summarize the Objection**: Nature\n   - Provide a brief summary under **Nature** to describe the concern clearly. Include key quotes from the transcript for context, especially for critical objections like pricing or feature limitations.\n\n3. **Assign Objection Tags**: ObjectionTags\n   - Use one or more tags to categorize the objection. Only Choose the most relevant tags from the following list:\n     - **Pricing: Budget Constraints**: Limited funding or timing issues for unlocking the budget.  \n     - **Pricing: Perceived Fairness**: Concerns about high costs compared to other plans or competitors.  \n     - **Pricing: Value-Based Objections**: Questions about whether the price justifies the features or benefits.  \n     - **Pricing: Return on Investment**: Doubts about the ROI, including resources saved or value added.  \n     - **Pricing: Other Pricing Concerns**: Any pricing-related objections not covered above.  \n     - **Internal Competition**: Preference for non-enterprise n8n plans (e.g., *Cloud Plans*, *Starter*, *Pro*).  \n     - **External Competition**: Mentions of competing products or platforms as preferred alternatives.  \n     - **Feature Limitation**: Missing or inadequate features for the prospect’s needs.  \n     - **Scalability**: Concerns about n8n’s ability to handle growth or large-scale operations.  \n     - **Complexity**: Objections about the product being difficult to understand or use.  \n     - **Integration Issues**: Concerns about compatibility with existing systems or workflows.  \n     - **Not a Fit**: Statements suggesting misalignment with the prospect’s needs.  \n     - **Time Commitment**: Reluctance due to time, effort, or resources needed for implementation.  \n     - **Security**: Concerns about data protection, privacy, or security.  \n     - **Performance**: Objections about speed, reliability, or efficiency.  \n     - **Support**: Issues with availability or quality of support/documentation.  \n     - **None**: Use this tag if no objections are raised.\n\n4. **Handle No Objections**:\n   - If no objections are mentioned, set **ObjectionTags** to `[\"None\"]` and **Nature** to `\"null\"`.\n\n---\n\n### **Expected Output Format**:\n\n**If objections are identified**:\n```json\n{\n  \"Objection\": {\n    \"ObjectionTags\": [\"RelevantTag1\", \"RelevantTag2\"],\n    \"Nature\": \"Brief summary of the objection, including key quotes from the transcript.\"\n  }\n}\n```\n\n**If no objections are identified**:\n```json\n{\n  \"Objection\": {\n    \"ObjectionTags\": [\"None\"],\n    \"Nature\": \"null\"\n  }\n}\n```\n\n---\n\n### **3. CallSummary**\n**Prompt**:  \n\n**Objective**: Provide a concise, high-level summary of the call, highlighting key insights, discussion points, and expected next steps. The summary should be actionable and clear for the sales and marketing teams to understand the context and outcomes of the call with a maximum of 150 words.\n\n### **Expected Output Format**:\n\n**If insights and next steps are identified**:\n```json\n{\n  \"CallSummary\": \"Brief summary of the phone call limited to 150 words\",\n}\n```\n\n**Fallback if call to short to summarize**:\n```json\n{\n  \"CallSummary\": \"Unable to Summarize\",\n}\n```\n\n---\n\n### **4. CustomerPainPoints**\n**Prompt**:  \nIdentify any pain points mentioned by the external speaker. These may include concerns about wasted time, inefficiencies, or unmet goals. Look for feedback about their current setup, frustrations with other tools, or reasons why previous solutions did not work. Good indicators are phrases like \"struggle,\" \"difficulty,\" or \"challenge,\" as well as answers to strategic questions like \"what are you trying to achieve\" or \"what is driving your interest in n8n.\" Capture any feedback that highlights the external speaker's broader strategic goals or aspirations, especially if they mention objectives they haven't been able to accomplish.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"CustomerPainPoints\": [\n    \"Pain point 1\",\n    \"Pain point 2\"\n  ]\n}\n```\n\n**Fallback** (If no pain points mentioned):  \n```json\n{\n  \"CustomerPainPoints\": []\n}\n```\n\n---\n\n### **5. NextSteps**\n**Prompt**:  \nList any next steps or agreements that the external or internal speaker has committed to for the next meeting or action items. Look for phrases like \"plan to,\" \"next meeting,\" or \"agreed to.\"\n\n**Expected JSON Output Format**:\n```json\n{\n  \"NextSteps\": [\n    \"Next step 1\",\n    \"Next step 2\"\n  ]\n}\n```\n\n**Fallback** (If no next steps):  \n```json\n{\n  \"NextSteps\": []\n}\n```\n\n---\n\n### **6. Competitors**\n**Prompt**:  \nList out any competitors the external speaker may be considering or has used instead of n8n. Do not output n8n. Separate these into two categories: **Used** and **Considering**. For each competitor, include the **Name**, a **Reason** summarizing why they are using or considering the competitor, a **Known** boolean field indicating if the competitor is part of a provided known list, and a **Pricing** field to capture any pricing details mentioned. **Details for Each Category**:\n\n- **Used**: List competitors that the external speaker has previously used. Include details about the purpose or reason for using these competitors, such as \"better integrations,\" \"better support,\" or \"specific features.\"\n- **Considering**: List competitors the external speaker is currently evaluating as alternatives to n8n. Include any details provided about why these competitors are being considered, such as \"scalability,\" \"cost-effectiveness,\" or \"existing familiarity.\"\n- **Known Competitor List**: Reference the following known list to ensure accuracy, especially when dealing with transcription issues or unusual company names: {{ $json.metaData.Competitors }} Only include a competitor if language is used to that suggests that they are comparing the competitor to n8n or language is used that suggests that it is a better match than n8n or being evaluated against n8n. \n- - If a competitor matches one from the known list, set **Known** to `true` and output the name exactly as it is in the list above. If it is not on the list, set **Known** to `false` and output the company name as output. If they do not mention the name of the competitor but allude to one, output the name \"Unknown\" as the name of the compeitor. \n- **Pricing**: Capture any pricing information mentioned about the competitor. This may include specific price points, subscription plans, or cost comparisons. If no pricing information is found, set **Pricing** to `null`.\n- **Sentiment**: Capture the sentiment of the external speaker towards the competitor using one of three options, \"n8n better\",\"n8n worse\", \"Unknown\". Include the reason for choosing sentiment in \"Reason\" with quotes from transcript or if not reasoning for choosing that sentiment. \"n8n better\" should be used where language is used to denote that they find n8n's features better than the competitor. \"n8n worse\" should be used where language is used to denote that they find the competitors features better equipped to handle their use case. Use \"Unknown\" if they do not have sentiment one way or another regarding the competitor.   \n\n**Expected JSON Output Format**:\n```json\n{\n  \"Competitors\": [\n    {\n      \"Tag\": \"Used or Considering\",\n      \"Name\": \"Competitor Name\",\n      \"Reason\": \"Reason for using or considering this competitor.\",\n      \"Known\": true,\n      \"Pricing\": \"Pricing details or null if not mentioned.\",\n      \"Sentiment\": \"n8n better, n8n worse, or Unknown\"\n    }\n  ]\n}\n```\n\n**Fallback** (If no competitors mentioned):  \n```json\n{\n  \"Competitors\": []\n}\n```\n\n---\n\n### **7. Integrations**\n**Prompt**:  \nList any software the external speaker mentions they either currently use or want to integrate with n8n, along with the context or reason for the integration if specified. Do not comma separate the integration names, and simplify just to the name of the integration. Focus on specific integrations named on the call and avoid general or vague terms. Reference the provided comma separated list of native nodes from our database to determine if the integration is natively supported. List of current Integrations: {{ $json.metaData.Integrations }}. Only include an integration if language is used to that suggests that they are trying to deploy or integrate with n8n or have in the past. Do not use general terms for integrations, please use company names. Include tags for the integration status and usage status. Transcription Analysis Tip: If the external speaker mentions they are currently using an integration through the HTTP request node but express a desire for a dedicated node, classify the IntegrationStatus as \"Not Integrated\" and the UsageStatus as \"Currently Using.\" This indicates that they are using a workaround and would prefer native support.\n\n- Explanation of Fields\n- - **IntegrationName**: The simplified name of the software mentioned. If the Integration is in the comma separated list above, use the exact name in the comma separated list as the IntegrationName.\n- - **SummaryOfUse**: A brief description of how the external speaker wants to use or integrate the software with n8n, including mention of using the **HTTP request node** if applicable.\n- - **IntegrationStatus**: Use \"Currently Integrated\" if the integration is natively supported by n8n by checking the comma separated List of current Integrations above, and \"Not Integrated\" if it is not in the list above. \n- - **UsageStatus**: Use \"Currently Using\" if the external speaker is actively using the integration (including via the HTTP request node), and \"Want to Use\" if they are only considering or planning to use it.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"Integrations\": [\n    {\n      \"IntegrationName\": \"Integration Name\",\n      \"SummaryOfUse\": \"Brief description of the integration use case.\",\n      \"IntegrationStatus\": \"Currently Integrated or Not Integrated\",\n      \"UsageStatus\": \"Currently Using or Want to Use\"\n    }\n  ]\n}\n```\n\n**Fallback** (If no integrations mentioned):  \n```json\n{\n  \"Integrations\": []\n}\n```\n\n---\n\n### **8. Sentiment**\n**Prompt**:  \nDetermine the overall sentiment of the external speaker throughout the call. It should be categorized as one of \"Positive,\" \"Neutral,\" or \"Negative\" based on their feedback, objections, and tone. \n- **Positive**: The external speaker shows genuine interest in the n8n platform, discusses clear and actionable next steps, or uses enthusiastic language. Look for phrases that indicate excitement or satisfaction, such as \"this is great,\" \"we're looking forward to,\" or \"this could really help us.\" \n- **Neutral**: The external speaker neither expresses strong enthusiasm nor significant concerns. They may use language that indicates a wait-and-see approach, such as \"let's explore this further\" or \"we need more information.\" The call may end with some uncertainty, but without outright dismissal and with specific plans to meet again. \n- **Negative**: The external speaker expresses significant concerns or reluctance about using n8n. Indicators include phrases like \"not a fit,\" \"not a fit right now,\" or discussion about taking the information away and \"following up if we need more information in the future/down the line.\" Negative sentiment can also be inferred if the call ends without any clear next steps.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"Sentiment\": \"Positive, Neutral, or Negative\"\n}\n```\n\n**Fallback**:  \n```json\n{\n  \"Sentiment\": \"Neutral\"\n}\n```\n\n---\n\n### **9. CurrentSituation**\n**Prompt**:  \nSummarize the external speaker's current situation and why they need automation. Focus on specific pain points, inefficiencies, or challenges they are trying to solve with automation. Look for statements that describe existing n8n workflows, tools, or bottlenecks.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"CurrentSituation\": \"Reason why n8n automation is needed.\"\n}\n```\n\n**Fallback**:  \n```json\n{\n  \"CurrentSituation\": \"Unknown\"\n}\n```\n\n---\n\n### **10. Budget**\n**Prompt**:  \nIdentify the external speaker's budget for this opportunity, if mentioned. Include specific amounts, ranges, or qualitative statements about their willingness or ability to invest.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"Budget\": \"Brief summary of budget including specific amounts, ranges, or qualitative statements about their willingness or ability to invest\"\n}\n```\n\n**Fallback**:  \n```json\n{\n  \"Budget\": \"Unknown\"\n}\n```\n\n---\n\n### **11. Authority**\n**Prompt**:  \nDetermine who the decision-making authority is for purchasing the solution. Look for titles, departments, or references to the individual(s) responsible for approving the purchase. \n\n**Expected JSON Output Format**:\n```json\n{\n  \"Authority\": \"Summary of the decision-making authority in charge of purchasing the n8n platform\"\n}\n```\n\n**Fallback**:  \n```json\n{\n  \"Authority\": \"Unknown\"\n}\n```\n\n---\n\n### **12. Timeline**\n**Prompt**:  \nIdentify the timeline for purchasing the solution. Include deadlines, dates, or key events that indicate the urgency or planned timeframe for the decision.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"Timeline\": \"Brief summary of the timeline for purchasing the n8n platform\"\n}\n```\n\n**Fallback if unable to determine timeline**:  \n```json\n{\n  \"Timeline\": \"Unknown\"\n}\n```\n\n---\n\n### **13. DecisionProcess**\n**Prompt**:  \nSummarize the process the organization follows to make purchasing decisions. Look for references to steps such as internal evaluations, stakeholder approvals, or pilot testing.\n\n**Expected JSON Output Format**:\n```json\n{\n  \"DecisionProcess\": \"Summary of the Decisons Process to make the purchasing decison of the n8n platform\"\n}\n```\n\n**Fallback**:  \n```json\n{\n  \"DecisionProcess\": \"Unknown\"\n}\n```\n\n---"
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "2920d012-d5f1-4eb7-8f41-69ec07487f46",
+          "name": "Structured Output Parser3",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            20,
+            -380
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"UseCases\": [\n    {\n      \"Summary\": \"An organization in the healthcare industry wants to automate appointment scheduling to reduce no-shows and improve patient experience by integrating their EMR system with calendar services through n8n.\",\n      \"DepartmentTags\": [\"IT Ops\", \"Support\"],\n      \"IndustryTags\": [\"Healthcare\"],\n      \"ImplementationStatus\": \"Building\"\n    },\n    {\n      \"Summary\": \"A manufacturing company seeks to streamline supply chain operations by automating inventory monitoring and vendor notifications, reducing manual intervention and delays.\",\n      \"DepartmentTags\": [\"Finance\", \"Operations\"],\n      \"IndustryTags\": [\"Manufacturing\"],\n      \"ImplementationStatus\": \"Deployed\"\n    }\n  ],\n  \"Objection\": {\n    \"ObjectionTags\": [\"Pricing: Budget Constraints\", \"Feature Limitation\"],\n    \"Nature\": \"The prospect mentioned concerns about the pricing model for enterprise features and requested support for a specific CRM integration not currently available.\"\n  },\n  \"CallSummary\": \"The call focused on automation opportunities in supply chain management and healthcare scheduling. The external speaker raised concerns about pricing and feature limitations but expressed interest in a follow-up demo to explore solutions.\",\n  \"CustomerPainPoints\": [\n    \"High manual workload in managing appointments and inventory.\",\n    \"Lack of real-time notifications for supply chain operations.\"\n  ],\n  \"NextSteps\": [\n    \"Share a case study on supply chain automation.\",\n    \"Schedule a demo to showcase EMR integration capabilities.\"\n  ],\n  \"Competitors\": [\n    {\n      \"Tag\": \"Considering\",\n      \"Name\": \"Zapier\",\n      \"Reason\": \"Evaluating for ease of setup and low initial cost.\",\n      \"Known\": true,\n      \"Pricing\": \"Starter plan at $20/month.\",\n      \"Sentiment\": \"n8n better\"\n    },\n    {\n      \"Tag\": \"Used\",\n      \"Name\": \"Make\",\n      \"Reason\": \"Previously used for basic workflow automation but faced scalability issues.\",\n      \"Known\": true,\n      \"Pricing\": null,\n      \"Sentiment\": \"n8n better\"\n    }\n  ],\n  \"Integrations\": [\n    {\n      \"IntegrationName\": \"Salesforce\",\n      \"SummaryOfUse\": \"Used to sync lead data and automate follow-up email workflows.\",\n      \"IntegrationStatus\": \"Currently Integrated\",\n      \"UsageStatus\": \"Currently Using\"\n    },\n    {\n      \"IntegrationName\": \"HubSpot\",\n      \"SummaryOfUse\": \"Desired for lead management with a dedicated node, currently using HTTP request workaround.\",\n      \"IntegrationStatus\": \"Not Integrated\",\n      \"UsageStatus\": \"Currently Using\"\n    }\n  ],\n  \"Sentiment\": \"Positive\",\n  \"CurrentSituation\": \"The organization is exploring automation to reduce inefficiencies in manual workflows for patient scheduling and supply chain management.\",\n  \"Budget\": \"$15,000 - $20,000 annually.\",\n  \"Authority\": \"CTO and Head of Operations.\",\n  \"Timeline\": \"Decision expected by Q2 2025 to align with upcoming operational changes.\",\n  \"DecisionProcess\": \"Initial evaluation with pilot testing, followed by budget approval from finance and final sign-off by the CTO.\"\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "0475da2d-2781-4c53-8dc8-c4a647295556",
+          "name": "Merge all processed data",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1040,
+            0
+          ],
+          "parameters": {
+            "numberInputs": 3
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "c4fa47e9-82c2-471f-8949-b0e64e35c589",
+          "name": "Bundle processed Data",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1260,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "AI Agent": {
+          "main": [
+            [
+              {
+                "node": "Data Recall Sales",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Data Recall Sales": {
+          "main": [
+            [
+              {
+                "node": "Sales Data Processor",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "SF Sales Data Processor",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create User Prompt": {
+          "main": [
+            [
+              {
+                "node": "Marketing AI Agent Processor",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Product AI Agent Processor",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Data Recall Product": {
+          "main": [
+            [
+              {
+                "node": "Product AI Data Processor",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sales Data Processor": {
+          "main": [
+            [
+              {
+                "node": "Merge all processed data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bundle processed Data": {
+          "main": [
+            [
+              {
+                "node": "Success Status Generated",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Data Recall Marketing": {
+          "main": [
+            [
+              {
+                "node": "Marketing Data Processor",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Azure OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Azure OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Marketing AI Agent Processor",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Azure OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Product AI Agent Processor",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Create User Prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Marketing Data Processor": {
+          "main": [
+            [
+              {
+                "node": "Merge all processed data",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Merge all processed data": {
+          "main": [
+            [
+              {
+                "node": "Bundle processed Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Product AI Data Processor": {
+          "main": [
+            [
+              {
+                "node": "Merge all processed data",
+                "type": "main",
+                "index": 2
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Marketing AI Agent Processor",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser2": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Product AI Agent Processor",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser3": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Product AI Agent Processor": {
+          "main": [
+            [
+              {
+                "node": "Data Recall Product",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Marketing AI Agent Processor": {
+          "main": [
+            [
+              {
+                "node": "Data Recall Marketing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 27,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 3
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 4
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Angel Menendez",
+      "username": "djangelic",
+      "bio": "Angel Menendez is a Staff Developer Advocate at n8n.io, specializing in low-code tools for cybersecurity workflows. From Puerto Rico, Angel's tech journey began by helping his father translate technical books. He later started a web development business and transitioned from a career as a flight attendant to cybersecurity engineering. His workflows have saved companies significant time. Outside work, Angel enjoys time with his two sons, riding electric bikes, reading, and exploring new places.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/fdbe38425d21378d8c9ba8916e1eb0b320add299f12cc23fcd4961d4e6e00bec?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1253,
+        "icon": "file:azure.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatazureopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Azure OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjQyIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTguOTcyJSIgeDI9IjM3LjE5MSUiIHkxPSI3LjQxMSUiIHkyPSIxMDMuNzYyJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzExNEE4QiIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA2NjlCQyIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iNTkuNzE5JSIgeDI9IjUyLjY5MSUiIHkxPSI1Mi4zMTMlIiB5Mj0iNTQuODY0JSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1vcGFjaXR5PSIuMyIvPjxzdG9wIG9mZnNldD0iNy4xJSIgc3RvcC1vcGFjaXR5PSIuMiIvPjxzdG9wIG9mZnNldD0iMzIuMSUiIHN0b3Atb3BhY2l0eT0iLjEiLz48c3RvcCBvZmZzZXQ9IjYyLjMlIiBzdG9wLW9wYWNpdHk9Ii4wNSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImMiIHgxPSIzNy4yNzklIiB4Mj0iNjIuNDczJSIgeTE9IjQuNiUiIHkyPSI5OS45NzklIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjM0NDQkY0Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMjg5MkRGIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHBhdGggZmlsbD0idXJsKCNhKSIgZD0iTTg1LjM0My4wMDNoNzUuNzUzTDgyLjQ1NyAyMzNhMTIuMDggMTIuMDggMCAwIDEtMTEuNDQyIDguMjE2SDEyLjA2QTEyLjA2IDEyLjA2IDAgMCAxIC42MzMgMjI1LjMwM0w3My44OTggOC4yMTlBMTIuMDggMTIuMDggMCAwIDEgODUuMzQzIDB6Ii8+PHBhdGggZmlsbD0iIzAwNzhENCIgZD0iTTE5NS40MjMgMTU2LjI4Mkg3NS4yOTdhNS41NiA1LjU2IDAgMCAwLTMuNzk2IDkuNjI3bDc3LjE5IDcyLjA0N2ExMi4xNCAxMi4xNCAwIDAgMCA4LjI4IDMuMjZoNjguMDJ6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTg1LjM0My4wMDNhMTEuOTggMTEuOTggMCAwIDAtMTEuNDcxIDguMzc2TC43MjMgMjI1LjEwNWExMi4wNDUgMTIuMDQ1IDAgMCAwIDExLjM3IDE2LjExMmg2MC40NzVhMTIuOTMgMTIuOTMgMCAwIDAgOS45MjEtOC40MzdsMTQuNTg4LTQyLjk5MSA1Mi4xMDUgNDguNmExMi4zMyAxMi4zMyAwIDAgMCA3Ljc1NyAyLjgyOGg2Ny43NjZsLTI5LjcyMS04NC45MzUtODYuNjQzLjAyTDE2MS4zNy4wMDN6Ii8+PHBhdGggZmlsbD0idXJsKCNjKSIgZD0iTTE4Mi4wOTggOC4yMDdBMTIuMDYgMTIuMDYgMCAwIDAgMTcwLjY3LjAwM0g4Ni4yNDVjNS4xNzUgMCA5Ljc3MyAzLjMwMSAxMS40MjggOC4yMDRMMTcwLjk0IDIyNS4zYTEyLjA2MiAxMi4wNjIgMCAwIDEtMTEuNDI4IDE1LjkyaDg0LjQyOWExMi4wNjIgMTIuMDYyIDAgMCAwIDExLjQyNS0xNS45MnoiLz48L3N2Zz4="
+        },
+        "displayName": "Azure OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1007,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/callforgecompressed_7ba41ad23c.png"
+      }
+    ]
+  }
+}

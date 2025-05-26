@@ -1,0 +1,1984 @@
+{
+  "workflow": {
+    "id": 3076,
+    "name": "🦜✨Use OpenAI to Transcribe Audio + Summarize with AI + Save to Google Drive",
+    "views": 14337,
+    "recentViews": 44,
+    "totalViews": 14337,
+    "createdAt": "2025-03-03T23:06:23.260Z",
+    "description": "# Automate Audio Transcription, AI Summarization, and Google Drive Storage\n\n## Who is this for?  \n**Content Teams**, **Researchers**, and **Administrators** who need to automatically process voice memos, meeting recordings, or interview audio into structured, searchable documents.\n\n## What problem does this solve?  \nEliminates manual transcription work by automatically converting audio files into organized text documents with AI analysis, while maintaining human oversight through approval workflows.\n\n## What this workflow does  \n1. **Smart Audio Processing**:  \n   - Triggers when new .m4a files appear in Google Drive  \n   - Uses OpenAI's Whisper for accurate transcription  \n   - Implements dual-format reporting (JSON + Markdown)  \n\n2. **Human Oversight (optional)**:  \n   - Requires email approval before processing  \n   - 45-minute response window with escalation options  \n\n3. **AI-Powered Analysis**:  \n   - Generates structured JSON reports with:  \n     - Key points & action items  \n     - Sentiment analysis  \n     - Technical terminology glossary  \n   - Creates Markdown versions for easy reading  \n\n4. **Document Management**:  \n   - Stores raw transcripts + reports in Google Drive  \n   - Automatic file naming with timestamps  \n   - Sends completion alerts via Email/Telegram  \n\nWorkflow visualization showing audio file processing path\n\n## Setup  \n1. **Credentials Needed**:  \n   - Google Drive API access  \n   - OpenAI API key (GPT-4o-mini)  \n   - Gmail & Telegram integrations  \n\n2. **Configuration**:  \n   - Set your Google Drive folder ID in 3 nodes  \n   - Update email addresses in Gmail nodes  \n   - Customize approval timeout in \"Gmail User for Approval\"  \n\n3. **Customization Points**:  \n   - File extension filters (.m4a)  \n   - AI report templates and prompts  \n   - Notification channels (Email/Telegram)  \n\n## How to customize  \n- **Approval Process**: Add SMS/Teams notifications via additional nodes  \n- **File Types**: Modify filter node for .mp3/.wav support  \n- **Analysis Depth**: Adjust GPT-4 prompts in \"Summarize to JSON\" nodes  \n- **Storage**: Connect to Notion/Airtable instead of Google Drive  \n",
+    "workflow": {
+      "id": "CNOMivCLJRGfZnUM",
+      "meta": {
+        "instanceId": "31e69f7f4a77bf465b805824e303232f0227212ae922d12133a0f96ffeab4fef",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "🦜✨Use OpenAI to Transcribe Audio + Summarize with AI + Save to Google Drive",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "3918995a-a587-40c1-828c-97e75b988a9f",
+          "name": "Gmail User for Approval",
+          "type": "n8n-nodes-base.gmail",
+          "disabled": true,
+          "position": [
+            360,
+            -20
+          ],
+          "webhookId": "c46cf421-ddb6-45a8-b83b-80b381666f0e",
+          "parameters": {
+            "sendTo": "={{ $env.EMAIL_ADDRESS_JOE }} ",
+            "message": "=A new was just created in the Audio Recordings folder on Google Drive.  Would you like to continue the workflow and Transcribe the audio file and generate reports.",
+            "options": {
+              "limitWaitTime": {
+                "values": {
+                  "resumeUnit": "minutes",
+                  "resumeAmount": 45
+                }
+              }
+            },
+            "subject": "=💡New Audio File Created - Approve Transcription Service",
+            "operation": "sendAndWait",
+            "approvalOptions": {
+              "values": {
+                "approvalType": "double"
+              }
+            }
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "1xpVDEQ1yx8gV022",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "44aa6e99-9b4a-4af4-93e3-4b1a50fc7628",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -320,
+            680
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 260,
+            "height": 280,
+            "content": "## 3️⃣ Transcribe Audio"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cbf765b5-b888-4e22-b4a2-1d430b557109",
+          "name": "Set Config",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            0,
+            780
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "2f5cef95-a26b-46ff-ab9a-501187ce4211",
+                  "name": "text",
+                  "type": "string",
+                  "value": "={{ $json.text }}"
+                },
+                {
+                  "id": "ac623698-1263-4b83-8c59-159863d950b9",
+                  "name": "datetime",
+                  "type": "string",
+                  "value": "={{ $now }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "bd9cd4aa-6afc-4875-a487-df4f0d3a4a29",
+          "name": "Transcribe with OpenAI",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            -240,
+            780
+          ],
+          "parameters": {
+            "options": {},
+            "resource": "audio",
+            "operation": "transcribe"
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "jEMSvKmtYfzAkhe6",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4d91f6f7-a89e-44d9-9433-4d9a1df368a2",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            580
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1560,
+            "height": 280,
+            "content": "## 4️⃣ Process Transcript and Generate Structured JSON Report"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "64421d13-0aff-46f8-bf3e-5fac89ec9c46",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            900
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 1560,
+            "height": 280,
+            "content": "## 5️⃣ Process Transcript and Generate Structured JSON -> Markdown Report"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "769ca5a4-2a54-4ed8-85af-4359b97755bc",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1000,
+            1220
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 460,
+            "height": 280,
+            "content": "## 6️⃣ Save Raw Transcript to Google Drive"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aa612f37-f7cd-4cf7-919c-87564f03eef1",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -100,
+            240
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 300,
+            "height": 300,
+            "content": "## 1️⃣ Start Transcription Service"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e520267-6275-4d07-bba8-9ebaf0afbc68",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -100,
+            -140
+          ],
+          "parameters": {
+            "width": 700,
+            "height": 340,
+            "content": "## Wait for Google Drive Trigger and Send for User Approval to Proceed (Human in the Loop)\n(optional)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1f07fa9c-ecfc-4534-a0b2-569eca1a3092",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            240
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 880,
+            "height": 300,
+            "content": "## 2️⃣ Search and Download Audio File from Google Drive\n💡Note:  Adjust Filter and Limit settings for your needs"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b769d523-6b1f-45f2-98b1-4d0f8eb2d7f4",
+          "name": "Filter by .m4a extension",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            980,
+            340
+          ],
+          "parameters": {
+            "options": {
+              "ignoreCase": true
+            },
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": false,
+                "typeValidation": "loose"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "420e1a9c-2145-4845-b4b0-31a82855a78c",
+                  "operator": {
+                    "type": "string",
+                    "operation": "endsWith"
+                  },
+                  "leftValue": "={{ $json.name }}",
+                  "rightValue": ".m4a"
+                }
+              ]
+            },
+            "looseTypeValidation": true
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "5a67182e-4f13-4b6f-a3e2-863e18af31b0",
+          "name": "Limit to last file",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            1180,
+            340
+          ],
+          "parameters": {
+            "keep": "lastItems"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f42b4efc-6e04-49a1-8bd8-252ebd3dbf42",
+          "name": "Download audio file",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1380,
+            340
+          ],
+          "parameters": {
+            "fileId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "options": {},
+            "operation": "download"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "4313e19f-ca7a-4982-b3b4-1680c674e696",
+          "name": "Search Google Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            780,
+            340
+          ],
+          "parameters": {
+            "filter": {
+              "folderId": {
+                "__rl": true,
+                "mode": "list",
+                "value": "1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+                "cachedResultUrl": "https://drive.google.com/drive/folders/1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+                "cachedResultName": "Audio Recordings"
+              },
+              "whatToSearch": "files"
+            },
+            "options": {},
+            "resource": "fileFolder"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "e25655b0-9d30-40d4-9051-bffe38fb41e0",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2020,
+            700
+          ],
+          "parameters": {
+            "width": 660,
+            "height": 480,
+            "content": "## 7️⃣ Send Transcription Report Links to User"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "38ff9906-41af-430a-9de9-0500577826a5",
+          "name": "Send Telegram Message",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            2460,
+            980
+          ],
+          "webhookId": "bb40ede7-03cf-493d-b051-196b96725925",
+          "parameters": {
+            "text": "=Audio Transcribed and Reports Generated\n{{ $json.id_json.webViewLink }}\n{{ $json.id_markdown.webViewLink }}",
+            "chatId": "={{ $env.TELEGRAM_CHAT_ID }}",
+            "additionalFields": {
+              "parse_mode": "HTML",
+              "appendAttribution": false
+            }
+          },
+          "credentials": {
+            "telegramApi": {
+              "id": "pAIFhguJlkO3c7aQ",
+              "name": "Telegram account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "5b6aedaa-897f-4b76-84d8-3ca18d06cc5c",
+          "name": "Send Gmail Message",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            2460,
+            800
+          ],
+          "webhookId": "0a81b95a-cd82-465d-8450-cf38518a4cbb",
+          "parameters": {
+            "sendTo": "={{ $env.EMAIL_ADDRESS_JOE }} ",
+            "message": "={{ $json.message.content }}",
+            "options": {
+              "appendAttribution": false
+            },
+            "subject": "Audio Transcribed and Reports Generated"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "1xpVDEQ1yx8gV022",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "4500efdb-7a70-40da-97b6-e4668af21a19",
+          "name": "Email Content Formatter",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            2100,
+            800
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "GPT-4O-MINI"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Prapare this HTML template using the following: \n{{ $json.id_json.toJsonString() }}\n{{ $json.id_markdown.toJsonString() }}\n\nEnsure that the 'webViewLink' is always provided.\n\nRespond only with HTML and avoid any preamble or further explanation.  Remove all ``` or ```html from final response.\n\n<style type=\"text/css\">\n    /* Reset styles */\n    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }\n    .wrapper { max-width: 600px; margin: 0 auto; }\n    .content { padding: 30px; line-height: 1.6; color: #333333; }\n    .divider { border-top: 1px solid #eeeeee; margin: 25px 0; }\n    .button { display: inline-block; padding: 12px 24px; background-color: #2563eb; color: white; text-decoration: none; border-radius: 6px; }\n</style>\n</head>\n<body>\n    <div class=\"wrapper\">\n        <div class=\"content\">\n            <h2 style=\"color: #1f2937; margin-bottom: 20px;\">Your Documents</h2>\n            \n            <div style=\"margin-bottom: 30px;\">\n                <h3 style=\"color: #374151; margin-bottom: 12px;\">[name]</h3>\n                <a href=\"[webViewLink]\" class=\"button\" style=\"color: white;\">View Document</a>\n            </div>\n\n            <div class=\"divider\"></div>\n\n            [continue the pattern ...]\n\n        </div>\n    </div>\n</body>"
+                },
+                {
+                  "role": "system"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "jEMSvKmtYfzAkhe6",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "287fcc26-69be-43d8-a855-c57658e92ac4",
+          "name": "Summarize to Structured JSON",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            240,
+            660
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "GPT-4O-MINI"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=\"Today is \" {{ $now }}  \"Transcript: \" {{  $json.text }}"
+                },
+                {
+                  "role": "system",
+                  "content": "## ROLE\nYou are an expert at summarizing long transcripts.\n\n## TASK\nSummarize the provided transcript into a structured JSON format.\n\n## RULES\nReturn only valid JSON in this example format:\n\"transcript_report\": {\n\"title\": \"Notion Buttons\",\n\"summary\": \"A collection of buttons for Notion\",\n\"main_points\": [\"item 1\", \"item 2\", \"item 3\"],\n\"action_items\": [\"item 1\", \"item 2\", \"item 3\"],\n\"follow_up\": [\"item 1\", \"item 2\", \"item 3\"],\n\"stories\": [\"item 1\", \"item 2\", \"item 3\"],\n\"references\": [\"item 1\", \"item 2\", \"item 3\"],\n\"arguments\": [\"item 1\", \"item 2\", \"item 3\"],\n\"related_topics\": [\"item 1\", \"item 2\", \"item 3\"],\n\"sentiment\": \"positive\"\n}"
+                }
+              ]
+            },
+            "jsonOutput": true
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "jEMSvKmtYfzAkhe6",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7b5b751f-a7fa-4983-a0e4-1a79e5c4286c",
+          "name": "Summarize to JSON",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            240,
+            980
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "GPT-4O-MINI"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Transcript: {{  $json.text }}"
+                },
+                {
+                  "role": "system",
+                  "content": "=## ROLE: Expert Transcript Analyst\n**Current Date:** {{ $now }}\n**Specialization:** Technical documentation, executive reporting, and information architecture\n\n\n## TASK: Create Structured Transcript Summary\nTransform verbose transcripts into well-organized technical documents using this 3-step process:\n1. Extract key information\n2. Identify natural thematic groupings\n3. Structure for optimal scannability\n\n\n## FORMAT REQUIREMENTS\n[Document Title] - {{ $now }}\n\nExecutive Summary (3-5 sentences)\n- Core purpose of discussion\n- Key decision points\n- Actionable outcomes\n\nDetailed Analysis\n[Topic 1: Clear Section Name]\n- Key statements\n- Supporting data points\n- Action items\n\n[Topic 2: Specific Category]\n-Decision rationale\n-Contradictions/agreements\n-Follow-up requirements\n\n(...continue pattern...)\n\nAdditional Observations\n- Unresolved questions\n- Technical terminology glossary\n- Participant sentiment trends\n\n\n## RULES\n1. **Content Fidelity**\n   - Never add external knowledge\n   - Preserve quantitative data exactly\n   - Maintain speaker intent through paraphrasing\n\n2. **Structural Requirements**\n   - Use H2/H3 headers only\n   - Apply consistent tense (prefer present)\n   - Include timestamps for critical points [00:00]\n\n3. **Style Guidelines**\n   - Technical > conversational tone\n   - Active voice required\n   - Bullet points for lists\n   - **Bold** key decisions\n\n4. **Validation**\n   - Self-check for topic overlap\n   - Verify chronological accuracy\n   - Confirm all action items are highlighted"
+                }
+              ]
+            },
+            "jsonOutput": true
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "jEMSvKmtYfzAkhe6",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e92d8de3-8287-4ecd-9ca6-6f8d18b8942e",
+          "name": "Convert JSON to Markdown",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            620,
+            980
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "GPT-4O-MINI"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Today is: {{ $now }}\nTranscript: {{ $json.message.content.toJsonString() }}"
+                },
+                {
+                  "role": "system",
+                  "content": "Convert this transcript summary to a markdown document.  Only respond with text and remove all ``` or ```markdown."
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "jEMSvKmtYfzAkhe6",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "419e050f-3a9b-4fc0-99f2-2e478f080e06",
+          "name": "Get Filename for JSON",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            980,
+            660
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "a0c31c80-87c9-41e5-ae07-8639bf52870c",
+                  "name": "filename",
+                  "type": "string",
+                  "value": "={{ $('Download audio file').item.json.id }}-{{ $('Download audio file').item.json.name }}-{{ $('Set Config').item.json.datetime }}.json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1307431e-80ea-404c-925f-d3ad5bdaa27c",
+          "name": "Get Filename for Markdown",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            980,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "a0c31c80-87c9-41e5-ae07-8639bf52870c",
+                  "name": "filename",
+                  "type": "string",
+                  "value": "={{ $('Download audio file').item.json.id }} - {{ $('Download audio file').item.json.name }}- {{ $('Set Config').item.json.datetime }}.md"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c87a9dcb-3edb-47ba-a059-6e7a6c63c287",
+          "name": "Save JSON file to Google Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1180,
+            660
+          ],
+          "parameters": {
+            "name": "={{ $json.filename }}",
+            "content": "={{ $('Summarize to Structured JSON').item.json.message.content.toJsonString() }}",
+            "driveId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "My Drive"
+            },
+            "options": {},
+            "folderId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultUrl": "https://drive.google.com/drive/folders/1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultName": "Audio Recordings"
+            },
+            "operation": "createFromText"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "2f0c30b5-1c99-4c06-9c1b-8a18033e6921",
+          "name": "Save Markdown file to Google Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1180,
+            980
+          ],
+          "parameters": {
+            "name": "={{ $json.filename }}",
+            "content": "={{ $('Convert JSON to Markdown').item.json.message.content }}",
+            "driveId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "My Drive"
+            },
+            "options": {},
+            "folderId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultUrl": "https://drive.google.com/drive/folders/1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultName": "Audio Recordings"
+            },
+            "operation": "createFromText"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "abc070ee-c276-410b-a3cf-a8504bf992a1",
+          "name": "Get JSON File Meta",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1380,
+            660
+          ],
+          "parameters": {
+            "filter": {
+              "whatToSearch": "files"
+            },
+            "options": {
+              "fields": [
+                "id",
+                "webViewLink",
+                "name"
+              ]
+            },
+            "resource": "fileFolder",
+            "queryString": "={{ $('Get Filename for JSON').item.json.filename }}"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "0961424a-f3a3-4469-962b-6b2a7affd66d",
+          "name": "Get Markdown File Meta",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1380,
+            980
+          ],
+          "parameters": {
+            "filter": {
+              "whatToSearch": "files"
+            },
+            "options": {
+              "fields": [
+                "id",
+                "webViewLink",
+                "name"
+              ]
+            },
+            "resource": "fileFolder",
+            "queryString": "={{ $('Get Filename for Markdown').item.json.filename }}"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "bddd4298-7570-48df-a16b-5352909f6530",
+          "name": "Prepare Response JSON",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1580,
+            660
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "c89d0613-9b1e-4906-a4d2-ecc5fe585f5b",
+                  "name": "id_json",
+                  "type": "object",
+                  "value": "={{ $json }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "d3a77222-96ac-4d2e-a98c-b185524bebe0",
+          "name": "Prepare Response Markdown",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1580,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9e23ce26-bdf5-46c8-9099-02179cd29fc5",
+                  "name": "id_markdown",
+                  "type": "object",
+                  "value": "={{ $json }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "41e6a279-426e-4fcd-ad6d-182fbc111d28",
+          "name": "Merge All Paths",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1840,
+            980
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition",
+            "numberInputs": 3
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "e2bb4ed5-f9cd-4807-950c-8f9a4bef1a24",
+          "name": "Save Raw Transcript to Google Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            1180,
+            1300
+          ],
+          "parameters": {
+            "name": "={{ $('Download audio file').item.json.id }} - {{ $('Download audio file').item.json.name }}- {{ $('Set Config').item.json.datetime }}.txt",
+            "content": "={{  $('Transcribe with OpenAI').item.json.text }}",
+            "driveId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "My Drive"
+            },
+            "options": {},
+            "folderId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultUrl": "https://drive.google.com/drive/folders/1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultName": "Audio Recordings"
+            },
+            "operation": "createFromText"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "fb2cced9-8c42-43de-b4a3-5dd66ddd24b3",
+          "name": "Start Workflow",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            0,
+            340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "c2ef200f-4e45-42ba-a5f2-f7eb47df8f2f",
+          "name": "On File Created Trigger",
+          "type": "n8n-nodes-base.googleDriveTrigger",
+          "disabled": true,
+          "position": [
+            0,
+            -20
+          ],
+          "parameters": {
+            "event": "fileCreated",
+            "options": {
+              "fileType": "application/vnd.google-apps.audio"
+            },
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerOn": "specificFolder",
+            "folderToWatch": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultUrl": "https://drive.google.com/drive/folders/1Wqd4zEEb847gFYKoDBbNnXsWEc-kCAm2",
+              "cachedResultName": "Audio Recordings"
+            }
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "UhdXGYLTAJbsa0xX",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "a477e29e-d516-439c-ac41-16281dcca559",
+      "connections": {
+        "Set Config": {
+          "main": [
+            [
+              {
+                "node": "Summarize to JSON",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Summarize to Structured JSON",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Save Raw Transcript to Google Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Start Workflow": {
+          "main": [
+            [
+              {
+                "node": "Search Google Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge All Paths": {
+          "main": [
+            [
+              {
+                "node": "Send Telegram Message",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Email Content Formatter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize to JSON": {
+          "main": [
+            [
+              {
+                "node": "Convert JSON to Markdown",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get JSON File Meta": {
+          "main": [
+            [
+              {
+                "node": "Prepare Response JSON",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit to last file": {
+          "main": [
+            [
+              {
+                "node": "Download audio file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download audio file": {
+          "main": [
+            [
+              {
+                "node": "Transcribe with OpenAI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Google Drive": {
+          "main": [
+            [
+              {
+                "node": "Filter by .m4a extension",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Filename for JSON": {
+          "main": [
+            [
+              {
+                "node": "Save JSON file to Google Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare Response JSON": {
+          "main": [
+            [
+              {
+                "node": "Merge All Paths",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Markdown File Meta": {
+          "main": [
+            [
+              {
+                "node": "Prepare Response Markdown",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Transcribe with OpenAI": {
+          "main": [
+            [
+              {
+                "node": "Set Config",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email Content Formatter": {
+          "main": [
+            [
+              {
+                "node": "Send Gmail Message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail User for Approval": {
+          "main": [
+            [
+              {
+                "node": "Search Google Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On File Created Trigger": {
+          "main": [
+            [
+              {
+                "node": "Gmail User for Approval",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert JSON to Markdown": {
+          "main": [
+            [
+              {
+                "node": "Get Filename for Markdown",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter by .m4a extension": {
+          "main": [
+            [
+              {
+                "node": "Limit to last file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Filename for Markdown": {
+          "main": [
+            [
+              {
+                "node": "Save Markdown file to Google Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare Response Markdown": {
+          "main": [
+            [
+              {
+                "node": "Merge All Paths",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Summarize to Structured JSON": {
+          "main": [
+            [
+              {
+                "node": "Get Filename for JSON",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save JSON file to Google Drive": {
+          "main": [
+            [
+              {
+                "node": "Get JSON File Meta",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save Markdown file to Google Drive": {
+          "main": [
+            [
+              {
+                "node": "Get Markdown File Meta",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save Raw Transcript to Google Drive": {
+          "main": [
+            [
+              {
+                "node": "Merge All Paths",
+                "type": "main",
+                "index": 2
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 33,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 2
+        },
+        "n8n-nodes-base.limit": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.telegram": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 8
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 7
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.openAi": {
+          "count": 5
+        },
+        "n8n-nodes-base.googleDriveTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Joseph LePage",
+      "username": "joe",
+      "bio": "As an AI Automation consultant based in Canada, I partner with forward-thinking organizations to implement AI solutions that streamline operations and drive growth.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/e7ca218dfc87b68344bbd66f40da01546d2f6fc1cf884267821e8a77e3e8410a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 49,
+        "icon": "file:telegram.svg",
+        "name": "n8n-nodes-base.telegram",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Telegram"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzM3YWVlMiIgZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiLz48cGF0aCBmaWxsPSIjYzhkYWVhIiBkPSJtMjEuNjYxIDM0LjMzOCAzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIvPjxwYXRoIGZpbGw9IiNhOWM2ZDgiIGQ9Im0yNi42OTUgMzcuMDM0LS43MjkgNy43NDZzLS4zMDUgMi4zNzMgMi4wNjggMGw0LjY0NC00LjIwMyIvPjxwYXRoIGQ9Im0yMS43MyAzNC43MTItNy44MDktMi41NDVzLS45MzItLjM3OC0uNjMzLTEuMjM3Yy4wNjItLjE3Ny4xODYtLjMyOC41NTktLjU4OCAxLjczMS0xLjIwNiAzMi4wMjgtMTIuMDk2IDMyLjAyOC0xMi4wOTZzLjg1Ni0uMjg4IDEuMzYxLS4wOTdjLjIzMS4wODguMzc4LjE4Ny41MDMuNTQ4LjA0NS4xMzIuMDcxLjQxMS4wNjguNjg5LS4wMDMuMjAxLS4wMjcuMzg2LS4wNDUuNjc4LS4xODQgMi45NzgtNS43MDYgMjUuMTk4LTUuNzA2IDI1LjE5OHMtLjMzIDEuMy0xLjUxNCAxLjM0NWMtLjQzMi4wMTYtLjk1Ni0uMDcxLTEuNTgyLS42MS0yLjMyMy0xLjk5OC0xMC4zNTItNy4zOTQtMTIuMTI2LTguNThhLjM0LjM0IDAgMCAxLS4xNDYtLjIzOWMtLjAyNS0uMTI1LjEwOC0uMjguMTA4LS4yOHMxMy45OC0xMi40MjcgMTQuMzUyLTEzLjczMWMuMDI5LS4xMDEtLjA3OS0uMTUxLS4yMjYtLjEwNy0uOTI5LjM0Mi0xNy4wMjUgMTAuNTA2LTE4LjgwMSAxMS42MjktLjEwNC4wNjYtLjM5NS4wMjMtLjM5NS4wMjMiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Telegram",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 531,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDriveTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googledrivetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Google Drive Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1237,
+        "icon": "file:limit.svg",
+        "name": "n8n-nodes-base.limit",
+        "codex": {
+          "data": {
+            "alias": [
+              "Limit",
+              "Remove",
+              "Slice",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Limit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjMkZCNjdDIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcGF0aD0idXJsKCNhKSIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNNTEyIDQ1OGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDEyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoNjhjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMTUyLTIyMmMtNi42MjcgMC0xMi01LjM3My0xMi0xMlYzMGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDI0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MTk0YzAgNi42MjctNS4zNzMgMTItMTIgMTJ6Ii8+PHBhdGggZD0iTTE0OS41NzcgMTQ2Ljk4MmM5LjM5OC05LjM0NiAyNC41OTQtOS4zMDQgMzMuOTQxLjA5NUwyNTYgMjE5Ljk2NGw3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMCAzNTBjMC02LjYyNyA1LjM3My0xMiAxMi0xMmg0ODhjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDEyYy02LjYyNyAwLTEyLTUuMzczLTEyLTEyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Limit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1250,
+        "icon": "file:openAi.svg",
+        "name": "@n8n/n8n-nodes-langchain.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "ChatGPT",
+              "DallE",
+              "whisper",
+              "audio",
+              "transcribe",
+              "tts",
+              "assistant"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg1IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NiAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MSA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

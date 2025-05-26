@@ -1,0 +1,647 @@
+{
+  "workflow": {
+    "id": 2701,
+    "name": "Reschedule overdue Asana tasks and clean up completed tasks",
+    "views": 1354,
+    "recentViews": 1,
+    "totalViews": 1354,
+    "createdAt": "2025-01-06T20:52:57.831Z",
+    "description": "## Description\n\nBoost your productivity and keep your **Asana** workspace clutter-free with this n8n workflow. \n\nIt automatically scans for **tasks whose due dates have passed** and **reschedules them to the current date**, ensuring no important to-dos slip through the cracks. \n\nAdditionally, any completed tasks in Asana with an overdue date are removed, maintaining a clear, organized task list.\n\n\n## Key Benefits\n\n- **Streamline Task Management**: No more manual updates—let the workflow reschedule overdue tasks for you.\n- **Optimize Workspace Organization**: Eliminate finished tasks to focus on active priorities and reduce clutter.\n- **Save Time and Effort**: Automate repetitive maintenance, freeing you to concentrate on what truly matters.\n\n\n## Configuration Steps\n\n1. Add your **Asana** credentials\n2. Schedule the workflow to run at desired intervals (e.g., daily or weekly).\n3. Select your **Workspace Name** and your **Assignee Name** (user) in the **Get user tasks** node\n4. *(Optional) Tailor filtering conditions to match your preferred due-date rules and removal criteria.*\n5. **Activate the workflow** and watch your Asana workspace stay up to date and clutter-free. ",
+    "workflow": {
+      "id": "RJ4PaYq0JBr29KJm",
+      "meta": {
+        "instanceId": "e3de7ac3dee198637aeea8f82bd3b7f55121370bf7582aeef633e085d2f68ac8"
+      },
+      "name": "Reschedule overdue Asana tasks and clean up completed tasks",
+      "tags": [
+        {
+          "id": "oMfA3lEfbqs7MU2P",
+          "name": "Template",
+          "createdAt": "2025-01-06T20:33:18.396Z",
+          "updatedAt": "2025-01-06T20:33:18.396Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "9262720e-2beb-4426-a472-3d7bf8bc28af",
+          "name": "Everyday at 7am",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            80,
+            -520
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 7
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "0d074451-5d61-4ed4-86a8-f6cdf002e84b",
+          "name": "Get user tasks",
+          "type": "n8n-nodes-base.asana",
+          "position": [
+            320,
+            -520
+          ],
+          "parameters": {
+            "filters": {
+              "assignee": "1201727447190193",
+              "workspace": "1201727656813934",
+              "completed_since": "={{ DateTime.now().format('yyyy-MM-dd') }}"
+            },
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "asanaApi": {
+              "id": "u7fFpY0SmMcpBCdn",
+              "name": "Asana account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "14939268-9bda-4fc1-9fef-aa6a74c2365a",
+          "name": "Get task infos",
+          "type": "n8n-nodes-base.asana",
+          "position": [
+            540,
+            -520
+          ],
+          "parameters": {
+            "id": "={{ $json.gid }}",
+            "operation": "get"
+          },
+          "credentials": {
+            "asanaApi": {
+              "id": "u7fFpY0SmMcpBCdn",
+              "name": "Asana account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e7d9a37c-66b7-46b9-b228-7372cb0d7b09",
+          "name": "Task is open?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            780,
+            -520
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "145d9367-7662-4ed9-8195-bf9b35c78d6b",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "false",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.completed }}",
+                  "rightValue": "false"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "11ae0bbb-8d76-4623-9a24-2c2a36600dd3",
+          "name": "Due date in the past?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1020,
+            -640
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "loose"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "dbecabb3-8075-4cc0-94af-b678c8af8f66",
+                  "operator": {
+                    "type": "number",
+                    "operation": "lt"
+                  },
+                  "leftValue": "={{ $json.due_on.replaceAll(\"-\",\"\") }}",
+                  "rightValue": "={{ DateTime.now().format('yyyyMMdd') }}"
+                }
+              ]
+            },
+            "looseTypeValidation": true
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "282d79c7-e74a-4249-ad37-b4d81655a206",
+          "name": "Set due date to Today",
+          "type": "n8n-nodes-base.asana",
+          "position": [
+            1280,
+            -680
+          ],
+          "parameters": {
+            "id": "={{ $json.gid }}",
+            "operation": "update",
+            "otherProperties": {
+              "due_on": "={{ DateTime.now().format('yyyy-MM-dd') }}"
+            }
+          },
+          "credentials": {
+            "asanaApi": {
+              "id": "u7fFpY0SmMcpBCdn",
+              "name": "Asana account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7cc18243-d3d4-4624-a906-a1617e411b0c",
+          "name": "Clean up task",
+          "type": "n8n-nodes-base.asana",
+          "position": [
+            1020,
+            -440
+          ],
+          "parameters": {
+            "id": "={{ $json.gid }}",
+            "operation": "delete"
+          },
+          "credentials": {
+            "asanaApi": {
+              "id": "u7fFpY0SmMcpBCdn",
+              "name": "Asana account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f4aafa1f-8c5b-4fd1-9aca-fd096508dbfb",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            -800
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 640,
+            "height": 240,
+            "content": "### ⚙️ Set Up \n\n1. Add your **Asana** credentials\n2. Schedule the workflow to run at desired intervals (e.g., daily or weekly).\n3. Select your **Workspace Name** and your **Assignee Name** (user) in the **Get user tasks** node\n4. *(Optional) Tailor filtering conditions to match your preferred due-date rules and removal criteria.*\n5. **Activate the workflow** and watch your Asana workspace stay up to date and clutter-free."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e4fcbdee-5dd0-40dc-b1ef-f7b8ce00dd03",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            -360
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 160,
+            "height": 100,
+            "content": "👆 \nUpdate the **Scheduler** here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "195f467d-1124-4216-ab0e-048c6a9fc752",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            280,
+            -360
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 200,
+            "height": 100,
+            "content": "👆 \nSelect your **Workspace Name** & **Assignee Name** here"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "timezone": "Europe/Paris",
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1"
+      },
+      "versionId": "fdc51229-75f4-4489-a7f7-1f36a35d43ac",
+      "connections": {
+        "Task is open?": {
+          "main": [
+            [
+              {
+                "node": "Due date in the past?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Clean up task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get task infos": {
+          "main": [
+            [
+              {
+                "node": "Task is open?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get user tasks": {
+          "main": [
+            [
+              {
+                "node": "Get task infos",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Everyday at 7am": {
+          "main": [
+            [
+              {
+                "node": "Get user tasks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Due date in the past?": {
+          "main": [
+            [
+              {
+                "node": "Set due date to Today",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 10,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.asana": {
+          "count": 4
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Bastien Laval",
+      "username": "bastien-laval",
+      "bio": "",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/d7c42e46c2daf4cf90ac38772f9eee0be4bb2883bd5cf161158fff01be2b1d5e?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 3,
+        "icon": "file:asana.svg",
+        "name": "n8n-nodes-base.asana",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.asana/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/asana/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Asana"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGRlZnM+PHJhZGlhbEdyYWRpZW50IGlkPSJhIiBjeD0iNTAlIiBjeT0iNTUlIiByPSI3Mi41MDclIiBmeD0iNTAlIiBmeT0iNTUlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC45MjQwNCAwIDAgMSAuMDM4IDApIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRkZCOTAwIi8+PHN0b3Agb2Zmc2V0PSI2MCUiIHN0b3AtY29sb3I9IiNGOTVEOEYiLz48c3RvcCBvZmZzZXQ9Ijk5LjkxJSIgc3RvcC1jb2xvcj0iI0Y5NTM1MyIvPjwvcmFkaWFsR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9InVybCgjYSkiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ1LjU5NCAyOC41Yy02Ljk5NC4wMDMtMTIuNjY0IDUuNjczLTEyLjY2NyAxMi42NjcuMDAzIDYuOTk1IDUuNjczIDEyLjY2NCAxMi42NjcgMTIuNjY4IDYuOTk1LS4wMDQgMTIuNjY0LTUuNjczIDEyLjY2Ny0xMi42NjgtLjAwMy02Ljk5NC01LjY3Mi0xMi42NjQtMTIuNjY3LTEyLjY2N20tMzIuOTI3LjAwMUM1LjY3MyAyOC41MDUuMDAzIDM0LjE3NCAwIDQxLjE3Yy4wMDMgNi45OTQgNS42NzMgMTIuNjY0IDEyLjY2NyAxMi42NjcgNi45OTUtLjAwMyAxMi42NjQtNS42NzMgMTIuNjY4LTEyLjY2Ny0uMDA0LTYuOTk1LTUuNjczLTEyLjY2NC0xMi42NjgtMTIuNjY4ek00MS43OSAxMi42NjdjLS4wMDIgNi45OTUtNS42NzEgMTIuNjY1LTEyLjY2NiAxMi42Ny02Ljk5NS0uMDA0LTEyLjY2NC01LjY3NC0xMi42NjctMTIuNjdDMTYuNDYgNS42NzMgMjIuMTMuMDAzIDI5LjEyMyAwYzYuOTk0LjAwNCAxMi42NjMgNS42NzMgMTIuNjY2IDEyLjY2N3oiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC43MzIgMi43MzIpIi8+PC9zdmc+"
+        },
+        "displayName": "Asana",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": []
+  }
+}

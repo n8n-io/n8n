@@ -1,0 +1,506 @@
+{
+  "workflow": {
+    "id": 2239,
+    "name": "Extract Domain and verify email syntax on the go",
+    "views": 1001,
+    "recentViews": 0,
+    "totalViews": 1001,
+    "createdAt": "2024-04-22T06:31:37.656Z",
+    "description": "## What problem is this workflow solving?\n\nThis workflow is aimed for email marketing enthusiasts looking for an easy way to either extract the domain from an email ad also check if the syntax is correct without having to use the code node.\n\n## How this works\n\n\n1. For this to work, replace the debugger node with your actual data source. \n2. Map your data at match the above layout\n3. Run your workflow and check for all the emails that are either valid or not\n\nOnce done, you will have a list of all your emails, domains, and whether they are valid or not.\n\n ![image.png](fileId:790)\n  ",
+    "workflow": {
+      "meta": {
+        "instanceId": "8eadf351d49a11e77d3a57adf374670f06c5294af8b1b7c86a1123340397e728"
+      },
+      "nodes": [
+        {
+          "id": "2f7c95cb-2545-48b6-aa77-55a6619aa3b6",
+          "name": "When clicking \"Test workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            140,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1cb42024-9743-4002-b0f5-180d3d95fc44",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            22
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 818,
+            "height": 446,
+            "content": "## Email Validation and extract domain\n** This workflow is aimed at making email validation and domain extract using the native functionalities in n8n\n\n** Replace the debugger node with your actual data source to validate your own emails"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "215ff8f7-f94b-4999-a0db-c3ee93041001",
+          "name": "Set these fields to extract domain",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            660,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "be48e606-536b-48a0-a0b9-ba1ca0296e75",
+                  "name": "Valid EmailIs email ",
+                  "type": "string",
+                  "value": "={{ $json.email.isEmail() }}"
+                },
+                {
+                  "id": "68e983c1-3f12-45ab-a441-ca54444a1f42",
+                  "name": "Extract Domain",
+                  "type": "string",
+                  "value": "={{ $json.email.extractDomain() }}"
+                },
+                {
+                  "id": "37447324-b80a-40cf-a41e-92c7550f3702",
+                  "name": "email",
+                  "type": "string",
+                  "value": "={{ $json.email }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "e85e9445-2f43-4545-a41d-f9ced6e8c8d9",
+          "name": "Generate random data",
+          "type": "n8n-nodes-base.debugHelper",
+          "position": [
+            420,
+            240
+          ],
+          "parameters": {
+            "category": "randomData",
+            "randomDataType": "email"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d7bb0ffd-df07-4f1b-be68-1776fc3fe7e4",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            360,
+            160
+          ],
+          "parameters": {
+            "height": 253,
+            "content": "\nMake sure you replace the Generate random data with your actual data"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {
+        "Generate random data": [
+          {
+            "email": "Megan.Lueilwitz@yahoo.com",
+            "confirmed": true
+          },
+          {
+            "email": "Tommie70@yahoo.com",
+            "confirmed": true
+          },
+          {
+            "email": "Joanna.Fisher@yahoo.com",
+            "confirmed": false
+          },
+          {
+            "email": "Terrence.Hettinger@yahoo.com",
+            "confirmed": false
+          },
+          {
+            "email": "Eddie.Bradtke@hotmail.com",
+            "confirmed": false
+          },
+          {
+            "email": "Marcus.Considine64@yahoo.com",
+            "confirmed": true
+          },
+          {
+            "email": "Constance.Markshotmail.com",
+            "confirmed": false
+          },
+          {
+            "email": "Dominick.Corwin@yahoo.com",
+            "confirmed": true
+          },
+          {
+            "email": "Ellen54@yahoo.com",
+            "confirmed": true
+          },
+          {
+            "email": "Angel.Hartmann40@hotmail.com",
+            "confirmed": false
+          }
+        ]
+      },
+      "connections": {
+        "Generate random data": {
+          "main": [
+            [
+              {
+                "node": "Set these fields to extract domain",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Test workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Generate random data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.debugHelper": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Imperol",
+      "username": "imperolq",
+      "bio": "Automation expert with years of experience helping businesses improve their efficiency and productivity with smart automations that are affordable, scalable, and flexible. ",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/zacharia-kimotho/"
+      ],
+      "avatar": "https://gravatar.com/avatar/13b050fd63dc0c9242774c4b8769c4788df8b47268c1fb183d6f1da085b9e6e2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 855,
+        "icon": "file:DebugHelper.svg",
+        "name": "n8n-nodes-base.debugHelper",
+        "codex": {
+          "data": {
+            "alias": [
+              "Mock",
+              "Sample",
+              "Demo",
+              "Test",
+              "Throw error",
+              "OOM",
+              "Out of Memory",
+              "placeholder"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.debughelper/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "DebugHelper"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI2Ljk1MzEgMTMuMTk3OEMyOS41Mjc2IDEzLjE5NzggMzAuNTcyOSAxNi4zMjY0IDMwLjU3MjkgMTguOTAwOVYyNi43Mzk0QzMwLjU3MjkgMzIuNTQ5OSAyNS44NjI2IDM3LjI2MDMgMjAuMDUyIDM3LjI2MDNDMTQuMjQxNiAzNy4yNjAzIDkuNTMxMjUgMzIuNTQ5OSA5LjUzMTI1IDI2LjczOTRWMTguOTAwOUM5LjUzMTI1IDE2LjMyNjQgMTAuNTc2NiAxMy4xOTc4IDEzLjE1MSAxMy4xOTc4SDI2Ljk1MzFaIiBmaWxsPSIjRjRBMDI2Ii8+CjxwYXRoIGQ9Ik0yNC4xNDA2IDE1LjgwMkgxNS45NjM1QzE0LjQ4MjIgMTUuODAyIDEzLjI4MTIgMTQuNjAxMSAxMy4yODEyIDEzLjExOThDMTMuMjgxMiA5Ljk5ODgzIDE1LjgxMTMgNy40Njg3NSAxOC45MzIzIDcuNDY4NzVIMjEuMTcxOUMyNC4yOTI4IDcuNDY4NzUgMjYuODIyOSA5Ljk5ODgzIDI2LjgyMjkgMTMuMTE5OEMyNi44MjI5IDE0LjYwMTEgMjUuNjIyIDE1LjgwMiAyNC4xNDA2IDE1LjgwMloiIGZpbGw9IiNDQTQ2M0QiLz4KPHBhdGggZD0iTTM4Ljk1ODQgMjIuODU5NEgzMS41NjI1VjE4LjkwMUMzMS41NjI1IDE4LjgyMTYgMzEuNTg3IDE4Ljc0MiAzMS41ODUyIDE4LjY2MjNDMzUuMzQzNyAxOC4yNzAzIDM3LjUgMTUuNzk3MyAzNy41IDExLjczOTVWMTAuODAyQzM3LjUgMTAuMjI2NyAzNy4wMzM1IDkuNzYwMzkgMzYuNDU4NCA5Ljc2MDM5QzM1Ljg4MzIgOS43NjAzOSAzNS40MTY3IDEwLjIyNjcgMzUuNDE2NyAxMC44MDJWMTEuNzM5NUMzNS40MTY3IDE0LjczOTUgMzQuMDg4MiAxNi4zMzQ5IDMxLjM2MzIgMTYuNTk2M0MzMC44ODkxIDE0LjQ4NSAyOS43MzIzIDEyLjY2MDMgMjcuODA1NiAxMi4yNDQ4QzI3LjUxMyAxMC4wMTUxIDI2LjEzMjcgOC4xMjg0NCAyNC4yMDI5IDcuMTQ4OTFDMjUuMDA5MiA2LjMyODUyIDI1LjUyMDkgNS4yMDQ2MSAyNS41MjA5IDMuOTY2MDlWMy4wNDE2NEMyNS41MjA5IDIuNDY2MzMgMjUuMDU0NSAyIDI0LjQ3OTMgMkMyMy45MDQxIDIgMjMuNDM3NSAyLjQ2NjMzIDIzLjQzNzUgMy4wNDE2NFYzLjk2NjA5QzIzLjQzNzUgNS4zMjMxMyAyMi4zMDc1IDYuNDAxMDIgMjAuOTUwNSA2LjQwMTAySDE5LjE1MzdDMTcuNzk2NyA2LjQwMTAyIDE2LjY2NjcgNS4zMjMxMyAxNi42NjY3IDMuOTY2MDlWMy4wNDE2NEMxNi42NjY3IDIuNDY2MzMgMTYuMjAwMiAyIDE1LjYyNTEgMkMxNS4wNDk5IDIgMTQuNTgzNCAyLjQ2NjMzIDE0LjU4MzQgMy4wNDE2NFYzLjk2NjA5QzE0LjU4MzQgNS4yMDQ2MSAxNS4wOTUgNi4zMjg1MiAxNS45MDE0IDcuMTQ4OThDMTMuOTcxNiA4LjEyODQ0IDEyLjU4NDggMTAuMDE1MiAxMi4yOTIxIDEyLjI0NDhDMTAuMzYyOCAxMi42NjA4IDkuMjA4OTEgMTQuNDg5OCA4LjczNTk0IDE2LjYwNDhDNS45NDIyNyAxNi4zNzM2IDQuNTgzMzYgMTQuNzc2NSA0LjU4MzM2IDExLjczOTVWMTAuODAyQzQuNTgzMzYgMTAuMjI2NyA0LjExNjg3IDkuNzYwMzkgMy41NDE3MiA5Ljc2MDM5QzIuOTY2NTYgOS43NjAzOSAyLjUgMTAuMjI2NyAyLjUgMTAuODAyVjExLjczOTVDMi41IDE1LjgzNDUgNC42NDM2NyAxOC4zMTUyIDguNDY2OCAxOC42NzIzQzguNDY1MDggMTguNzQ4NSA4LjQzNzUgMTguODI0OCA4LjQzNzUgMTguOTAxVjIyLjg1OTRIMS4wNDE2NEMwLjQ2NjQ4NCAyMi44NTk0IDAgMjMuMzI1NyAwIDIzLjkwMUMwIDI0LjQ3NjMgMC40NjY0ODQgMjQuOTQyNyAxLjA0MTY0IDI0Ljk0MjdIOC40Mzc1VjI2LjczOTVDOC40Mzc1IDI3LjU2OTggOC41NTIyNyAyOC4zNzk2IDguNzE5MzcgMjkuMTYwOEM0LjczODk4IDI5LjQzMDUgMi41IDMxLjkzMDIgMi41IDM2LjExNDVWMzcuMDUyQzIuNSAzNy42MjczIDIuOTY2NDggMzguMDkzNyAzLjU0MTY0IDM4LjA5MzdDNC4xMTY4IDM4LjA5MzcgNC41ODMyOCAzNy42MjczIDQuNTgzMjggMzcuMDUyVjM2LjExNDVDNC41ODMyOCAzMi44NDkzIDYuMTU3NTggMzEuMjQ4IDkuMzkzMDUgMzEuMjIwMUMxMS4xNDcgMzUuMzc3IDE1LjI2NDIgMzguMzAyIDIwLjA1MiAzOC4zMDJDMjQuODM5MiAzOC4zMDIgMjguOTU2IDM1LjM3NzcgMzAuNzEwMiAzMS4yMjE2QzMzLjg3NTggMzEuMjgyOSAzNS40MTY2IDMyLjg4NDQgMzUuNDE2NiAzNi4xMTQ1VjM3LjA1MkMzNS40MTY2IDM3LjYyNzMgMzUuODgzIDM4LjA5MzcgMzYuNDU4MiAzOC4wOTM3QzM3LjAzMzQgMzguMDkzNyAzNy41IDM3LjYyNzMgMzcuNSAzNy4wNTJWMzYuMTE0NUMzNy41IDMxLjk2NjEgMzUuMjQ4MiAyOS40NzI5IDMxLjMzMTMgMjkuMTY3NkMzMS40OTkzIDI4LjM4NDQgMzEuNTYyNSAyNy41NzIyIDMxLjU2MjUgMjYuNzM5NVYyNC45NDI3SDM4Ljk1ODRDMzkuNTMzNiAyNC45NDI3IDQwIDI0LjQ3NjMgNDAgMjMuOTAxQzQwIDIzLjMyNTcgMzkuNTMzNSAyMi44NTk0IDM4Ljk1ODQgMjIuODU5NFpNMTguOTMyMyA4LjQ4NDM4SDIxLjE3MTlDMjMuNzEzNCA4LjQ4NDM4IDI1Ljc4MTMgMTAuNTUyMiAyNS43ODEzIDEzLjA5MzhDMjUuNzgxMyAxMy45OTg0IDI1LjA0NTMgMTQuNzM0NCAyNC4xNDA2IDE0LjczNDRIMTUuOTYzNUMxNS4wNTg4IDE0LjczNDQgMTQuMzIyOSAxMy45OTg0IDE0LjMyMjkgMTMuMDkzOEMxNC4zMjI5IDEwLjU1MjIgMTYuMzkwNyA4LjQ4NDM4IDE4LjkzMjMgOC40ODQzOFpNMTAuNTIwOSAyNi43Mzk1VjE4LjkwMUMxMC41MjA5IDE3LjI3NjYgMTEuMDYzNyAxNC45NTMzIDEyLjQzMzYgMTQuMzY3QzEyLjk1MTMgMTUuODAyIDE0LjM1MjMgMTYuODE3NyAxNS45NjM2IDE2LjgxNzdIMTguOTU4NFYzNi4xNTUyQzE0LjI0NDggMzUuNjExMyAxMC41MjA5IDMxLjU5NjQgMTAuNTIwOSAyNi43Mzk1Wk0yMS4wNDE2IDM2LjE2NzJWMTYuODE3N0gyNC4xNDA2QzI1Ljc1MTkgMTYuODE3NyAyNy4xMDA5IDE1LjgwMiAyNy42MTg1IDE0LjM2N0MyOC45ODg0IDE0Ljk1MzMgMjkuNDc5MSAxNy4yNzY1IDI5LjQ3OTEgMTguOTAxVjI2LjczOTVDMjkuNDc5MSAzMS42MzIzIDI1LjgwNTIgMzUuNjcwOCAyMS4wNDE2IDM2LjE2NzJaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "DebugHelper",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 790,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_39c85cbfd4.png"
+      }
+    ]
+  }
+}

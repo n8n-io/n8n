@@ -1,0 +1,37 @@
+URL: https://docs.n8n.io/code/builtin/http-node-variables/
+Scraped_At: 2025-05-20T18:40:58.083424
+
+HTTP node variables
+#
+Variables for working with HTTP node requests and responses when using pagination.
+Refer to
+HTTP Request
+for guidance on using the HTTP node, including configuring pagination.
+Refer to
+HTTP Request node cookbook | Pagination
+for example pagination configurations.
+HTTP node only
+These variables are for use in expressions in the HTTP node. You can't use them in other nodes.
+Variable
+Description
+$pageCount
+The pagination count. Tracks how many pages the node has fetched.
+$request
+The request object sent by the HTTP node.
+$response
+The response object from the HTTP call. Includes
+$response.body
+,
+$response.headers
+, and
+$response.statusCode
+. The contents of
+body
+and
+headers
+depend on the data sent by the API.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

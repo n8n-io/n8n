@@ -1,0 +1,1232 @@
+{
+  "workflow": {
+    "id": 3186,
+    "name": "Process Ko-fi Donations, Subscriptions & Shop Orders with Webhook Verification",
+    "views": 299,
+    "recentViews": 2,
+    "totalViews": 299,
+    "createdAt": "2025-03-16T20:49:50.130Z",
+    "description": "### Who is this for?\nThis workflow is tailored for content creators, artists, and developers who use Ko-fi to receive financial support through donations, subscriptions, or product sales.\n\n###  Use case\nThis workflow automates the process of receiving and categorizing payment notifications from Ko-fi, ensuring that creators can focus on their work rather than administrative tasks. \n\n### What this workflow does\n- **Webhook Reception**: The workflow listens for incoming payment notifications from Ko-fi via a configured webhook.\n- **Token Verification**: It validates incoming requests to ensure they originate from Ko-fi using a verification token for enhanced security.\n- **Type Differentiation**: It categorizes payments into types—donations, subscriptions, and shop orders—allowing for tailored handling for each payment type.\n- **Custom Response Options**: Depending on the payment type received, the workflow activates specific actions or processes, enabling seamless integration with other applications or services.\n\n### Setup\n1. **Webhook Configuration**:\n   - Access the `Webhook` node within the workflow and take note of your unique webhook URL. \n   - Visit your Ko-fi webhooks management page at [Ko-fi Webhooks Management](https://ko-fi.com/manage/webhooks) and input this URL.\n\n2. **Verification Token Setup**:\n   - In your Ko-fi account, locate the verification token in the advanced settings.\n   - Input this token in the `Prepare` node of your n8n workflow.\n\n3. **Enable the Workflow**:\n   - Activate the workflow in n8n to start listening for incoming webhook notifications.\n\n4. **Testing**:\n   - Use the test feature in the Ko-fi webhooks settings to send a test webhook to ensure everything is functioning as expected.\n\n### How to customize this workflow to your needs\n- **Add Actions for Each Payment Type**: You can modify the `Donation`, `Subscription`, and `Shop Order` nodes to include actions such as sending emails, logging payments within a database, or triggering notifications.\n  \n- **Enhance Security Measures**: You can further refine the `Check token` node to include additional checks or to log all incoming webhook requests for monitoring.\n\n- **Integration with Other Services**: Consider linking this workflow with messaging platforms (e.g., Slack, Discord) or CRM tools to keep your supporters informed or to manage relationships more effectively.\n\n- **Custom Fields**: If needed, adjust the fields captured in the `Subscription` and `Shop Order` nodes to include more data or different parameters based on your specific use case.",
+    "workflow": {
+      "meta": {
+        "instanceId": "568298fde06d3db80a2eea77fe5bf45f0c7bb898dea20b769944e9ac7c6c5a80"
+      },
+      "nodes": [
+        {
+          "id": "99bbf837-2834-4cae-af13-37b6cdf963bb",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -480,
+            -40
+          ],
+          "webhookId": "83f4e1de-2011-487c-a9f7-be6ccbac0782",
+          "parameters": {
+            "path": "83f4e1de-2011-487c-a9f7-be6ccbac0782",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0f7c13ea-196b-40a7-bf1e-4829caaaba4c",
+          "name": "Stop and Error",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            180,
+            60
+          ],
+          "parameters": {
+            "errorMessage": "Invalid verification token"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7ddb4cfc-5917-4b19-acf8-c7db3eaab56a",
+          "name": "Donation",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            400,
+            -420
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "67607a8e-55e2-46ec-92f5-1c8ef3addf9c",
+                  "name": "from_name",
+                  "type": "string",
+                  "value": "={{ $json.body.from_name }}"
+                },
+                {
+                  "id": "3e6e86ac-b6c2-4b5f-9e33-22367b9fb9e5",
+                  "name": "message",
+                  "type": "string",
+                  "value": "={{ $json.body.message }}"
+                },
+                {
+                  "id": "4973525a-21b0-442c-8919-24c312f3ff0c",
+                  "name": "amount",
+                  "type": "string",
+                  "value": "={{ $json.body.amount }}"
+                },
+                {
+                  "id": "b7e2d9e1-61c2-4ad1-9cbd-d8a754993fbe",
+                  "name": "url",
+                  "type": "string",
+                  "value": "={{ $json.body.email }}"
+                },
+                {
+                  "id": "da26860f-c1c4-4918-9447-ed080e921fe7",
+                  "name": "currency",
+                  "type": "string",
+                  "value": "={{ $json.body.currency }}"
+                },
+                {
+                  "id": "380dbd53-eb04-4659-aa54-b6bde0ba7034",
+                  "name": "is_public",
+                  "type": "string",
+                  "value": "={{ $json.body.is_public }}"
+                },
+                {
+                  "id": "4fd65c21-3043-4513-96b3-d2e11656e94a",
+                  "name": "timestamp",
+                  "type": "string",
+                  "value": "={{ $json.body.timestamp }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9c29ae0e-d80c-4613-ba11-535cc59d5603",
+          "name": "Subscription",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            400,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "886b9cca-15b1-49b4-a123-6f3ceb46279e",
+                  "name": "timestamp",
+                  "type": "string",
+                  "value": "={{ $json.body.timestamp }}"
+                },
+                {
+                  "id": "3c4d9c0e-3cd6-41d2-8223-c48f1dcccedc",
+                  "name": "from_name",
+                  "type": "string",
+                  "value": "={{ $json.body.from_name }}"
+                },
+                {
+                  "id": "7199ad4d-06ad-4bed-939b-e97d6d118d9b",
+                  "name": "message",
+                  "type": "string",
+                  "value": "={{ $json.body.message }}"
+                },
+                {
+                  "id": "270eeac1-b7f9-4cfb-9ac8-b0799b36482e",
+                  "name": "amount",
+                  "type": "string",
+                  "value": "={{ $json.body.amount }}"
+                },
+                {
+                  "id": "dbf3a671-715c-4e29-96d5-2767b6a620d8",
+                  "name": "url",
+                  "type": "string",
+                  "value": "={{ $json.body.url }}"
+                },
+                {
+                  "id": "79ae8427-e5fe-470f-bdc0-df0d8bcbad00",
+                  "name": "email",
+                  "type": "string",
+                  "value": "={{ $json.body.email }}"
+                },
+                {
+                  "id": "90c73e4d-197a-4ba3-b6fb-b7b79b62e69c",
+                  "name": "currency",
+                  "type": "string",
+                  "value": "={{ $json.body.currency }}"
+                },
+                {
+                  "id": "3e23aaad-70f4-429b-bee1-3ae0156aaa86",
+                  "name": "is_first_subscription_payment",
+                  "type": "string",
+                  "value": "={{ $json.body.is_first_subscription_payment }}"
+                },
+                {
+                  "id": "3ca5ca22-d8b7-4a90-a97e-aaed032ef705",
+                  "name": "tier_name",
+                  "type": "string",
+                  "value": "={{ $json.body.tier_name }}"
+                },
+                {
+                  "id": "1347258b-1f6d-4d44-bd64-95fb948cbff9",
+                  "name": "is_public",
+                  "type": "string",
+                  "value": "={{ $json.body.is_public }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a050d88e-bbe8-4ee1-b1c6-31782b5b2f20",
+          "name": "Shop Order",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            400,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9f2d01f6-d172-4aea-b2ea-e64857592191",
+                  "name": "from_name",
+                  "type": "string",
+                  "value": "={{ $json.body.from_name }}"
+                },
+                {
+                  "id": "bbc1fcba-ec29-4599-9d78-4e1a37ecede3",
+                  "name": "amount",
+                  "type": "string",
+                  "value": "={{ $json.body.amount }}"
+                },
+                {
+                  "id": "2ea190ac-700b-4682-9baa-7d733f89b819",
+                  "name": "email",
+                  "type": "string",
+                  "value": "={{ $json.body.email }}"
+                },
+                {
+                  "id": "eb0af9d5-9650-4457-b0fd-44f679972a79",
+                  "name": "currency",
+                  "type": "string",
+                  "value": "={{ $json.body.currency }}"
+                },
+                {
+                  "id": "9acec88b-61d5-4520-bf51-f71b4e2e26f6",
+                  "name": "shop_items",
+                  "type": "array",
+                  "value": "={{ $json.body.shop_items }}"
+                },
+                {
+                  "id": "2e1fb035-b32c-492f-9705-7159ef0b2c5d",
+                  "name": "url",
+                  "type": "string",
+                  "value": "={{ $json.body.url }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "f9926fda-9a37-467e-b86b-ce9dbb051a88",
+          "name": "Is new subscriber?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            620,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "87fbcc71-a0a4-4820-bb67-9551d44e0500",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.is_first_subscription_payment }}",
+                  "rightValue": "true"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b158a59d-5166-4469-b999-5235768855c0",
+          "name": "Prepare",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -260,
+            -40
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "aabaa149-d74b-464c-bbb6-12e2e8a884d9",
+                  "name": "verificationToken",
+                  "type": "string",
+                  "value": "7dd9d4ef-8412-4add-a0d0-b548ad4564b9"
+                },
+                {
+                  "id": "c2f7a7ce-99b0-44c7-b2cf-1ebf85e0917d",
+                  "name": "body",
+                  "type": "object",
+                  "value": "={{ $json.body.data }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a4fd9607-6d5b-4fbd-a4ce-53e9960887e0",
+          "name": "Check token",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -40,
+            -40
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "439af86e-c768-4165-ae64-86cd32a07084",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.body.verification_token }}",
+                  "rightValue": "={{ $json.verificationToken }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6c34228e-434c-4ab3-b0ce-0b5c1721ffc8",
+          "name": "Check type",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            180,
+            -140
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "edd5eaa2-60c7-459a-9846-b952b390b1db",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.type }}",
+                        "rightValue": "Donation"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "0cc7f0bf-4d1b-45a5-88ed-5b84050222f8",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.type }}",
+                        "rightValue": "Subscription"
+                      }
+                    ]
+                  }
+                },
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "a1b74233-7700-434b-be5c-76129c4cd88c",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.type }}",
+                        "rightValue": "Shop Order"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "87fd0134-5eb4-4c47-acb5-137f24e819f4",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -300,
+            -140
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 200,
+            "height": 260,
+            "content": "### Set verification token\nSet your Ko-fi  verification token in this node. Available [here](https://ko-fi.com/manage/webhooks)."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "78ac15cb-1336-424e-a235-6e7a66090b9d",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -520,
+            -140
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 200,
+            "height": 260,
+            "content": "### Setup your webhook\nFind your webhook URL in this node and set it  [here](https://ko-fi.com/manage/webhooks)."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "30892b66-66fb-4926-b817-e280cbadf5ea",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            360,
+            -520
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 540,
+            "height": 260,
+            "content": "### We received a donation\nDo your thing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3b849d93-ffa5-4dfe-8743-d43ca7d06e60",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            360,
+            -240
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 540,
+            "height": 260,
+            "content": "### We received a payment for a subscription\nDo your thing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bff1913d-1c18-4447-8448-aa059d7b020f",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            360,
+            40
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 540,
+            "height": 260,
+            "content": "### We received a shop order\nDo your thing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "07da890d-5cc8-4f51-b0c2-c50831c84a64",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -520,
+            -560
+          ],
+          "parameters": {
+            "width": 860,
+            "height": 400,
+            "content": "## Receive and handle Ko-fi payment webhooks \nThis workflow receives [Ko-fi payment webhooks](https://ko-fi.com/manage/webhooks), checks the verification token and then check what kind of payment it is.\n\n### Set up\n1. Edit the `Webhook` node and find your webhook URL.\n2. Go to your [Ko-fi webhooks settings](https://ko-fi.com/manage/webhooks) and set your URL\n3. Get your `verification token` from the same page (under advanced) and set it in the `Prepare` node\n4. Enable your workflow and test it from [Ko-fi webhooks settings](https://ko-fi.com/manage/webhooks)\n5. Profit 🎉\n\n**👋 Hello! I'm Audun / xqus** \n🔗 My work: [xqus.com](https://xqus.com)\n💸 n8n shop: [xqus.gumroad.com](https://xqus.gumroad.com)\n\n### Want to trigger my workflow?\nSupport my work on [Ko-fi](https://ko-fi.com/xquscom) 💸"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Prepare": {
+          "main": [
+            [
+              {
+                "node": "Check token",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Prepare",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check type": {
+          "main": [
+            [
+              {
+                "node": "Donation",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Subscription",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Shop Order",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check token": {
+          "main": [
+            [
+              {
+                "node": "Check type",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop and Error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subscription": {
+          "main": [
+            [
+              {
+                "node": "Is new subscriber?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 15,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 4
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.stopAndError": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Audun",
+      "username": "xqus",
+      "bio": "I’m an automagician who loves turning complex systems into simple, powerful workflows.\nHere to help you automate smarter and work easier.",
+      "verified": true,
+      "links": [
+        "https://xqus.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/273c8f67ecb3e3ea711c36a448f1fd547ca9ad698ae800bebd69be68317f63d1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 528,
+        "icon": "fa:exclamation-triangle",
+        "name": "n8n-nodes-base.stopAndError",
+        "codex": {
+          "data": {
+            "alias": [
+              "Throw error",
+              "Error",
+              "Exception"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Stop and Error",
+          "color": "#ff0000"
+        },
+        "iconData": {
+          "icon": "exclamation-triangle",
+          "type": "icon"
+        },
+        "displayName": "Stop and Error",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": []
+  }
+}

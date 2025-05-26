@@ -1,0 +1,444 @@
+{
+  "workflow": {
+    "id": 592,
+    "name": "Create a table in Quest DB and insert data",
+    "views": 329,
+    "recentViews": 0,
+    "totalViews": 329,
+    "createdAt": "2020-08-06T09:00:50.581Z",
+    "description": "![workflow-screenshot](fileId:181)",
+    "workflow": {
+      "id": "161",
+      "name": "Create a table and insert data into it",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            440,
+            460
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Set",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            840,
+            460
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "id"
+                }
+              ],
+              "string": [
+                {
+                  "name": "name",
+                  "value": "Tanay"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "QuestDB",
+          "type": "n8n-nodes-base.questDb",
+          "position": [
+            640,
+            460
+          ],
+          "parameters": {
+            "query": "CREATE TABLE test (id INT, name STRING);",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "questDb": "QuestDB"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "QuestDB1",
+          "type": "n8n-nodes-base.questDb",
+          "position": [
+            1040,
+            460
+          ],
+          "parameters": {
+            "table": "test",
+            "columns": "id, name"
+          },
+          "credentials": {
+            "questDb": "QuestDB"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Set": {
+          "main": [
+            [
+              {
+                "node": "QuestDB1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "QuestDB": {
+          "main": [
+            [
+              {
+                "node": "Set",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "QuestDB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.questDb": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 343,
+        "icon": "file:questdb.png",
+        "name": "n8n-nodes-base.questDb",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.questdb/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/questDb/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "QuestDB"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "QuestDB",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 181,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/b15ad27c2a374fc78fd41728462e2561.png"
+      }
+    ]
+  }
+}

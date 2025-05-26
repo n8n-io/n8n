@@ -1,0 +1,1427 @@
+{
+  "workflow": {
+    "id": 2106,
+    "name": "Reach out via Email to new form submissions that meet a certain criteria",
+    "views": 1490,
+    "recentViews": 0,
+    "totalViews": 1490,
+    "createdAt": "2024-02-21T10:45:02.202Z",
+    "description": "# Use case\nWhen collecting new leads via a form, you need to follow up on new submissions. Often, this required a lot of manual work that includes reviewing each submission, checking if they meet your criteria and then outreaching. With this workflow you can do all of that fully automatically and save a lot of your valuable time.\n# What this workflow does\nThis workflow runs every time you're receiving a new submission from an n8n form. It then filters out typical personal emails (such as Gmail, Hotmail, Yahoo etc.) before enriching the submission via Clearbit. It then checks, if the company of the submitter is a B2B company and has more than 499 employees. If it does, it sends an email via Gmail to the user.\n# Setup\n1. Add the `Clearbit` and `Gmail` credentials\n2. Click on `Test Workflow`\n3. Enter your own email (which needs to be a business email to work) in the Form\n4. Check your email\n5. Once you're happy don't forget to activate this workflow\n# How to adjust this template\n- Replace the form trigger with your form provider of choice (e.g. Typeform, SurveyMonkey, Google Forms etc.)\n- Adjust the criteria to your needs via the `If node`\n- Adjust the email you're sending in the `Gmail node`",
+    "workflow": {
+      "meta": {
+        "instanceId": "257476b1ef58bf3cb6a46e65fac7ee34a53a5e1a8492d5c6e4da5f87c9b82833"
+      },
+      "nodes": [
+        {
+          "id": "fec9c13e-a734-4d36-9d2b-b039da167d54",
+          "name": "n8n Form Trigger",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            1060,
+            360
+          ],
+          "webhookId": "1ad4ce6c-f29a-4371-a5b9-a17ce7939280",
+          "parameters": {
+            "path": "1ad4ce6c-f29a-4371-a5b9-a17ce7939280",
+            "options": {},
+            "formTitle": "Contact us",
+            "formFields": {
+              "values": [
+                {
+                  "fieldType": "dropdown",
+                  "fieldLabel": "What's your role?",
+                  "fieldOptions": {
+                    "values": [
+                      {
+                        "option": "Product"
+                      },
+                      {
+                        "option": "Sales"
+                      },
+                      {
+                        "option": "Marketing"
+                      },
+                      {
+                        "option": "Other"
+                      }
+                    ]
+                  },
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "What's your business email?",
+                  "requiredField": true
+                }
+              ]
+            },
+            "formDescription": "Thanks for showing interest in our product. We'll come back to you soon!"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0bc7cbfd-efb6-43b4-a1e2-64ee28087afa",
+          "name": "Clearbit",
+          "type": "n8n-nodes-base.clearbit",
+          "position": [
+            1660,
+            360
+          ],
+          "parameters": {
+            "email": "={{ $json['What\\'s your business email?'] }}",
+            "resource": "person",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "clearbitApi": {
+              "id": "cKDImrinp9tg0ZHW",
+              "name": "Clearbit account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7b9263c0-cd18-4c47-aa9b-9263be33aaec",
+          "name": "Enrich Company",
+          "type": "n8n-nodes-base.clearbit",
+          "position": [
+            1880,
+            360
+          ],
+          "parameters": {
+            "domain": "={{ $json.employment.domain }}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "clearbitApi": {
+              "id": "cKDImrinp9tg0ZHW",
+              "name": "Clearbit account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "57cef084-97d3-4beb-8ff0-0d72396f2ae5",
+          "name": "If B2B and > 499 employees",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2100,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a2c9c524-e3dc-411b-ad11-4dcd0f288016",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.tags.includes(\"B2B\") }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "facfad29-ba3e-4111-90e1-8edf67746803",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $json.metrics.employees }}",
+                  "rightValue": 499
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9de60599-0401-441e-a5c5-bed097ac23f2",
+          "name": "Send Email",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            2340,
+            340
+          ],
+          "parameters": {
+            "sendTo": "={{ $('Map email field').item.json.email }}",
+            "message": "=Hi {{ $('Clearbit').item.json.name.givenName }},\n\nthanks so much for contacting us. We'll get back to your soon.\nBest\nYour Name",
+            "options": {},
+            "subject": "Thanks for contacting us",
+            "emailType": "text"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "3",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9830deff-0611-4dae-bd4a-ff893caec257",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            737.3351420060183,
+            300
+          ],
+          "parameters": {
+            "width": 272.6648579939821,
+            "height": 228.48330548901615,
+            "content": "### Setup\n1. Add the `Clearbit` and `Gmail` credentials\n2. Click on `Test Workflow`\n3. Enter your own email (which needs to be a business email to work) in the Form\n4. Check your email\n5. Once you're happy don't forget to activate this workflow"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "19780d88-b510-4390-a1af-5ee9f7ef042f",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1840,
+            300
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 190,
+            "height": 232,
+            "content": "Change the conditions in this node to your needs"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5343deb5-f60a-458a-bcda-b24c74812307",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            300
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 190,
+            "height": 229.23497494011445,
+            "content": "Replace this node with your form of choice"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6c5e8306-a54f-49c3-b364-80e579162826",
+          "name": "Map email field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1280,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "32d5ada7-5cc1-42ad-aad2-7f7f0fb93ace",
+                  "name": "email",
+                  "type": "string",
+                  "value": "={{ $json['What\\'s your business email?'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "87e26cfb-1f20-4c2d-b298-bab7b75ef415",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1240,
+            282.46994988022897
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 190,
+            "height": 247.95993317363863,
+            "content": "Make sure to map the email field of your form here when changing it"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "047e8c03-e2fe-4d4c-94af-99ddc28ac7ea",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2300,
+            280
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 190,
+            "height": 218,
+            "content": "Adjust your message here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2da0e0a3-eb90-4514-a7dd-082a43c9871d",
+          "name": "Submission does not match criteria, don't do anything",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2340,
+            580
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e9ef33e5-5a08-4fe3-9363-c0e537645147",
+          "name": "Filter out personal emails",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1460,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "df6da257-7ec4-4433-9d29-2f12f6f11944",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@gmail.com"
+                },
+                {
+                  "id": "6a66410c-a2e8-494b-b972-751116e49418",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@yahoo.com"
+                },
+                {
+                  "id": "378fbe41-0e37-4756-93ca-bf81bfe8b258",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@outlook.com"
+                },
+                {
+                  "id": "fd05b842-3c11-4e1a-9226-0b0fd359ccab",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@hotmail.com"
+                },
+                {
+                  "id": "6040ea5d-3c15-4513-915b-47a55c24e8a7",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@icloud.com"
+                },
+                {
+                  "id": "ce67ed8b-34f9-4ba2-83d4-cc04cea090bb",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@mail.com"
+                },
+                {
+                  "id": "92c043ae-72de-41d8-887b-9e94755a9060",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@aol.com"
+                },
+                {
+                  "id": "377bcc07-e5a1-4e3a-a4da-4446f316a0b2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@zoho.com"
+                },
+                {
+                  "id": "c09c7057-2833-4085-8cb9-d2f28d853724",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.email }}",
+                  "rightValue": "@gmx"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        }
+      ],
+      "pinData": {
+        "Clearbit": [
+          {
+            "id": "f679f5ef-f7a0-4cb1-8790-fe663a0c092f",
+            "bio": null,
+            "geo": {
+              "lat": 53.5510846,
+              "lng": 9.9936819,
+              "city": "Hamburg",
+              "state": "Hamburg",
+              "country": "Germany",
+              "stateCode": "HH",
+              "countryCode": "DE"
+            },
+            "name": {
+              "fullName": "Niklas Hatje",
+              "givenName": "Niklas",
+              "familyName": "Hatje"
+            },
+            "site": null,
+            "email": "niklas@n8n.io",
+            "fuzzy": false,
+            "avatar": null,
+            "github": {
+              "id": null,
+              "blog": null,
+              "avatar": null,
+              "handle": null,
+              "company": null,
+              "followers": null,
+              "following": null
+            },
+            "twitter": {
+              "id": null,
+              "bio": null,
+              "site": null,
+              "avatar": null,
+              "handle": null,
+              "location": null,
+              "statuses": null,
+              "favorites": null,
+              "followers": null,
+              "following": null
+            },
+            "facebook": {
+              "handle": null
+            },
+            "gravatar": {
+              "urls": [],
+              "avatar": null,
+              "handle": null,
+              "avatars": []
+            },
+            "linkedin": {
+              "handle": "in/niklashatje"
+            },
+            "location": "Hamburg, HH, DE",
+            "timeZone": "Europe/Berlin",
+            "indexedAt": "2024-01-24T15:49:16.888Z",
+            "utcOffset": 1,
+            "employment": {
+              "name": "n8n",
+              "role": null,
+              "title": "Senior Produktmanager",
+              "domain": "n8n.io",
+              "subRole": null,
+              "seniority": "manager"
+            },
+            "googleplus": {
+              "handle": null
+            },
+            "emailProvider": false
+          }
+        ],
+        "Enrich Company": [
+          {
+            "id": "546ba3f6-a6b7-41a1-aed8-4f9bba4119e8",
+            "geo": {
+              "lat": 52.5297761,
+              "lng": 13.3892831,
+              "city": "Berlin",
+              "state": "Berlin",
+              "country": "Germany",
+              "stateCode": "BE",
+              "postalCode": "10115",
+              "streetName": "Borsigstraße",
+              "subPremise": null,
+              "countryCode": "DE",
+              "streetNumber": "27",
+              "streetAddress": "27 Borsigstraße"
+            },
+            "logo": "https://logo.clearbit.com/n8n.io",
+            "name": "n8n",
+            "site": {
+              "phoneNumbers": [],
+              "emailAddresses": []
+            },
+            "tags": [
+              "Information Technology & Services",
+              "Computer Programming",
+              "Software",
+              "Professional Services",
+              "Computers",
+              "E-commerce",
+              "Technology",
+              "B2B",
+              "B2C",
+              "SAAS",
+              "Mobile"
+            ],
+            "tech": [
+              "mailgun",
+              "cloud_flare",
+              "workable",
+              "google_tag_manager",
+              "google_apps",
+              "typeform",
+              "google_analytics",
+              "facebook_advertiser",
+              "stripe"
+            ],
+            "type": "private",
+            "phone": null,
+            "domain": "n8n.io",
+            "parent": {
+              "domain": null
+            },
+            "ticker": null,
+            "metrics": {
+              "raised": 13500000,
+              "employees": 550,
+              "marketCap": null,
+              "alexaUsRank": null,
+              "trafficRank": "high",
+              "annualRevenue": null,
+              "fiscalYearEnd": null,
+              "employeesRange": "51-250",
+              "alexaGlobalRank": 61323,
+              "estimatedAnnualRevenue": "$10M-$50M"
+            },
+            "twitter": {
+              "id": "1068479892537384960",
+              "bio": "n8n is an extendable workflow automation tool which enables you to connect anything to everything via its open, fair-code model.",
+              "site": "https://t.co/F1fzJ95bij",
+              "avatar": "https://pbs.twimg.com/profile_images/1536335358803251202/-gASF0c6_normal.png",
+              "handle": "n8n_io",
+              "location": "Berlin, Germany",
+              "followers": 7238,
+              "following": 1
+            },
+            "category": {
+              "sector": "Information Technology",
+              "sicCode": "73",
+              "gicsCode": "45102010",
+              "industry": "Internet Software & Services",
+              "naicsCode": "54",
+              "sic4Codes": [
+                "7371"
+              ],
+              "naics6Codes": [
+                "541511"
+              ],
+              "subIndustry": "Internet Software & Services",
+              "industryGroup": "Software & Services",
+              "naics6Codes2022": [
+                "541511"
+              ]
+            },
+            "facebook": {
+              "likes": null,
+              "handle": null
+            },
+            "linkedin": {
+              "handle": "company/n8n"
+            },
+            "location": "Borsigstraße 27, 10115 Berlin, Germany",
+            "timeZone": "Europe/Berlin",
+            "indexedAt": "2024-02-08T21:30:12.524Z",
+            "legalName": null,
+            "utcOffset": 1,
+            "crunchbase": {
+              "handle": null
+            },
+            "description": "n8n.io is a powerful workflow automation tool that enables you to connect anything to everything. It is a free and open-source tool that can be installed on-premises, downloaded as a desktop app, or used as a cloud service. With n8n, you can automate b...",
+            "foundedYear": 2019,
+            "identifiers": {
+              "usCIK": null,
+              "usEIN": null
+            },
+            "domainAliases": [
+              "n8n.cloud",
+              "n8n.com"
+            ],
+            "emailProvider": false,
+            "techCategories": [
+              "email_delivery_service",
+              "dns",
+              "applicant_tracking_system",
+              "tag_management",
+              "productivity",
+              "form_builder",
+              "analytics",
+              "advertising",
+              "payment"
+            ],
+            "ultimateParent": {
+              "domain": null
+            }
+          }
+        ],
+        "n8n Form Trigger": [
+          {
+            "formMode": "test",
+            "submittedAt": "2024-02-21T10:06:56.002Z",
+            "What's your role?": "Product",
+            "What's your business email?": "niklas@n8n.io"
+          }
+        ]
+      },
+      "connections": {
+        "Clearbit": {
+          "main": [
+            [
+              {
+                "node": "Enrich Company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Enrich Company": {
+          "main": [
+            [
+              {
+                "node": "If B2B and > 499 employees",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map email field": {
+          "main": [
+            [
+              {
+                "node": "Filter out personal emails",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "n8n Form Trigger": {
+          "main": [
+            [
+              {
+                "node": "Map email field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter out personal emails": {
+          "main": [
+            [
+              {
+                "node": "Clearbit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If B2B and > 499 employees": {
+          "main": [
+            [
+              {
+                "node": "Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Submission does not match criteria, don't do anything",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 13,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.clearbit": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Niklas Hatje",
+      "username": "nik8n",
+      "bio": "Product Manager at n8n - Responsible for the creator program",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/niklashatje/"
+      ],
+      "avatar": "https://gravatar.com/avatar/e16a4426e166713c34626bdde856b1cd15bb6787481a7ead9b74318f19e6259d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 218,
+        "icon": "file:clearbit.svg",
+        "name": "n8n-nodes-base.clearbit",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clearbit/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clearbit/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Clearbit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MiIgaGVpZ2h0PSI3MiI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTAlIiB4Mj0iMTAwJSIgeTE9IjAlIiB5Mj0iMTAwJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI0RFRjJGRSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0RCRjFGRSIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMCUiIHgyPSI1MCUiIHkxPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1N0JDRkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1MUI1RkQiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjM3LjUlIiB4Mj0iNjIuNSUiIHkxPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxQ0E3RkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxNDhDRkMiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik03MiAzNnYxNi43N2wtLjAwNC44NjhjLS4wNiA2LjAzNS0uNzUgOC4zNTMtMiAxMC42ODhhMTMuNjMgMTMuNjMgMCAwIDEtNS42NyA1LjY3bC0uMzI2LjE3MUM2MS42NTggNzEuMzY0IDU5LjE2IDcyIDUyLjc3IDcySDM2VjM2eiIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik02NC4zMjYgMi4wMDNhMTMuNjMgMTMuNjMgMCAwIDEgNS42NyA1LjY3bC4xNzEuMzI3QzcxLjM2NCAxMC4zNDIgNzIgMTIuODQgNzIgMTkuMjNWMzZIMzZWMGgxNi43N2M2LjY4NyAwIDkuMTEyLjY5NiAxMS41NTYgMi4wMDMiLz48cGF0aCBmaWxsPSJ1cmwoI2MpIiBkPSJNMzYgMHY3MkgxOS4yM2wtLjg2OC0uMDA0Yy02LjAzNS0uMDYtOC4zNTMtLjc1LTEwLjY4OC0yYTEzLjYzIDEzLjYzIDAgMCAxLTUuNjctNS42N0wxLjgzMiA2NEMuNjM2IDYxLjY1OCAwIDU5LjE2IDAgNTIuNzdWMTkuMjNjMC02LjY4Ny42OTYtOS4xMTIgMi4wMDMtMTEuNTU2YTEzLjYzIDEzLjYzIDAgMCAxIDUuNjctNS42N0w4IDEuODMyQzEwLjM0Mi42MzYgMTIuODQgMCAxOS4yMyAweiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Clearbit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

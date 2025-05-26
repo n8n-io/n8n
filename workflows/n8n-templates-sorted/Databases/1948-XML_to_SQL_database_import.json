@@ -1,0 +1,534 @@
+{
+  "workflow": {
+    "id": 1948,
+    "name": "XML to SQL database import",
+    "views": 1969,
+    "recentViews": 0,
+    "totalViews": 1969,
+    "createdAt": "2023-09-19T15:39:21.494Z",
+    "description": "This is an example workflow that imports an XML file into an SQL database.\n- The ReadBinaryFiles node loads the XML file from the server.\n- Then the Code node extracts the file content from the binary buffer.\n- Afterwards, an XML node converts the XML string into a JSON structure.\n- Finally, in the MySQL node inserts the data records into the SQL table.\n\nIn the upper part of the workflow there is another MySQL node that is disabled. This node creates a new table with all the required variables based on the sample SQL database: https://www.mysqltutorial.org/mysql-sample-database.aspx",
+    "workflow": {
+      "id": "5x5q3sta3Qh0MdIX",
+      "meta": {
+        "instanceId": "fb924c73af8f703905bc09c9ee8076f48c17b596ed05b18c0ff86915ef8a7c4a"
+      },
+      "name": "XML usecase: import XML data",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "19a81ae3-6ef6-46b0-aaa7-2ddcad1c86cb",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            700,
+            360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "495356fb-8132-40c2-bfd8-559cd1a03bf8",
+          "name": "Read Binary Files",
+          "type": "n8n-nodes-base.readBinaryFiles",
+          "position": [
+            900,
+            360
+          ],
+          "parameters": {
+            "fileSelector": "/home/node/.n8n/intermediate.xml"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9c88e06c-66be-4f62-a30e-811171fec34b",
+          "name": "Item Lists",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            1500,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "Products.Product"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a8aeb5c8-bb7a-4990-8a07-565c2d9e2760",
+          "name": "Extract binary data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1100,
+            360
+          ],
+          "parameters": {
+            "jsCode": "let binaryDataBufferItem = await this.helpers.getBinaryDataBuffer(0, 'data');\nvar data = binaryDataBufferItem.toString('utf8')\n\nreturn {\"data\": data};"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7a37802d-e0b7-4520-8832-8d43fa5815a0",
+          "name": "XML to JSON",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            1300,
+            360
+          ],
+          "parameters": {
+            "options": {
+              "trim": false,
+              "attrkey": "$",
+              "normalize": false,
+              "mergeAttrs": true,
+              "ignoreAttrs": false,
+              "normalizeTags": false
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e5bca22c-7941-46d0-ba2d-d375cb4735c9",
+          "name": "Add new records",
+          "type": "n8n-nodes-base.mySql",
+          "position": [
+            1700,
+            360
+          ],
+          "parameters": {
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "new_table",
+              "cachedResultName": "new_table"
+            },
+            "options": {
+              "detailedOutput": true
+            },
+            "dataMode": "defineBelow",
+            "valuesToSend": {
+              "values": [
+                {
+                  "value": "={{ $json.Code }}",
+                  "column": "productCode"
+                },
+                {
+                  "value": "={{ $json.Name }}",
+                  "column": "productName"
+                },
+                {
+                  "value": "={{ $json.Line }}",
+                  "column": "productLine"
+                },
+                {
+                  "value": "={{ $json.Scale }}",
+                  "column": "productScale"
+                },
+                {
+                  "value": "={{ $json.Description }}",
+                  "column": "productDescription"
+                },
+                {
+                  "value": "={{ $json.Price }}",
+                  "column": "MSRP"
+                },
+                {
+                  "value": "NA",
+                  "column": "productVendor"
+                },
+                {
+                  "value": "0",
+                  "column": "quantityInStock"
+                },
+                {
+                  "value": "0",
+                  "column": "buyPrice"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "mySql": {
+              "id": "EEPqCgKBDiRRZ3ua",
+              "name": "db4free MySQL"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b787244f-aebf-4ec7-ba84-4b9409e30817",
+          "name": "Create new table",
+          "type": "n8n-nodes-base.mySql",
+          "disabled": true,
+          "position": [
+            900,
+            80
+          ],
+          "parameters": {
+            "query": "CREATE TABLE IF NOT EXISTS new_table AS SELECT * FROM products;\nTRUNCATE new_table;\n",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "mySql": {
+              "id": "EEPqCgKBDiRRZ3ua",
+              "name": "db4free MySQL"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "49b8214d-bc98-441c-847d-158a35c6fefa",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            720,
+            -40
+          ],
+          "parameters": {
+            "width": 503,
+            "height": 317,
+            "content": "### Activate and execute this node only when needed.\nCREATE TABLE IF NOT EXISTS new_table AS SELECT * FROM products;\nTRUNCATE new_table;"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "28533467-5e12-4f7c-9310-8c88708bcff9",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            560
+          ],
+          "parameters": {
+            "width": 553.5746606334839,
+            "height": 268.9366515837105,
+            "content": "## This is a content of the example XML file.\n### Please use it if the file was not already created\n\n<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Products>\n  <Product Price=\"69.26\" Code=\"S24_2360\">\n    <Name>1982 Ducati 900 Monster</Name>\n    <Line>Motorcycles</Line>\n    <Scale>1:24</Scale>\n    <Description>Features two-tone paint with chrome accents, superior die-cast detail , rotating wheels , working kick stand</Description>\n  </Product>\n  <Product Price=\"118.94\" Code=\"S10_2016\">\n    <Name>1996 Moto Guzzi 1100i</Name>\n    <Line>Motorcycles</Line>\n    <Scale>1:10</Scale>\n    <Description>Official Moto Guzzi logos and insignias, saddle bags located on side of motorcycle, detailed engine, working steering, working suspension, two leather seats, luggage rack, dual exhaust pipes, small saddle bag located on handle bars, two-tone paint with chrome accents, superior die-cast detail , rotating wheels , working kick stand, diecast metal with plastic parts and baked enamel finish.</Description>\n  </Product>\n  <Product Price=\"148.80\" Code=\"S18_4721\">\n    <Name>1957 Corvette Convertible</Name>\n    <Line>Classic Cars</Line>\n    <Scale>1:18</Scale>\n    <Description>1957 die cast Corvette Convertible in Roman Red with white sides and whitewall tires. 1:18 scale quality die-cast with detailed engine and underbvody. Now you can own The Classic Corvette.</Description>\n  </Product>\n  <Product Price=\"90.52\" Code=\"S700_2047\">\n    <Name>HMS Bounty</Name>\n    <Line>Ships</Line>\n    <Scale>1:700</Scale>\n    <Description>Measures 30 inches Long x 27 1/2 inches High x 4 3/4 inches Wide. &#xD;\nMany extras including rigging, long boats, pilot house, anchors, etc. Comes with three masts, all square-rigged.</Description>\n  </Product>\n  <Product Price=\"64.64\" Code=\"S32_3522\">\n    <Name>1996 Peterbilt 379 Stake Bed with Outrigger</Name>\n    <Line>Trucks and Buses</Line>\n    <Scale>1:32</Scale>\n    <Description>This model features, opening doors, detailed engine, working steering, tinted windows, detailed interior, die-struck logos, removable stakes operating outriggers, detachable second trailer, functioning 360-degree self loader, precision molded resin trailer and trim, baked enamel finish on cab</Description>\n  </Product>\n  <Product Price=\"86.02\" Code=\"S18_3029\">\n    <Name>1999 Yamaha Speed Boat</Name>\n    <Line>Ships</Line>\n    <Scale>1:18</Scale>\n    <Description>Exact replica. Wood and Metal. Many extras including rigging, long boats, pilot house, anchors, etc. Comes with three masts, all square-rigged.</Description>\n  </Product>\n  <Product Price=\"60.57\" Code=\"S18_2625\">\n    <Name>1936 Harley Davidson El Knucklehead</Name>\n    <Line>Motorcycles</Line>\n    <Scale>1:18</Scale>\n    <Description>Intricately detailed with chrome accents and trim, official die-struck logos and baked enamel finish.</Description>\n  </Product>\n  <Product Price=\"107.57\" Code=\"S18_3233\">\n    <Name>1985 Toyota Supra</Name>\n    <Line>Classic Cars</Line>\n    <Scale>1:18</Scale>\n    <Description>This model features soft rubber tires, working steering, rubber mud guards, authentic Ford logos, detailed undercarriage, opening doors and hood, removable split rear gate, full size spare mounted in bed, detailed interior with opening glove box</Description>\n  </Product>\n  <Product Price=\"83.86\" Code=\"S24_3816\">\n    <Name>1940 Ford Delivery Sedan</Name>\n    <Line>Vintage Cars</Line>\n    <Scale>1:24</Scale>\n    <Description>Chrome Trim, Chrome Grille, Opening Hood, Opening Doors, Opening Trunk, Detailed Engine, Working Steering System. Color black.</Description>\n  </Product>\n  <Product Price=\"112.70\" Code=\"S24_1578\">\n    <Name>1997 BMW R 1100 S</Name>\n    <Line>Motorcycles</Line>\n    <Scale>1:24</Scale>\n    <Description>Detailed scale replica with working suspension and constructed from over 70 parts</Description>\n  </Product>\n  <Product Price=\"57.80\" Code=\"S24_1444\">\n    <Name>1970 Dodge Coronet</Name>\n    <Line>Classic Cars</Line>\n    <Scale>1:24</Scale>\n    <Description>1:24 scale die-cast about 18\" long doors open, hood opens and rubber wheels</Description>\n  </Product>\n  <Product Price=\"136.59\" Code=\"S18_3140\">\n    <Name>1903 Ford Model A</Name>\n    <Line>Vintage Cars</Line>\n    <Scale>1:18</Scale>\n    <Description>Features opening trunk,  working steering system</Description>\n  </Product>\n  <Product Price=\"90.87\" Code=\"S24_2766\">\n    <Name>1949 Jaguar XK 120</Name>\n    <Line>Classic Cars</Line>\n    <Scale>1:24</Scale>\n    <Description>Precision-engineered from original Jaguar specification in perfect scale ratio. Features opening doors, superb detail and craftsmanship, working steering system, opening forward compartment, opening rear trunk with removable spare, 4 wheel independent spring suspension as well as factory baked enamel finish.</Description>\n  </Product>\n  <Product Price=\"116.67\" Code=\"S18_1097\">\n    <Name>1940 Ford Pickup Truck</Name>\n    <Line>Trucks and Buses</Line>\n    <Scale>1:18</Scale>\n    <Description>This model features soft rubber tires, working steering, rubber mud guards, authentic Ford logos, detailed undercarriage, opening doors and hood,  removable split rear gate, full size spare mounted in bed, detailed interior with opening glove box</Description>\n  </Product>\n  <Product Price=\"54.60\" Code=\"S72_3212\">\n    <Name>Pont Yacht</Name>\n    <Line>Ships</Line>\n    <Scale>1:72</Scale>\n    <Description>Measures 38 inches Long x 33 3/4 inches High. Includes a stand.&#xD;\nMany extras including rigging, long boats, pilot house, anchors, etc. Comes with 2 masts, all square-rigged</Description>\n  </Product>\n  <Product Price=\"141.28\" Code=\"S18_3685\">\n    <Name>1948 Porsche Type 356 Roadster</Name>\n    <Line>Classic Cars</Line>\n    <Scale>1:18</Scale>\n    <Description>This model features working front and rear suspension on accurately replicated and actuating shock absorbers as well as opening engine cover, rear stabilizer flap,  and 4 opening doors.</Description>\n  </Product>\n</Products>"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "25ab0ab6-6689-48ad-967e-2a2fb0743ece",
+      "connections": {
+        "Item Lists": {
+          "main": [
+            [
+              {
+                "node": "Add new records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "XML to JSON": {
+          "main": [
+            [
+              {
+                "node": "Item Lists",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Read Binary Files": {
+          "main": [
+            [
+              {
+                "node": "Extract binary data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract binary data": {
+          "main": [
+            [
+              {
+                "node": "XML to JSON",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Read Binary Files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": null,
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 32,
+        "icon": "fa:file-import",
+        "name": "n8n-nodes-base.readBinaryFiles",
+        "codex": {
+          "data": {
+            "alias": [
+              "Text",
+              "Open",
+              "Import"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Read Binary Files",
+          "color": "#44AA44"
+        },
+        "iconData": {
+          "icon": "file-import",
+          "type": "icon"
+        },
+        "displayName": "Read Binary Files",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

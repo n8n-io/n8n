@@ -1,0 +1,977 @@
+{
+  "workflow": {
+    "id": 1998,
+    "name": "WordPress-to-Pipedrive Integration: Automating Contact & Lead Management",
+    "views": 1106,
+    "recentViews": 0,
+    "totalViews": 1106,
+    "createdAt": "2023-11-29T14:33:07.637Z",
+    "description": "## How it Works:\n\n- **Capture Contact Requests:** This template efficiently handles contact requests coming through a WordPress website using the Contact Form 7 (CF7) plugin with a webhook extension.\n- **Contact Management:** It automatically creates or updates contacts in Pipedrive upon receiving a new request.\n- **Lead Management:** Each contact request is securely stored in the lead inbox of Pipedrive, ensuring no opportunity is missed.\n- **Task Creation:** For each new contact or update, the workflow triggers the creation of a related task, streamlining follow-up actions.\n- **Note Attachment:** A comprehensive note containing all details from the contact request is attached to the corresponding lead, ensuring that all information is readily accessible.\n\n## Step-by-Step Guide:\n**Estimated Setup Time:** The setup process is straightforward and can be completed quickly. Specific time may vary depending on your familiarity with n8n and the systems involved.\n\nDetailed setup instructions are provided within the workflow via sticky notes. These notes offer in-depth guidance for configuring each component of the template to suit your specific needs.",
+    "workflow": {
+      "id": "KwfGSgwPQrcD92Gg",
+      "meta": {
+        "instanceId": "10a5c562c9a735159d1eb02179d8395916de079abee02b87ec2c2b97f278000a"
+      },
+      "name": "WordPress-to-Pipedrive Integration: Automating Contact & Lead Management",
+      "tags": [
+        {
+          "id": "vlXJOdNziJAjaypM",
+          "name": "Templates",
+          "createdAt": "2023-11-29T10:41:32.132Z",
+          "updatedAt": "2023-11-29T10:41:32.132Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "51bde0f3-2300-4a85-89d3-cf7d7b43c94d",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -120,
+            0
+          ],
+          "parameters": {
+            "width": 611,
+            "height": 1168.7934508816131,
+            "content": "### Webhook Setup for Contact Form 7 in WordPress\n* Install Contact Form 7: Begin by installing the Contact Form 7 plugin in your WordPress site. This plugin allows for easy creation and management of contact forms. You can download and install it from the WordPress plugin directory here: [Contact Form 7 Plugin](https://example.com/).\n* Use CF7 Webhook Extension: To enable webhook functionality in CF7, utilize the CF7 Webhook extension. This extension allows you to send form data to a specified URL, which is crucial for integrating with your workflow. You can find more information and download it here: [CF7 Webhook Extension](https://example.com/).\n\n### Configuring the Webhook with Contact Form 7 in WordPress\n* Obtain n8n Webhook URL: First, retrieve your n8n webhook URL. This is the specific address where the data from your WordPress contact form will be sent.\n* Update Contact Form 7 with Custom Form Code: In your WordPress dashboard, go to the Contact Form 7 plugin. Create a new form or edit an existing one, and insert the following code to create a custom contact form: \n\n<label> Name [text* your-name autocomplete:name] </label>\n<label> E-Mail-Adresse [email* your-email autocomplete:email] </label> \n<label> Unternehmen [text* company] </label> \n[submit \"Senden\"]    \n\nThis code will generate a form with fields for Name, Email Address, and Company.\n* Insert n8n Webhook URL in the Webhook Field: In the settings of your CF7 form, locate the webhook field. Here, paste the n8n webhook URL that you obtained in step 1. This step is crucial to ensure that the data from your form is sent to your n8n workflow.\n* Save and Test Your Form: After configuring the webhook URL, save your form. It's recommended to test the form to ensure that data is correctly being transmitted to your n8n webhook.\n\n### Retrieving API Key in Pipedrive\n* Login to Pipedrive: Sign in to your Pipedrive account.\n* Access Settings: Navigate to your personal settings. This is usually accessible via your profile icon in the top right corner of the Pipedrive interface.\n* Find API Key: Look for the section labeled “API” or “API Key”. In this section, your personal API key will be displayed. This key is unique to your account and allows applications like n8n to access your Pipedrive data.\n* Copy the API Key: Copy the displayed API key.\n\n### Setting Up Pipedrive Credentials in n8n\n* Add Credentials: Click on the option in the node to add or select new credentials. Choose “Pipedrive API” as the type of credentials.\n* Enter the API Key: Paste the API key you copied from Pipedrive into the appropriate field.\n* Save the Credentials: Save the credentials (name it). Your n8n workflow can now communicate with Pipedrive.\n\n![Source example](https://kapio.eu/kapio_logo.jpeg)\nYou need help: Then write to us at hallo@kapio.eu\nWebsite: www.kapio.eu"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ba7c4fdd-5502-408b-ba04-484f3d3b6240",
+          "name": "Create Lead",
+          "type": "n8n-nodes-base.pipedrive",
+          "position": [
+            2020,
+            400
+          ],
+          "parameters": {
+            "title": "=Website request: {{ $('Webhook').item.json.body.company }}",
+            "resource": "lead",
+            "person_id": "={{ $json.person_id }}",
+            "associateWith": "person",
+            "additionalFields": {
+              "label_ids": [
+                "2a875ff0-eb41-11ed-80d0-59a724a2c908"
+              ]
+            }
+          },
+          "credentials": {
+            "pipedriveApi": {
+              "id": "20",
+              "name": "Pipedrive kapio"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0a211c74-0ea2-4385-a19f-5d35603ca64f",
+          "name": "Search Person in Pipedrive",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            900,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.pipedrive.com/v1/itemSearch?term={{ $json.body['your-email'] }}&field_key=email&exact_match=true&item_types=person",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "pipedriveApi"
+          },
+          "credentials": {
+            "pipedriveApi": {
+              "id": "20",
+              "name": "Pipedrive kapio"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "79fd1b5d-874f-4ffd-ab3c-1969fb71e7c2",
+          "name": "Check if person is in Pipedrive and output the ID",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1120,
+            420
+          ],
+          "parameters": {
+            "jsCode": "const inputItems = $input.all();\n\n// Check if there are items and that the items array is not empty\nconst hasItems = inputItems.length > 0 && inputItems[0]?.json?.data?.items.length > 0;\n\n// Retrieve the ID of the first item if available\nconst firstItemId = hasItems ? inputItems[0].json.data.items[0].item.id : null;\n\nreturn { hasItems, firstItemId };\n"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "9664b373-11f8-4dbb-adcf-5db14498f03d",
+          "name": "IF Person exists in Pipedrive",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1320,
+            420
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ $json.hasItems }}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d98569ea-9879-4e65-b310-82f199abe436",
+          "name": "Pipedrive",
+          "type": "n8n-nodes-base.pipedrive",
+          "position": [
+            1540,
+            520
+          ],
+          "parameters": {
+            "name": "={{ $('Webhook').item.json.body[\"your-name\"] }}",
+            "resource": "person",
+            "additionalFields": {
+              "email": [
+                "={{ $('Webhook').item.json.body[\"your-email\"] }}"
+              ]
+            }
+          },
+          "credentials": {
+            "pipedriveApi": {
+              "id": "20",
+              "name": "Pipedrive kapio"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1afebef2-cb8c-4ef7-bb37-820b9d20f8fd",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            720,
+            420
+          ],
+          "webhookId": "d296fe58-4ba1-4089-ac91-88cd07a40571",
+          "parameters": {
+            "path": "d296fe58-4ba1-4089-ac91-88cd07a40571",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "67813ff5-2017-4850-b9b9-2267f1bc60e6",
+          "name": "New Person ID",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1820,
+            400
+          ],
+          "parameters": {
+            "jsCode": "// Check whether the value from the previous node is available\nlet personId;\n\n// Check whether the value of 'IF Person exists in Pipedrive' node is present\nif ($('IF Person exists in Pipedrive').item.json.firstItemId) {\n    personId = $('IF Person exists in Pipedrive').item.json.firstItemId;\n} \n// If the above value is not available, check whether a value of '$('Pipedrive').item.json.id' is available\nelse if ($('Pipedrive').item.json.id) {\n    personId = $('Pipedrive').item.json.id;\n}\n\n// If a value was found for personId, it is output as a new variable\nif (personId) {\n    return { person_id: personId };\n} else {\n    return { error: 'Keine Person-ID gefunden' };\n}\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "bd5b9b7d-0450-4739-9956-51aa8339d181",
+          "name": "Create Note",
+          "type": "n8n-nodes-base.pipedrive",
+          "position": [
+            2180,
+            400
+          ],
+          "parameters": {
+            "content": "=Website-Request:<br>\nName: {{ $('Webhook').item.json.body[\"your-name\"] }} <br>\nE-Mail: {{ $('Webhook').item.json.body[\"your-email\"] }}<br>\nCompany: {{ $('Webhook').item.json.body.company }}",
+            "resource": "note",
+            "additionalFields": {
+              "lead_id": "={{ $json.id }}",
+              "person_id": "={{ $('New Person ID').item.json.person_id }}"
+            }
+          },
+          "credentials": {
+            "pipedriveApi": {
+              "id": "20",
+              "name": "Pipedrive kapio"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b864919c-1438-4705-8822-0752c88f3a76",
+          "name": "Create Activity",
+          "type": "n8n-nodes-base.pipedrive",
+          "position": [
+            2340,
+            400
+          ],
+          "parameters": {
+            "type": "task",
+            "subject": "Contacting new website lead",
+            "resource": "activity",
+            "additionalFields": {
+              "person_id": "={{ $('New Person ID').item.json.person_id }}",
+              "customProperties": {
+                "property": [
+                  {
+                    "name": "lead_id",
+                    "value": "={{ $('Create Lead').item.json.id }}"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "pipedriveApi": {
+              "id": "20",
+              "name": "Pipedrive kapio"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "1392a3ca-f07b-4acf-8ff5-3e692445696d",
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Search Person in Pipedrive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Pipedrive": {
+          "main": [
+            [
+              {
+                "node": "New Person ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Lead": {
+          "main": [
+            [
+              {
+                "node": "Create Note",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Note": {
+          "main": [
+            [
+              {
+                "node": "Create Activity",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New Person ID": {
+          "main": [
+            [
+              {
+                "node": "Create Lead",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Person in Pipedrive": {
+          "main": [
+            [
+              {
+                "node": "Check if person is in Pipedrive and output the ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF Person exists in Pipedrive": {
+          "main": [
+            [
+              {
+                "node": "New Person ID",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Pipedrive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if person is in Pipedrive and output the ID": {
+          "main": [
+            [
+              {
+                "node": "IF Person exists in Pipedrive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 10,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.pipedrive": {
+          "count": 4
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "kapio",
+      "username": "mmiersch",
+      "bio": "Hallo! Ich bin Martin, Co-Founder von kapio. Wir haben uns auf die nahtlose Integration von Pipedrive spezialisiert, um dein Unternehmen digital zu stärken. Durch die Optimierung deiner Prozesse und die Auswahl spezifisch angepasster Tools bieten wir eine effiziente Alternative zu kostspieligen Komplettlösungen. Individuelle Bedürfnisse stehen bei uns im Fokus. Gemeinsam meistern wir deine digitalen Herausforderungen!",
+      "verified": false,
+      "links": [
+        "https://www.kapio.eu"
+      ],
+      "avatar": "https://gravatar.com/avatar/96f70fbd63a7b42d4976880ca63f711d82a11fa78708a8b215f195a61b503496?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 28,
+        "icon": "file:pipedrive.svg",
+        "name": "n8n-nodes-base.pipedrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pipedrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/pipedrive/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Pipedrive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMzIgMzIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PG1hc2sgaWQ9Im1hc2swMDEiIG1hc2stdHlwZT0iYWxwaGEiIG1hc2tVbml0cz0idXNlclNwYWNlT25Vc2UiIHg9IjAiIHk9IjAiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0iIzI2MjkyQyI+PHBhdGggZD0iTTIuNzM2OTQgMEgyOS4yNjMxQzMwLjc3NDYgMCAzMiAxLjIyNTA3IDMyIDIuNzM2OTVWMjkuMjYzMUMzMiAzMC43NzQ2IDMwLjc3NDkgMzIgMjkuMjYzMSAzMkgyLjczNjk0QzEuMjI1MzcgMzIgMCAzMC43NzQ5IDAgMjkuMjYzMVYyLjczNjk1QzAgMS4yMjUzNyAxLjIyNTA4IDAgMi43MzY5NCAwWiIgZmlsbD0iIzI2MjkyQyI+PC9wYXRoPjwvbWFzaz48ZyBtYXNrPSJ1cmwoI21hc2swMDEpIiBmaWxsPSIjMjYyOTJDIj48cGF0aCBkPSJNMi43MzY5NCAwSDI5LjI2MzFDMzAuNzc0NiAwIDMyIDEuMjI1MDcgMzIgMi43MzY5NVYyOS4yNjMxQzMyIDMwLjc3NDYgMzAuNzc0OSAzMiAyOS4yNjMxIDMySDIuNzM2OTRDMS4yMjUzNyAzMiAwIDMwLjc3NDkgMCAyOS4yNjMxVjIuNzM2OTVDMCAxLjIyNTM3IDEuMjI1MDggMCAyLjczNjk0IDBaIiBmaWxsPSIjMjYyOTJDIj48L3BhdGg+PC9nPjxtYXNrIGlkPSJtYXNrMSIgbWFzay10eXBlPSJhbHBoYSIgbWFza1VuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeD0iNyIgeT0iNCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjI0IiBmaWxsPSIjMjYyOTJDIj48cGF0aCBkPSJNMTMuMzM0OCAxMy4xNzY2QzEzLjMzNDggMTUuMzE5NCAxNC40MjE5IDE3LjYzMTEgMTYuODE0MSAxNy42MzExQzE4LjU4ODEgMTcuNjMxMSAyMC4zODE5IDE2LjI0NjEgMjAuMzgxOSAxMy4xNDUxQzIwLjM4MTkgMTAuNDI2NCAxOC45NzE4IDguNjAxMjcgMTYuODczMSA4LjYwMTI3QzE1LjE2MyA4LjYwMTI3IDEzLjMzNDggOS44MDI1OCAxMy4zMzQ4IDEzLjE3NjZaTTE3LjcxNTggNC42MzE1OUMyMi4wMDUxIDQuNjMxNTkgMjQuODg5MSA4LjAyODczIDI0Ljg4OTEgMTMuMDg1NkMyNC44ODkxIDE4LjA2MjkgMjEuODUwOSAyMS41Mzc4IDE3LjUwNzYgMjEuNTM3OEMxNS40MzY4IDIxLjUzNzggMTQuMTEwMyAyMC42NTA5IDEzLjQxNjggMjAuMDA4OUMxMy40MjE3IDIwLjE2MTEgMTMuNDI1IDIwLjMzMTYgMTMuNDI1IDIwLjUxMzZWMjcuMjYzMkg4Ljk4MTY0VjkuMjc5N0M4Ljk4MTY0IDkuMDE4MjQgOC44OTgwMiA4LjkzNTUyIDguNjM4OTcgOC45MzU1Mkg3LjExMDg1VjQuOTk3MjlIMTAuODM5M0MxMi41NTYgNC45OTcyOSAxMi45OTU0IDUuODcwOTcgMTMuMDc5IDYuNTQ0NDRDMTMuNzc1OSA1Ljc2MzQyIDE1LjIyMDQgNC42MzE1OSAxNy43MTU4IDQuNjMxNTlaIiBmaWxsPSIjMjYyOTJDIj48L3BhdGg+PC9tYXNrPjxnIG1hc2s9InVybCgjbWFzazEpIiBmaWxsPSIjMjYyOTJDIj48cGF0aCBkPSJNMTMuMzM0OCAxMy4xNzY2QzEzLjMzNDggMTUuMzE5NCAxNC40MjE5IDE3LjYzMTEgMTYuODE0MSAxNy42MzExQzE4LjU4ODEgMTcuNjMxMSAyMC4zODE5IDE2LjI0NjEgMjAuMzgxOSAxMy4xNDUxQzIwLjM4MTkgMTAuNDI2NCAxOC45NzE4IDguNjAxMjcgMTYuODczMSA4LjYwMTI3QzE1LjE2MyA4LjYwMTI3IDEzLjMzNDggOS44MDI1OCAxMy4zMzQ4IDEzLjE3NjZaTTE3LjcxNTggNC42MzE1OUMyMi4wMDUxIDQuNjMxNTkgMjQuODg5MSA4LjAyODczIDI0Ljg4OTEgMTMuMDg1NkMyNC44ODkxIDE4LjA2MjkgMjEuODUwOSAyMS41Mzc4IDE3LjUwNzYgMjEuNTM3OEMxNS40MzY4IDIxLjUzNzggMTQuMTEwMyAyMC42NTA5IDEzLjQxNjggMjAuMDA4OUMxMy40MjE3IDIwLjE2MTEgMTMuNDI1IDIwLjMzMTYgMTMuNDI1IDIwLjUxMzZWMjcuMjYzMkg4Ljk4MTY0VjkuMjc5N0M4Ljk4MTY0IDkuMDE4MjQgOC44OTgwMiA4LjkzNTUyIDguNjM4OTcgOC45MzU1Mkg3LjExMDg1VjQuOTk3MjlIMTAuODM5M0MxMi41NTYgNC45OTcyOSAxMi45OTU0IDUuODcwOTcgMTMuMDc5IDYuNTQ0NDRDMTMuNzc1OSA1Ljc2MzQyIDE1LjIyMDQgNC42MzE1OSAxNy43MTU4IDQuNjMxNTlaIiBmaWxsPSIjRkZGRkZGIj48L3BhdGg+PC9nPjwvc3ZnPgo="
+        },
+        "displayName": "Pipedrive",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

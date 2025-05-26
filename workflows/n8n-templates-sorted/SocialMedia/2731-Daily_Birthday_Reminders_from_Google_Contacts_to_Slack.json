@@ -1,0 +1,718 @@
+{
+  "workflow": {
+    "id": 2731,
+    "name": "Daily Birthday Reminders from Google Contacts to Slack",
+    "views": 1547,
+    "recentViews": 1,
+    "totalViews": 1547,
+    "createdAt": "2025-01-15T08:32:01.026Z",
+    "description": "Ensure you never miss a birthday with this automated workflow designed by WeblineIndia. It retrieves your Google Contacts, identifies birthdays happening today, and sends personalized reminders directly to a designated Slack channel. This daily automation keeps your team informed and makes birthday celebrations effortless.\n\n## Steps\n\n### Set Daily Schedule (Cron Node)\n- Configure a Cron node to trigger the workflow daily at a specific time (e.g., 8 AM).\n- This ensures the workflow runs consistently every day to check for birthdays.\n\n### Retrieve Contacts (Google Contacts - Get Contact Node)\n- Use the Google Contacts (Get Contact) node to fetch your contact list.\n- Ensure your contacts have birthday details stored for accurate filtering.\n\n### Filter Birthdays (IF Node)\n- Add an IF Node to compare the current date with each contact’s birthday.\n- Only contacts whose birthdays match today’s date will move to the next step.\n\n### Send Birthday Notifications to Slack (Slack - Send Message Node)\n- Use the Slack node to send a personalized birthday message to your chosen Slack channel (e.g., #general or #birthdays).\n- Customize the message to include the contact’s name, e.g., \"🎉 Today is John Doe's birthday! Let’s celebrate!\"\n- Configure the node to target a specific Slack channel for seamless notifications.\n\n### Activate Workflow\n- Save and activate the workflow.\n\nFrom now on, the workflow will automatically check for birthdays daily and send timely reminders to your Slack team.\n\n## Outcome\nThis hassle-free automation keeps your team engaged and ensures no birthday goes unnoticed. Celebrate special days of your contacts effortlessly and maintain meaningful connections.\n\n## About WeblineIndia\nThis workflow showcases our commitment to delivering [innovative automation solutions](https://www.weblineindia.com/process-automation-solutions.html) that enhance productivity and foster better relationships. Let us help you build the AI automation tools that make a difference.\n\n",
+    "workflow": {
+      "id": "9w5vu5VmXxpdBLWi",
+      "meta": {
+        "instanceId": "14e4c77104722ab186539dfea5182e419aecc83d85963fe13f6de862c875ebfa"
+      },
+      "name": "Send Daily Birthday Reminders from Google Contacts to Slack",
+      "tags": [
+        {
+          "id": "uScnF9NzR3PLIyvU",
+          "name": "Published",
+          "createdAt": "2025-03-21T07:22:28.491Z",
+          "updatedAt": "2025-03-21T07:22:28.491Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "e4de5385-6b00-4245-b06e-3003703a348a",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            80,
+            140
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 8
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "df65de90-d931-450e-bed1-bf8b4f79a090",
+          "name": "Google Contacts",
+          "type": "n8n-nodes-base.googleContacts",
+          "notes": "Get the contact details\n",
+          "position": [
+            300,
+            140
+          ],
+          "parameters": {
+            "fields": [
+              "emailAddresses",
+              "birthdays",
+              "names",
+              "nicknames"
+            ],
+            "options": {},
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "6e3dfeea-b22d-4156-a9a9-a8d5bb610848",
+          "name": "If",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            800,
+            180
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "eff6fe23-651d-474d-8d77-3734e1ac4c13",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.today }}",
+                  "rightValue": "={{ $('Google Contacts').item.json.birthdays }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "32bd420e-11ab-4e82-a732-ed155f36094b",
+          "name": "Slack",
+          "type": "n8n-nodes-base.slack",
+          "notes": "Reminds to the birthday message",
+          "position": [
+            1020,
+            60
+          ],
+          "webhookId": "b5fda056-5b45-49ee-8e09-cd4bc7a2a881",
+          "parameters": {
+            "text": "Todays Birthday of your friend",
+            "select": "channel",
+            "blocksUi": "=Today is {{$json[\"first_name\"]}} {{$json[\"last_name\"]}}'s birthday! 🎉",
+            "channelId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "",
+              "__regex": "https://app.slack.com/client/.*/([a-zA-Z0-9]{2,})"
+            },
+            "messageType": "block",
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "slackOAuth2Api": {
+              "id": "",
+              "name": ""
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.3
+        },
+        {
+          "id": "caa5a301-ff68-4d61-801f-ac8c95edded3",
+          "name": "Filter Contact ",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            560,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "edb146b2-f338-4563-a991-d38613d1d5aa",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $('Google Contacts').item.json.birthdays }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "4a156b56-ab25-4d29-aa1b-8cf00e4114c9",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "width": 1220,
+            "height": 320,
+            "content": "Send Daily Birthday Reminders from Google Contacts to Slack"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b1b04e75-e674-4389-a5ad-ebdcdfedca78",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            360
+          ],
+          "parameters": {
+            "width": 1220,
+            "height": 100,
+            "content": "This workflow automates the process of retrieving your Google Contacts, filtering out the ones with birthdays on the current day, and sending a reminder to a designated Slack channel. By scheduling it to run daily at a specific time, the workflow ensures that you never miss a birthday reminder. Whether for team celebrations, personal reminders, or simply keeping track of important dates, this workflow can be easily customized to notify you or your team about upcoming birthdays directly in Slack."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "22eaeed6-6d9e-430b-8a1d-3848257cf3b2",
+      "connections": {
+        "If": {
+          "main": [
+            [
+              {
+                "node": "Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Contact ": {
+          "main": [
+            [
+              {
+                "node": "If",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Contacts": {
+          "main": [
+            [
+              {
+                "node": "Filter Contact ",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Google Contacts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleContacts": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "WeblineIndia",
+      "username": "weblineindia",
+      "bio": "A Leading Software Engineering, Consulting & Outsourcing Services Company in USA & India serving Clients Globally since 1999.",
+      "verified": true,
+      "links": [
+        "https://www.weblineindia.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/a229d43aefca4588581583c58bb37b4773aebbdf4c1fef86a08bb1d38eae91fa?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 355,
+        "icon": "file:googleContacts.png",
+        "name": "n8n-nodes-base.googleContacts",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecontacts/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous "
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Contacts"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Google Contacts",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

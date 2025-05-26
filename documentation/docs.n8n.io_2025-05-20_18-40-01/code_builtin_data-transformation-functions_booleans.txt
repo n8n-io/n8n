@@ -1,0 +1,29 @@
+URL: https://docs.n8n.io/code/builtin/data-transformation-functions/booleans/
+Scraped_At: 2025-05-20T18:40:49.463359
+
+Booleans
+#
+A reference document listing built-in convenience functions to support data transformation in
+expressions
+for arrays.
+JavaScript in expressions
+You can use any JavaScript in expressions. Refer to
+Expressions
+for more information.
+toInt():
+    Number
+#
+Convert a boolean to a number.
+false
+converts to
+0
+,
+true
+converts to
+1
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

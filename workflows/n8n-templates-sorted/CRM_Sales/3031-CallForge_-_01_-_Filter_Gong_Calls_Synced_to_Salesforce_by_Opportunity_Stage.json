@@ -1,0 +1,1196 @@
+{
+  "workflow": {
+    "id": 3031,
+    "name": "CallForge - 01 - Filter Gong Calls Synced to Salesforce by Opportunity Stage",
+    "views": 765,
+    "recentViews": 3,
+    "totalViews": 765,
+    "createdAt": "2025-02-28T06:21:55.097Z",
+    "description": "![callforgecompressed.png](fileId:1003)\n\n## Workflow Description\n\n### Who is this for?\nThis workflow is designed for **sales and revenue teams** using **Gong and Salesforce** to track and analyze sales calls. It helps automate the extraction, filtering, and preprocessing of Gong call data for further AI analysis.\n\n### What problem is this solving?\nSales teams often generate large amounts of call data, but not all calls are relevant for deeper analysis. This workflow **filters calls** based on predefined criteria, extracts relevant metadata, and **formats the data** before passing it to an AI processing pipeline.\n\n### What this workflow does\n- **Triggers on new Gong calls synced to Salesforce** every hour.\n- **Filters calls based on opportunity stage** (Discovery or Meeting Booked).\n- **Retrieves Gong call details** via API.\n- **Formats call data into a structured JSON object** for AI processing.\n- **Passes the structured data to a Gong Call Preprocessor workflow** for further insights.\n\n### Setup\n1. Ensure that you have connected **Salesforce** and **Gong** APIs with valid credentials.\n2. Modify the Salesforce query in `Get all custom Salesforce Gong Objects` to match your organization’s requirements.\n3. Set the schedule trigger interval in the `Run Hourly` node if needed.\n4. Connect this workflow to an AI processing workflow to analyze call transcripts.\n\nWorkflow Templates:\n- [CallForge - 01 - Filter Gong Calls Synced to Salesforce by Opportunity Stage](https://n8n.io/workflows/3031-callforge-01-filter-gong-calls-synced-to-salesforce-by-opportunity-stage/)\n- [CallForge - 02 - Prep Gong Calls with Sheets & Notion for AI Summarization](https://n8n.io/workflows/3032-callforge-02-prep-gong-calls-with-sheets-and-notion-for-ai-summarization/)\n- [CallForge - 03 - Gong Transcript Processor and Salesforce Enricher](https://n8n.io/workflows/3033-callforge-03-gong-transcript-processor-and-salesforce-enricher/)\n- [CallForge - 04 - AI Workflow for Gong.io Sales Calls](https://n8n.io/workflows/3034-callforge-04-ai-workflow-for-gongio-sales-calls/)\n- [CallForge - 05 - Gong.io Call Analysis with Azure AI & CRM Sync](https://n8n.io/workflows/3035-callforge-05-gongio-call-analysis-with-azure-ai-and-crm-sync/)\n- [CallForge - 06 - Automate Sales Insights with Gong.io, Notion & AI](https://n8n.io/workflows/3036-callforge-06-automate-sales-insights-with-gongio-notion-and-ai/)\n- [CallForge - 07 - AI Marketing Data Processing with Gong & Notion](https://n8n.io/workflows/3037-callforge-07-ai-marketing-data-processing-with-gong-and-notion/)\n- [CallForge - 08 - AI Product Insights from Sales Calls with Notion](https://n8n.io/workflows/3039-callforge-08-ai-product-insights-from-sales-calls-with-notion/)\n\n\n\n### How to customize\n- **Change filtering logic**: Adjust the **opportunity stage filter** (`Check if Opportunity Stage is Meeting Booked or Discovery`) to match your sales process.\n- **Modify data formatting**: Add or remove fields in the `Format call into correct JSON Object` node to customize the output.\n- **Adjust trigger frequency**: Change the `Run Hourly` node to run at a different interval if required.\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+      },
+      "nodes": [
+        {
+          "id": "692e2883-0d1b-4162-8472-6d15c12c8b43",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1b226699-d463-42c9-aab0-e328afdb73b9",
+          "name": "Check if Primary Opportunity Contains Value",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            900,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "e5aed92c-9a3e-4e05-8ce2-9a707abc3115",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.Gong__Primary_Opportunity__c }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "1ebe8eba-5a86-4d17-a629-aa8d2e932693",
+          "name": "Check if Opportunity Stage is Meeting Booked or Discovery",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            660,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "8c39be67-f158-4d26-a1e9-cfdba686e272",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.Gong__Opp_Stage_Time_Of_Call__c }}",
+                  "rightValue": "Discovery"
+                },
+                {
+                  "id": "4cacf9be-3d86-49d6-b7f6-672a57025f0e",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.Gong__Opp_Stage_Time_Of_Call__c }}",
+                  "rightValue": "Meeting Booked"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ee00437a-8586-449c-ab4f-04b91d5f247b",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -440,
+            -360
+          ],
+          "parameters": {
+            "width": 340,
+            "height": 820,
+            "content": "![Callforge](https://uploads.n8n.io/templates/callforgeshadow.png)\n## CallForge\nCallForge allows you to extract important information for different departments from your Sales Gong Calls. \n\n### Salesforce Trigger\nThis workflow triggers the AI agent to run, processing calls every hour. It uses the Gong/Salesforce integration to look for new conversation objects in Salesforce which indicate that a new recording has synced to Salesforce. This allows us to filter calls based on internal milestones and metrics ensuring only calls that meet a certain criteria are processed. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2906d433-070d-4240-ba2f-a1669ce5ccc1",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -80,
+            -360
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1940,
+            "height": 820,
+            "content": "## Get Gong Transcript and Call Details\nThe transcript is to pass into the AI prompt, but needs to be transformed first. The Call details provide the Prompt with metadata."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "96cb8746-3605-4723-b8b5-33bbe8841eaa",
+          "name": "Format call into correct JSON Object",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1360,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "881fab8b-2f6e-474e-a913-c4bde2b6bd2e",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.metaData.id }}"
+                },
+                {
+                  "id": "29aad399-1bb7-49e3-8fc9-cf8a6353536a",
+                  "name": "url",
+                  "type": "string",
+                  "value": "={{ $json.metaData.url }}"
+                },
+                {
+                  "id": "709d029e-6843-42e1-94cc-d01857918617",
+                  "name": "title",
+                  "type": "string",
+                  "value": "={{ $json.metaData.title }}"
+                },
+                {
+                  "id": "39de0391-207b-46ec-9230-cf83667c42b8",
+                  "name": "scheduled",
+                  "type": "string",
+                  "value": "={{ $json.metaData.scheduled }}"
+                },
+                {
+                  "id": "05e3a4a5-12a4-4e14-a8bf-4231e4b2c5b1",
+                  "name": "started",
+                  "type": "string",
+                  "value": "={{ $json.metaData.started }}"
+                },
+                {
+                  "id": "19de15be-56e5-4935-807c-9530cb1da5a8",
+                  "name": "duration",
+                  "type": "number",
+                  "value": "={{ $json.metaData.duration }}"
+                },
+                {
+                  "id": "5a15284b-7c7f-4174-ae6a-82a0dade0542",
+                  "name": "primaryUserId",
+                  "type": "string",
+                  "value": "={{ $json.metaData.primaryUserId }}"
+                },
+                {
+                  "id": "aa58e20b-ddaa-4ed1-a0e2-06125103216f",
+                  "name": "direction",
+                  "type": "string",
+                  "value": "={{ $json.metaData.direction }}"
+                },
+                {
+                  "id": "0f877bb4-a75f-4691-92b0-8b29b939a5b4",
+                  "name": "system",
+                  "type": "string",
+                  "value": "={{ $json.metaData.system }}"
+                },
+                {
+                  "id": "05b3cb81-244d-4f42-a681-13aca1c1df0d",
+                  "name": "scope",
+                  "type": "string",
+                  "value": "={{ $json.metaData.scope }}"
+                },
+                {
+                  "id": "2f9b87d1-e0bd-4170-88da-6966c00c7a2b",
+                  "name": "media",
+                  "type": "string",
+                  "value": "={{ $json.metaData.media }}"
+                },
+                {
+                  "id": "86282040-ceea-4a88-ae47-d5e3fa7cb1a7",
+                  "name": "language",
+                  "type": "string",
+                  "value": "={{ $json.metaData.language }}"
+                },
+                {
+                  "id": "6d8e4e35-5b84-4a1b-a2c1-605ea5e08e66",
+                  "name": "workspaceId",
+                  "type": "string",
+                  "value": "={{ $json.metaData.workspaceId }}"
+                },
+                {
+                  "id": "85f50bb3-306e-4fb3-921b-ff0f61acecbd",
+                  "name": "sdrDisposition",
+                  "type": "string",
+                  "value": "={{ $json.metaData.sdrDisposition }}"
+                },
+                {
+                  "id": "a779d6e8-0d07-4159-8b56-b3c2e49d1c19",
+                  "name": "clientUniqueId",
+                  "type": "string",
+                  "value": "={{ $json.metaData.clientUniqueId }}"
+                },
+                {
+                  "id": "14718f26-69e1-4e4b-90b5-dd059af6459e",
+                  "name": "customData",
+                  "type": "string",
+                  "value": "={{ $json.metaData.customData }}"
+                },
+                {
+                  "id": "4741d29d-0ad6-471d-8432-e7158daeb224",
+                  "name": "purpose",
+                  "type": "string",
+                  "value": "={{ $json.metaData.purpose }}"
+                },
+                {
+                  "id": "7e390036-376e-430d-bd28-43d52ae8794b",
+                  "name": "meetingUrl",
+                  "type": "string",
+                  "value": "={{ $json.metaData.meetingUrl }}"
+                },
+                {
+                  "id": "1ea1f639-8327-4e76-bb3b-f08182fdb87a",
+                  "name": "isPrivate",
+                  "type": "boolean",
+                  "value": "={{ $json.metaData.isPrivate }}"
+                },
+                {
+                  "id": "855ceef1-6bae-44ea-b2af-cc4aa38d6a37",
+                  "name": "calendarEventId",
+                  "type": "string",
+                  "value": "={{ $json.metaData.calendarEventId }}"
+                },
+                {
+                  "id": "f7c11074-70bb-46de-8e7b-2c6d095033c4",
+                  "name": "sfOpp",
+                  "type": "string",
+                  "value": "={{ $('Get all custom Salesforce Gong Objects').item.json.Gong__Primary_Opportunity__c }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5b5eb2c1-7f80-4211-b835-5188376c6df2",
+          "name": "Pass to Gong Call Preprocessor",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            1580,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "6mL5jWOJfuzkpjzx",
+              "cachedResultName": "Gong Call Preprocessor Demo"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "025d3ed7-2bd8-4a88-8834-034036c533c6",
+          "name": "Get Gong Call",
+          "type": "n8n-nodes-base.gong",
+          "position": [
+            1140,
+            -140
+          ],
+          "parameters": {
+            "call": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.Gong__Call_ID__c }}"
+            },
+            "options": {},
+            "operation": "get",
+            "requestOptions": {}
+          },
+          "credentials": {
+            "gongApi": {
+              "id": "EchfvOC4rjw8MUkr",
+              "name": "Liam Gong Cred"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a4f63c5c-a23e-400f-9fa4-40c61756c321",
+          "name": "Sort by date",
+          "type": "n8n-nodes-base.sort",
+          "position": [
+            440,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "sortFieldsUi": {
+              "sortField": [
+                {
+                  "order": "descending",
+                  "fieldName": "CreatedDate"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aa24b82b-3d65-4d1e-be04-7e7d5e439587",
+          "name": "Get all custom Salesforce Gong Objects",
+          "type": "n8n-nodes-base.salesforce",
+          "position": [
+            220,
+            0
+          ],
+          "parameters": {
+            "options": {
+              "fields": [
+                "CreatedDate",
+                "LastActivityDate",
+                "Name",
+                "Gong__Call_ID__c",
+                "Gong__Talk_Time_Us__c",
+                "Gong__Talk_Time_Them__c",
+                "Gong__Title__c",
+                "Gong__View_call__c",
+                "Gong__Primary_Opportunity__c",
+                "Gong__Opp_Stage_Time_Of_Call__c"
+              ],
+              "conditionsUi": {
+                "conditionValues": [
+                  {
+                    "field": "CreatedDate",
+                    "value": "={{ $now.minus(4, 'hours') }}",
+                    "operation": ">="
+                  }
+                ]
+              }
+            },
+            "resource": "customObject",
+            "operation": "getAll",
+            "customObject": "Gong__Gong_Call__c"
+          },
+          "credentials": {
+            "salesforceOAuth2Api": {
+              "id": "Ykybxuyh0jK0o3qH",
+              "name": "Angel SF Creds v3"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c46f7b03-8ce0-468d-ac84-fae9ae5b2466",
+          "name": "Run Hourly",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            0,
+            -160
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "hours"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Run Hourly": {
+          "main": [
+            [
+              {
+                "node": "Get all custom Salesforce Gong Objects",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sort by date": {
+          "main": [
+            [
+              {
+                "node": "Check if Opportunity Stage is Meeting Booked or Discovery",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Gong Call": {
+          "main": [
+            [
+              {
+                "node": "Format call into correct JSON Object",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Get all custom Salesforce Gong Objects",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format call into correct JSON Object": {
+          "main": [
+            [
+              {
+                "node": "Pass to Gong Call Preprocessor",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all custom Salesforce Gong Objects": {
+          "main": [
+            [
+              {
+                "node": "Sort by date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Primary Opportunity Contains Value": {
+          "main": [
+            [
+              {
+                "node": "Get Gong Call",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Opportunity Stage is Meeting Booked or Discovery": {
+          "main": [
+            [
+              {
+                "node": "Check if Primary Opportunity Contains Value",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 11,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.gong": {
+          "count": 1
+        },
+        "n8n-nodes-base.sort": {
+          "count": 1
+        },
+        "n8n-nodes-base.salesforce": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Angel Menendez",
+      "username": "djangelic",
+      "bio": "Angel Menendez is a Staff Developer Advocate at n8n.io, specializing in low-code tools for cybersecurity workflows. From Puerto Rico, Angel's tech journey began by helping his father translate technical books. He later started a web development business and transitioned from a career as a flight attendant to cybersecurity engineering. His workflows have saved companies significant time. Outside work, Angel enjoys time with his two sons, riding electric bikes, reading, and exploring new places.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/fdbe38425d21378d8c9ba8916e1eb0b320add299f12cc23fcd4961d4e6e00bec?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 324,
+        "icon": "file:salesforce.svg",
+        "name": "n8n-nodes-base.salesforce",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.salesforce/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/salesforce/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Salesforce"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNzUgNTMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwYTFlMCIgZD0iTTMwLjc3NyA1LjY1M2MyLjQtMi40NzYgNS43Mi00LjA0IDkuMzkyLTQuMDQgNC44OTUgMCA5LjEzNiAyLjczMiAxMS40MTIgNi43NzNhMTUuNyAxNS43IDAgMCAxIDYuNDYtMS4zNjZjOC44MjMgMCAxNS45MzcgNy4yIDE1LjkzNyAxNi4wOHMtNy4xNDMgMTYuMDg4LTE1LjkzNyAxNi4wODhjLTEuMDggMC0yLjEzNC0uMTE0LTMuMTMtLjMxM2ExMS42OCAxMS42OCAwIDAgMS0xMC4yIDUuOTc3IDExLjc1IDExLjc1IDAgMCAxLTUuMDk0LTEuMTY3Yy0yLjAyIDQuNzUzLTYuNzQ1IDguMS0xMi4yMzggOC4xLTUuNzIgMC0xMC42MTUtMy42MTQtMTIuNDk0LTguNy0uODMzLjE3MS0xLjY4Mi4yNTctMi41MzMuMjU2QzUuNTIyIDQzLjM0MSAwIDM3Ljc2MyAwIDMwLjg0N2ExMi41MiAxMi41MiAwIDAgMSA2LjE3Ni0xMC44MTUgMTQuMSAxNC4xIDAgMCAxLTEuMTk1LTUuNzJDNC45NTUgNi40MzIgMTEuNDE1IDAgMTkuMzI1IDBhMTQuMzQgMTQuMzQgMCAwIDEgMTEuNDQxIDUuNjYzIi8+PHBhdGggZD0ibTEwLjcxMiAyNi44NTYuMzEzLS44MjVjLjA1Ny0uMTQyLjE0Mi0uMDg1LjItLjA1N2wuMjU2LjE3YTMuNTMgMy41MyAwIDAgMCAxLjk2NC41N2MuNjU1IDAgMS4wOC0uMzQyIDEuMDgtLjgyNXYtLjAyOGMwLS41MTItLjYyNi0uNy0xLjM2Ni0uOTRsLS4xNy0uMDU3Yy0uOTk2LS4yODUtMi4wNzgtLjctMi4wNzgtMS45NjR2LS4wMjhjMC0xLjE5NS45NjgtMi4wNSAyLjM2Mi0yLjA1aC4xNDJjLjgyNSAwIDEuNTk0LjIyOCAyLjE2My41OTguMDU3LjAyOC4xMTQuMDg1LjA4NS4xN2wtLjMxMy44MjVjLS4wNTcuMTQyLS4yLjA1Ny0uMi4wNTdhNC4zIDQuMyAwIDAgMC0xLjkzNS0uNDg0Yy0uNTk4IDAtLjk2OC4zMTMtLjk2OC43NHYuMDI4YzAgLjQ4NC42NTUuNyAxLjM5NS45NGwuMTQyLjAyOGMuOTk2LjMxMyAyLjA1Ljc0IDIuMDUgMS45NjR2LjAyOGMwIDEuMy0uOTQgMi4xMDYtMi40NDggMi4xMDYtLjc0IDAtMS40NS0uMTE0LTIuMjItLjUxMi0uMTQyLS4wODUtLjI4NS0uMTQyLS40MjctLjI1Ni0uMDI4LS4wNTctLjA4NS0uMDg1LS4wMjgtLjJ6bTIyLjIgMCAuMzEzLS44MjVjLjA1Ny0uMTQyLjE3LS4wODUuMi0uMDU3bC4yNTYuMTdhMy41MyAzLjUzIDAgMCAwIDEuOTY0LjU3Yy42NTUgMCAxLjA4LS4zNDIgMS4wOC0uODI1di0uMDI4YzAtLjUxMi0uNjI2LS43LTEuMzY2LS45NGwtLjE3LS4wNTdjLS45OTYtLjI4NS0yLjA3OC0uNy0yLjA3OC0xLjk2NHYtLjAyOGMwLTEuMTk1Ljk2OC0yLjA1IDIuMzYyLTIuMDVoLjE0MmMuODI1IDAgMS41OTQuMjI4IDIuMTYzLjU5OC4wNTcuMDI4LjExNC4wODUuMDg1LjE3bC0uMzEzLjgyNWMtLjA1Ny4xNDItLjIuMDU3LS4yLjA1N2E0LjMgNC4zIDAgMCAwLTEuOTM1LS40ODRjLS41OTggMC0uOTY4LjMxMy0uOTY4Ljc0di4wMjhjMCAuNDg0LjY1NS43IDEuMzk1Ljk0bC4xNDIuMDI4Yy45OTYuMzEzIDIuMDUuNzQgMi4wNSAxLjk2NHYuMDI4YzAgMS4zLS45NCAyLjEwNi0yLjQ0OCAyLjEwNi0uNzQgMC0xLjQ1LS4xMTQtMi4yMi0uNTEyLS4xNDItLjA4NS0uMjg1LS4xNDItLjQyNy0uMjU2IDAtLjA1Ny0uMDU3LS4wODUtLjAyOC0uMnptMTYuNDUtMy45Yy4xMTQuNDI3LjIuODgyLjIgMS4zNjZzLS4wNTcuOTQtLjIgMS4zNjZhMi44IDIuOCAwIDAgMS0uNTcgMS4xIDIuNzUgMi43NSAwIDAgMS0uOTY4Ljc0cS0uNTk3LjI1NS0xLjM2Ni4yNTZjLS43NjkuMDAxLS45NjgtLjA4NS0xLjM2Ni0uMjU2cy0uNy0uNDI3LS45NjgtLjc0YTMgMyAwIDAgMS0uNTctMS4xYy0uMTE1LS40MTctLjItLjg4Mi0uMi0xLjM2NnMuMDU3LS45NC4yLTEuMzY2Yy4xMTQtLjQyNy4zMTMtLjc5Ny41Ny0xLjFhMi43NSAyLjc1IDAgMCAxIC45NjgtLjc0IDMuNCAzLjQgMCAwIDEgMS4zNjYtLjI4NWMuNTEyIDAgLjk2OC4wODUgMS4zNjYuMjg1LjM5OC4xNy43LjQyNy45NjguNzRhMyAzIDAgMCAxIC41NyAxLjFtLTEuMjggMS4zMzhjMC0uNzQtLjE0Mi0xLjMtLjM5OC0xLjcwOHMtLjY4My0uNTk4LTEuMjI0LS41OThjLS41NyAwLS45NjguMi0xLjIyNC41OThzLS4zOTguOTY4LS4zOTggMS43MDguMTQyIDEuMy4zOTggMS43MzZjLjI1Ni4zOTguNjU1LjU5OCAxLjIyNC41OThzLjk2OC0uMiAxLjIyNC0uNTk4Yy4yODUtLjM5OC4zOTgtLjk5Ni4zOTgtMS43MzZtMTEuNjk3IDIuMTM0LjMxMy44NTRjLjAyOC4xMTQtLjA1Ny4xNDItLjA1Ny4xNDItLjQ4NC4yLTEuMTM4LjMxMy0xLjc5My4zMTNxLTEuNjUgMC0yLjUwNC0uOTRjLS44NTQtLjk0LS44NTQtMS40OC0uODU0LTIuNTMzIDAtLjQ4NC4wNTctLjk0LjItMS4zNjZzLjM0Mi0uNzk3LjYyNi0xLjFhMyAzIDAgMCAxIDEuMDI1LS43NCAzLjYgMy42IDAgMCAxIDEuNDIzLS4yODUgOCA4IDAgMCAxIC45MzkuMDU3Yy4yODUuMDU3LjY4My4xNDIuODU0LjIyOC4wMjggMCAuMTE0LjA1Ny4wODUuMTQybC0uMzEzLjg1NGMtLjA1Ny4xNDItLjE0Mi4wODUtLjE0Mi4wODVhNCA0IDAgMCAwLTEuMzM4LS4yYy0uNjI2IDAtMS4xLjItMS4zOTUuNjI2LS4zMTMuMzk4LS40ODQuOTQtLjQ4NCAxLjY4IDAgLjc5Ny4yIDEuMzY2LjU0IDEuNzM2cy44MjUuNTQgMS40NS41NGMuMjU2IDAgLjQ4NC0uMDI4LjY4My0uMDU3cy4zOTgtLjA4NS41OTgtLjE3Yy0uMDI4LjA1Ny4wODUuMDI4LjE0Mi4xNDJ6bTYuNDYtMy43MjhjLjI4NS45NjguMTQyIDEuNzkzLjExNCAxLjg1IDAgLjExNC0uMTE0LjExNC0uMTE0LjExNGgtNC4yOTdjLjAyOC42NTUuMTcgMS4xLjUxMiAxLjQyMy4zMTMuMzEzLjc5Ny41MTIgMS40OC41MTIgMS4wMjUgMCAxLjQ1LS4yIDEuNzY1LS4zMTMgMCAwIC4xMTQtLjAyOC4xNy4wODVsLjI4NS43OTdjLjA1Ny4xNDIgMCAuMTctLjAyOC4yLS4yNTYuMTQyLS45LjQyNy0yLjE2My40MjctLjU5OCAwLTEuMTM4LS4wODUtMS41NjUtLjI1NnMtLjc5Ny0uMzk4LTEuMDgtLjctLjQ4NC0uNjgzLS42MjYtMS4wOGMtLjE0Mi0uNDI3LS4yLS44ODItLjItMS4zNjZzLjA1Ny0uOTQuMi0xLjM2NmMuMTE0LS40MjcuMzEzLS43OTcuNTctMS4xcy41OTgtLjU3Ljk5Ni0uNzRjLjM5OC0uMi44ODItLjI4NSAxLjQyMy0uMjg1LjQ1NSAwIC44ODIuMDg1IDEuMjI0LjI1Ni4yNTYuMTE0LjU0LjMxMy44MjUuNjI2LjE0Mi4xMTQuMzk4LjU0LjUxMi45NHptLTQuMjcuOWgzLjA0NWMtLjAyOC0uMzk4LS4xMTQtLjc0LS4yODUtMS4wMjUtLjI1Ni0uMzk4LS42MjYtLjYyNi0xLjE5NS0uNjI2cy0uOTY4LjIyOC0xLjIyNC42MjZjLS4xNy4yNTYtLjI1Ni41OTgtLjM0MiAxLjAyNXptLTMwLjA4Mi0uOWMuMjg1Ljk2OC4xNDIgMS43OTMuMTQyIDEuODUgMCAuMTE0LS4xMTQuMTE0LS4xMTQuMTE0aC00LjI5N2MuMDI4LjY1NS4xNyAxLjEuNTEyIDEuNDIzLjMxMy4zMTMuNzk3LjUxMiAxLjQ4LjUxMiAxLjAyNSAwIDEuNDUtLjIgMS43NjUtLjMxMyAwIDAgLjExNC0uMDI4LjE3LjA4NWwuMjg1Ljc5N2MuMDU3LjE0MiAwIC4xNy0uMDI4LjItLjI1Ni4xNDItLjkuNDI3LTIuMTYzLjQyNy0uNTk4IDAtMS4xMzgtLjA4NS0xLjU2NS0uMjU2cy0uNzk3LS4zOTgtMS4wOC0uNy0uNDg0LS42ODMtLjYyNi0xLjA4Yy0uMTQyLS40MjctLjItLjg4Mi0uMi0xLjM2NnMuMDU3LS45NC4yLTEuMzY2Yy4xMTQtLjQyNy4zMTMtLjc5Ny41Ny0xLjFzLjU5OC0uNTcuOTk2LS43NGMuMzk4LS4yLjg4Mi0uMjg1IDEuNDIzLS4yODUuNDU1IDAgLjg4Mi4wODUgMS4yMjQuMjU2LjI1Ni4xMTQuNTQuMzEzLjgyNS42MjYuMTE0LjExNC4zOTguNTQuNDg0Ljk0em0tNC4yNy45aDMuMDc0Yy0uMDI4LS4zOTgtLjExNC0uNzQtLjI4NS0xLjAyNS0uMjU2LS4zOTgtLjYyNi0uNjI2LTEuMTk1LS42MjZzLS45NjguMjI4LTEuMjI0LjYyNmMtLjIuMjU2LS4yODUuNTk4LS4zNyAxLjAyNW0tNy41NDItLjIyOC43LjA4NXYtLjE3YzAtLjU3LS4xMTQtLjg1NC0uMzQyLTEuMDI1cy0uNTk4LS4yODUtMS4wNTMtLjI4NWMwIDAtMS4wNTMgMC0xLjg3OC40MjctLjAyOC4wMjgtLjA1Ny4wMjgtLjA1Ny4wMjhzLS4xMTQuMDI4LS4xNDItLjA1N2wtLjMxMy0uODI1Yy0uMDU3LS4xMTQuMDI4LS4xNy4wMjgtLjE3LjM5OC0uMzEzIDEuMy0uNDg0IDEuMy0uNDg0YTggOCAwIDAgMSAxLjEzOC0uMTE0cTEuMjggMCAxLjk2NC41OThjLjY4NC41OTguNjgzIDEuMDI1LjY4MyAxLjkwN3YzLjkyN3MwIC4xMTQtLjA4NS4xNDJjMCAwLS4xNy4wNTctLjMxMy4wODVsLTEuMDguMmE2LjYgNi42IDAgMCAxLTEuMy4xMTRjLS40MjcgMC0uNzk3LS4wMjgtMS4xMzgtLjExNGEyLjggMi44IDAgMCAxLS44ODItLjM3IDEuOSAxLjkgMCAwIDEtLjU3LS42ODNjLS4xNDItLjI1Ni0uMi0uNTk4LS4yLS45NjhhMi4yNiAyLjI2IDAgMCAxIC4yMjgtLjk5NmMuMTQzLS4yOTYuMzctLjUxMi42MjYtLjdzLjU3LS4zMTMuODgyLS40MjdhNC4zIDQuMyAwIDAgMSAxLjA1My0uMTQybC43NC4wMjh6bS0xLjcwOCAzLjAxN3MuMzk4LjMxMyAxLjI1Mi4yNTZjLjYyNi0uMDI4IDEuMTY3LS4xNDIgMS4xNjctLjE0MnYtMS45NTVzLS41NC0uMDg1LTEuMTY3LS4wODVjLS44ODIgMC0xLjI1Mi4zMTMtMS4yNTIuMzEzLS4yNTYuMTctLjM3LjQ1NS0uMzcuODI1YTEuMSAxLjEgMCAwIDAgLjE0Mi41NjljLjAyOC4wNTcuMDU3LjExNC4yMjguMjI4em0zNi4yODYtNS4yMDhjLS4wMjguMTE0LS4yNTYuNy0uMzEzLjktLjAyOC4wODUtLjA4NS4xMTQtLjE3LjExNCAwIDAtLjI1Ni0uMDU3LS40ODQtLjA1N2EyLjMgMi4zIDAgMCAwLS41NjkuMDg1Yy0uMi4wNTctLjM3LjE3LS41NC4zMTNzLS4yODUuMzctLjM3LjYyNi0uMTQyLjY4My0uMTQyIDEuMTM4djMuMTg3YzAgLjA4NS0uMDU3LjE0Mi0uMTQyLjE0MmgtMS4xMjhjLS4wODUgMC0uMTQyLS4wNTctLjE0Mi0uMTQydi02LjRjMC0uMDg1LjA1Ny0uMTQyLjExNC0uMTQyaDEuMWMuMDg1IDAgLjExNC4wNTcuMTE0LjE0MnYuNTEyYTEuOSAxLjkgMCAwIDEgLjctLjU0Yy4yNDUtLjExMy41Ny0uMiAxLjEtLjE3LjI4NS4wMjguNjU1LjA4NS43LjExNC4xMTQuMDI4LjE3LjA1Ny4xNDIuMTd6bS0xMC41Ni0yLjk2Yy4wMjggMCAuMTE0LjA1Ny4wODUuMTQybC0uMzQyLjljLS4wMjguMDU3LS4wNTcuMTE0LS4yLjA1Ny0uMDI4IDAtLjA4NS0uMDI4LS4yMjgtLjA1Ny0uMDg1LS4wMjgtLjIyOC0uMDI4LS4zNDItLjAyOC0uMTcgMC0uMzEzLjAyOC0uNDU1LjA1N3MtLjI1Ni4xMTQtLjM3LjIyOC0uMjI4LjI1Ni0uMzEzLjQ1NWE0LjMgNC4zIDAgMCAwLS4yMjguOTY4aDEuMzY2Yy4xMTQgMCAuMTQyLjA1Ny4xNDIuMTQybC0uMTcuODgyYy0uMDI4LjE0Mi0uMTQyLjExNC0uMTQyLjExNGgtMS40MjNsLS45IDUuNDkzYy0uMTE0LjU3LS4yMjggMS4wNTMtLjM3IDEuNDVzLS4zMTMuNjgzLS41Ny45NjhjLS4yMjguMjU2LS40ODQuNDU1LS43OTcuNTQtLjI4NS4xMTQtLjY1NS4xNy0xLjA1My4xNy0uMiAwLS4zOTggMC0uNjI2LS4wNTdhMS42IDEuNiAwIDAgMS0uMzk4LS4xMTRjLS4wNTctLjAyOC0uMDg1LS4wODUtLjA1Ny0uMTdsLjI5My0uODYzYy4wNTctLjExNC4xNDItLjA1Ny4xNDItLjA1N2wuMjI4LjA4NWMuMTE0LjAyOC4yMjguMDI4LjM0Mi4wMjhxLjMgMCAuNTEyLS4wODVjLjE3LS4wNTcuMjg1LS4xNy4zOTgtLjMxM3MuMi0uMzQyLjMxMy0uNTk4cS4xNTgtLjUxOS4yNTYtMS4wNTNsLjk2OC01LjM4aC0uOTRjLS4xMTQgMC0uMTQyLS4wNTctLjE0Mi0uMTQybC4xNy0uODgyYy4wMjgtLjE0Mi4xNDItLjExNC4xNDItLjExNGguOTY4bC4wNTctLjI4NWMuMTQyLS44NTQuNDI3LTEuNTA4Ljg1NC0xLjkzNXMxLjA1My0uNjU1IDEuODItLjY1NXEuMzAyLjAwMy41OTguMDU3Yy4xMTQtLjAyOC4yNTYgMCAuMzk4LjA1N3ptLTE5LjE4MiA5LjI1YzAgLjA4NS0uMDU3LjE0Mi0uMTE0LjE0MmgtMS4xMzhjLS4wODUgMC0uMTE0LS4wNTctLjExNC0uMTQydi05LjEzNmMwLS4wNTcuMDU3LS4xNDIuMTE0LS4xNDJoMS4xMzhjLjA4NSAwIC4xMTQuMDU3LjExNC4xNDJ6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Salesforce",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1240,
+        "icon": "file:sort.svg",
+        "name": "n8n-nodes-base.sort",
+        "codex": {
+          "data": {
+            "alias": [
+              "Sort",
+              "Order",
+              "Transform",
+              "Array",
+              "List",
+              "Item",
+              "Random"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sort/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Sort"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjODI4N0VCIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzAuNSA0MjIuNWMtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMzUxYzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMjRjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYzNTFjMCA2LjYyNy01LjM3MyAxMi0xMiAxMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGZpbGw9IiM4Mjg3RUIiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTM2LjA3NyAzMzMuNDgyYzkuMzk4LTkuMzQ2IDI0LjU5NC05LjMwNCAzMy45NC4wOTVsNzIuNDgzIDcyLjg4NyA3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMzgxLjUgODkuNWM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjM1MWMwIDYuNjI3LTUuMzczIDEyLTEyIDEyaC0yNGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMzUxYzAtNi42MjcgNS4zNzMtMTIgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjODI4N0VCIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00NzUuOTIzIDE3OC41MThjLTkuMzk4IDkuMzQ2LTI0LjU5NCA5LjMwNC0zMy45NDEtLjA5NUwzNjkuNSAxMDUuNTM2bC03Mi40ODIgNzIuODg3Yy05LjM0NyA5LjM5OS0yNC41NDMgOS40NDEtMzMuOTQxLjA5NXMtOS40NDEtMjQuNTQzLS4wOTUtMzMuOTQxbDg5LjUtOTBhMjQgMjQgMCAwIDEgMzQuMDM2IDBsODkuNSA5MGM5LjM0NiA5LjM5OCA5LjMwNCAyNC41OTQtLjA5NSAzMy45NDEiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg=="
+        },
+        "displayName": "Sort",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1275,
+        "icon": "file:gong.svg",
+        "name": "n8n-nodes-base.gong",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gong/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gong/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Developer Tools"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gong"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPHN2ZyB2aWV3Qm94PSIzMC4wMzU0IDIxLjYzOTkgMjUuODg1MyAyOC4wMjMiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPHBhdGggZD0iTSA1NS4yODUgMzMuNjIxIEwgNDcuNjg1IDMzLjYyMSBDIDQ3LjI1MSAzMy42MjEgNDYuOTIgMzQuMDY1IDQ3LjA3NSAzNC40NzkgTCA0OC45MDUgMzkuMjE1IEMgNDguOTg1IDM5LjQyNiA0OC44MjEgMzkuNjUgNDguNTk1IDM5LjYzOSBMIDQ2LjI1OCAzOS40OTQgQyA0Ni4xNTEgMzkuNDg2IDQ2LjA0OCAzOS41MzcgNDUuOTkgMzkuNjI4IEwgNDQuMTcgNDIuMjAzIEMgNDQuMDc0IDQyLjM1NCA0My44NzMgNDIuMzk2IDQzLjcyNSA0Mi4yOTYgTCA0MS4wMzcgNDAuNDY2IEMgNDAuOTMxIDQwLjM5MyA0MC43OTEgNDAuMzkzIDQwLjY4NSA0MC40NjYgTCAzNi45NjMgNDIuOTg5IEMgMzYuNzI1IDQzLjE1NCAzNi40MDQgNDIuOTI3IDM2LjQ4NyA0Mi42NDcgTCAzNy41MjEgMzguOTM1IEMgMzcuNTY2IDM4Ljc4MSAzNy40ODUgMzguNjE5IDM3LjMzNSAzOC41NjMgTCAzNS4zNiAzNy43NTcgQyAzNS4xNjQgMzcuNjc5IDM1LjEwMiAzNy40MzMgMzUuMjM2IDM3LjI3MSBMIDM2Ljk4MyAzNS4xMiBDIDM3LjA2OSAzNS4wMTIgMzcuMDczIDM0Ljg2IDM2Ljk5MyAzNC43NDggTCAzNS41MjUgMzIuNjI4IEMgMzUuMzg5IDMyLjQzMiAzNS41MTcgMzIuMTYyIDM1Ljc1NSAzMi4xNDIgQyAzNS43NTcgMzIuMTQyIDM1Ljc2IDMyLjE0MiAzNS43NjMgMzIuMTQyIEwgMzguMDM4IDMxLjk2NiBDIDM4LjIwNCAzMS45NTYgMzguMzM4IDMxLjgxMSAzOC4zMjggMzEuNjM2IEwgMzguMTUyIDI4LjQ1MSBDIDM4LjE0MyAyOC4yMjEgMzguMzcyIDI4LjA1OCAzOC41ODYgMjguMTQxIEwgNDEuNDA5IDI5LjMwOSBDIDQxLjUzMyAyOS4zNjEgNDEuNjc4IDI5LjMyOSA0MS43NiAyOS4yMjYgTCA0My43MDQgMjcuMDU1IEMgNDMuODU4IDI2Ljg4MiA0NC4xMzggMjYuOTI2IDQ0LjIzMiAyNy4xMzcgTCA0NS40IDMwLjE0NyBDIDQ1LjU1NSAzMC41MTkgNDYuMDIgMzAuNjUzIDQ2LjM1MiAzMC40MDUgTCA1MC45MjIgMjcuMDAzIEMgNTEuNDM5IDI2LjYyIDUxLjEwOCAyNS43OTMgNTAuNDY3IDI1Ljg4NiBMIDQ3LjQ1NyAyNi4yOSBDIDQ3LjMxNSAyNi4zMSA0Ny4xNzcgMjYuMjI4IDQ3LjEyNyAyNi4wOTMgTCA0NS41NDUgMjIuMDMgQyA0NS4zNzUgMjEuNjA1IDQ0LjgxOSAyMS41MDQgNDQuNTExIDIxLjg0MyBMIDQxLjA2OCAyNS41NzYgQyA0MC45NzcgMjUuNjcgNDAuODM3IDI1LjY5OSA0MC43MTYgMjUuNjQ5IEwgMzYuMTg3IDIzLjczNiBDIDM1Ljc4MiAyMy41NjggMzUuMzM1IDIzLjg1NiAzNS4zMTkgMjQuMjk0IEwgMzUuMTUzIDI4Ljk2OCBDIDM1LjE0NyAyOS4xMjcgMzUuMDIyIDI5LjI1NiAzNC44NjMgMjkuMjY4IEwgMzAuNzI4IDI5LjUzNiBDIDMwLjI0OSAyOS41NjYgMjkuOTgzIDMwLjEwMyAzMC4yNDggMzAuNTAyIEMgMzAuMjUgMzAuNTA0IDMwLjI1MSAzMC41MDYgMzAuMjUyIDMwLjUwOCBMIDMzLjAwMiAzNC41NjIgQyAzMy4wODMgMzQuNjc5IDMzLjA3NSAzNC44MzYgMzIuOTgyIDM0Ljk0NCBMIDMwLjE5IDM4LjE1IEMgMjkuOTEgMzguNDY4IDMwLjAyNSAzOC45NjggMzAuNDE3IDM5LjEzMiBMIDMzLjYyMyA0MC41MTggQyAzMy43NjUgNDAuNTc2IDMzLjg0IDQwLjczMSAzMy43OTkgNDAuODc5IEwgMzEuNzUxIDQ4Ljg4MyBDIDMxLjYzMiA0OS4zNDkgMzIuMDYyIDQ5Ljc2OSAzMi41MjUgNDkuNjM5IEMgMzIuNTk2IDQ5LjYxOSAzMi42NjMgNDkuNTg3IDMyLjcyMyA0OS41NDQgTCA0MC40MTYgNDQuMDIzIEMgNDAuNTI0IDQzLjk0NSA0MC42NyA0My45NDUgNDAuNzc4IDQ0LjAyMyBMIDQ0LjI4NCA0Ni40ODMgQyA0NC41NzMgNDYuNjkgNDQuOTY2IDQ2LjYwOCA0NS4xNjIgNDYuMzE4IEwgNDcuMzU1IDQyLjk1OCBDIDQ3LjQxOCA0Mi44NTYgNDcuNTM3IDQyLjgwMiA0Ny42NTUgNDIuODIzIEwgNTIuODk3IDQzLjQ1NCBDIDUzLjMyMSA0My41MTYgNTMuNzQ1IDQzLjE2NCA1My41OSA0Mi43NzIgTCA1MS40MDggMzcuMTI2IEMgNTEuMzQ2IDM2Ljk3MSA1MS40MDggMzYuODA2IDUxLjU5NCAzNi43MTIgTCA1NS41NzQgMzQuODMgQyA1Ni4xNjQgMzQuNTMgNTUuOTU3IDMzLjYyIDU1LjI4NSAzMy42MiBMIDU1LjI4NSAzMy42MjEgWiIgZmlsbD0iIzkwNjlFNyIvPgo8L3N2Zz4="
+        },
+        "displayName": "Gong",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 23,
+            "name": "Developer Tools"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1003,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/callforgecompressed_b8c8ba92d0.png"
+      }
+    ]
+  }
+}

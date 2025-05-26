@@ -1,0 +1,3142 @@
+{
+  "workflow": {
+    "id": 3107,
+    "name": "Startup Funding Research Automation with Claude, Perplexity AI, and Airtable",
+    "views": 4540,
+    "recentViews": 26,
+    "totalViews": 4540,
+    "createdAt": "2025-03-08T17:58:20.284Z",
+    "description": "# Startup Funding Research Automation with Claude, Perplexity AI, and Airtable\n\n## How it works\nThis intelligent workflow automatically discovers and analyzes recently funded startups by:\n1. Monitoring multiple news sources (TechCrunch and VentureBeat) for funding announcements\n2. Using AI to extract key funding details (company name, amount raised, investors)\n3. Conducting automated deep research on each company through perplexity deep research or jina deep search.\n4. Organizing all findings into a structured Airtable database for easy access and analysis\n\n## Set up steps (10-15 minutes)\n1. Connect your news feed sources (TechCrunch and VentureBeat). Could be extended. These were easy to scrape and this data can be expensive.\n2. Set up your AI service credentials (Claude and Perplexity or jina which has generous free tier)\n3. Connect your Airtable account and create a base with appropriate fields (can be imported from my base) or see structure below.\n[Airtable Base](https://airtable.com/appYwSYZShjr8TN5r/shryOEdmJmZE5ROce)\n\n### Structure Funding Round Base\n\n| Field Name | Data Type | Description |\n|------------|-----------|-------------|\n| website_url | String | URL of the company website |\n| company_name | String | Name of the company |\n| funding_round | String | The funding stage or round (e.g., Series A, Seed, etc.) |\n| funding_amount | Number | The amount of funding received |\n| lead_investor | String | The primary investor leading the funding round |\n| market | String | The market or industry sector the company operates in |\n| participating_investors | String | List of other investors participating in the funding round |\n| press_release_url | String | URL to the press release about the funding |\n| evaluation | Number | The company's valuation |\n\n### Structure Company Deep Research Base\n\n| Field Name | Data Type | Description |\n|------------|-----------|-------------|\n| website_url | String | URL of the company website |\n| company_name | String | Name of the company |\n| funding_round | String | The funding stage or round (e.g., Series A, Seed, etc.) |\n| funding_amount | Number | The amount of funding received |\n| currency | String | Currency of the funding amount |\n| announcement_date | String | Date when the funding was announced |\n| lead_investor | String | The primary investor leading the funding round |\n| participating_investors | String | List of other investors participating in the funding round |\n| industry | String | The industry sectors the company operates in |\n| company_description | String | Description of the company's business |\n| hq_location | String | Company headquarters location |\n| founding_year | Number | Year the company was founded |\n| founder_names | String | Names of the company founders |\n| ceo_name | String | Name of the company CEO |\n| employee_count | Number | Number of employees at the company |\n| total_funding | Number | Total funding amount received to date |\n| total_funding_currency | String | Currency of total funding |\n| funding_purpose | String | Purpose or use of the funding |\n| business_model | String | Company's business model |\n| valuation | Object | Company valuation information |\n| previous_rounds | Object | Information about previous funding rounds |\n| source_urls | String | Source URLs for the funding information |\n| original_report | String | Original report text about the funding |\n| market | String | The market the company operates in |\n| press_release_url | String | URL to the press release about the funding |\n| evaluation | Number | The company's valuation |\n\n\n\n## Notes\nI found that by using perplexity via open router, we lose access to the sources, as they are not stored in the same location as the report itself so I opted to use perplexity API via HTTP node.\n\nFor using perplexity and or jina you have to configure header auth as described in [Header Auth - n8n Docs](https://docs.n8n.io/integrations/builtin/credentials/httprequest/#using-header-auth)\n\n## What you can learn\n- How to scrape data using sitemaps\n- How to extract strucutred data from unstructured text\n- How to execute parts of the workflow as subworkflow\n- How to use deep research in a practical scenario\n- How to define more complex JSON schemas",
+    "workflow": {
+      "meta": {
+        "instanceId": "d4d7965840e96e50a3e02959a8487c692901dfa8d5cc294134442c67ce1622d3",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "5d02237f-151b-4bb4-9341-b11149925309",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -980,
+            -40
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "dc60bffa-b6f8-432d-85ed-0d08f092a454",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -20,
+            -220
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "3b4c2e25-862d-4b4e-aa66-38c5f0e5a7b2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json['urlset.url']['news:news']['news:title'] }}",
+                  "rightValue": "raise"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "f779a004-57f6-451b-984b-3fd9517e4842",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            1900,
+            100
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n\t\"website_url\": \"https://example.com\"\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "adcffd7e-943e-488f-a11b-0b64e45c6ff6",
+          "name": "Perplexity",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+          "position": [
+            1380,
+            100
+          ],
+          "parameters": {
+            "model": "perplexity/llama-3.1-sonar-small-128k-online",
+            "options": {}
+          },
+          "credentials": {
+            "openRouterApi": {
+              "id": "Wz9uIFEMzOmhbt1D",
+              "name": "OpenRouter account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0c90db72-bbd0-4f8c-bf9e-6005dc99344f",
+          "name": "Filter1",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -20,
+            120
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "3b4c2e25-862d-4b4e-aa66-38c5f0e5a7b2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.loc }}",
+                  "rightValue": "raise"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "f770791d-a987-4509-b8fc-648f31deda88",
+          "name": "Extract Structured Data ",
+          "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+          "position": [
+            960,
+            -60
+          ],
+          "parameters": {
+            "text": "=Article Title: {{ $json.title }}\nArticle Text:{{ $json.text }}",
+            "options": {},
+            "attributes": {
+              "attributes": [
+                {
+                  "name": "company_name",
+                  "description": "What is the company called"
+                },
+                {
+                  "name": "funding_round",
+                  "description": "Seed, Series A,B,C,D etc."
+                },
+                {
+                  "name": "funding_amount",
+                  "type": "number",
+                  "description": "How much is the amount of the funding round - full numbers please"
+                },
+                {
+                  "name": "lead_investor",
+                  "description": "Who is leading the funding round"
+                },
+                {
+                  "name": "market",
+                  "description": "In which market is the company operating"
+                },
+                {
+                  "name": "participating_investors",
+                  "description": "Comma separated list of other participating investors"
+                },
+                {
+                  "name": "press_release_url",
+                  "description": "The URL to the original press release "
+                },
+                {
+                  "name": "evaluation",
+                  "type": "number",
+                  "description": "How high is the evaluation of the company - full numbers please"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "370e4875-a95b-4736-b500-7427dd6b9e57",
+          "name": "Research URL",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1300,
+            -60
+          ],
+          "parameters": {
+            "text": "=Find the website for this company: {{ $json.output.company_name }}",
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "6d0cd072-f97f-466b-8e11-c2affad19a3f",
+          "name": "Extract URL",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1680,
+            -60
+          ],
+          "parameters": {
+            "text": "={{ $json.text }}",
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "196cca20-66f0-4732-a36b-235606700bd4",
+          "name": "Merge Extracted Data",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            720,
+            -60
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "a7063f58-6eaa-4248-b9e9-6f6cc3551d24",
+          "name": "Split TC Articles",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -160,
+            -220
+          ],
+          "parameters": {
+            "include": "=",
+            "options": {},
+            "fieldToSplitOut": "urlset.url"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2bfebd7a-3f63-4206-9de0-1053b8e760da",
+          "name": "TC HTML Parser",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            440,
+            -220
+          ],
+          "parameters": {
+            "options": {
+              "cleanUpText": true
+            },
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "text",
+                  "cssSelector": ".wp-block-post-content"
+                },
+                {
+                  "key": "title",
+                  "cssSelector": ".wp-block-post-title"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "2c52fc2d-42bc-4f62-8157-ff0cece23d48",
+          "name": "Split VB Articles",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -160,
+            120
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "urlset.url"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b9fd414c-70a8-40b0-bb1a-b499b7be5ff5",
+          "name": "VB HTML Parser",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            440,
+            120
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "text",
+                  "cssSelector": "#content"
+                },
+                {
+                  "key": "title",
+                  "cssSelector": ".article-title"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "67825bec-b689-4257-a421-0446884b918e",
+          "name": "Venturebeat (VB)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -640,
+            120
+          ],
+          "parameters": {
+            "url": "https://venturebeat.com/news-sitemap.xml",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "68d1f94b-89c1-4d00-8400-475722ff8a0f",
+          "name": "Techcrunch (TC)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -640,
+            -220
+          ],
+          "parameters": {
+            "url": "https://techcrunch.com/news-sitemap.xml",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "30a62f02-089b-4d10-ae6f-6f19119934c2",
+          "name": "Claude 3.5 Sonnet",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            1060,
+            100
+          ],
+          "parameters": {
+            "model": "claude-3-5-sonnet-20241022",
+            "options": {}
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "IuDNko14nN79w51k",
+              "name": "Anthropic account 2"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "6e8453ba-ac37-4e10-bb50-df92d3d342a1",
+          "name": "Claude 3.5 Haiku",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            1740,
+            100
+          ],
+          "parameters": {
+            "model": "claude-3-5-haiku-20241022",
+            "options": {}
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "IuDNko14nN79w51k",
+              "name": "Anthropic account 2"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "2bb5b903-c08d-4231-962b-7c56616b4f1e",
+          "name": "Collect Data",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2060,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "379c7461-0ede-413a-9976-02c1351caf9b",
+                  "name": "website_url",
+                  "type": "string",
+                  "value": "={{ $json.output.website_url }}"
+                },
+                {
+                  "id": "1e638aa9-bbc6-4869-8aa3-9ebb102cf290",
+                  "name": "company_name",
+                  "type": "string",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.company_name }}"
+                },
+                {
+                  "id": "8047a593-0aa0-4ef5-89c1-1e1f3c42ee23",
+                  "name": "funding_round",
+                  "type": "string",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.funding_round }}"
+                },
+                {
+                  "id": "fb324383-fe81-4964-bc18-a5992e1005a8",
+                  "name": "funding_amount",
+                  "type": "number",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.funding_amount }}"
+                },
+                {
+                  "id": "75c1c919-0249-468d-8c08-ce818a8260b9",
+                  "name": "lead_investor",
+                  "type": "string",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.lead_investor }}"
+                },
+                {
+                  "id": "1b938b68-68ad-4b59-a372-d141b3fa188a",
+                  "name": "market",
+                  "type": "string",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.market }}"
+                },
+                {
+                  "id": "0b2efd2b-ef69-4e59-ac2b-7ef47e288965",
+                  "name": "participating_investors",
+                  "type": "string",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.participating_investors }}"
+                },
+                {
+                  "id": "f49e6523-f000-4c8b-bdec-7e436ead6359",
+                  "name": "press_release_url",
+                  "type": "string",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.press_release_url }}"
+                },
+                {
+                  "id": "270451dc-2f26-41f0-8b6a-2afe4e498652",
+                  "name": "evaluation",
+                  "type": "number",
+                  "value": "={{ $('Extract Structured Data ').item.json.output.evaluation }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "29a49e31-22dd-4f33-89ca-d12bbf217c76",
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            2320,
+            -160
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appYwSYZShjr8TN5r",
+              "cachedResultUrl": "https://airtable.com/appYwSYZShjr8TN5r",
+              "cachedResultName": "Funding Rounds"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblQTIWUC8FBMF16F",
+              "cachedResultUrl": "https://airtable.com/appYwSYZShjr8TN5r/tblQTIWUC8FBMF16F",
+              "cachedResultName": "Funding Round Base"
+            },
+            "columns": {
+              "value": {},
+              "schema": [
+                {
+                  "id": "company_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "company_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "website_url",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "website_url",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_round",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "funding_round",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_amount",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "funding_amount",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "lead_investor",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "lead_investor",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "participating_investors",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "participating_investors",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "market",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "market",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "press_release_url",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "press_release_url",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "evaluation",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "evaluation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "autoMapInputData",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "create"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "JwUch1mrw0pUVtnE",
+              "name": "Airtable Personal Access Token account 2"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "497815af-12ea-4d1e-94aa-c403bcc55f7b",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            400
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 300,
+            "content": "## Company Research\nUsing Perplexity Deep Research  we can find more information about the company."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "13a156e5-d3e0-46b8-9ad6-0a1c3de775b0",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -700,
+            -440
+          ],
+          "parameters": {
+            "color": 6,
+            "content": "## TechCrunch & VentureBeat\nHTTP GET requests to fetch the latest articles from tech news sitemap feeds."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0f202470-8506-4e01-a5fb-f3519ede91a8",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -440,
+            -440
+          ],
+          "parameters": {
+            "content": "## Parse XML\nConverts XML data to structured JSON for easier processing of article metadata."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dd485685-9962-47b0-9876-f8ebdb434040",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -180,
+            -440
+          ],
+          "parameters": {
+            "width": 280,
+            "content": "## Split Articles & Filter:\nSeparates individual articles and filters to keep only the most relevant ones based on keywords (raised)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fda62c36-cb3e-45a9-8c8c-42d2a3b13ea6",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            120,
+            -440
+          ],
+          "parameters": {
+            "content": "## Get Article\nFetches the full article content for each relevant article in the feed."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "caca7808-997d-48a1-8869-edcbd2dce2dd",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            -440
+          ],
+          "parameters": {
+            "content": "## HTML Parser\nExtracts clean text content from the HTML articles for analysis."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "97cbd997-6f42-4454-a33a-81737ea8bd9f",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            640,
+            -440
+          ],
+          "parameters": {
+            "width": 260,
+            "content": "## Merge Extracted Data\nCombines articles from multiple sources into a unified dataset for comprehensive analysis."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d9b84d9e-7718-419a-9d81-6403e3273f36",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            920,
+            -440
+          ],
+          "parameters": {
+            "width": 300,
+            "content": "## Extract Structured Data\nIdentifies and structures key information from article text such as company names, funding details, and tech trends."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "060e8914-c025-4594-a99a-539c5c5cfec4",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1240,
+            -440
+          ],
+          "parameters": {
+            "width": 360,
+            "content": "## Research company website\nUses perplexity to find the company website with search"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7f1dc67d-7c2d-4b6a-83b2-c2775bc91085",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1620,
+            -440
+          ],
+          "parameters": {
+            "width": 360,
+            "content": "## Extract URL\nSince perplexity uses Llama which is not great at structured output - 2 step approach for a more reliable run"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa7d5737-7970-478d-aa4d-24db31c6ac2e",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2000,
+            -440
+          ],
+          "parameters": {
+            "width": 420,
+            "content": "## Collect data & write to airtable\nCollecting all data to pass on to detailed company research and store information in airtable"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1ce484cc-d22c-44b7-8de3-421904307353",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2040,
+            400
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 440,
+            "content": "## Extract structured data from report\nDeep Research produces long text output. We use a parser here to make the information available in structured format. As the json structure is quite complex I am using a strong model and the Auto-fixing Output Parser\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "50fbc465-a6ab-4fc7-af1e-f91bd2f40e5d",
+          "name": "Auto-fixing Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+          "position": [
+            2280,
+            780
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3eb9aa59-9b57-4375-ac39-4e1fd900365e",
+          "name": "Extract Structured JSON ",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            2440,
+            920
+          ],
+          "parameters": {
+            "schemaType": "manual",
+            "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"company_name\": {\n      \"type\": \"string\",\n      \"description\": \"Official name of the company receiving funding\"\n    },\n    \"funding_round\": {\n      \"type\": \"string\",\n      \"description\": \"Type of funding round (Seed, Series A, B, C, etc.)\",\n      \"enum\": [\"Pre-Seed\", \"Seed\", \"Series A\", \"Series B\", \"Series C\", \"Series D\", \"Series E+\", \"Growth Equity\", \"Late Stage\", \"Venture Round\", \"Convertible Note\", \"Debt Financing\", \"Grant\", \"Private Equity\", \"Other\"]\n    },\n    \"funding_amount\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"value\": {\n          \"type\": \"number\",\n          \"description\": \"Numerical value of the funding amount\"\n        },\n        \"currency\": {\n          \"type\": \"string\",\n          \"description\": \"Currency of the funding amount\",\n          \"default\": \"USD\"\n        }\n      }\n    },\n    \"announcement_date\": {\n      \"type\": \"string\",\n      \"format\": \"date\",\n      \"description\": \"Date when the funding was publicly announced (YYYY-MM-DD)\"\n    },\n    \"lead_investor\": {\n      \"type\": [\"string\", \"array\"],\n      \"description\": \"Primary investor(s) leading the round. Can be single string or array for multiple leads.\"\n    },\n    \"participating_investors\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Other firms or angels who participated in the round\"\n    },\n    \"industry\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Primary industry categories or verticals\"\n    },\n    \"company_description\": {\n      \"type\": \"string\",\n      \"description\": \"Brief explanation of what the company does\"\n    },\n    \"hq_location\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"city\": {\n          \"type\": \"string\"\n        },\n        \"country\": {\n          \"type\": \"string\"\n        }\n      },\n      \"description\": \"Company headquarters location\"\n    },\n    \"website_url\": {\n      \"type\": \"string\",\n      \"format\": \"uri\",\n      \"description\": \"Company's official website\"\n    },\n    \"founding_year\": {\n      \"type\": \"integer\",\n      \"description\": \"Year the company was founded\"\n    },\n    \"founder_names\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Names of company founders\"\n    },\n    \"ceo_name\": {\n      \"type\": \"string\",\n      \"description\": \"Name of current CEO\"\n    },\n    \"employee_count\": {\n      \"type\": [\"integer\", \"string\"],\n      \"description\": \"Current number of employees (exact or range)\"\n    },\n    \"total_funding\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"value\": {\n          \"type\": \"number\"\n        },\n        \"currency\": {\n          \"type\": \"string\",\n          \"default\": \"USD\"\n        }\n      },\n      \"description\": \"Total funding raised to date including this round\"\n    },\n    \"funding_purpose\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\"\n      },\n      \"description\": \"Stated use of funds (e.g., expansion, R&D, marketing)\"\n    },\n    \"business_model\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"string\",\n        \"enum\": [\"B2B\", \"B2C\", \"B2B2C\", \"D2C\", \"Marketplace\", \"SaaS\", \"Hardware\", \"Hybrid\", \"Other\"]\n      },\n      \"description\": \"Company's business model categories\"\n    },\n    \"valuation\": {\n      \"type\": \"object\",\n      \"properties\": {\n        \"pre_money\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"value\": {\n              \"type\": \"number\"\n            },\n            \"currency\": {\n              \"type\": \"string\",\n              \"default\": \"USD\"\n            }\n          }\n        },\n        \"post_money\": {\n          \"type\": \"object\",\n          \"properties\": {\n            \"value\": {\n              \"type\": \"number\"\n            },\n            \"currency\": {\n              \"type\": \"string\",\n              \"default\": \"USD\"\n            }\n          }\n        }\n      },\n      \"description\": \"Company valuation information (if disclosed)\"\n    },\n    \"previous_rounds\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"date\": {\n            \"type\": \"string\",\n            \"format\": \"date\"\n          },\n          \"round\": {\n            \"type\": \"string\"\n          },\n          \"amount\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"value\": {\n                \"type\": \"number\"\n              },\n              \"currency\": {\n                \"type\": \"string\"\n              }\n            }\n          },\n          \"investors\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          }\n        }\n      },\n      \"description\": \"Information about previous funding rounds\"\n    }\n  }\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "fde5dc11-c264-4f82-982b-23398de84888",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            400
+          ],
+          "parameters": {
+            "color": 4,
+            "content": "## Exectuted as a subworkflow\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "618170f3-eacd-4c9f-bd0f-1530408ff50d",
+          "name": "Prompts",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1280,
+            600
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "6751c31d-b5d5-4c87-bc36-5b7f5e317062",
+                  "name": "user_prompt",
+                  "type": "string",
+                  "value": "=I need comprehensive information about {{ $json.company_name }} that recently announced a {{ $json.funding_round }} funding round of {{ $json.funding_amount }}.  \n\nPlease research and compile the following:  \n\n## Company Background  \n- Year founded and founding story \n- Founder backgrounds and previous ventures \n- Current executive team composition \n- Total funding raised to date (including all previous rounds) \n- Previous investors before this round \n\n## Business Analysis  \n- Detailed description of products/services \n- Primary revenue model (subscription, freemium, transaction fees, etc.) \n- Target customer segments \n- Current estimated customer/user count \n- Estimated annual revenue (if available) \n\n## Market Position  \n- Primary competitors in their space \n- Unique selling proposition/competitive advantage \n- Recent partnerships or major client announcements \n- Market size and growth rate of their industry \n- Their estimated market share Growth Trajectory  \n- Employee growth rate over past 1-2 years \n- Geographic expansion plans \n- Recent product launches or roadmap information \n- Any stated plans for the funding (expansion, R&D, etc.) \n\n## Additional Context  \n- Any recent news about the company beyond funding \n- Relevant industry trends affecting their business \n- Notable advisors or board members \n- Any regulatory considerations for their market\n"
+                },
+                {
+                  "id": "362a60c8-8c48-44c6-819e-217d361a4c4d",
+                  "name": "system_prompt",
+                  "type": "string",
+                  "value": "=You are a company research assistant.\nPlease include sources for all information gathered so I can verify and explore further."
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "170f4ffb-ebeb-4277-8d72-b5bd553b5a3e",
+          "name": "Deep Research",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1520,
+            600
+          ],
+          "parameters": {
+            "url": "https://api.perplexity.ai/chat/completions",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": \"sonar-deep-research\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"{{ $json.system_prompt.replace(/\\n/g, \" \").replace(/\\s+/g, \" \").trim() }}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.user_prompt.replace(/\\n/g, \" \").replace(/\\s+/g, \" \").trim() }}\"\n    }\n  ]\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {}
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "zeTmfLMIZb16l3SX",
+              "name": "Perplexity Auth"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "a6a227b1-7590-408f-b4e4-8ea3eeef871e",
+          "name": "Pick data (Perplexity)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1800,
+            600
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d99c7dc9-5d1a-4cb8-b391-62df3e905530",
+                  "name": "report",
+                  "type": "string",
+                  "value": "={{ $json.choices[0].message.content }}"
+                },
+                {
+                  "id": "7f2ff728-a4f6-4422-bd65-34a09e5b6fab",
+                  "name": "links",
+                  "type": "array",
+                  "value": "={{ $json.citations }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b836050a-9cab-4cbc-bd4c-b53730e8df06",
+          "name": "Pick data (jina)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1800,
+            840
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "93201e0b-ad34-421a-92f0-bf7e78a81743",
+                  "name": "report",
+                  "type": "string",
+                  "value": "={{ $json.choices[0].message.content }}"
+                },
+                {
+                  "id": "39133a41-16fb-4008-8e60-8994f2158963",
+                  "name": "links",
+                  "type": "array",
+                  "value": "={{ $json.visitedURLs }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "925c6359-de4f-409f-b872-d12180d3a957",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1500,
+            1000
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 420,
+            "height": 140,
+            "content": "## Optional: Use jina Deep Search\nhttps://jina.ai/news/a-practical-guide-to-implementing-deepsearch-deepresearch\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fd00e4d5-dffd-4ecb-a722-7f37d6dc5b9f",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            1020,
+            600
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "company_name"
+                },
+                {
+                  "name": "funding_amount",
+                  "type": "number"
+                },
+                {
+                  "name": "funding_round"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "859ed482-0670-4023-92cf-aec4d688193d",
+          "name": "JINA Deep Search",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1520,
+            840
+          ],
+          "parameters": {
+            "url": "https://deepsearch.jina.ai/v1/chat/completions",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": false,\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.system_prompt.replace(/\\n/g, \" \").replace(/\\s+/g, \" \").trim() }}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"{{ $json.user_prompt.replace(/\\n/g, \" \").replace(/\\s+/g, \" \").trim() }}\"\n    }\n  ],\n  \"stream\": false,\n  \"reasoning_effort\": false\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "30Y0DulqMzqn5psh",
+              "name": "Jina Auth"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "9b3f8bc7-72b4-4010-8427-5fd6a9706e50",
+          "name": "Write Results to Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            2720,
+            600
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appYwSYZShjr8TN5r",
+              "cachedResultUrl": "https://airtable.com/appYwSYZShjr8TN5r",
+              "cachedResultName": "Funding Rounds"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tbltUvIthISpEbgUp",
+              "cachedResultUrl": "https://airtable.com/appYwSYZShjr8TN5r/tbltUvIthISpEbgUp",
+              "cachedResultName": "Company Deep Research"
+            },
+            "columns": {
+              "value": {
+                "ceo_name": "={{ $json.output.ceo_name }}",
+                "currency": "={{ $json.output.funding_amount.currency }}",
+                "industry": "={{ Array.isArray($json.output.industry) ? $json.output.industry.join(', ') : $json.output.industry }}",
+                "valuation": "={{ JSON.stringify($json.output.valuation) }}",
+                "hq_location": "={{ $json.output.hq_location.city }}, {{ $json.output.hq_location.country }}",
+                "source_urls": "={{ $('Pick data (Perplexity)').item.json.links.map((item, idx) => `${idx + 1}: ${item}`).join('\\n') }}",
+                "company_name": "={{ $json.output.company_name }}",
+                "founder_names": "={{ Array.isArray($json.output.founder_names) ? $json.output.founder_names.join(', ') : $json.output.founder_names }}",
+                "founding_year": "={{ $json.output.founding_year }}",
+                "funding_round": "={{ $json.output.funding_round }}",
+                "lead_investor": "={{ Array.isArray($json.output.lead_investor) ? $json.output.lead_investor.join(', ') : $json.output.lead_investor }}",
+                "total_funding": "={{ $json.output.total_funding.value }}",
+                "business_model": "={{ Array.isArray($json.output.business_model) ? $json.output.business_model.join(', ') : $json.output.business_model }}",
+                "employee_count": "={{ $json.output.employee_count }}",
+                "funding_amount": "={{ $json.output.funding_amount.value }}",
+                "funding_purpose": "={{ Array.isArray($json.output.funding_purpose) ? $json.output.funding_purpose.join(', ') : $json.output.funding_purpose }}\n",
+                "original_report": "={{ $('Pick data (Perplexity)').item.json.report }}",
+                "previous_rounds": "={{ JSON.stringify($json.output.previous_rounds) }}",
+                "announcement_date": "={{ $json.output.announcement_date }}",
+                "company_description": "={{ $json.output.company_description }}",
+                "total_funding_currency": "={{ $json.output.total_funding.currency }}",
+                "participating_investors": "={{ Array.isArray($json.output.participating_investors) ? $json.output.participating_investors.join(', ') : $json.output.participating_investors }}"
+              },
+              "schema": [
+                {
+                  "id": "company_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "company_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_round",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "funding_round",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_amount",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "funding_amount",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "currency",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "currency",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "announcement_date",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "announcement_date",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "lead_investor",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "lead_investor",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "participating_investors",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "participating_investors",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "industry",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "industry",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "company_description",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "company_description",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "hq_location",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "hq_location",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "website_url",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "website_url",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "founding_year",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "founding_year",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "founder_names",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "founder_names",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "ceo_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "ceo_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "employee_count",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "employee_count",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "total_funding",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "total_funding",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "total_funding_currency",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "total_funding_currency",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_purpose",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "funding_purpose",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "business_model",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "business_model",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "valuation",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "valuation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "previous_rounds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "previous_rounds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "source_urls",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "source_urls",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "original_report",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "original_report",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "create"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "JwUch1mrw0pUVtnE",
+              "name": "Airtable Personal Access Token account 2"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "703707ad-8bb4-4d86-9531-90866a400e39",
+          "name": "Extract Structured Data",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            2120,
+            600
+          ],
+          "parameters": {
+            "text": "=\nSources Urls: \n{{ $json.links.map((item, idx) => `${idx + 1}: ${item}`).join('\\n') }}\n\nReport: {{ $json.report.replace(/<think>[\\s\\S]*?<\\/think>/g, ''); }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "Only extract available information. Do not fill in information that cant be backed with the provided document."
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "8475db8d-9d57-4476-bdac-beee857f50df",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1140,
+            -440
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 420,
+            "content": "## Identify companies that just raised funds\n\nIncludes deep research of the Company Background, Market Position and Business Analysis "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "330e38c4-9941-4c27-ac88-243ef032dd5d",
+          "name": "Route to Deep Research",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            2320,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "TtsCaYjVToaUEE6V"
+            },
+            "workflowInputs": {
+              "value": {
+                "company_name": "={{ $json.company_name }}",
+                "funding_round": "={{ $json.funding_round }}",
+                "funding_amount": "={{ $json.funding_amount }}"
+              },
+              "schema": [
+                {
+                  "id": "company_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "company_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_amount",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "funding_amount",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "funding_round",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "funding_round",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d4061dc5-5849-487b-ae2c-a0cf60b8ed12",
+          "name": "Parse TC XML",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            -380,
+            -220
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3c8a9ac6-8f7b-4b21-91d3-7d8cf25670f7",
+          "name": "Parse VB XML",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            -380,
+            120
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3b61cc4d-dc62-4266-8f59-740a23cd8a1c",
+          "name": "Sticky Note15",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2560,
+            -160
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 400,
+            "height": 120,
+            "content": "## Airtable Base \nhttps://airtable.com/appYwSYZShjr8TN5r/shryOEdmJmZE5ROce"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "02c13204-1e3e-4f1a-be15-5ee842696340",
+          "name": "Claude  3.5 Sonnet",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            2120,
+            920
+          ],
+          "parameters": {
+            "model": "claude-3-5-sonnet-20241022",
+            "options": {}
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "IuDNko14nN79w51k",
+              "name": "Anthropic account 2"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "77df4556-e5da-4bd6-9df2-bb4993256258",
+          "name": "Get Funding Article HTML for scraping (TC)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            180,
+            -220
+          ],
+          "parameters": {
+            "url": "={{ $json['urlset.url'].loc }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "c6082aa7-84ce-40ce-8372-a73163439a8f",
+          "name": "Get Funding Article HTML for scraping (VB)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            180,
+            120
+          ],
+          "parameters": {
+            "url": "={{ $json.loc }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Filter": {
+          "main": [
+            [
+              {
+                "node": "Get Funding Article HTML for scraping (TC)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter1": {
+          "main": [
+            [
+              {
+                "node": "Get Funding Article HTML for scraping (VB)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prompts": {
+          "main": [
+            [
+              {
+                "node": "Deep Research",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Perplexity": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Research URL",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract URL": {
+          "main": [
+            [
+              {
+                "node": "Collect Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Collect Data": {
+          "main": [
+            [
+              {
+                "node": "Route to Deep Research",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse TC XML": {
+          "main": [
+            [
+              {
+                "node": "Split TC Articles",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse VB XML": {
+          "main": [
+            [
+              {
+                "node": "Split VB Articles",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Research URL": {
+          "main": [
+            [
+              {
+                "node": "Extract URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Deep Research": {
+          "main": [
+            [
+              {
+                "node": "Pick data (Perplexity)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "TC HTML Parser": {
+          "main": [
+            [
+              {
+                "node": "Merge Extracted Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "VB HTML Parser": {
+          "main": [
+            [
+              {
+                "node": "Merge Extracted Data",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Techcrunch (TC)": {
+          "main": [
+            [
+              {
+                "node": "Parse TC XML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Claude 3.5 Haiku": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Extract URL",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "JINA Deep Search": {
+          "main": [
+            [
+              {
+                "node": "Pick data (jina)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Pick data (jina)": {
+          "main": [
+            []
+          ]
+        },
+        "Venturebeat (VB)": {
+          "main": [
+            [
+              {
+                "node": "Parse VB XML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Claude 3.5 Sonnet": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Extract Structured Data ",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split TC Articles": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split VB Articles": {
+          "main": [
+            [
+              {
+                "node": "Filter1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Claude  3.5 Sonnet": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Extract Structured Data",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Auto-fixing Output Parser",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Extracted Data": {
+          "main": [
+            [
+              {
+                "node": "Extract Structured Data ",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Pick data (Perplexity)": {
+          "main": [
+            [
+              {
+                "node": "Extract Structured Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Structured Data": {
+          "main": [
+            [
+              {
+                "node": "Write Results to Airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Structured Data ": {
+          "main": [
+            [
+              {
+                "node": "Research URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Structured JSON ": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Auto-fixing Output Parser",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Extract URL",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Auto-fixing Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Extract Structured Data",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Write Results to Airtable": {
+          "main": [
+            []
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "Prompts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Techcrunch (TC)",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Venturebeat (VB)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Funding Article HTML for scraping (TC)": {
+          "main": [
+            [
+              {
+                "node": "TC HTML Parser",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Funding Article HTML for scraping (VB)": {
+          "main": [
+            [
+              {
+                "node": "VB HTML Parser",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 45,
+    "workflowInfo": {
+      "nodeCount": 51,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 4
+        },
+        "n8n-nodes-base.xml": {
+          "count": 2
+        },
+        "n8n-nodes-base.html": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 2
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 16
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 6
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 3
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatAnthropic": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenRouter": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.informationExtractor": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserAutofixing": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Julian Kaiser",
+      "username": "jksr",
+      "bio": "Full Stack Developer turned AI & Automation Engineer, implementing intelligent solutions with custom code, LLMs & n8n. Use my link to book a free 30-minute call to discuss your AI challenges and see if my services might be a good fit for your needs.",
+      "verified": true,
+      "links": [
+        "https://juliankaiser.neetocal.com/introduction-call"
+      ],
+      "avatar": "https://gravatar.com/avatar/b8108390ad4740aaba8fd05c203fc1d9418524cebf94cc2b9966a28b52120563?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1145,
+        "icon": "file:anthropic.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "codex": {
+          "data": {
+            "alias": [
+              "claude",
+              "sonnet",
+              "opus"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatanthropic/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Anthropic Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSIzMiIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTMyLjczIDBoLTYuOTQ1TDM4LjQ1IDMyaDYuOTQ1ek0xMi42NjUgMCAwIDMyaDcuMDgybDIuNTktNi43MmgxMy4yNWwyLjU5IDYuNzJoNy4wODJMMTkuOTI5IDB6bS0uNzAyIDE5LjMzNyA0LjMzNC0xMS4yNDYgNC4zMzQgMTEuMjQ2eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Anthropic Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1175,
+        "icon": "fa:tools",
+        "name": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserautofixing/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Auto-fixing Output Parser"
+        },
+        "iconData": {
+          "icon": "tools",
+          "type": "icon"
+        },
+        "displayName": "Auto-fixing Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1273,
+        "icon": "fa:project-diagram",
+        "name": "@n8n/n8n-nodes-langchain.informationExtractor",
+        "codex": {
+          "data": {
+            "alias": [
+              "NER",
+              "parse",
+              "parsing",
+              "JSON",
+              "data extraction",
+              "structured"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.information-extractor/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Information Extractor"
+        },
+        "iconData": {
+          "icon": "project-diagram",
+          "type": "icon"
+        },
+        "displayName": "Information Extractor",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1281,
+        "icon": "file:openrouter.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenrouter/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenRouter Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjOTRBM0I4IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0aXRsZT5PcGVuUm91dGVyPC90aXRsZT48cGF0aCBkPSJNMTYuODA0IDEuOTU3bDcuMjIgNC4xMDV2LjA4N0wxNi43MyAxMC4yMWwuMDE3LTIuMTE3LS44MjEtLjAzYy0xLjA1OS0uMDI4LTEuNjExLjAwMi0yLjI2OC4xMS0xLjA2NC4xNzUtMi4wMzguNTc3LTMuMTQ3IDEuMzUyTDguMzQ1IDExLjAzYy0uMjg0LjE5NS0uNDk1LjMzNi0uNjguNDU1bC0uNTE1LjMyMi0uMzk3LjIzNC4zODUuMjMuNTMuMzM4Yy40NzYuMzE0IDEuMTcuNzk2IDIuNzAxIDEuODY2IDEuMTEuNzc1IDIuMDgzIDEuMTc3IDMuMTQ3IDEuMzUybC4zLjA0NWMuNjk0LjA5MSAxLjM3NS4wOTQgMi44MjUuMDMzbC4wMjItMi4xNTkgNy4yMiA0LjEwNXYuMDg3TDE2LjU4OSAyMmwuMDE0LTEuODYyLS42MzUuMDIyYy0xLjM4Ni4wNDItMi4xMzcuMDAyLTMuMTM4LS4xNjItMS42OTQtLjI4LTMuMjYtLjkyNi00Ljg4MS0yLjA1OWwtMi4xNTgtMS41YTIxLjk5NyAyMS45OTcgMCAwMC0uNzU1LS40OThsLS40NjctLjI4YTU1LjkyNyA1NS45MjcgMCAwMC0uNzYtLjQzQzIuOTA4IDE0LjczLjU2MyAxNC4xMTYgMCAxNC4xMTZWOS44ODhsLjE0LjAwNGMuNTY0LS4wMDcgMi45MS0uNjIyIDMuODA5LTEuMTI0bDEuMDE2LS41OC40MzgtLjI3NGMuNDI4LS4yOCAxLjA3Mi0uNzI2IDIuNjg2LTEuODUzIDEuNjIxLTEuMTMzIDMuMTg2LTEuNzggNC44ODEtMi4wNTkgMS4xNTItLjE5IDEuOTc0LS4yMTMgMy44MTQtLjEzOGwuMDItMS45MDd6Ij48L3BhdGg+PC9zdmc+Cg=="
+        },
+        "displayName": "OpenRouter Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,2193 @@
+{
+  "workflow": {
+    "id": 3527,
+    "name": "Compare Sequential, Agent-Based, and Parallel LLM Processing with Claude 3.7",
+    "views": 360,
+    "recentViews": 16,
+    "totalViews": 360,
+    "createdAt": "2025-04-12T15:33:29.105Z",
+    "description": "This workflow demonstrates three distinct approaches to chaining LLM operations using Claude 3.7 Sonnet. Connect to any section to experience the differences in implementation, performance, and capabilities.\n\n## What you'll find:\n\n### 1️⃣ Naive Sequential Chaining\nThe simplest but least efficient approach - connecting LLM nodes in a direct sequence. Easy to set up for beginners but becomes unwieldy and slow as your chain grows.\n\n### 2️⃣ Agent-Based Processing with Memory\nProcess a list of instructions through a single AI Agent that maintains conversation history. This structured approach provides better context management while keeping your workflow organized.\n\n### 3️⃣ Parallel Processing for Maximum Speed\nSplit your prompts and process them simultaneously for much faster results. Ideal when you need to run multiple independent tasks without shared context.\n\n## Setup Instructions:\n\n1. **API Credentials**: Configure your Anthropic API key in the credentials manager. This workflow uses Claude 3.7 Sonnet, but you can modify the model in each Anthropic Chat Model node, or pick an entirely different LLM.\n\n2. **For Cloud Users**: If using the parallel processing method (section 3), replace `{{ $env.WEBHOOK_URL }}` in the \"LLM steps - parallel\" HTTP Request node with your n8n instance URL.\n\n3. **Test Data**: The workflow fetches content from the n8n blog by default. You can modify this part to use a different content or a data source.\n\n4. **Customization**: Each section contains a set of example prompts. Modify the \"Initial prompts\" nodes to change the questions asked to the LLM.\n\nCompare these methods to understand the trade-offs between simplicity, speed, and context management in your AI workflows!\n\n---\n\nFollow me on [LinkedIn](https://www.linkedin.com/in/parsadanyan/) for more tips on AI automation and n8n workflows!",
+    "workflow": {
+      "id": "43gMd18arOcxqDcC",
+      "meta": {
+        "instanceId": "fb924c73af8f703905bc09c9ee8076f48c17b596ed05b18c0ff86915ef8a7c4a",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "LLM Chaining examples",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "35e53ce7-06b4-47ca-b7f3-b147bd059fcf",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            200,
+            520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "aeef734e-1c3b-4a91-93ae-2ae9c50951b8",
+          "name": "HTTP Request",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            400,
+            520
+          ],
+          "parameters": {
+            "url": "https://blog.n8n.io/",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "7f6b95eb-df8c-4f0f-ba69-6b298d624ccd",
+          "name": "Markdown",
+          "type": "n8n-nodes-base.markdown",
+          "position": [
+            600,
+            520
+          ],
+          "parameters": {
+            "html": "={{ $json.data }}",
+            "options": {},
+            "destinationKey": "markdown"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "994dbe06-4c25-4fb3-a8f3-566eb5b66c6d",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            160,
+            340
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 700,
+            "height": 360,
+            "content": "# Connect to one of the blue sections -->\n## This can be anything:\n- Chat input\n- Trigger from external system\n- CRON-scheduled event"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8ba3039d-dabf-43b7-ab35-117332f65ced",
+          "name": "Anthropic Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            1460,
+            -20
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "claude-3-7-sonnet-20250219",
+              "cachedResultName": "Claude 3.7 Sonnet"
+            },
+            "options": {
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "cJno7gKlYez56WtP",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "7e1da020-e01d-410c-aa7f-a19d6e1c368d",
+          "name": "Anthropic Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            1820,
+            -20
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "claude-3-7-sonnet-20250219",
+              "cachedResultName": "Claude 3.7 Sonnet"
+            },
+            "options": {
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "cJno7gKlYez56WtP",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "620503cb-2d51-4102-8975-75255cf15b1b",
+          "name": "Anthropic Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            2180,
+            -20
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "claude-3-7-sonnet-20250219",
+              "cachedResultName": "Claude 3.7 Sonnet"
+            },
+            "options": {
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "cJno7gKlYez56WtP",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "5f0d11ce-c1ea-4c36-8b2d-d3f70b19f0ba",
+          "name": "Anthropic Chat Model3",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            2540,
+            -20
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "claude-3-7-sonnet-20250219",
+              "cachedResultName": "Claude 3.7 Sonnet"
+            },
+            "options": {
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "cJno7gKlYez56WtP",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "f973d01e-fad7-4143-8379-54438f5412cb",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2440,
+            360
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {
+              "includeUnpaired": true
+            },
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3.1
+        },
+        {
+          "id": "c7e58b90-bc96-421c-88f2-4e9f95f87248",
+          "name": "Simple Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            2680,
+            780
+          ],
+          "parameters": {
+            "sessionKey": "fixed_session",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 10
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "0e606f7c-2cdb-4e34-8c0b-2303996077fb",
+          "name": "Clean memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryManager",
+          "position": [
+            1500,
+            480
+          ],
+          "parameters": {
+            "mode": "delete",
+            "deleteMode": "all"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "af0fb574-9964-4f7d-8348-a2cf614b8562",
+          "name": "Initial prompts",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1880,
+            480
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "84a50c9c-2265-4dd6-a774-efc852615862",
+                  "name": "system_prompt",
+                  "type": "string",
+                  "value": "You are a helpful assistant"
+                },
+                {
+                  "id": "559f19f7-042c-465e-b85f-ab52cfbab04a",
+                  "name": "step1",
+                  "type": "string",
+                  "value": "What is on this page?"
+                },
+                {
+                  "id": "6791cd09-c5f7-48c8-b753-8d383db6863f",
+                  "name": "step2",
+                  "type": "string",
+                  "value": "List all authors on this page"
+                },
+                {
+                  "id": "1f92ac04-e5dd-4161-afde-14562aea454c",
+                  "name": "step3",
+                  "type": "string",
+                  "value": "List all posts on this page"
+                },
+                {
+                  "id": "ad8ee0b0-fa7d-4f4a-85a8-82d0d0dc0a40",
+                  "name": "step4",
+                  "type": "string",
+                  "value": "Make a bold funny joke based on the content on this page"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "6743e44a-cc76-4e73-b4f3-ba7c65d179d3",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            2240,
+            480
+          ],
+          "parameters": {
+            "include": "selectedOtherFields",
+            "options": {},
+            "fieldToSplitOut": "data",
+            "fieldsToInclude": "system_prompt"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "caddd26c-ee84-455f-8ee6-aecf21536930",
+          "name": "Reshape",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2060,
+            480
+          ],
+          "parameters": {
+            "mode": "raw",
+            "include": "selected",
+            "options": {},
+            "jsonOutput": "={ \"data\" : {{ Object.entries($json).filter(([key]) => key !== \"system_prompt\").map(([key, value]) => ({ step: key, instruction: value })) }}\n}",
+            "includeFields": "system_prompt",
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "bd244988-d074-42f3-af42-960e5aa1d35d",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1840,
+            400
+          ],
+          "parameters": {
+            "width": 540,
+            "height": 240,
+            "content": "# An array of prompts here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7e9e5287-8d4e-43a9-b8cf-ae26a177bfbb",
+          "name": "Anthropic Chat Model4",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            2600,
+            600
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "claude-3-7-sonnet-20250219",
+              "cachedResultName": "Claude 3.7 Sonnet"
+            },
+            "options": {
+              "thinking": false,
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "cJno7gKlYez56WtP",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "47816a45-b906-47ef-9510-c63867bfc8b7",
+          "name": "Merge2",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1860,
+            1120
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineAll"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "e63b89a1-c2ca-4ed2-ae50-e3a7b429609c",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2040,
+            1020
+          ],
+          "parameters": {
+            "width": 320,
+            "height": 520,
+            "content": "## Make sure URL matches\n### ⚠️ Cloud users!\nReplace `{{ $env.WEBHOOK_URL }}` \nwith your n8n instance URL"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7b99df1a-bf6c-4cf1-b58a-346873136715",
+          "name": "Basic LLM Chain4",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            2440,
+            1300
+          ],
+          "parameters": {
+            "text": "={{ $json.body.userprompt }}\n\nHere's page data:\n~~~~\n{{ $json.body.markdown }}\n~~~~",
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "6f6e0667-5164-4b65-a796-1d2112c7c072",
+          "name": "Split Out1",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1680,
+            1340
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "userprompt"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9dfd2145-2427-4131-92d2-99aca620217f",
+          "name": "Anthropic Chat Model5",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            2420,
+            1460
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "claude-3-7-sonnet-20250219",
+              "cachedResultName": "Claude 3.7 Sonnet"
+            },
+            "options": {
+              "thinking": false,
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "cJno7gKlYez56WtP",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "616fc635-107d-4929-b9d6-4ccd34e42909",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            2140,
+            1400
+          ],
+          "webhookId": "58d2b899-e09c-45bf-b59b-961a5d7a2470",
+          "parameters": {
+            "path": "58d2b899-e09c-45bf-b59b-961a5d7a2470",
+            "options": {},
+            "httpMethod": "POST",
+            "responseMode": "lastNode"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c863252b-f8b6-4704-be4e-a69d3005a85a",
+          "name": "CONNECT ME",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1240,
+            -220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "90ab4402-cbea-4441-9097-558ec72e5d38",
+          "name": "CONNECT ME1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1280,
+            340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1c04650f-8043-496f-aeab-866e85548f9d",
+          "name": "CONNECT ME2",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1280,
+            1100
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "4097f12d-eba7-477a-9152-da5eb8c9aa03",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            -300
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1980,
+            "height": 440,
+            "content": "# 1 - Naive Chaining\n### PROs:\n- Easy to setup\n- Beginner-friendly\n\n### CONs\n- Not scalable\n- Hard to maintain long chains\n- SLOOOW!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ce806bc6-a57e-47da-bbba-4698c3956022",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            240
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 2160,
+            "height": 660,
+            "content": "# 2 - Iterative Agent Processing\n\n### PROs:\n- Scalable\n- All inputs & outputs in a single node\n- Supports Agent memory\n\n### CONs\n- Still Slow!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "49c4507f-de1e-422b-8058-db82668614d3",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            1000
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1880,
+            "height": 600,
+            "content": "# 3 - Parallel Processing\n\n### PROs:\n- Scalable\n- All inputs & outputs in a single place\n- FAST!\n\n### CONs\n- Independent requests\n  (no Agent memory)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c30b8132-9291-4855-89ec-6a98bcee8247",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            1260
+          ],
+          "parameters": {
+            "width": 400,
+            "height": 240,
+            "content": "# Array of prompts here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4c1b5816-7393-47f6-8a88-008d8deea119",
+          "name": "Initial prompts1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1460,
+            1340
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "ed7f1cc6-99d3-481c-b5fb-d9900d6ee0f6",
+                  "name": "userprompt",
+                  "type": "array",
+                  "value": "=[\n\"What is on this page?\",\n\"List all authors on this page\",\n\"List all posts on this page\",\n\"Make a bold funny joke based on the content on this page\"\n]"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "8248a20f-1f90-42b0-8167-7ddcc90242a2",
+          "name": "LLM Chain - Step 1",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1500,
+            -220
+          ],
+          "parameters": {
+            "text": "={{ $('Markdown').first().json.markdown }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "What is on this page?"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "3788b23b-ccdc-4326-8ce0-1e57934d23bd",
+          "name": "LLM Chain - Step 2",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1860,
+            -220
+          ],
+          "parameters": {
+            "text": "={{ $('Markdown').first().json.markdown }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "List all authors on this page"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "89e69a39-bf13-4599-8ddc-a01c4590fb9c",
+          "name": "LLM Chain - Step 3",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            2220,
+            -220
+          ],
+          "parameters": {
+            "text": "={{ $('Markdown').first().json.markdown }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "List all posts on this page"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "7e395991-9404-490e-8946-0da8f81e7243",
+          "name": "LLM Chain - Step 4",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            2580,
+            -220
+          ],
+          "parameters": {
+            "text": "={{ $('Markdown').first().json.markdown }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "Make a bold funny joke based on the content on this page"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "efb8d836-8a4a-4a70-baed-4a9b77461aca",
+          "name": "All LLM steps here - sequentially",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2640,
+            440
+          ],
+          "parameters": {
+            "text": "={{ $json.markdown || \"\" }}\n{{ `Your task: ${$json.data.step}. ${$json.data.instruction}` }}",
+            "options": {
+              "systemMessage": "={{ $json.system_prompt }}"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "926b1705-a24c-4659-bf61-8ed97ade7290",
+          "name": "LLM steps - parallel",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2140,
+            1240
+          ],
+          "parameters": {
+            "url": "={{ $env.WEBHOOK_URL }}webhook/58d2b899-e09c-45bf-b59b-961a5d7a2470",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={{ $json }}",
+            "sendBody": true,
+            "specifyBody": "json"
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "7748574b-1abd-4697-9644-db8bb79fb08d",
+          "name": "Merge output with initial prompts",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2440,
+            1140
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3.1
+        },
+        {
+          "id": "b207d83b-ecda-4a9f-af78-cfbb2253c119",
+          "name": "Merge output with initial prompts1",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            3000,
+            380
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3.1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "saveDataSuccessExecution": "all"
+      },
+      "versionId": "7b1849db-1c4c-4943-89b1-184926649776",
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "All LLM steps here - sequentially",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge output with initial prompts1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge2": {
+          "main": [
+            [
+              {
+                "node": "LLM steps - parallel",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge output with initial prompts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Reshape": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Basic LLM Chain4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Markdown": {
+          "main": [
+            []
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "CONNECT ME": {
+          "main": [
+            [
+              {
+                "node": "LLM Chain - Step 1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out1": {
+          "main": [
+            [
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "CONNECT ME1": {
+          "main": [
+            [
+              {
+                "node": "Clean memory",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CONNECT ME2": {
+          "main": [
+            [
+              {
+                "node": "Initial prompts1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Clean memory": {
+          "main": [
+            [
+              {
+                "node": "Initial prompts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HTTP Request": {
+          "main": [
+            [
+              {
+                "node": "Markdown",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "All LLM steps here - sequentially",
+                "type": "ai_memory",
+                "index": 0
+              },
+              {
+                "node": "Clean memory",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Initial prompts": {
+          "main": [
+            [
+              {
+                "node": "Reshape",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Initial prompts1": {
+          "main": [
+            [
+              {
+                "node": "Split Out1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "LLM Chain - Step 1": {
+          "main": [
+            [
+              {
+                "node": "LLM Chain - Step 2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "LLM Chain - Step 2": {
+          "main": [
+            [
+              {
+                "node": "LLM Chain - Step 3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "LLM Chain - Step 3": {
+          "main": [
+            [
+              {
+                "node": "LLM Chain - Step 4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Anthropic Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "LLM Chain - Step 1",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "LLM steps - parallel": {
+          "main": [
+            [
+              {
+                "node": "Merge output with initial prompts",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Anthropic Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "LLM Chain - Step 2",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Anthropic Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "LLM Chain - Step 3",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Anthropic Chat Model3": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "LLM Chain - Step 4",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Anthropic Chat Model4": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "All LLM steps here - sequentially",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Anthropic Chat Model5": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Basic LLM Chain4",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "All LLM steps here - sequentially": {
+          "main": [
+            [
+              {
+                "node": "Merge output with initial prompts1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "HTTP Request",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 38,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 3
+        },
+        "n8n-nodes-base.merge": {
+          "count": 4
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.markdown": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 5
+        },
+        "@n8n/n8n-nodes-langchain.memoryManager": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatAnthropic": {
+          "count": 6
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Eduard",
+      "username": "eduard",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/parsadanyan/"
+      ],
+      "avatar": "https://gravatar.com/avatar/a551e67c6fe7affd5f882a527dee154bb6c3ac90cf878326accb3fb3ec77c8a6?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 564,
+        "icon": "file:markdown.svg",
+        "name": "n8n-nodes-base.markdown",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Markdown"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM3LjExNjQgMzIuNjE4N0gyLjg4MzU3QzIuNTA0OSAzMi42MTg3IDIuMTI5OTMgMzIuNTQ0MSAxLjc4MDA4IDMyLjM5OTJDMS40MzAyMyAzMi4yNTQzIDEuMTEyMzQgMzIuMDQxOSAwLjg0NDU3OSAzMS43NzQxQzAuNTc2ODE1IDMxLjUwNjQgMC4zNjQ0MTIgMzEuMTg4NSAwLjIxOTQ5OSAzMC44Mzg2QzAuMDc0NTg1OCAzMC40ODg4IDAgMzAuMTEzOCAwIDI5LjczNTFWMTAuODgzNkMwIDEwLjExODggMC4zMDM4MDQgOS4zODUzNSAwLjg0NDU3OSA4Ljg0NDU4QzEuMzg1MzUgOC4zMDM4IDIuMTE4OCA4IDIuODgzNTcgOEgzNy4xMTY0QzM3LjQ5NTEgOCAzNy44NzAxIDguMDc0NTkgMzguMjE5OSA4LjIxOTVDMzguNTY5OCA4LjM2NDQxIDM4Ljg4NzcgOC41NzY4MSAzOS4xNTU0IDguODQ0NThDMzkuNDIzMiA5LjExMjM0IDM5LjYzNTYgOS40MzAyMyAzOS43ODA1IDkuNzgwMDhDMzkuOTI1NCAxMC4xMjk5IDQwIDEwLjUwNDkgNDAgMTAuODgzNlYyOS43MzE4QzQwLjAwMDIgMzAuMTEwNiAzOS45MjU4IDMwLjQ4NTggMzkuNzgxIDMwLjgzNThDMzkuNjM2MiAzMS4xODU5IDM5LjQyMzggMzEuNTAzOSAzOS4xNTYgMzEuNzcxOUMzOC44ODgyIDMyLjAzOTggMzguNTcwMyAzMi4yNTI0IDM4LjIyMDMgMzIuMzk3NEMzNy44NzAzIDMyLjU0MjQgMzcuNDk1MiAzMi42MTg3IDM3LjExNjQgMzIuNjE4N1pNOS42MTQxMyAyNi44NDgyVjE5LjM0NzZMMTMuNDYxMSAyNC4xNTYzTDE3LjMwNjQgMTkuMzQ3NlYyNi44NDgySDIxLjE1MzRWMTMuNzcyMUgxNy4zMDY0TDEzLjQ2MTEgMTguNTgwOUw5LjYxNDEzIDEzLjc3MjFINS43NjcxNVYyNi44NTE2TDkuNjE0MTMgMjYuODQ4MlpNMzUuMzg2MyAyMC4zMDk0SDMxLjUzOTNWMTMuNzcwNUgyNy42OTRWMjAuMzA5NEgyMy44NDdMMjkuNjE1OCAyNy4wNDE2TDM1LjM4NjMgMjAuMzA5NFoiIGZpbGw9IiMzODM4MzkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Markdown",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1145,
+        "icon": "file:anthropic.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "codex": {
+          "data": {
+            "alias": [
+              "claude",
+              "sonnet",
+              "opus"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatanthropic/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Anthropic Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSIzMiIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTMyLjczIDBoLTYuOTQ1TDM4LjQ1IDMyaDYuOTQ1ek0xMi42NjUgMCAwIDMyaDcuMDgybDIuNTktNi43MmgxMy4yNWwyLjU5IDYuNzJoNy4wODJMMTkuOTI5IDB6bS0uNzAyIDE5LjMzNyA0LjMzNC0xMS4yNDYgNC4zMzQgMTEuMjQ2eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Anthropic Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1246,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryManager",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorymanager/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Chat Memory Manager"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Chat Memory Manager",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

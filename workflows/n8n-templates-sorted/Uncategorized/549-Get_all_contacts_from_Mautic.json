@@ -1,0 +1,218 @@
+{
+  "workflow": {
+    "id": 549,
+    "name": "Get all contacts from Mautic",
+    "views": 1376,
+    "recentViews": 0,
+    "totalViews": 1376,
+    "createdAt": "2020-07-22T02:11:22.908Z",
+    "description": "Companion workflow for Mautic node docs\n\n![workflow-screenshot](fileId:147)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Mautic",
+          "type": "n8n-nodes-base.mautic",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "getAll",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "mauticOAuth2Api": "mautic_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Mautic",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.mautic": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 126,
+        "icon": "file:mautic.svg",
+        "name": "n8n-nodes-base.mautic",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mautic/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mautic/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Mautic"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSIzNDkuNzc5IiBoZWlnaHQ9IjM0OS43NzkiPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNzQuODkgMzQ5Ljc3OUM3OC42MTIgMzQ5Ljc3OSAwIDI3MS40NjIgMCAxNzQuODlTNzguNjEyIDAgMTc0Ljg5IDBjMjMuMjYgMCA0NS45MzEgNC40MTcgNjcuMTI5IDEzLjU0MyA1Ljg4OSAyLjY1IDguODMzIDkuNDIyIDYuNDc4IDE1LjYwNS0yLjY0OSA1Ljg4OC05LjQyMSA4LjgzMy0xNS42MDQgNi40NzctMTguNTQ5LTcuNjU1LTM3Ljk4LTExLjQ4Mi01OC4wMDItMTEuNDgyLTgzLjMyMyAwLTE1MS4wNDEgNjcuNzE4LTE1MS4wNDEgMTUxLjA0MXM2Ny43MTcgMTUxLjA0MSAxNTEuMDQgMTUxLjA0MSAxNTEuMDQxLTY3LjcxOCAxNTEuMDQxLTE1MS4wNDFjMC0xNy45Ni0yLjk0NC0zNS4zMzItOS4xMjctNTEuODE5LTIuMzU1LTYuMTgzLjg4My0xMi45NTUgNy4wNjYtMTUuMzFzMTIuOTU0Ljg4MyAxNS4zMSA3LjA2NmM3LjA2NiAxOS4xMzggMTAuNiAzOS40NTMgMTAuNiA2MC4wNjMtLjAwMSA5NS45ODMtNzguMzE4IDE3NC41OTUtMTc0Ljg5IDE3NC41OTUiLz48cGF0aCBmaWxsPSIjRkRCOTMzIiBkPSJtMjUxLjQ0IDE1Ni45My0yNy4wODYgMjguMjY0IDE1LjAxNSA2My4zMDJoMzQuMTUzem0tMTEuMTg3LTgzLjYxOCA5LjQyMSA5LjQyMi03NC43ODQgNzkuMjAxLTYzLjg5MS02NS42NTgtMzYuODAzIDE1Mi4yMTloMzQuMTU0bDIwLjMxNS04NC41IDQ2LjIyNSA1MC4zNDcgOTguOTI3LTEwNy43NiA5LjQyMiA5LjcxNiA5LjQyMS01My4yOTJ6Ii8+PC9zdmc+"
+        },
+        "displayName": "Mautic",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 147,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/2f13649d5e6542df9e37b48ee894d0be.png"
+      }
+    ]
+  }
+}

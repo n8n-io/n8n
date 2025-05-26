@@ -1,0 +1,38 @@
+URL: https://docs.n8n.io/
+Scraped_At: 2025-05-20T18:40:02.761778
+
+Welcome to n8n Docs
+#
+This is the documentation for
+n8n
+, a
+fair-code
+licensed workflow automation tool that combines AI capabilities with business process automation.
+It covers everything from setup to usage and development. It's a work in progress and all
+contributions
+are welcome.
+Where to start
+#
+Quickstarts
+Jump in with n8n's quickstart guides.
+Try it out
+Choose the right n8n for you
+Cloud, npm, self-host . . .
+Options
+Explore integrations
+Browse n8n's integrations library.
+Find your apps
+Build AI functionality
+n8n supports building AI functionality and tools.
+Advanced AI
+About n8n
+#
+n8n (pronounced n-eight-n) helps you to connect any app with an API with any other, and manipulate its data with little or no code.
+Customizable: highly flexible workflows and the option to build custom nodes.
+Convenient: use the npm or Docker to try out n8n, or the Cloud hosting option if you want us to handle the infrastructure.
+Privacy-focused: self-host n8n for privacy and security.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

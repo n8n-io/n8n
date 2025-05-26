@@ -1,0 +1,33 @@
+URL: https://docs.n8n.io/courses/level-one/chapter-7/
+Scraped_At: 2025-05-20T18:42:00.655956
+
+Test your knowledge
+#
+Congratulations, you finished the n8n Course Level 1!
+You've learned a lot about workflow automation and built your first business workflow. Why not showcase your skills?
+You can test your knowledge by taking a
+quiz
+, which consists of questions about the theoretical concepts and workflows covered in this course.
+You need to have at least 80% correct answers in each part to pass the quiz.
+You can take the quiz as many times as you want.
+There's no time limit on answering the quiz questions.
+Take the quiz!
+What's next?
+#
+Create new workflows for your work or personal use and share them with us. Don't have any ideas? Find inspiration on our
+blog
+,
+YouTube channel
+,
+community forum
+, and
+Discord server
+.
+Take the n8n
+Course Level 2
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,32 @@
+URL: https://docs.n8n.io/workflows/executions/
+Scraped_At: 2025-05-20T19:10:48.374789
+
+Executions
+#
+An execution is a single run of a workflow.
+Execution modes
+#
+There are two execution modes:
+Manual: run workflows manually when testing. Select
+Test Workflow
+to start a manual execution. You can do manual executions of active workflows, but n8n recommends keeping your workflow set to
+Inactive
+while developing and testing.
+Production: a production workflow is one that runs automatically. To enable this, set the workflow to
+Active
+.
+Execution lists
+#
+n8n provides two execution lists:
+Workflow-level executions
+: this execution list shows the executions for a single workflow.
+All executions
+: this list shows all executions for all your workflows.
+n8n supports
+adding custom data to executions
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,862 @@
+{
+  "workflow": {
+    "id": 3308,
+    "name": "Push Multiple Files to GitHub Repository via Github REST API",
+    "views": 512,
+    "recentViews": 4,
+    "totalViews": 512,
+    "createdAt": "2025-03-24T12:24:08.927Z",
+    "description": "## Introduction\nThis workflow offers a streamlined solution for uploading multiple files to a GitHub repository simultaneously using GitHub's REST API. It addresses a significant limitation of n8n's native GitHub node, which only supports single-file uploads at a time. By leveraging GitHub's Git Data API, this workflow creates a new Git tree containing multiple files, commits this tree, and updates the target branch—all in a single automated process.\n\nThe workflow is particularly valuable for automation scenarios that require batch file operations, such as deploying website updates, publishing documentation, or maintaining configuration files across repositories. It eliminates the need for multiple separate API calls when working with multiple files, making your automation more efficient and less prone to partial update issues.\n\nBy abstracting the complexities of GitHub's Git Data API into a reusable workflow, it provides a practical solution for developers, content managers, and DevOps professionals who need to programmatically manage repository content at scale.\n\n## Who is this for?\nThis workflow is designed for:\n\n- Developers and DevOps engineers who need to automate file updates in GitHub repositories\n- Content managers who regularly publish multiple files to GitHub-hosted websites or documentation\n- Automation specialists looking to integrate GitHub operations into larger workflows\n- Teams using n8n for CI/CD processes who need to push code or configuration changes\n\nUsers should have basic familiarity with GitHub concepts (repositories, branches, commits) and should be comfortable obtaining and using GitHub Personal Access Tokens. While the workflow handles the API complexity, users should understand the fundamentals of version control to effectively utilize and customize it.\n\n## What problem is this workflow solving?\nThis workflow addresses several key challenges:\n\n1. **Limited batch operations**: n8n's native GitHub node only supports uploading one file at a time, making multi-file operations cumbersome and inefficient.\n\n2. **API complexity**: GitHub's Git Data API requires multiple sequential calls with interdependent data to create commits with multiple files, which is complex to implement manually.\n\n3. **Automation bottlenecks**: Without this workflow, automating multi-file updates would require either multiple separate API calls (risking partial updates) or custom scripting outside of n8n.\n\n4. **Consistency issues**: When files need to be updated together (e.g., code and corresponding documentation), this workflow ensures they're committed in a single atomic operation.\n\nBy solving these issues, the workflow enables reliable, atomic updates of multiple files, maintaining repository consistency and simplifying automation processes.\n\n## What this workflow does\n### Overview\nThis workflow uses GitHub's REST API to push multiple files to a repository in a single operation. It follows Git's internal model by:\n1. Retrieving the current state of the repository\n2. Creating a new tree with the files to be added or updated\n3. Creating a new commit with this tree\n4. Updating the branch reference to point to the new commit\n\n### Process\n1. **Initialization**: The workflow starts with a manual trigger and sets up GitHub credentials and repository information.\n\n2. **File Content Definition**: Two \"Set\" nodes define the content for the files to be uploaded.\n\n3. **Repository State Retrieval**: \n   - The workflow fetches the latest commit SHA for the specified branch\n   - It then retrieves the base tree SHA from this commit\n\n4. **Tree Creation**: A new Git tree is created that includes both files (file1.txt and file2.txt), specifying their paths and content.\n\n5. **Commit Creation**: A new commit is created with the specified commit message, referencing the new tree and the parent commit.\n\n6. **Branch Update**: Finally, the branch reference is updated to point to the new commit, making the changes visible in the repository.\n\n## Setup\nTo use this workflow:\n\n1. **Import the workflow**: Download the workflow JSON and import it into your n8n instance.\n\n2. **Create a GitHub Personal Access Token**:\n   - Go to GitHub Settings → Developer Settings → Personal Access Tokens → Fine-grained tokens\n   - Create a new token with \"Contents\" permission (Read and write) for your target repository\n\n3. **Configure the workflow**:\n   - Update the \"Set Github Info\" node with:\n     - Your GitHub Personal Access Token\n     - Your GitHub username\n     - Your repository name\n     - The target branch (default is \"main\")\n     - A commit message\n\n4. **Define file content**:\n   - Modify the \"File 1\" and \"File 2\" nodes with the content you want to upload\n\n5. **Adjust file paths if needed**:\n   - In the \"Create new tree\" node, update the file paths if you want to change where the files are stored in the repository\n\n6. **Save and run the workflow**: Click \"Test workflow\" to execute the process.\n\n## How to customize this workflow to your needs\nThis workflow can be adapted in several ways:\n\n1. **Add more files**: \n   - Create additional \"Set\" nodes for more file content\n   - In the \"Create new tree\" node, add more tree entries following the same pattern (path, mode, type, content)\n\n2. **Change file locations**:\n   - Modify the \"path\" parameters in the \"Create new tree\" node to place files in different directories\n\n3. **Dynamic file content**:\n   - Replace the static content in the \"File\" nodes with data from other sources\n   - Use previous nodes or HTTP requests to generate file content dynamically\n\n4. **Conditional file updates**:\n   - Add IF nodes to determine which files should be updated based on certain conditions\n   - Create separate branches in your workflow for different update scenarios\n\n5. **Scheduled updates**:\n   - Replace the manual trigger with a Schedule node to run the workflow at specific intervals\n   - Combine with other triggers like Webhook or database events to push files when certain events occur\n\n6. **Error handling**:\n   - Add Error Trigger nodes to handle potential API failures\n   - Implement notification nodes to alert you of successful pushes or failures",
+    "workflow": {
+      "id": "RtTHLr1SAwIpntKr",
+      "meta": {
+        "instanceId": "ddfdf733df99a65c801a91865dba5b7c087c95cc22a459ff3647e6deddf2aee6"
+      },
+      "name": "Push Multiple Files to Github Repo via Github REST API",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "f9de827d-6aea-47f9-ac01-bf41e9a41642",
+          "name": "Get latest commit SHA",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -300,
+            180
+          ],
+          "parameters": {
+            "url": "=https://api.github.com/repos/{{ $('Set Github Info').item.json['Github Username'] }}/{{ $('Set Github Info').item.json['Github Repo'] }}/git/refs/heads/{{ $('Set Github Info').item.json['Github Branch'] }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Set Github Info').item.json['Github Token'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "28576f1f-2e41-46fe-9bb3-9e4678bb3f45",
+          "name": "Get base tree SHA",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -120,
+            180
+          ],
+          "parameters": {
+            "url": "=https://api.github.com/repos/{{ $('Set Github Info').item.json['Github Username'] }}/{{ $('Set Github Info').item.json['Github Repo'] }}/git/commits/{{ $json.object.sha }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Set Github Info').item.json['Github Token'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "eb3c7f72-a2bd-4ef2-ae9d-e548746a1260",
+          "name": "Create new tree",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            60,
+            180
+          ],
+          "parameters": {
+            "url": "=https://api.github.com/repos/{{ $('Set Github Info').item.json['Github Username'] }}/{{ $('Set Github Info').item.json['Github Repo'] }}/git/trees",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "sendHeaders": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "base_tree",
+                  "value": "={{ $json[\"tree\"][\"sha\"] }}"
+                },
+                {
+                  "name": "tree[0].path",
+                  "value": "public/file1.txt"
+                },
+                {
+                  "name": "tree[0].mode",
+                  "value": "100644"
+                },
+                {
+                  "name": "tree[0].type",
+                  "value": "blob"
+                },
+                {
+                  "name": "tree[0].content",
+                  "value": "={{ $('File 1').item.json.content }}"
+                },
+                {
+                  "name": "tree[1].path",
+                  "value": "public/file2.txt"
+                },
+                {
+                  "name": "tree[1].mode",
+                  "value": "100644"
+                },
+                {
+                  "name": "tree[1].type",
+                  "value": "blob"
+                },
+                {
+                  "name": "tree[1].content",
+                  "value": "={{ $('File 2').item.json.content }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Set Github Info').item.json['Github Token'] }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "ba76ddd3-844a-4aa1-8a5a-efaa2f228044",
+          "name": "Create commit",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            240,
+            180
+          ],
+          "parameters": {
+            "url": "=https://api.github.com/repos/{{ $('Set Github Info').item.json['Github Username'] }}/{{ $('Set Github Info').item.json['Github Repo'] }}/git/commits",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"message\": \"{{ $('Set Github Info').item.json['Github Commit Update Message'] }}\",\n  \"tree\": \"{{ $json.sha }}\",\n  \"parents\": [\"{{ $('Get latest commit SHA').item.json.object.sha }}\"]\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Set Github Info').item.json['Github Token'] }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "3a29539c-dd3f-4092-9d36-84fe9d65c2bf",
+          "name": "Update branch",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            420,
+            180
+          ],
+          "parameters": {
+            "url": "=https://api.github.com/repos/{{ $('Set Github Info').item.json['Github Username'] }}/{{ $('Set Github Info').item.json['Github Repo'] }}/git/refs/heads/{{ $('Set Github Info').item.json['Github Branch'] }}",
+            "method": "PATCH",
+            "options": {},
+            "jsonBody": "={\n  \"sha\": \"{{ $json.sha }}\",\n  \"force\": false\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Set Github Info').item.json['Github Token'] }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "891f7a36-a17d-4c32-bd62-e68c8a0ae0a7",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -300,
+            -60
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ea97d057-fc19-49cc-a5fb-1ab0adbceacb",
+          "name": "Set Github Info",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -120,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "c1ba4494-05cf-4c4f-8ec1-283083fbcaa4",
+                  "name": "Github Token",
+                  "type": "string",
+                  "value": "YOUR_GITHUB_PAT_TOKEN"
+                },
+                {
+                  "id": "3e65c520-9fcd-442a-adf3-2a0f273b149b",
+                  "name": "Github Repo",
+                  "type": "string",
+                  "value": "YOUR_GITHUB_REPO_NAME"
+                },
+                {
+                  "id": "49bf7a21-6fc2-4c8c-a229-1b2f41a4de71",
+                  "name": "Github Username",
+                  "type": "string",
+                  "value": "YOUR_GITHUB_USERNAME"
+                },
+                {
+                  "id": "c8cf6bad-5c28-4536-ac16-1442a4fdbd18",
+                  "name": "Github Branch",
+                  "type": "string",
+                  "value": "main"
+                },
+                {
+                  "id": "3fea08bc-032e-4194-9fd6-9e4de79e2fcf",
+                  "name": "Github Commit Update Message",
+                  "type": "string",
+                  "value": "Updating file1.txt and file2.txt"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "afd1d74c-7d06-4e49-a906-a9d637ce8600",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -960,
+            -80
+          ],
+          "parameters": {
+            "width": 580,
+            "height": 380,
+            "content": "## Push Multiple Files to GitHub Repo  \nA streamlined workflow for uploading multiple files to a GitHub repository via the GitHub REST API. This solution addresses a significant limitation of the native GitHub n8n node, which supports only single-file uploads.\n\nThis approach enables batch file operations, making it particularly valuable for automation scenarios that require simultaneous uploads of multiple files to your GitHub repositories.\n\n### Setup Instructions:\n1. Create a new GitHub Personal Access Token [here](https://github.com/settings/personal-access-tokens). In the \"Repository access\" section, select your repository and grant \"Read and write\" permissions under the \"Contents\" category.  \n2. Configure your GitHub information in the \"Set GitHub Info\" node.  \n3. Update the \"Create New Tree\" node with your filenames and content. You can add as many tree entries (files) as needed."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d282fec1-0fd9-4956-95b4-0437ed67ff03",
+          "name": "File 1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            60,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0ddbab7f-7073-4568-9ca5-2b3799d4a87e",
+                  "name": "content",
+                  "type": "string",
+                  "value": "This is the content of your file #1."
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "426b3d80-c5af-4029-a4e7-b56b0af7601a",
+          "name": "File 2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0ddbab7f-7073-4568-9ca5-2b3799d4a87e",
+                  "name": "content",
+                  "type": "string",
+                  "value": "This is the content of your file #2."
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "2920d785-d42a-4901-b5d9-6929ac62c132",
+      "connections": {
+        "File 1": {
+          "main": [
+            [
+              {
+                "node": "File 2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "File 2": {
+          "main": [
+            [
+              {
+                "node": "Get latest commit SHA",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create commit": {
+          "main": [
+            [
+              {
+                "node": "Update branch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create new tree": {
+          "main": [
+            [
+              {
+                "node": "Create commit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Github Info": {
+          "main": [
+            [
+              {
+                "node": "File 1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get base tree SHA": {
+          "main": [
+            [
+              {
+                "node": "Create new tree",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get latest commit SHA": {
+          "main": [
+            [
+              {
+                "node": "Get base tree SHA",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Set Github Info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 10,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 5
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Custom Workflows AI",
+      "username": "customworkflowsai",
+      "bio": "We specializes in crafting tailored automation solutions that help businesses streamline their operations and boost productivity. With expertise in creating custom n8n workflows, we transform complex business processes into seamless, automated systems that save time and reduce manual effort.",
+      "verified": true,
+      "links": [
+        "https://customworkflows.ai"
+      ],
+      "avatar": "https://gravatar.com/avatar/8b94720cd9c980204474d25605eb1bd96393f7e0bf0cb9c6e2b36b92262fa778?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 16,
+        "name": "DevOps"
+      }
+    ],
+    "image": []
+  }
+}

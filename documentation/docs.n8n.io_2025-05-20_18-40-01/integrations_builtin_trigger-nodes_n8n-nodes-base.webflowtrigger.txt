@@ -1,0 +1,20 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.webflowtrigger/
+Scraped_At: 2025-05-20T19:08:02.438892
+
+Webflow Trigger node
+#
+Webflow
+is an application that allows you to build responsive websites with browser-based visual editing software.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Webflow Trigger integrations
+page.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

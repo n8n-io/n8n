@@ -1,0 +1,109 @@
+{
+  "workflow": {
+    "id": 521,
+    "name": "Receive updates on emails sent via Mailjet",
+    "views": 303,
+    "recentViews": 0,
+    "totalViews": 303,
+    "createdAt": "2020-07-15T11:40:54.156Z",
+    "description": "Companion workflow for Mailjet Trigger node docs\n\n![workflow-screenshot](fileId:122)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Mailjet Trigger",
+          "type": "n8n-nodes-base.mailjetTrigger",
+          "position": [
+            530,
+            400
+          ],
+          "parameters": {
+            "event": "sent"
+          },
+          "credentials": {
+            "mailjetEmailApi": "mailjet creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.mailjetTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 269,
+        "icon": "file:mailjet.svg",
+        "name": "n8n-nodes-base.mailjetTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mailjettrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mailjet/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Mailjet Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjI1MDAiIHZpZXdCb3g9IjAuNSA5MCA0MDIuNiAyMjIuMiI+PHBhdGggZmlsbD0iI2ZlYWQwYyIgZD0ibTEyOS4xIDE5NS41LTcgNDYuNS00OCA3MC4yIDE2LjItOC45TDM1NCAxNTguMWw0OS4xLTI3em0tMS43LTEyLjMgMjA2LjgtNDctMTMuNC0xLjgtNTQuMy03LjYtMTE1LjItMTUuOUwuNSA5MGw1NS4zIDQwLjYgNjkuNSA1MS4xeiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Mailjet Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 122,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/1b1281cb4e534c6ab27f4bc5948c298b.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,149 @@
+URL: https://docs.n8n.io/hosting/configuration/user-management-self-hosted/
+Scraped_At: 2025-05-20T18:44:18.655770
+
+Configure self-hosted n8n for user management
+#
+User management in n8n allows you to invite people to work in your n8n instance.
+This document describes how to configure your n8n instance to support user management, and the steps to start inviting users.
+Refer to the main
+User management
+guide for more information about usage, including:
+Managing users
+Account types
+Best practices
+For LDAP setup information, refer to
+LDAP
+.
+For SAML setup information, refer to
+SAML
+.
+Basic auth and JWT removed
+n8n removed support for basic auth and JWT in version 1.0.
+Setup
+#
+There are three stages to set up user management in n8n:
+Configure your n8n instance to use your SMTP server.
+Start n8n and follow the setup steps in the app.
+Invite users.
+Step one: SMTP
+#
+n8n recommends setting up an SMTP server, for user invites and password resets.
+Optional from 0.210.1
+From version 0.210.1 onward, this step is optional. You can choose to manually copy and send invite links instead of setting up SMTP. Note that if you skip this step, users can't reset passwords.
+Get the following information from your SMTP provider:
+Server name
+SMTP username
+SMTP password
+SMTP sender name
+To set up SMTP with n8n, configure the SMTP environment variables for your n8n instance. For information on how to set environment variables, refer to
+Configuration
+Variable
+Type
+Description
+Required?
+N8N_EMAIL_MODE
+string
+smtp
+Required
+N8N_SMTP_HOST
+string
+your_SMTP_server_name
+Required
+N8N_SMTP_PORT
+number
+your_SMTP_server_port
+Default is
+465
+.
+Optional
+N8N_SMTP_USER
+string
+your_SMTP_username
+Optional
+N8N_SMTP_PASS
+string
+your_SMTP_password
+Optional
+N8N_SMTP_OAUTH_SERVICE_CLIENT
+string
+your_OAuth_service_client
+Optional
+N8N_SMTP_OAUTH_PRIVATE_KEY
+string
+your_OAuth_private_key
+Optional
+N8N_SMTP_SENDER
+string
+Sender email address. You can optionally include the sender name. Example with name:
+N8N
+<contact@n8n.com>
+Required
+N8N_SMTP_SSL
+boolean
+Whether to use SSL for SMTP (true) or not (false). Defaults to
+true
+.
+Optional
+N8N_UM_EMAIL_TEMPLATES_INVITE
+string
+Full path to your HTML email template. This overrides the default template for invite emails.
+Optional
+N8N_UM_EMAIL_TEMPLATES_PWRESET
+string
+Full path to your HTML email template. This overrides the default template for password reset emails.
+Optional
+N8N_UM_EMAIL_TEMPLATES_WORKFLOW_SHARED
+String
+Overrides the default HTML template for notifying users that a credential was shared. Provide the full path to the template.
+Optional
+N8N_UM_EMAIL_TEMPLATES_CREDENTIALS_SHARED
+String
+Overrides the default HTML template for notifying users that a credential was shared. Provide the full path to the template.
+Optional
+If your n8n instance is already running, you need to restart it to enable the new SMTP settings.
+More configuration options
+There are more configuration options available as environment variables. Refer to
+Environment variables
+for a list. These include options to disable tags, workflow templates, and the personalization survey, if you don't want your users to see them.
+New to SMTP?
+If you're not familiar with SMTP, this
+blog post by SendGrid
+offers a short introduction, while
+Wikipedia's Simple Mail Transfer Protocol article
+provides more detailed technical background.
+Step two: In-app setup
+#
+When you set up user management for the first time, you create an owner account.
+Open n8n. The app displays a signup screen.
+Enter your details. Your password must be at least eight characters, including at least one number and one capital letter.
+Click
+Next
+. n8n logs you in with your new owner account.
+Step three: Invite users
+#
+You can now invite other people to your n8n instance.
+Sign into your workspace with your owner account. (If you are in the Admin Panel open your
+Workspace
+from the Dashboard)
+Click the three dots next to your user icon at the bottom left and click
+Settings
+. n8n opens your
+Personal settings
+page.
+Click
+Users
+to go to the
+Users
+page.
+Click
+Invite
+.
+Enter the new user's email address.
+Click
+Invite user
+. n8n sends an email with a link for the new user to join.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

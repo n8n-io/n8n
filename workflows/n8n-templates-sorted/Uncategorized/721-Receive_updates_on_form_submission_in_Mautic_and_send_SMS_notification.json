@@ -1,0 +1,325 @@
+{
+  "workflow": {
+    "id": 721,
+    "name": "Receive updates on form submission in Mautic and send SMS notification",
+    "views": 759,
+    "recentViews": 0,
+    "totalViews": 759,
+    "createdAt": "2020-10-15T13:36:20.630Z",
+    "description": "![workflow-screenshot](fileId:277)",
+    "workflow": {
+      "id": "13",
+      "name": "Receive updates when a form is submitted in Mautic, and send a confirmation SMS",
+      "nodes": [
+        {
+          "name": "Mautic Trigger",
+          "type": "n8n-nodes-base.mauticTrigger",
+          "position": [
+            510,
+            300
+          ],
+          "webhookId": "9dce2b84-33fe-4816-ae4b-301c208b5384",
+          "parameters": {
+            "events": [
+              "mautic.form_on_submit"
+            ]
+          },
+          "credentials": {
+            "mauticApi": "mautic"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Twilio",
+          "type": "n8n-nodes-base.twilio",
+          "position": [
+            710,
+            300
+          ],
+          "parameters": {
+            "to": "={{$node[\"Mautic Trigger\"].json[\"mautic.form_on_submit\"][0][\"submission\"][\"results\"][\"phone_number\"]}}",
+            "from": "1234",
+            "message": "=Hey, {{$node[\"Mautic Trigger\"].json[\"mautic.form_on_submit\"][0][\"submission\"][\"results\"][\"first_name\"]}} 👋\nThank you for signing up for the Webinar - Getting Started with n8n. The webinar will start at 1800 CEST on 31st October 2020.\nSee you there!"
+          },
+          "credentials": {
+            "twilioApi": "twilio"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Mautic Trigger": {
+          "main": [
+            [
+              {
+                "node": "Twilio",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.twilio": {
+          "count": 1
+        },
+        "n8n-nodes-base.mauticTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 45,
+        "icon": "file:twilio.svg",
+        "name": "n8n-nodes-base.twilio",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMS",
+              "Phone",
+              "Voice"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/twilio/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Twilio"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjUgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsPSIjZTMxZTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTMxLjk1MyAwQzE0LjMzNyAwIDAgMTQuMzM3IDAgMzEuOTUzczE0LjMzNyAzMS45NTMgMzEuOTUzIDMxLjk1M0M0OS42NjMgNjQgNjQgNDkuNjYzIDY0IDMxLjk1M1M0OS42NjMgMCAzMS45NTMgMG0wIDU1LjU2N2MtMTIuOTMxIDAtMjMuNTItMTAuNTg5LTIzLjUyLTIzLjYxNCAwLTEyLjkzMSAxMC41ODktMjMuNTIgMjMuNTItMjMuNTIgMTMuMDI1IDAgMjMuNjE0IDEwLjU4OSAyMy42MTQgMjMuNTIgMCAxMy4wMjUtMTAuNTg5IDIzLjYxNC0yMy42MTQgMjMuNjE0Ii8+PHVzZSB4bGluazpocmVmPSIjYiIvPjx1c2UgeGxpbms6aHJlZj0iI2IiIHk9IjE1LjkzIi8+PHBhdGggZD0iTTE3LjMzNSAzOS45MThhNi42NCA2LjY0IDAgMCAxIDYuNjUzLTYuNjUzIDYuNjUzIDYuNjUzIDAgMSAxIDAgMTMuMzA2IDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1M20wLTE1LjkzYTYuNjQgNi42NCAwIDAgMSA2LjY1My02LjY1MyA2LjY0IDYuNjQgMCAwIDEgNi42NTMgNi42NTMgNi42NCA2LjY0IDAgMCAxLTYuNjUzIDYuNjUzIDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1MyIvPjwvZz48L3N5bWJvbD48ZGVmcz48cGF0aCBpZD0iYiIgZD0iTTMzLjI2NSAyMy45ODhhNi42NCA2LjY0IDAgMSAxIDEzLjMwNiAwIDYuNjQgNi42NCAwIDEgMS0xMy4zMDYgMCIvPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Twilio",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 127,
+        "icon": "file:mautic.svg",
+        "name": "n8n-nodes-base.mauticTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mautictrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mautic/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Mautic Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSIzNDkuNzc5IiBoZWlnaHQ9IjM0OS43NzkiPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNzQuODkgMzQ5Ljc3OUM3OC42MTIgMzQ5Ljc3OSAwIDI3MS40NjIgMCAxNzQuODlTNzguNjEyIDAgMTc0Ljg5IDBjMjMuMjYgMCA0NS45MzEgNC40MTcgNjcuMTI5IDEzLjU0MyA1Ljg4OSAyLjY1IDguODMzIDkuNDIyIDYuNDc4IDE1LjYwNS0yLjY0OSA1Ljg4OC05LjQyMSA4LjgzMy0xNS42MDQgNi40NzctMTguNTQ5LTcuNjU1LTM3Ljk4LTExLjQ4Mi01OC4wMDItMTEuNDgyLTgzLjMyMyAwLTE1MS4wNDEgNjcuNzE4LTE1MS4wNDEgMTUxLjA0MXM2Ny43MTcgMTUxLjA0MSAxNTEuMDQgMTUxLjA0MSAxNTEuMDQxLTY3LjcxOCAxNTEuMDQxLTE1MS4wNDFjMC0xNy45Ni0yLjk0NC0zNS4zMzItOS4xMjctNTEuODE5LTIuMzU1LTYuMTgzLjg4My0xMi45NTUgNy4wNjYtMTUuMzFzMTIuOTU0Ljg4MyAxNS4zMSA3LjA2NmM3LjA2NiAxOS4xMzggMTAuNiAzOS40NTMgMTAuNiA2MC4wNjMtLjAwMSA5NS45ODMtNzguMzE4IDE3NC41OTUtMTc0Ljg5IDE3NC41OTUiLz48cGF0aCBmaWxsPSIjRkRCOTMzIiBkPSJtMjUxLjQ0IDE1Ni45My0yNy4wODYgMjguMjY0IDE1LjAxNSA2My4zMDJoMzQuMTUzem0tMTEuMTg3LTgzLjYxOCA5LjQyMSA5LjQyMi03NC43ODQgNzkuMjAxLTYzLjg5MS02NS42NTgtMzYuODAzIDE1Mi4yMTloMzQuMTU0bDIwLjMxNS04NC41IDQ2LjIyNSA1MC4zNDcgOTguOTI3LTEwNy43NiA5LjQyMiA5LjcxNiA5LjQyMS01My4yOTJ6Ii8+PC9zdmc+"
+        },
+        "displayName": "Mautic Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 13,
+        "name": "Support"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 277,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/127b48330f194149973ebc2a8b440b01.png"
+      }
+    ]
+  }
+}

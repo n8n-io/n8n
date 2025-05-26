@@ -1,0 +1,307 @@
+{
+  "workflow": {
+    "id": 870,
+    "name": "Send an SMS to a number whenever you go out",
+    "views": 1021,
+    "recentViews": 0,
+    "totalViews": 1021,
+    "createdAt": "2021-01-01T05:28:46.492Z",
+    "description": "This workflow allows you to send an SMS to a number whenever you go out. \n\n![workflow-screenshot](fileId:366)\n\nPushcut is an app for iOS that lets you create smart notifications to kick off shortcuts, URLs, and online automation. \n\nYou can have multiple actions for a notification. You can use the IF node to check which action was selected and build the workflow accordingly. \n\n**Pushcut Trigger node:** This node triggers the workflow when an action is selected by the user. \n\n**Twilio node:** The Twilio node sends an SMS with the input given by the user. \n\nBased on your use-case, you might want to do something else, for example, send a Tweet, dim or turn off your Philips Hue lights, add activity to Strava or play music on Spotify. Replace the Twilio node with these nodes to customize the workflow as per your needs.",
+    "workflow": {
+      "id": "92",
+      "name": "Send an SMS to a number whenever you go out",
+      "nodes": [
+        {
+          "name": "Pushcut Trigger",
+          "type": "n8n-nodes-base.pushcutTrigger",
+          "position": [
+            470,
+            300
+          ],
+          "webhookId": "",
+          "parameters": {
+            "actionName": "Leaving Home"
+          },
+          "credentials": {
+            "pushcutApi": "Pushcut Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Twilio",
+          "type": "n8n-nodes-base.twilio",
+          "position": [
+            670,
+            300
+          ],
+          "parameters": {
+            "to": "123",
+            "from": "123",
+            "message": "=I'm {{$node[\"Pushcut Trigger\"].json[\"input\"]}}"
+          },
+          "credentials": {
+            "twilioApi": "twilio"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Pushcut Trigger": {
+          "main": [
+            [
+              {
+                "node": "Twilio",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.twilio": {
+          "count": 1
+        },
+        "n8n-nodes-base.pushcutTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 45,
+        "icon": "file:twilio.svg",
+        "name": "n8n-nodes-base.twilio",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMS",
+              "Phone",
+              "Voice"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/twilio/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Twilio"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjUgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsPSIjZTMxZTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTMxLjk1MyAwQzE0LjMzNyAwIDAgMTQuMzM3IDAgMzEuOTUzczE0LjMzNyAzMS45NTMgMzEuOTUzIDMxLjk1M0M0OS42NjMgNjQgNjQgNDkuNjYzIDY0IDMxLjk1M1M0OS42NjMgMCAzMS45NTMgMG0wIDU1LjU2N2MtMTIuOTMxIDAtMjMuNTItMTAuNTg5LTIzLjUyLTIzLjYxNCAwLTEyLjkzMSAxMC41ODktMjMuNTIgMjMuNTItMjMuNTIgMTMuMDI1IDAgMjMuNjE0IDEwLjU4OSAyMy42MTQgMjMuNTIgMCAxMy4wMjUtMTAuNTg5IDIzLjYxNC0yMy42MTQgMjMuNjE0Ii8+PHVzZSB4bGluazpocmVmPSIjYiIvPjx1c2UgeGxpbms6aHJlZj0iI2IiIHk9IjE1LjkzIi8+PHBhdGggZD0iTTE3LjMzNSAzOS45MThhNi42NCA2LjY0IDAgMCAxIDYuNjUzLTYuNjUzIDYuNjUzIDYuNjUzIDAgMSAxIDAgMTMuMzA2IDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1M20wLTE1LjkzYTYuNjQgNi42NCAwIDAgMSA2LjY1My02LjY1MyA2LjY0IDYuNjQgMCAwIDEgNi42NTMgNi42NTMgNi42NCA2LjY0IDAgMCAxLTYuNjUzIDYuNjUzIDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1MyIvPjwvZz48L3N5bWJvbD48ZGVmcz48cGF0aCBpZD0iYiIgZD0iTTMzLjI2NSAyMy45ODhhNi42NCA2LjY0IDAgMSAxIDEzLjMwNiAwIDYuNjQgNi42NCAwIDEgMS0xMy4zMDYgMCIvPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Twilio",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 426,
+        "icon": "file:pushcut.png",
+        "name": "n8n-nodes-base.pushcutTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.pushcuttrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/pushcut/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Pushcut Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Pushcut Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 366,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/1c8410032cea48ccbd189e9868b514c4.png"
+      }
+    ]
+  }
+}

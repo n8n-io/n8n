@@ -1,0 +1,272 @@
+{
+  "workflow": {
+    "id": 936,
+    "name": "Add the affiliate to a program automatically",
+    "views": 725,
+    "recentViews": 0,
+    "totalViews": 725,
+    "createdAt": "2021-02-12T07:23:35.399Z",
+    "description": "This workflow allows you to create an affiliate, add metadata, and add the affiliate to a program.\n\n![workflow-screenshot](fileId:412)\n\n**Tapfiliate node:** This node allows you to create a new affiliate in Tapfiliate.\n\n**Tapfiliate1 node:** This node allows you add metadata to the affiliate that you created previously. Based on your use-case, you may or may not require this node.\n\n**Tapfiliate2 node:** This node allows you to add the affiliate that you created previously to a program. \n\nBased on your use-case, you might want to replace the **Start node** with a trigger node that gets you the information of an affiliate.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Tapfiliate2",
+          "type": "n8n-nodes-base.tapfiliate",
+          "position": [
+            870,
+            300
+          ],
+          "parameters": {
+            "resource": "programAffiliate",
+            "programId": "testing-program-5",
+            "affiliateId": "={{$node[\"Tapfiliate\"].json[\"id\"]}}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "tapfiliateApi": "Tapfiliate API credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Tapfiliate1",
+          "type": "n8n-nodes-base.tapfiliate",
+          "position": [
+            670,
+            300
+          ],
+          "parameters": {
+            "resource": "affiliateMetadata",
+            "metadataUi": {
+              "metadataValues": [
+                {
+                  "key": "tag",
+                  "value": "n8n"
+                }
+              ]
+            },
+            "affiliateId": "={{$json[\"id\"]}}"
+          },
+          "credentials": {
+            "tapfiliateApi": "Tapfiliate API credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Tapfiliate",
+          "type": "n8n-nodes-base.tapfiliate",
+          "position": [
+            470,
+            300
+          ],
+          "parameters": {
+            "email": "n8ndocsburner@gmail.com",
+            "lastname": "Ryan",
+            "firstname": "Jack",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "tapfiliateApi": "Tapfiliate API credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            270,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Tapfiliate": {
+          "main": [
+            [
+              {
+                "node": "Tapfiliate1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Tapfiliate1": {
+          "main": [
+            [
+              {
+                "node": "Tapfiliate2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Tapfiliate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.tapfiliate": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 446,
+        "icon": "file:tapfiliate.svg",
+        "name": "n8n-nodes-base.tapfiliate",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.tapfiliate/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/tapfiliate/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Tapfiliate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5MDAiIGhlaWdodD0iOTAwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIyLjAzNyUiIHgyPSIxMDYuMjc1JSIgeTE9IjExMy4xNDElIiB5Mj0iLTcuODU0JSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzJGREZCRiIvPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMyRkRGQkYiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyRjc0RkYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNOTAwIDI4OS4xOWMwLTExMy41MTQtNjcuMTY0LTIyMS42MjItMTc4LjY1Ny0yNjcuNTY4QzY4NS4wNzUgNi43NTcgNjQ3LjQ2MyAwIDYwOS44NTEgMCA1NTIuMDkgMCA0OTUuNjcgMTcuNTY4IDQ0OC42NTcgNDguNjQ5IDQwMi45ODUgMTcuNTY4IDM0Ny45MSAwIDI4OC44MDYgMGMtMjAuMTUgMC00MS42NDIgMi43MDMtNjMuMTM0IDYuNzU3QzExOC4yMDkgMjkuNzMgMzIuMjM5IDExMy41MTQgNi43MTYgMjIwLjI3djIuNzAzQzIuNjg2IDI0MS44OTIgMCAyNjIuMTYzIDAgMjgxLjA4MSAwIDMyMi45NzMgOS40MDMgMzYzLjUxNCAyNC4xOCA0MDBsMTQ1LjA3NCAzNjMuNTE0YzIxLjQ5MiA1NS40MDUgNjQuNDc3IDEwMS4zNSAxMjMuNTgyIDEyMi45NzIgMjEuNDkyIDguMTA5IDQyLjk4NSAxMi4xNjMgNjUuODIgMTMuNTE0aDUwMi4zODlsLTkwLTIzOS4xOUw4NzguNTA3IDQwMEM4OTEuOTQgMzYzLjUxNCA5MDAgMzI1LjY3NiA5MDAgMjg5LjE5bS04MDQuNjI3LTguMTFjMC0xMi4xNjIgMS4zNDMtMjUuNjc2IDQuMDMtMzcuODM4di0yLjcwMmMxNi4xMi02OC45MiA3NS4yMjQtMTI3LjAyNyAxNDUuMDc1LTE0MC41NDEgMTQuNzc2LTIuNzAzIDI5LjU1Mi00LjA1NCA0Mi45ODUtNC4wNTQgMzIuMjM4IDAgNjEuNzkgOC4xMDggODguNjU2IDIxLjYyMi0xMy40MzIgMTguOTE4LTI1LjUyMiAzNy44MzctMzQuOTI1IDYwLjgxTDE4OC4wNiA1NTYuNzU3bC03Ni41NjctMTkxLjg5MmMtOS40MDMtMjguMzc5LTE2LjEyLTU2Ljc1Ny0xNi4xMi04My43ODR6bTY5My4xMzQgODIuNDMzTDY2Ni4yNyA2NTkuNDU5bDU1LjA3NCAxNDUuOTQ2SDM2Mi42ODdxLTE4LjEzNSAwLTM2LjI3LTguMTA4Yy00OC4zNTctMTcuNTY3LTc2LjU2Ni02My41MTMtNzYuNTY2LTExMC44MSAwLTEzLjUxNCAyLjY4Ni0yOC4zNzkgOC4wNi00My4yNDRsMTczLjI4My00MjguMzc4YzMwLjg5Ni03NC4zMjQgMTAzLjQzMy0xMTguOTIgMTgwLTExOC45MiAyNC4xOCAwIDQ5LjcwMiA0LjA1NSA3My44OCAxNC44NjYgNzUuMjI1IDMxLjA4IDExOS41NTMgMTAyLjcwMyAxMTkuNTUzIDE3OC4zNzgtMS4zNDMgMjQuMzI1LTUuMzczIDUwLTE2LjEyIDc0LjMyNXoiLz48L3N2Zz4="
+        },
+        "displayName": "Tapfiliate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 412,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/a4cd05c42d2948e3ab98ef2c3edddc48.png"
+      }
+    ]
+  }
+}

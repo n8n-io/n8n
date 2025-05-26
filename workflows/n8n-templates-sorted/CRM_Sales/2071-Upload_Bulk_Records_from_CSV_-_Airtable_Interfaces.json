@@ -1,0 +1,1317 @@
+{
+  "workflow": {
+    "id": 2071,
+    "name": "Upload Bulk Records from CSV - Airtable Interfaces",
+    "views": 1502,
+    "recentViews": 0,
+    "totalViews": 1502,
+    "createdAt": "2024-01-29T21:33:25.829Z",
+    "description": "This workflow is a supporting automation to a common Airtable situation, that as of this writing, has no direct solution but has great demand.\n\nInterfaces are your secret weapon for managing a variety of tasks – from sales funnels and task tracking to creating dynamic dashboards. But here's a common situation: how do you efficiently bulk upload records (like contacts, leads, or clients) from an interface with just a click? Once set up, you'll be able to upload CSV files directly to your tables from the Interfaces with ease.\n\n\nWorkflow Key Points:\n\n**1. Bulk Upload Functionality:** Say goodbye to the limitations of standard Airtable interfaces. Now, you can upload multiple leads or contacts simultaneously, making your work swift and efficient.\n**2. Customizable Fields:** Tailor the base to meet your specific data needs. This ensures seamless integration with your existing systems and simplifies data management.\n​\nPerfect for teams in e-commerce, CRM, or any sector where managing a high volume of leads or contacts is key. Our Airtable Base is designed to eliminate the tediousness of importing contacts. It makes large-scale data management straightforward, saving you precious time and hassle.\n\n​\n\nGet ready to streamline your operations and boost your productivity! 🚀💡",
+    "workflow": {
+      "meta": {
+        "instanceId": "257476b1ef58bf3cb6a46e65fac7ee34a53a5e1a8492d5c6e4da5f87c9b82833",
+        "templateId": "2071"
+      },
+      "nodes": [
+        {
+          "id": "577fb3b7-b0a6-4f2b-9b53-36d1f77de5a0",
+          "name": "Get File ID",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1120,
+            1120
+          ],
+          "parameters": {
+            "id": "={{ $node[\"New Upload\"].json[\"id\"] }}",
+            "base": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Base ID\"] }}"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Upload Table ID\"] }}"
+            },
+            "options": {},
+            "operation": "get"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "b1TkvXJM6AdmupUh",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a287658f-50e0-4d08-9342-a5143dc20ff2",
+          "name": "Status Failed",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2820,
+            1180
+          ],
+          "parameters": {
+            "url": "=https://api.airtable.com/v0/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Base ID\"] }}/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Upload Table ID\"] }}",
+            "method": "PATCH",
+            "options": {},
+            "jsonBody": "={\n\"records\":[{\n\"id\":\"{{ $item(\"0\").$node[\"Get File ID\"].json[\"record_id\"] }}\",\n\"fields\":{\n\"Status\":\"Failed\"\n}\n}\n]\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "airtableTokenApi"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "b1TkvXJM6AdmupUh",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 4.1
+        },
+        {
+          "id": "e3aae523-4803-4f69-9697-ab677c3f216d",
+          "name": "Status Uploaded",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2820,
+            1020
+          ],
+          "parameters": {
+            "url": "=https://api.airtable.com/v0/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Base ID\"] }}/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Upload Table ID\"] }}",
+            "method": "PATCH",
+            "options": {},
+            "jsonBody": "={\n\"records\":[{\n\"id\":\"{{ $item(\"0\").$node[\"Get File ID\"].json[\"record_id\"] }}\",\n\"fields\":{\n\"Status\":\"Uploaded\"\n}\n}\n]\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "airtableTokenApi"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "b1TkvXJM6AdmupUh",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 4.1
+        },
+        {
+          "id": "833515af-bf3a-4bc7-b79c-a6c1731f4714",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2280,
+            820
+          ],
+          "parameters": {
+            "width": 319.2310328152142,
+            "height": 538.9310265075466,
+            "content": "## Confirm the key names and column references\n\n\n\n\nWhen adapting this to your own base and Google Sheets (CSV) template, make sure to modify this node accordingly, as key values you will need to set the Airtable Fields, and the Expressions need to match the Read File column names\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nMake sure that the fields have the correct data type (Strings, Integers (numbers), etc)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e3cfcf21-3210-455c-b539-2dcacda3172a",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            840,
+            920
+          ],
+          "parameters": {
+            "height": 416.06551185206945,
+            "content": "### Input your Airtables relevant ID's. These will be used in the API Calls"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c244d6fe-21bf-4488-9780-32b56baa9998",
+          "name": "Campaign is Not Empty",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1880,
+            1120
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $item(\"0\").$node[\"Get File ID\"].json[\"Campaign\"][\"0\"] }}",
+                  "operation": "isNotEmpty"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ced8a7f4-4ccc-4fcf-8c13-c1b8f099283e",
+          "name": "Campaign Not Empty",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2120,
+            1020
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Campaign",
+                  "stringValue": "=\"Campaigns\":[\"{{ $item(\"0\").$node[\"Get File ID\"].json[\"Campaign\"][\"0\"] }}\"],"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "23e0a41c-cbbd-401d-88b4-a4b190dbcd72",
+          "name": "Campaign Not Empty1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2120,
+            1200
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Campaign"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "f6c40cf2-4893-42ee-859c-f430b4dc5cf1",
+          "name": "Read File",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            1660,
+            1120
+          ],
+          "parameters": {
+            "options": {
+              "headerRow": true
+            },
+            "binaryPropertyName": "=data"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "b7495a65-32bf-430d-9998-483582bbe6ef",
+          "name": "Airtable Base IDs",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            900,
+            1120
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Base ID",
+                  "stringValue": "=appZ0qelhmC2Y9igI"
+                },
+                {
+                  "name": "Upload Table ID",
+                  "stringValue": "tblDzSabZcP47sIMp"
+                },
+                {
+                  "name": "Lead Table ID",
+                  "stringValue": "tblnsXKf3TBztlIPV"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "9fa8f822-f611-4af6-a2a4-7baaf2efa82d",
+          "name": "Status Processing",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1280,
+            1120
+          ],
+          "parameters": {
+            "url": "=https://api.airtable.com/v0/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Base ID\"] }}/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Upload Table ID\"] }}",
+            "method": "PATCH",
+            "options": {},
+            "jsonBody": "={\n\"records\":[{\n\"id\":\"{{ $node[\"Get File ID\"].json[\"record_id\"] }}\",\n\"fields\":{\n\"Status\":\"Processing\"\n}\n}\n]\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "airtableTokenApi"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "b1TkvXJM6AdmupUh",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "af23a338-a9a0-49db-88de-d6eb68af2be9",
+          "name": "Download File",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1460,
+            1120
+          ],
+          "parameters": {
+            "url": "={{ $node[\"Get File ID\"].json[\"File\"][\"0\"][\"url\"] }}",
+            "options": {
+              "response": {
+                "response": {
+                  "responseFormat": "file"
+                }
+              }
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "4428cdc4-1ffd-4f6f-8d96-49d20b80bfba",
+          "name": "Create Records",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "position": [
+            2380,
+            1120
+          ],
+          "parameters": {
+            "url": "=https://api.airtable.com/v0/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Base ID\"] }}/{{ $item(\"0\").$node[\"Airtable Base IDs\"].json[\"Lead Table ID\"] }}",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 8
+                }
+              }
+            },
+            "jsonBody": "={\n    \"records\": [\n        {\n            \"fields\": {\n                \"FirstName\": \"{{ $json[\"FirstName\"] }}\",\n                \"LastName\": \"{{ $json[\"LastName\"] || \"\"}}\",\n                \"Email\": \"{{ $json[\"Email\"] || \"\" }}\",\n                \"Phone\": \"{{ $json[\"Phone\"] || \"\" }}\",\n                \"Company\": \"{{ $json[\"Company\"] || \"\" }}\",\n                \"Title\": \"{{ $json[\"Title\"] || \"\" }}\",\n                \"Country\": \"{{ $json[\"Country\"] || \"\" }}\",\n                \"City\": \"{{ $json[\"City\"] || \"\" }}\",\n                \"Website\": \"{{ $json[\"Website\"] || \"\" }}\",\n                \"LeadSource\": \"{{ $json[\"LeadSource\"] || \"\" }}\",\n                \"LeadStatus\": \"{{ $json[\"LeadStatus\"] || \"\" }}\",\n                {{ $json[\"Campaign\"] }}\n                \"InterestLevel\": \"{{ $json[\"InterestLevel\"] || \"\" }}\",\n                \"LastContactDate\": \"{{ $json[\"LastContactDate\"] || \"\" }}\"\n\n\n            }\n        }\n    ]\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "nodeCredentialType": "airtableTokenApi"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "b1TkvXJM6AdmupUh",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "e7a2cf60-099f-4c32-b9f0-ad2dd3d6e282",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {
+            "width": 1608.819505196552,
+            "height": 349.25800232621134,
+            "content": "# Bulk Upload Contacts Through CSV | Airtable Interface & Airtable Grid\n\n\n## Airtable Template - https://www.airtable.com/universe/expkxniTpHDg4Y4Ni/interfaces-upload-bulk-records-from-csv\n## Google Sheets Template - https://docs.google.com/spreadsheets/d/1SEwOGCfekc1h_ZfZ8PDQY6oGgOGSzSgtD7pEliEGaZ0/edit?usp=sharing"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dd8b54fa-15fb-4df5-b94f-8286dae7026b",
+          "name": "New Upload",
+          "type": "n8n-nodes-base.airtableTrigger",
+          "position": [
+            660,
+            1120
+          ],
+          "parameters": {
+            "baseId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "appZ0qelhmC2Y9igI"
+            },
+            "tableId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "tblDzSabZcP47sIMp"
+            },
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerField": "Created At",
+            "authentication": "airtableTokenApi",
+            "additionalFields": {
+              "viewId": ""
+            }
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "b1TkvXJM6AdmupUh",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "32f6ec9b-3f23-4d58-9cc2-b41fd9246091",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1980,
+            240
+          ],
+          "parameters": {
+            "width": 879.3031720944707,
+            "height": 224.90387533954015,
+            "content": "## Walkthrough and Overview\n\n### https://www.youtube.com/watch?v=LgYxS1O-rbs"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "78363718-c1c2-4bf0-ba04-a48403cca0cb",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            820
+          ],
+          "parameters": {
+            "width": 558.4226026659302,
+            "height": 768.2443727570767,
+            "content": "# Setup Checklist\n\n### 1.Go to the Airtable Template and copy the latest version of the base\n### \n### 2. From your new Airtable base URL, get and replace your base and tables id's into this workflow's trigger node.\n### 3. Input your Airtable Id's in the second node \"Airtable Base ID's\"\n### 4. Make sure to add a Personal Access Token for Airtable Integration. It should, as minimum have enabled scopes for \"data.record:read\", \"data.record:write\", \"schema.bases:read\"\n### 5. Any file uploads can now be done from the Interface Form\n\n#After Setup\n\n### - Make sure you that if you add, remove or modify fields (or field names), those changes should also be applied to the \"Create Record\" node\n### - Make sure that the CSV upload header row, matches the Airtable Leads field names\n### - If you modify any field type (Text to Number, or Number to Text), those changes should also be applied to the \"Create Records\" value (Numbers go without double quotes / strings, dates and the rest of the data types go with double quotes) [JSON Syntax]"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Read File": {
+          "main": [
+            [
+              {
+                "node": "Campaign is Not Empty",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New Upload": {
+          "main": [
+            [
+              {
+                "node": "Airtable Base IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get File ID": {
+          "main": [
+            [
+              {
+                "node": "Status Processing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download File": {
+          "main": [
+            [
+              {
+                "node": "Read File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Records": {
+          "main": [
+            [
+              {
+                "node": "Status Uploaded",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Status Failed",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Base IDs": {
+          "main": [
+            [
+              {
+                "node": "Get File ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Status Processing": {
+          "main": [
+            [
+              {
+                "node": "Download File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Campaign Not Empty": {
+          "main": [
+            [
+              {
+                "node": "Create Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Campaign Not Empty1": {
+          "main": [
+            [
+              {
+                "node": "Create Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Campaign is Not Empty": {
+          "main": [
+            [
+              {
+                "node": "Campaign Not Empty",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Campaign Not Empty1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 5
+        },
+        "n8n-nodes-base.airtableTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.spreadsheetFile": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Sidetool",
+      "username": "sidetool",
+      "bio": "",
+      "verified": false,
+      "links": [
+        "https://sidetool.co/"
+      ],
+      "avatar": "https://gravatar.com/avatar/9bdaae888e401658cfd8d2aca7e66a876189588345b60a4a882992229d8a9eb7?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 41,
+        "icon": "fa:table",
+        "name": "n8n-nodes-base.spreadsheetFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "_Excel",
+              "Excel",
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "xls",
+              "xlsx",
+              "ods"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Spreadsheet File",
+          "color": "#2244FF"
+        },
+        "iconData": {
+          "icon": "table",
+          "type": "icon"
+        },
+        "displayName": "Spreadsheet File",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 408,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtableTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.airtabletrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Airtable Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

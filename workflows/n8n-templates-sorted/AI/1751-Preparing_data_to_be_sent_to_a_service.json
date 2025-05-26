@@ -1,0 +1,535 @@
+{
+  "workflow": {
+    "id": 1751,
+    "name": "Preparing data to be sent to a service",
+    "views": 40328,
+    "recentViews": 0,
+    "totalViews": 40328,
+    "createdAt": "2022-07-06T14:47:40.380Z",
+    "description": "**Task:**\nMake sure that data is in the right format before injecting it into a database/spreadsheet/CRM/etc.\n\n**Why:**\nSpreadsheets and databases require the incoming data to have the same fields as the headers of the destination table. You can decide which fields you would like to send with the database and rename them by using the set node\n\n**Main use cases:**\n- Change fields names to match a database or a spreadsheet table structure\n- Keep only the fields that are needed at the destination table",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            1160,
+            480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            420
+          ],
+          "parameters": {
+            "width": 320,
+            "height": 200,
+            "content": "### Very often your data is not in the right format to insert in a node. you can use the set node to fix it.\n\n### Click the `Execute Workflow` button and double click on the nodes to see the input and output items."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Create or Update record in Google Sheet",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1920,
+            480
+          ],
+          "parameters": {
+            "range": "A:C",
+            "options": {},
+            "sheetId": "13_bAEYNTzVXVY6SfAkBa9ijtJGSxPd8D-hcXXwXtdDo",
+            "operation": "upsert",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "8",
+              "name": "Sheets"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1480,
+            360
+          ],
+          "parameters": {
+            "width": 400,
+            "height": 280,
+            "content": "\nThis is where we put the data in the format that Google Sheets expect. \nThis means changing the field name from `name` to `Full name`, dropping all fields except `ID`, `Email` and adding a `Created time` field"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set - Prepare fields",
+          "type": "n8n-nodes-base.set",
+          "notes": "Prepare fields",
+          "position": [
+            1620,
+            480
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "ID",
+                  "value": "={{$json[\"id\"]}}"
+                }
+              ],
+              "string": [
+                {
+                  "name": "Full name",
+                  "value": "={{$json[\"name\"]}}"
+                },
+                {
+                  "name": "Email",
+                  "value": "={{$json[\"email\"]}}"
+                },
+                {
+                  "name": "Created time",
+                  "value": "={{$now}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "notesInFlow": false,
+          "typeVersion": 1
+        },
+        {
+          "name": "Customer Datastore - Generate some data",
+          "type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+          "position": [
+            1340,
+            480
+          ],
+          "parameters": {
+            "operation": "getAllPeople"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Set - Prepare fields": {
+          "main": [
+            [
+              {
+                "node": "Create or Update record in Google Sheet",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Customer Datastore - Generate some data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Datastore - Generate some data": {
+          "main": [
+            [
+              {
+                "node": "Set - Prepare fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": null,
+    "user": {
+      "name": "Jonathan",
+      "username": "jon-n8n",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/5240094f838126182ceefb50ca4a3cf75cc7dc0808efd4b9920d792e41bfc45e?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 496,
+        "icon": "file:n8nTrainingCustomerDatastore.svg",
+        "name": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+        "codex": {
+          "data": {
+            "categories": []
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Customer Datastore (n8n training)"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTcuODg3ODYgMjEuNDExQzcuNzE5ODYgMjEuMzA5IDcuNTA1ODYgMjEuNDI3IDcuNTA1ODYgMjEuNjIzVjI2LjkwM0M3LjUwNTg2IDI5LjE1MSAxMy4xMDM5IDMwLjk4NSAyMC4wMDU5IDMwLjk4NUMyNi45MDc5IDMwLjk4NSAzMi41MDU5IDI5LjE1MSAzMi41MDU5IDI2LjkwM1YyMS42MjNDMzIuNTA1OSAyMS40MjcgMzIuMjkxOSAyMS4zMDkgMzIuMTIzOSAyMS40MTFDMjkuMzcxOSAyMy4wOTEgMjQuNjgxOSAyMy44NzUgMjAuMDA1OSAyMy44NzVDMTUuMzI5OSAyMy44NzUgMTAuNjM5OSAyMy4wODkgNy44ODc4NiAyMS40MTFaIiBmaWxsPSIjNzE3MTcyIi8+CjxwYXRoIGQ9Ik03Ljg4NzkxIDMwLjMzOUM3LjcxOTkxIDMwLjIzNyA3LjUwNTkxIDMwLjM1NSA3LjUwNTkxIDMwLjU1MVYzNS44MzFDNy41MDU5MSAzOC4wNzkgMTMuMTAzOSAzOS45MTMgMjAuMDA1OSAzOS45MTNDMjYuOTA3OSAzOS45MTMgMzIuNTA1OSAzOC4wNzkgMzIuNTA1OSAzNS44MzFWMzAuNTUxQzMyLjUwNTkgMzAuMzU1IDMyLjI5MTkgMzAuMjM3IDMyLjEyMzkgMzAuMzM5QzI5LjM3MTkgMzIuMDE5IDI0LjY4MTkgMzIuODAzIDIwLjAwNTkgMzIuODAzQzE1LjMyOTkgMzIuODAzIDEwLjYzOTkgMzIuMDE5IDcuODg3OTEgMzAuMzM5Wk0yMS45MDE5IDE2Ljk2NUMyMS4yODU5IDE3LjE1NSAyMC42NDc5IDE3LjI1MSAyMC4wMDU5IDE3LjI1MUMxOS4zNTU5IDE3LjI1MSAxOC43MTM5IDE3LjE1NSAxOC4wOTc5IDE2Ljk2N0w3LjkyOTkxIDEzLjg0M0M3LjgwOTkxIDEzLjgwNyA3LjY3NzkxIDEzLjg2MyA3LjYyNzkxIDEzLjk3N0M3LjU0NTkxIDE0LjE2NSA3LjUwMzkxIDE0LjM1NSA3LjUwMzkxIDE0LjU0OVYxNy45NzVDNy41MDM5MSAyMC4yMjMgMTMuMTAxOSAyMi4wNTcgMjAuMDAzOSAyMi4wNTdDMjYuOTA1OSAyMi4wNTcgMzIuNTAzOSAyMC4yMjMgMzIuNTAzOSAxNy45NzVWMTQuNTQ5QzMyLjUwMzkgMTQuMzUzIDMyLjQ2MTkgMTQuMTYxIDMyLjM3OTkgMTMuOTczQzMyLjMyOTkgMTMuODU5IDMyLjE5NzkgMTMuODAzIDMyLjA3NzkgMTMuODM5TDIxLjkwMTkgMTYuOTY1WiIgZmlsbD0iIzcxNzE3MiIvPgo8cGF0aCBkPSJNMzguODk2IDYuNTc0OThMMjEuNDYyIDEuMjE4OThDMjAuNTA5MiAwLjkyNzAwOCAxOS40OTA4IDAuOTI3MDA4IDE4LjUzOCAxLjIxODk4TDEuMTA0IDYuNTc0OThDLTAuMzY4IDcuMDI2OTggLTAuMzY4IDguOTcyOTggMS4xMDQgOS40MjQ5OEw0LjE0NCAxMC4zNTlDMy40NzggMTEuMTgzIDMuMDY4IDEyLjE4OSAzLjAyNiAxMy4yOTFDMi40MjQgMTMuNjM1IDIgMTQuMjU3IDIgMTUuMDAxQzIgMTUuNjc1IDIuMzU2IDE2LjI0MSAyLjg2NiAxNi42MDVMMS4yNyAyMy43ODVDMS4xMzIgMjQuNDA5IDEuNjA2IDI1LjAwMSAyLjI0NiAyNS4wMDFINS43NTJDNi4zOTIgMjUuMDAxIDYuODY4IDI0LjQwOSA2LjcyOCAyMy43ODVMNS4xMzIgMTYuNjA1QzUuNjQ0IDE2LjI0MyA1Ljk5OCAxNS42NzUgNS45OTggMTUuMDAxQzUuOTk4IDE0LjI3NyA1LjU5NCAxMy42NzMgNS4wMiAxMy4zMjFDNS4wNjggMTIuMzgzIDUuNTQ4IDExLjU1MyA2LjMxNCAxMS4wMjVMMTguNTM4IDE0Ljc4MUMxOS4xMDQgMTQuOTU1IDIwLjE5IDE1LjE3MSAyMS40NjIgMTQuNzgxTDM4Ljg5NiA5LjQyNDk4QzQwLjM2OCA4Ljk3Mjk4IDQwLjM2OCA3LjAyODk4IDM4Ljg5NiA2LjU3NDk4WiIgZmlsbD0iI0ZGNkQ1QSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Customer Datastore (n8n training)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": null,
+            "name": null
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,1042 @@
+{
+  "workflow": {
+    "id": 3675,
+    "name": "MCP Supabase Server for AI Agent with RAG & Multi-Tenant CRUD",
+    "views": 4840,
+    "recentViews": 968,
+    "totalViews": 4840,
+    "createdAt": "2025-04-23T15:41:14.267Z",
+    "description": "# Supabase AI Agent with RAG & Multi-Tenant CRUD  \n**Version**: 1.0.0  \n**n8n Version**: 1.88.0+  \n**Author**: Koresolucoes \n**License**: MIT  \n\n---\n\n## Description  \nA stateful AI agent workflow powered by **Supabase** and **Retrieval-Augmented Generation (RAG)**. Enables persistent memory, dynamic CRUD operations, and multi-tenant data isolation for AI-driven applications like customer support, task orchestration, and knowledge management.  \n\n**Key Features**:  \n- 🧠 **RAG Integration**: Leverages OpenAI embeddings and Supabase vector search for context-aware responses.  \n- 🗃️ **Full CRUD**: Manage `agent_messages`, `agent_tasks`, `agent_status`, and `agent_knowledge` in real time.  \n- 📤 **Multi-Tenant Ready**: Supports per-user/organization data isolation via dynamic table names and webhooks.  \n- 🔒 **Secure**: Role-based access control via Supabase Row Level Security (RLS).  \n\n---\n\n## Use Cases  \n1. **Customer Support Chatbots**: Persist conversation history and resolve queries using institutional knowledge.  \n2. **Automated Task Management**: Track and update task statuses dynamically.  \n3. **Knowledge Repositories**: Store and retrieve domain-specific information for AI agents.  \n\n---\n\n## Instructions  \n### 1. Import Template  \n- Go to **n8n &gt; Templates &gt; Import from File** and upload this workflow.  \n\n### 2. Configure Credentials  \n- Add your **Supabase** and **OpenAI** API keys under **Settings &gt; Credentials**.  \n\n### 3. Set Up Multi-Tenancy (Optional)  \n- **Dynamic Webhook Path**:  \n  Replace the default webhook path with `/mcp/tool/supabase/:userId` to enable per-user routing.  \n- **Table Names**:  \n  Use a **Set Node** to dynamically generate table names (e.g., `agent_messages_{{userId}}`).  \n\n### 4. Activate & Test  \n- Enable the workflow and send test requests to the webhook URL.  \n\n---\n\n## Tags  \n`AI Agent` `RAG` `Supabase` `CRUD` `Multi-Tenant` `OpenAI` `Automation`  \n\n---\n\n## Screenshots  \n![Captura de tela 20250423 124013.png](fileId:1158)\n![Captura de tela 20250423 123954.png](fileId:1159)\n\n---\n\n## License  \nThis template is licensed under the MIT License.  ",
+    "workflow": {
+      "id": "oowUGM7ey6gWxzEG",
+      "meta": {
+        "instanceId": "6d46e25379ef430a7067964d1096b885c773564549240cb3ad4c087f6cf94bd3",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "MCP_SUPABASE_AGENT",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "135ceeee-77cd-479f-a0b4-dd72abe23ac4",
+          "name": "MCP_SUPABASE",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            -1460,
+            1180
+          ],
+          "webhookId": "affff59c-9c5c-4a07-b531-616c1d631601",
+          "parameters": {
+            "path": "affff59c-9c5c-4a07-b531-616c1d631601"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b25040a8-2d70-4d3a-ba58-b8c7164d375e",
+          "name": "RAG",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+          "position": [
+            1240,
+            760
+          ],
+          "parameters": {
+            "mode": "retrieve-as-tool",
+            "topK": 5,
+            "options": {},
+            "toolName": "ITERACOES",
+            "tableName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "documents",
+              "cachedResultName": "documents"
+            },
+            "toolDescription": "lembra das interacoes e consulta as instrucoes do system como assim tambem vai guardando o que aprende"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "081035c0-ecc2-4924-8f07-da4cbb69fb06",
+          "name": "Embeddings OpenAI",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+          "position": [
+            1500,
+            960
+          ],
+          "parameters": {
+            "model": "text-embedding-ada-002",
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "zUnIUrOWA279vAoC",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "361e0a74-b386-4e03-9e7b-5f435f0d8c5f",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            120
+          ],
+          "parameters": {
+            "width": 1380,
+            "height": 520,
+            "content": "## AGENT_MESSAGE\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5aafb3a6-edd1-4154-adab-948db9aad8e7",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            720
+          ],
+          "parameters": {
+            "width": 1380,
+            "height": 520,
+            "content": "## AGENT_TASK\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "61b75c2e-b472-4597-a12a-f6027caecf4e",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            1320
+          ],
+          "parameters": {
+            "width": 1380,
+            "height": 520,
+            "content": "## AGENT_STATUS\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7adc4cd9-cbac-4922-b928-f0b556d6f839",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            1900
+          ],
+          "parameters": {
+            "width": 1380,
+            "height": 520,
+            "content": "## AGENT_KNOWLEDGE\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7680abd0-d5f1-41db-96ad-d64c1b857032",
+          "name": "DELETE_ROW_INSCRICOES_CURSOS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            260,
+            2020
+          ],
+          "parameters": {
+            "tableId": "agent_knowledge",
+            "operation": "delete"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5c752cf4-6dde-49d9-9328-2ed0731c6d7a",
+          "name": "GET_ROW_AGENT_MESSAGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            80,
+            260
+          ],
+          "parameters": {
+            "tableId": "agent_messages",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f65e9fd3-a656-473c-a7af-217d9b041aa7",
+          "name": "CREATE_ROW_AGENT_MESSAGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            -100,
+            260
+          ],
+          "parameters": {
+            "tableId": "agent_messages"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "61269957-e6ac-4e5b-adb0-fd610cdff8aa",
+          "name": "DELETE_ROW_AGENT_MESSAGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            260,
+            260
+          ],
+          "parameters": {
+            "tableId": "agent_messages",
+            "operation": "delete"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "52db9de5-5610-4b2d-9194-e1551b95a4e6",
+          "name": "UPDATE_ROW_AGENT_MESSAGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            440,
+            260
+          ],
+          "parameters": {
+            "tableId": "agent_messages",
+            "operation": "update"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b43aaea6-7841-4848-9228-2be6dd07a03f",
+          "name": "GET_MANY_ROW_AGENT_MESSAGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            620,
+            260
+          ],
+          "parameters": {
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+            "tableId": "agent_messages",
+            "operation": "getAll"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c5347c5e-f9cb-40aa-bca5-249e8c220839",
+          "name": "CREATE_ROW_AGENT_TASKS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            -100,
+            840
+          ],
+          "parameters": {
+            "tableId": "agent_tasks"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "85e3c8e1-6a75-40ce-a344-4a8fd3a1ae16",
+          "name": "GET_ROW_AGENT_TASKS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            80,
+            840
+          ],
+          "parameters": {
+            "tableId": "agent_tasks",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7dacc138-a3aa-4483-a79c-5f2eee915c72",
+          "name": "DELETE_ROW_AGENT_TASKS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            260,
+            840
+          ],
+          "parameters": {
+            "tableId": "agent_tasks",
+            "operation": "delete"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb942ab1-e7f2-4fd7-bc1e-fa9e559480a1",
+          "name": "UPDATE_ROW_AGENT_TASKS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            440,
+            840
+          ],
+          "parameters": {
+            "tableId": "agent_tasks",
+            "operation": "update"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ed9cc573-764c-4cda-82f4-796851b16fba",
+          "name": "GET_MANY_ROW_AGENT_TASKS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            620,
+            840
+          ],
+          "parameters": {
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+            "tableId": "agent_tasks",
+            "operation": "getAll"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d3412d90-6025-4db5-a845-8b1ea6070ea3",
+          "name": "CREATE_ROW_AGENT_STATUS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            -100,
+            1440
+          ],
+          "parameters": {
+            "tableId": "agent_status"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "843a2b92-8fb4-4453-9517-b37e07148f52",
+          "name": "GET_ROW_AGENT_STATUS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            80,
+            1440
+          ],
+          "parameters": {
+            "tableId": "agent_status",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9a075b33-23fa-487c-b139-41e7e4794831",
+          "name": "DELETE_ROW_AGENT_STATUS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            260,
+            1440
+          ],
+          "parameters": {
+            "tableId": "agent_status",
+            "operation": "delete"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a066b99d-15f4-4c3e-bab6-4423b749bb74",
+          "name": "UPDATE_ROW_AGENT_STATUS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            440,
+            1440
+          ],
+          "parameters": {
+            "tableId": "agent_status",
+            "operation": "update"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "be9930a8-4e01-4823-a0be-4adfd06dd29c",
+          "name": "GET_MANY_ROW_AGENT_STATUS",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            620,
+            1440
+          ],
+          "parameters": {
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+            "tableId": "agent_status",
+            "operation": "getAll"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "01fbbe34-81e7-4017-a10e-ef7137024d6a",
+          "name": "CREATE_ROW_AGENT_KNOWLEDGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            -100,
+            2020
+          ],
+          "parameters": {
+            "tableId": "agent_knowledge"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5ba9e5eb-76bb-499c-b93b-5cca7286259b",
+          "name": "GET_ROW_AGENT_KNOWLEDGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            80,
+            2020
+          ],
+          "parameters": {
+            "tableId": "agent_knowledge",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a25cef14-0cf0-4ded-81f0-cde300f74432",
+          "name": "UPDATE_ROW_INSCRICOES_AGENT_KNOWLEDGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            440,
+            2020
+          ],
+          "parameters": {
+            "tableId": "agent_knowledge",
+            "operation": "update"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1c1fae2e-97f9-449f-913a-8ac730c1f145",
+          "name": "GET_MANY_ROW_AGENT_KNOWLEDGE",
+          "type": "n8n-nodes-base.supabaseTool",
+          "position": [
+            620,
+            2020
+          ],
+          "parameters": {
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+            "tableId": "agent_knowledge",
+            "operation": "getAll"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "yfa6fXRKgmrEx175",
+              "name": "Supabase account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "d32edd9b-7508-45a9-adcc-049543647145",
+      "connections": {
+        "RAG": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings OpenAI": {
+          "ai_embedding": [
+            [
+              {
+                "node": "RAG",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_ROW_AGENT_TASKS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_ROW_AGENT_STATUS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_ROW_AGENT_MESSAGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CREATE_ROW_AGENT_TASKS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DELETE_ROW_AGENT_TASKS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE_ROW_AGENT_TASKS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CREATE_ROW_AGENT_STATUS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DELETE_ROW_AGENT_STATUS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_ROW_AGENT_KNOWLEDGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE_ROW_AGENT_STATUS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CREATE_ROW_AGENT_MESSAGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DELETE_ROW_AGENT_MESSAGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_MANY_ROW_AGENT_TASKS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE_ROW_AGENT_MESSAGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_MANY_ROW_AGENT_STATUS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CREATE_ROW_AGENT_KNOWLEDGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_MANY_ROW_AGENT_MESSAGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DELETE_ROW_INSCRICOES_CURSOS": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_MANY_ROW_AGENT_KNOWLEDGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE_ROW_INSCRICOES_AGENT_KNOWLEDGE": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_SUPABASE",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 27,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.supabaseTool": {
+          "count": 20
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.embeddingsOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.vectorStoreSupabase": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Luciano Gutierrez",
+      "username": "koresoluciones",
+      "bio": "🇧🇷 Argentino de 30 anos e fundador da KORE Soluções em Belo Horizonte (MG). Há 1 ano, fornecemos automações, cursos, configurações e manutenção de workflows, ajudando empresas a aumentar eficiência e escalar processos com tecnologia.\n\n🇺🇸 I’m a 30‑year‑old Argentine founder of KORE Soluções in Belo Horizonte (MG). For 1 year, we’ve delivered automations, courses, configuration, and workflow maintenance, helping businesses boost efficiency and scale processes with technology.",
+      "verified": true,
+      "links": [
+        "https://koresolucoes.github.io/expertise/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7caef85e3231ac83b8634980bd314fc40ba26df805b86e5f839bf75a1582a1a7?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1141,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.embeddingsopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Embeddings"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Embeddings OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Embeddings OpenAI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1231,
+        "icon": "file:supabase.svg",
+        "name": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoresupabase/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Vector Stores",
+                "Tools",
+                "Root Nodes"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Supabase Vector Store"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDkiIGhlaWdodD0iMTEzIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNNjMuNzA4IDExMC4yODRjLTIuODYgMy42MDEtOC42NTggMS42MjgtOC43MjctMi45N2wtMS4wMDctNjcuMjUxaDQ1LjIyYzguMTkgMCAxMi43NTggOS40NiA3LjY2NSAxNS44NzR6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZmlsbC1vcGFjaXR5PSIuMiIgZD0iTTYzLjcwOCAxMTAuMjg0Yy0yLjg2IDMuNjAxLTguNjU4IDEuNjI4LTguNzI3LTIuOTdsLTEuMDA3LTY3LjI1MWg0NS4yMmM4LjE5IDAgMTIuNzU4IDkuNDYgNy42NjUgMTUuODc0eiIvPjxwYXRoIGZpbGw9IiMzRUNGOEUiIGQ9Ik00NS4zMTcgMi4wNzFjMi44Ni0zLjYwMSA4LjY1Ny0xLjYyOCA4LjcyNiAyLjk3bC40NDIgNjcuMjUxSDkuODNjLTguMTkgMC0xMi43NTktOS40Ni03LjY2NS0xNS44NzV6Ii8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTMuOTc0IiB4Mj0iOTQuMTYzIiB5MT0iNTQuOTc0IiB5Mj0iNzEuODI5IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iIzI0OTM2MSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzNFQ0Y4RSIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMzYuMTU2IiB4Mj0iNTQuNDg0IiB5MT0iMzAuNTc4IiB5Mj0iNjUuMDgxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3AvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Supabase Vector Store",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1158,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Captura_de_tela_2025_04_23_124013_16d75760fe.png"
+      },
+      {
+        "id": 1159,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Captura_de_tela_2025_04_23_123954_07df6d0444.png"
+      }
+    ]
+  }
+}

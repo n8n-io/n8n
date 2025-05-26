@@ -1,0 +1,252 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/
+Scraped_At: 2025-05-20T18:56:19.870682
+
+n8n
+#
+A node to integrate with n8n itself. This node allows you to consume the
+n8n API
+in your workflows.
+Refer to the
+n8n REST API documentation
+for more information on using the n8n API. Refer to
+API endpoint reference
+for working with the API endpoints directly.
+Credentials
+You can find authentication information for this node in the
+API authentication
+documentation.
+SSL
+This node doesn't support SSL. If your server requires an SSL connection, use the
+HTTP Request node
+to call the
+n8n API
+.
+The HTTP Request node has options to
+provide the SSL certificate
+.
+Operations
+#
+Audit
+Generate
+a security audit
+Credential
+Create
+a credential
+Delete
+a credential
+Get Schema
+: Use this operation to get credential data schema for type
+Execution
+Get
+an execution
+Get Many
+executions
+Delete
+an execution
+Workflow
+Activate
+a workflow
+Create
+a workflow
+Deactivate
+a workflow
+Delete
+a workflow
+Get
+a workflow
+Get Many
+workflows
+Update
+a workflow
+Generate audit
+#
+This operation has no parameters. Configure it with these options:
+Categories
+: Select the risk categories you want the audit to include. Options include:
+Credentials
+Database
+Filesystem
+Instance
+Nodes
+Days Abandoned Workflow
+: Use this option to set the number of days without execution after which a workflow should be considered abandoned. Enter a number of days. The default is
+90
+.
+Create credential
+#
+Configure this operation with these parameters:
+Name
+: Enter the name of the credential you'd like to create.
+Credential Type
+: Enter the credential's type. The available types depend on nodes installed on the n8n instance. Some built-in types include
+githubApi
+,
+notionApi
+, and
+slackApi
+.
+Data
+: Enter a valid JSON object with the required properties for this
+Credential Type
+. To see the expected format, use the
+Get Schema
+operation.
+Delete credential
+#
+Configure this operation with this parameter:
+Credential ID
+: Enter the ID of the credential you want to delete.
+Get credential schema
+#
+Configure this operation with this parameter:
+Credential Type
+: Enter the credential's type. The available types depend on nodes installed on the n8n instance. Some built-in types include
+githubApi
+,
+notionApi
+, and
+slackApi
+.
+Get execution
+#
+Configure this operation with this parameter:
+Execution ID
+: Enter the ID of the execution you want to retrieve.
+Get execution option
+#
+You can further configure this operation with this
+Option
+:
+Include Execution Details
+: Use this control to set whether to include the detailed execution data (turned on) or not (turned off).
+Get many executions
+#
+Configure this operation with these parameters:
+Return All
+: Set whether to return all results (turned on) or whether to limit the results to the entered
+Limit
+(turned on).
+Limit
+: Set the number of results to return if the
+Return All
+control is turned off.
+Get many executions filters
+#
+You can further configure this operation with these
+Filters
+:
+Workflow
+: Filter the executions by workflow. Options include:
+From list
+: Select a workflow to use as a filter.
+By URL
+: Enter a workflow URL to use as a filter.
+By ID
+: Enter a workflow ID to use as a filter.
+Status
+: Filter the executions by status. Options include:
+Error
+Success
+Waiting
+Get many execution options
+#
+You can further configure this operation with this
+Option
+:
+Include Execution Details
+: Use this control to set whether to include the detailed execution data (turned on) or not (turned off).
+Delete execution
+#
+Configure this operation with this parameter:
+Execution ID
+: Enter the ID of the execution you want to delete.
+Activate, deactivate, delete, and get workflow
+#
+The
+Activate
+,
+Deactivate
+,
+Delete
+, and
+Get
+workflow operations all include the same parameter for you to select the
+Workflow
+you want to perform the operation on. Options include:
+From list
+: Select the workflow from the list.
+By URL
+: Enter the URL of the workflow.
+By ID
+: Enter the ID of the workflow.
+Create workflow
+#
+Configure this operation with this parameter:
+Workflow Object
+: Enter a valid JSON object with the new workflow's details. The object requires these fields:
+name
+nodes
+connections
+settings
+Refer to the
+n8n API | Create a workflow documentation
+for more information.
+Get many workflows
+#
+Configure this operation with these parameters:
+Return All
+: Set whether to return all results (turned on) or whether to limit the results to the entered
+Limit
+(turned on).
+Limit
+: Set the number of results to return if the
+Return All
+control is turned off.
+Get many workflows filters
+#
+You can further configure this operation with these
+Filters
+:
+Return Only Active Workflows
+: Select whether to return only active workflows (turned on) or active and inactive workflows (turned off).
+Tags
+: Enter a comma-separated list of tags the returned workflows must have.
+Update workflow
+#
+Configure this operation with these parameters:
+Workflow
+: Select the workflow you want to update. Options include:
+From list
+: Select the workflow from the list.
+By URL
+: Enter the URL of the workflow.
+By ID
+: Enter the ID of the workflow.
+Workflow Object
+: Enter a valid JSON object to update the workflow with. The object requires these fields:
+name
+nodes
+connections
+settings
+Refer to the
+n8n API | Update a workflow documentation
+for more information.
+Templates and examples
+#
+Very quick quickstart
+by Deborah
+View template details
+AI agent that can scrape webpages
+by Eduard
+View template details
+Pulling data from services that n8n doesn’t have a pre-built integration for
+by Jonathan
+View template details
+Browse n8n integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

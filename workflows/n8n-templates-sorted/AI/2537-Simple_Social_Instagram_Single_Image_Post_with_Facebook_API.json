@@ -1,0 +1,1126 @@
+{
+  "workflow": {
+    "id": 2537,
+    "name": "Simple Social: Instagram Single Image Post with Facebook API",
+    "views": 15288,
+    "recentViews": 5,
+    "totalViews": 15288,
+    "createdAt": "2024-11-12T12:13:49.467Z",
+    "description": "# Simple Social: Instagram Single Image Post with Facebook API\n\n## Who is this workflow for?\nThis workflow is designed for businesses, social media managers, content creators, and developers who need to automate the process of posting single images to Instagram using the Facebook API. It is ideal for anyone looking to streamline their social media posting process, saving time and ensuring consistent content delivery.\n\n## Use Case / Problem Solved\nManually posting images and captions on Instagram can be time-consuming, especially for businesses and content creators managing multiple accounts. This workflow automates the process from image preparation to publishing, reducing manual effort and increasing efficiency.\n\n## What this workflow does\n1. **Trigger Initialization**: The workflow starts with a manual trigger that can be adapted to other triggers (e.g., HTTP webhook or schedule).\n2. **Set Parameters**: The workflow includes a node that sets essential parameters, such as the image URL, Instagram business account ID, and caption.\n3. **Prepare Instagram Media**: A node prepares the media for upload using the Facebook API, sending the image and caption for pre-publication processing.\n4. **Check Media Upload Status**: The workflow verifies if the media preparation is complete.\n5. **Conditional Check**: If the media preparation is successful, the workflow proceeds to publish; otherwise, it triggers an error-handling path.\n6. **Publish Media**: The media is published on Instagram if the conditions are met.\n7. **Post-Publish Check**: The workflow checks the status after publication.\n8. **Conditional Check for Publication**: If the publication status is \"PUBLISHED,\" it triggers a success path; otherwise, it triggers a failure handling.\n9. **Email Notifications**: The workflow sends email notifications to indicate successful or unsuccessful outcomes.\n\n## Setup \n\nHere is a quick video in italian language with sub eng(https://youtu.be/obWJFJvg_6g)\n\n1. **Add API Credentials**: Ensure that valid Facebook API credentials are added and configured for use.\n2. **Permissions Required**: Ensure your app has the necessary permissions (`ads_management`, `business_management`, `instagram_basic`, `instagram_content_publish`, `pages_read_engagement`). App review may be required for external user access.\n3. **Node Configuration**: Customize the `Set Instagram Parameters` node to specify the image URL, caption, and Instagram business account ID.\n4. **Trigger Adaptation**: Adapt the initial trigger if needed to fit your workflow's requirements (e.g., schedule, webhook).\n\n## How to customize this workflow\n- **Change the Image URL and Caption**: Modify the `Set Instagram Parameters` node to change the image and caption.\n- **Trigger Customization**: Replace the manual trigger with other triggers like a webhook to automate posting based on external events.\n- **Notifications**: Adjust the email nodes to send customized messages or trigger other workflows based on the outcome.\n\n## Limitations\n- **Image Format**: Only JPEG images are supported. Extended JPEG formats such as MPO and JPS are not compatible.\n- **Unsupported Tags**: Shopping tags, branded content tags, and filters are not supported.\n- **Instagram TV**: Publishing to Instagram TV is not supported.\n- **Rate Limit**: Instagram accounts are limited to 50 API-published posts within a rolling 24-hour period. Carousels count as a single post. Check usage with `GET /{ig-user-id}/content_publishing_limit`.\n\n### Example Usage\nImagine managing a business account that needs consistent posts. You can schedule this workflow or trigger it manually to automatically post images with captions at the right time, ensuring that your audience stays engaged without manual posting efforts.",
+    "workflow": {
+      "id": "OUOrcdfuTg2evIu0",
+      "meta": {
+        "instanceId": "96b96d0aa1e4ff5d5b6779332b149e3ef3364191562d79083d0309cf3ddfa53e",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Simple Social: Instagram single image post with Facebook API",
+      "tags": [
+        {
+          "id": "A0lOPfxLjZ8WmT1S",
+          "name": "social",
+          "createdAt": "2024-10-25T12:53:04.687Z",
+          "updatedAt": "2024-10-25T12:53:04.687Z"
+        },
+        {
+          "id": "jbFbEJV1RM8avhpH",
+          "name": "shared on n8n",
+          "createdAt": "2024-11-12T06:53:57.894Z",
+          "updatedAt": "2024-11-12T06:53:57.894Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "ff1d20ec-2801-4c38-b71f-e0745b22a68c",
+          "name": "Instagram prepare media",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "edge": "media",
+            "node": "={{ $json.instagram_business_account_id }}",
+            "options": {
+              "queryParameters": {
+                "parameter": [
+                  {
+                    "name": "image_url",
+                    "value": "={{ $json.image_url }}"
+                  },
+                  {
+                    "name": "caption",
+                    "value": "={{ $json.instagram_post_caption }}"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v20.0",
+            "httpRequestMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ae418ed8-47f7-4042-aa4d-abfbba12c580",
+          "name": "Instagram publish media",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            540,
+            -80
+          ],
+          "parameters": {
+            "edge": "media_publish",
+            "node": "={{ $('Instagram params').item.json.instagram_business_account_id }}",
+            "options": {
+              "queryParameters": {
+                "parameter": [
+                  {
+                    "name": "creation_id",
+                    "value": "={{ $json.id }}"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v20.0",
+            "httpRequestMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b4bd1064-606d-4e31-8904-1f86a6f960a1",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -440,
+            0
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "b0fdc882-298c-4208-9935-d17f86b266dd",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -500,
+            -77.62658687843901
+          ],
+          "parameters": {
+            "height": 248.90655871788812,
+            "content": "Choose the trigger you want for example trigger this workflow from another one"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c395b60d-2423-415b-a6ef-1ce03c4d55a3",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -51,
+            -140.74317176338093
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1329.8249455924943,
+            "height": 430.4091991661993,
+            "content": "Add your credential"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5e872d97-b19f-4dce-91dc-e18aee3bcdca",
+          "name": "Instagram params",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -200,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "225df266-bf29-4415-b04c-2750cef4506a",
+                  "name": "image_url",
+                  "type": "string",
+                  "value": "Your image url"
+                },
+                {
+                  "id": "1e380c14-e908-4eeb-90e0-957a422829d0",
+                  "name": "instagram_business_account_id",
+                  "type": "string",
+                  "value": "Your instagram business id"
+                },
+                {
+                  "id": "f35e3093-1bff-4cc6-a6c4-909dca314cc7",
+                  "name": "instagram_post_caption",
+                  "type": "string",
+                  "value": "Here your Text of instagram post"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "256566bb-cb69-430e-ac94-ef2fd533f9ef",
+          "name": "Node just for retrive id of instagram page",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "disabled": true,
+          "position": [
+            -240,
+            -360
+          ],
+          "parameters": {
+            "node": "=me",
+            "options": {
+              "fields": {
+                "field": [
+                  {
+                    "name": "name"
+                  },
+                  {
+                    "name": "connected_instagram_account"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v20.0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "52fa439f-a456-4d93-8f1e-b4c4141d32ee",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -340,
+            -460
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 318,
+            "height": 289,
+            "content": "You can use this node if you want to retrieve the instagram id. \n\nAdd it to the workflow ore use manually"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2a72a21f-d3d7-4788-978b-8868f50f1108",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -248,
+            -140
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 188,
+            "height": 310,
+            "content": "Here we have all parameters for posting in instagram image url, caption and instagram business profile id"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "63f6b3b2-4aaa-487c-8eae-e6ed39d77ddc",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -500,
+            180
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 439.10253951549294,
+            "height": 792,
+            "content": "## Permissions\nPublishing relies on a combination of the following permissions. The exact combination depends on which endpoints your app uses. Refer to our endpoint references to determine which permissions each endpoint requires.\n\nads_management\nbusiness_management\ninstagram_basic\ninstagram_content_publish\npages_read_engagement\nIf your app will be used by app users who do not have a role on your app or a role in a Business that has claimed your app, you must request approval for each permission via App Review before non-role app users can grant them to your app.\n\n## Limitations\nJPEG is the only image format supported. Extended JPEG formats such as MPO and JPS are not supported.\nShopping tags are not supported.\nBranded content tags are not supported.\nFilters are not supported.\nPublishing to Instagram TV is not supported.\nFor additional limitations, refer to each endpoint's reference.\n\n## Rate Limit\nInstagram accounts are limited to 50 API-published posts within a rolling 24-hour period. Carousels count as a single post. This limit is enforced on the POST /{ig-user-id}/media_publish endpoint when attempting to publish a media container. We recommend that your app also enforce the publishing rate limit, especially if your app allows app users to schedule posts to be published in the future.\n\nTo check an Instagram Professional account's current rate limit usage, query the GET /{ig-user-id}/content_publishing_limit endpoint."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "336f8d20-ce1c-4097-91ba-1cf7cdd4f8d0",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -920,
+            -320
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 365.0530681548117,
+            "height": 232.74275402436496,
+            "content": "## Instagram single image Post Workflow with Facebook API\n\nthis is a workflow for post a single image on instagram\n\n\nP.S: if you want use instagram API you need just change the default url in node with graph.instagram.com"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "03ef7207-aa48-4c31-b5c2-91bb2436f68b",
+          "name": "Instagram check status of media uploaded before",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            180,
+            0
+          ],
+          "parameters": {
+            "node": "={{ $json.id }}",
+            "options": {
+              "fields": {
+                "field": [
+                  {
+                    "name": "id"
+                  },
+                  {
+                    "name": "status"
+                  },
+                  {
+                    "name": "status_code"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v20.0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3ba33f4a-e89b-40b1-98ec-c658a99777b8",
+          "name": "If media status is finished",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            340,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0304efee-33b2-499e-bad1-9238c1fc2999",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.status_code }}",
+                  "rightValue": "FINISHED"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "fe72d3b7-4a8f-4b2d-9af7-d057da11fc88",
+          "name": "Instagram check status of media published before",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            740,
+            -80
+          ],
+          "parameters": {
+            "node": "={{ $('Instagram check status of media uploaded before').item.json.id }}",
+            "options": {
+              "fields": {
+                "field": [
+                  {
+                    "name": "id"
+                  },
+                  {
+                    "name": "status"
+                  },
+                  {
+                    "name": "status_code"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v20.0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4dd7347e-7a41-4cb0-ae2e-93a019ae4497",
+          "name": "If media status is finished1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            940,
+            -80
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0304efee-33b2-499e-bad1-9238c1fc2999",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.status_code }}",
+                  "rightValue": "PUBLISHED"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "7dec948d-7ce0-4a68-acfb-cc9ab8e26f3e",
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            540,
+            140
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "2c95dafb-f087-45ee-8e1f-3efdacd3ab6c",
+          "name": "Send Email1",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            1160,
+            -120
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "c04c8441-6935-4bce-a358-4bba69d5b30b",
+          "name": "Send Email2",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            1160,
+            40
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "74f0c188-03ce-49a6-9004-ee0720f9e4df",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            480,
+            300
+          ],
+          "parameters": {
+            "color": 3,
+            "height": 102.11100456713636,
+            "content": "You can send email for unsuccessful upload or what you want, you can trigger another workflow or another node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "127813b3-2cfd-40b9-a4d9-c88c5927f4f1",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1340,
+            40
+          ],
+          "parameters": {
+            "color": 3,
+            "height": 112.31608359812239,
+            "content": "You can send email for unsuccessful publishing or what you want, you can trigger another workflow or another node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f156294d-cf7b-4638-ac00-87ea30f846a0",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1340,
+            -120
+          ],
+          "parameters": {
+            "color": 3,
+            "height": 112.31608359812239,
+            "content": "You can send email for successfull publishing or what you want, you can trigger another workflow or another node"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "ea4a1249-35d3-4037-a4f9-451ccc2ec698",
+      "connections": {
+        "Instagram params": {
+          "main": [
+            [
+              {
+                "node": "Instagram prepare media",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Instagram prepare media": {
+          "main": [
+            [
+              {
+                "node": "Instagram check status of media uploaded before",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Instagram publish media": {
+          "main": [
+            [
+              {
+                "node": "Instagram check status of media published before",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If media status is finished": {
+          "main": [
+            [
+              {
+                "node": "Instagram publish media",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If media status is finished1": {
+          "main": [
+            [
+              {
+                "node": "Send Email1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Send Email2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Instagram params",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Instagram check status of media uploaded before": {
+          "main": [
+            [
+              {
+                "node": "If media status is finished",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Instagram check status of media published before": {
+          "main": [
+            [
+              {
+                "node": "If media status is finished1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 21,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.emailSend": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.facebookGraphApi": {
+          "count": 5
+        }
+      }
+    },
+    "user": {
+      "name": "Edoardo Guzzi",
+      "username": "mredodos",
+      "bio": "Automation expert with 10+ years in programming, AI, Chrome extensions, and mobile apps. Specializing in PHP, JS, and Python, I design custom n8n workflows to streamline processes and boost productivity. Explore my templates or contact me for tailored solutions.",
+      "verified": false,
+      "links": [
+        "https://www.youtube.com/@edoardododoguzzi"
+      ],
+      "avatar": "https://gravatar.com/avatar/a21b05da374078b706406431d629d2020336978b83edffe55ae4c36a8f77cd0c?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 11,
+        "icon": "fa:envelope",
+        "name": "n8n-nodes-base.emailSend",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMTP",
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Send Email",
+          "color": "#00bb88"
+        },
+        "iconData": {
+          "icon": "envelope",
+          "type": "icon"
+        },
+        "displayName": "Send Email",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 314,
+        "icon": "file:facebook.svg",
+        "name": "n8n-nodes-base.facebookGraphApi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.facebookgraphapi/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/facebookGraph/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Facebook Graph API"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MCA2MCI+PHBhdGggZmlsbD0iIzE4NzdmMiIgZD0iTTU5LjUgMzBDNTkuNSAxMy43MSA0Ni4yOS41IDMwIC41Uy41IDEzLjcxLjUgMzBjMCAxNC43MiAxMC43OSAyNi45MyAyNC44OSAyOS4xNFYzOC41M0gxNy45VjMwaDcuNDl2LTYuNWMwLTcuMzkgNC40LTExLjQ4IDExLjE0LTExLjQ4IDMuMjMgMCA2LjYuNTggNi42LjU4djcuMjZoLTMuNzJjLTMuNjYgMC00LjgxIDIuMjctNC44MSA0LjYxVjMwaDguMThsLTEuMzEgOC41M0gzNC42djIwLjYxQzQ4LjcxIDU2LjkzIDU5LjUgNDQuNzIgNTkuNSAzMCIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik00MS40OCAzOC41MyA0Mi43OSAzMGgtOC4xOHYtNS41M2MwLTIuMzMgMS4xNC00LjYxIDQuODEtNC42MWgzLjcyVjEyLjZzLTMuMzgtLjU4LTYuNi0uNThjLTYuNzQgMC0xMS4xNCA0LjA4LTExLjE0IDExLjQ4VjMwaC03LjV2OC41M2g3LjQ5djIwLjYxYzEuNS4yNCAzLjA0LjM2IDQuNjEuMzZzMy4xMS0uMTIgNC42MS0uMzZWMzguNTN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Facebook Graph API",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

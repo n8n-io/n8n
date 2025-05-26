@@ -1,0 +1,214 @@
+{
+  "workflow": {
+    "id": 641,
+    "name": "Get list of completed sale orders with Unleashed Software",
+    "views": 352,
+    "recentViews": 0,
+    "totalViews": 352,
+    "createdAt": "2020-09-09T11:43:21.308Z",
+    "description": "![workflow-screenshot](fileId:216)",
+    "workflow": {
+      "name": "",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            390,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Unleashed Software",
+          "type": "n8n-nodes-base.unleashedSoftware",
+          "position": [
+            600,
+            220
+          ],
+          "parameters": {
+            "filters": {
+              "orderStatus": [
+                "Completed"
+              ]
+            },
+            "returnAll": true
+          },
+          "credentials": {
+            "unleashedSoftwareApi": "unleashed"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Unleashed Software",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.unleashedSoftware": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 358,
+        "icon": "file:unleashedSoftware.png",
+        "name": "n8n-nodes-base.unleashedSoftware",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.unleashedsoftware/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/unleashedSoftware/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Unleashed Software"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAACmlBMVEUAAAD7OUOhKy/mGTjsf5XBdYLyj4//MjKmHiynLTbnKUKOMTHlGTjJCBqlHirmGznmGTemHirlGTesDxXmGjjlGzjyMEzmFjamHSrmGjmmHyvmGjnnL0WlHCnvs7r/9//mIzylGSbmFzjmFzbmNEnnRljpXW3sYG7udYXmiJPcjqClGyimHiulHSqnKDKnKzXmKUDmKkLnMEblP1G8eYDmFTXmFTXmJD2nKzWoLjenLjfmJ0GpMzznMkiqNT7nRFbqUWK0Vl2+anHsa3jvcYD7scbmGznnJj7mJz/mKUGpND3nNkrnOU3nOU2sPEXnPFDoQFSuQEjnSFmvR06wSVGzUVnoU2PnU2WyUFbqVWa4Xma4W2Pig43oo6PnGTiiHirnJz+mICznLkSpLzmoLjjnKkKqMDurO0OqNz/nNkusPUSuQkmsOUHnO1DnRFXoPVDpRVavRU3pTmDnSVnpTl/nYXDoXW7JAADWGjSiHirUITnWGzTmKECvKzbaJDvnJD/XKkDmL0TnM0nnNUnTJjvnNEmmRUuuQ0ysQEi1Vl2zT1TkR1ezT1W5ZG7IdXy/cXj/pLblGDelHSqlHiqmHSrmGDfmGjirGynwFjjkGDfpGDjWGjSiHSnoGDftEzauGijmEzXwEDWyHyz4HTz1FzmrJTCjHSmoGiilGif2FTjzFDfqFDaiHimsGCfsIDzyGjrwFDfzEDbtETWwHy2tHyyxHCqgHSifHSimFyXoIz31HTzvHTv4GDrdHDewIi+wGSjvIT3xHjzjHDjtFzj3FDjoEzWwJTG/HjGoJjCnHyypFybzHz30GjrqGTnnGjj7FDjWHjf2EDbOHjXIHjTqDzS2HzDpLEPnGjbEHzPZGDPAGS6qHy24GSq0FScnWX7qAAAAkXRSTlMABAX7CxQCAvzj1gL9Bv36/vj5A/v6Bf38/Pr41foMBP79/Pq6cz42HRYO/Pr6+fTt6M2XF/76+e7l4NfKx7hsXEksJyIK/fTx5MO1saGWkomBeXVrXVhSUEY+NxoH/fz7+OHb1tTRtaqoqKeem5KBfntiYEszFgn++Pf38/Hv6N/Z0sC+q6CRi25kXlczJSQO/ssj2wAABXFJREFUSMeVlodbUlEUwG9SDwpkBZq4RznLmVo5yrS999577733Lnk8TCxARVy5tUxT23vv+b907rXHEx6InQ/4+IAf55zfPfd+F7mIXgjtWYyQ0FOI/ju8EJobn74zAt56ev0fT3minKnV9bUt4zfPD4T0XlTPWcgUnmAxy9TJ9Za7CdtG4y6onqWnoN0ZQYUCH4aRyELNtTVjJ80JwLxQ7JbtJUYRE18/UcmZXAi9ROBdWdG6Yks4fCX27NU964nQnLgPofJcLuQCSX353fRMYq+b9ikvlJPYWq8mkN6G633U5rqWuMm7cvDiUS5NDfKzeMuYXMdgxviGGi3Vflt3k+559qClTlMSYPk0o5cph9bWpITtiITf9u9vn99LjLLDaswCtl0+D/ZCbtbWxCcOCuSbGhlXR0xx7fJDLgmpfFydPjB7sbDrTF2b/KDeFyh3wUjUZuO7ryMRu279wdTx8qE8Uy7K9zWmZAZS3ExtCypUElPuQ+B9zy8iYNoeSEkWaPRJi1nlHiNFK42vpqJBY4/2xnXDxO4YVyeQcD/Qd8P6JFvi5qNp9z+sxjCFqMTiQll+fo/yyszFE3MiEu4lPxqBYS+UdPjngYeGm7nucbmqMCgT7QyqUMqu98OwB+ozvGxp4/e2twamB6ayA08XV6r1Ehs8LE9kvWP98rHNYGCg/O5NxZeH+MD/2OC+eSKdTnv7zotn70n5+U5NKS3jsCmjTJ5rDw+gtVqdznrnVsOntrdvnKTXg6mwgEUJxXiQHGGdVquldTodpP/y8eEbKN8OBVN3B6KRyyqUYzDrULa2MwC33r7969l7PdiDE6SLqdHU+hYwBSwvs5YNmvC32j+1LXlUO1Qpg40s8TU+SETh4x+HqGB8WHiEXWYanrYCboC9Y34Pyj8r1bJQy7hdaCuYYuePXzbN8cRedOkZ6uKkQ8WFn8FUZHqxmd1yLntmYZqW+v/eiGDHDDyxDEylsKZYgzyYZll4aEqL1kahvbBpoiIDJ7dUOp4SdjAGuZAONj2fhRYkQeq9KHxFubeE22/ObXOhCS5adYVa93T42QVw0oW9U3JnojuYVrx8OgUtHNYU/LLpedrMpPXXBSziRhitlfp3pI5C00uqFNIYRbOpIfVIpZyrmb/OXGaa1pQ1ZAREphWVKbA3kSa67Ifh36h21R3KL1snHZwHpmYPMflLASWfLN0HsC213knZMTRhY8BUFtrQ3qwBlJ21AgKzvKuewVQ7MeUvIiiBtTcKbua7FQaL2xH7zxTGWNhaYHAA+RsDTBVlRPWZQExx46aj3WeWwkyVzESXwBS7alzZBiew5NFqG7w8umhlFtrUXqrhsnIwn2V868azcGnz003o8vCmaLKvWRbekbINrGPOuRqfSkKKnNt/Uueh7WAK9iJLkVec+Ra/bB/vcr9BCFEIw7FpAZE2UwTrpmdGrqps3RyFyL1EjJJmo3lDOgaL7DHaOcyoQiri5kBOzBJ6XWPwco7kUFK23VLpfZ+8DstG7HWGEqPzsY2mZg2RxZHOYAZMBc0g9xfu9hU1e+2QpqpokZQ1bfNGxtPOVDi+TztE1vY1JaZS7QARDZDTnhmJylidGIAcru9iMb5dBI7amNpoKvVXSGnMdoFtpuLnElOOIaQwv2jWhCENVcEKkX3P/0zVTIxgTfF5D8wvPLeypKNZEUOz2qwYZuTqupSB2JTroPCXUfM2xBZVBceQ6nU0ZMamHifs5pniX15x+qsz0zrtSTuFgakti/E13l0IiT20YMqwTnvWgiXJ2JQ7lrPvAa+RFzJiG0xl+w8aWyctQh4U6nl4YD5r+pqSvG9jM12Ycmev96iMU+xM/SdO0iPXJf8FOYSmxaRjROwAAAAASUVORK5CYII="
+        },
+        "displayName": "Unleashed Software",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 216,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/94ac89171cc64598b5d411db505d299e.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,206 @@
+{
+  "workflow": {
+    "id": 465,
+    "name": "Get details of a GitLab repository",
+    "views": 3347,
+    "recentViews": 0,
+    "totalViews": 3347,
+    "createdAt": "2020-07-09T18:26:37.144Z",
+    "description": "![workflow-screenshot](fileId:71)",
+    "workflow": {
+      "id": "7",
+      "name": "6",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            440,
+            320
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Gitlab",
+          "type": "n8n-nodes-base.gitlab",
+          "position": [
+            780,
+            320
+          ],
+          "parameters": {
+            "owner": "shaligramshraddha",
+            "resource": "repository",
+            "operation": "get",
+            "repository": "trial"
+          },
+          "credentials": {
+            "gitlabApi": "new"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Gitlab",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.gitlab": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "sshaligr",
+      "username": "shraddha",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ecff5dc00cb5fa3e3365819f6b208663d8564580fa03b9aec987be3b16c81a0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 56,
+        "icon": "file:gitlab.svg",
+        "name": "n8n-nodes-base.gitlab",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gitlab/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/gitlab/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "GitLab"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNFMjQzMjkiIGQ9Im0zMC41IDU2Ljk2NyAxMC44NjMtMzMuMjAzSDE5LjYzN3oiLz48cGF0aCBmaWxsPSIjRkM2RDI2IiBkPSJNMzAuNSA1Ni45NjcgMTkuNjM3IDIzLjc2NEg0LjQxeiIvPjxwYXRoIGZpbGw9IiNGQ0EzMjYiIGQ9Ik00LjQxIDIzLjc2NCAxLjExIDMzLjg2Yy0uMy45Mi4wMyAxLjkyOC44MTcgMi40OTZMMzAuNSA1Ni45Njd6Ii8+PHBhdGggZmlsbD0iI0UyNDMyOSIgZD0iTTQuNDEgMjMuNzY0aDE1LjIyNkwxMy4wOTMgMy43ODFjLS4zMzYtMS4wMjktMS44MDItMS4wMjktMi4xMzkgMHoiLz48cGF0aCBmaWxsPSIjRkM2RDI2IiBkPSJtMzAuNSA1Ni45NjcgMTAuODYzLTMzLjIwM0g1Ni41OXoiLz48cGF0aCBmaWxsPSIjRkNBMzI2IiBkPSJtNTYuNTkgMjMuNzY0IDMuMyAxMC4wODZhMi4yMiAyLjIyIDAgMCAxLS44MTcgMi40OTdMMzAuNSA1Ni45Njd6Ii8+PHBhdGggZmlsbD0iI0UyNDMyOSIgZD0iTTU2LjU5IDIzLjc2NEg0MS4zNjJsNi41NDQtMTkuOTkyYy4zMzYtMS4wMyAxLjgwMi0xLjAzIDIuMTM5IDBsNi41NDMgMTkuOTkyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "GitLab",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 71,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/085baedb93bf49f2ae0e9601bc95fdd6.png"
+      }
+    ]
+  }
+}

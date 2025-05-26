@@ -1,0 +1,113 @@
+{
+  "workflow": {
+    "id": 488,
+    "name": "Receive updates when a new account is added by an admin in ActiveCampaign",
+    "views": 532,
+    "recentViews": 0,
+    "totalViews": 532,
+    "createdAt": "2020-07-12T08:32:24.758Z",
+    "description": "![workflow-screenshot](fileId:87)",
+    "workflow": {
+      "id": "112",
+      "name": "Receive updates when a new account is added by an admin in ActiveCampaign",
+      "nodes": [
+        {
+          "name": "ActiveCampaign Trigger",
+          "type": "n8n-nodes-base.activeCampaignTrigger",
+          "position": [
+            700,
+            250
+          ],
+          "parameters": {
+            "events": [
+              "account_add"
+            ],
+            "sources": [
+              "admin"
+            ]
+          },
+          "credentials": {
+            "activeCampaignApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.activeCampaignTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 124,
+        "icon": "file:activeCampaign.svg",
+        "name": "n8n-nodes-base.activeCampaignTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.activecampaigntrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/activeCampaign/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "ActiveCampaign Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTcuNDUxNzIgMzMuNzkwNkwyOC4zMzg5IDE5LjkxOTZMNy40NTE3MiA1Ljk2Nzc3QzYuNTY0NzIgNS40MDMxMyA2IDQuMzU0OTYgNiAzLjIyNTY5VjBMMzEuMzIyOSAxNi40NTE2QzMyLjUzMjUgMTcuMjU4IDMzLjE3NzcgMTguNTQ4NSAzMy4xNzc3IDE5LjkxOTZDMzMuMTc3NyAyMS4yOTAzIDMyLjQ1MTcgMjIuNTgwOSAzMS4zMjI5IDIzLjM4NzJMNiA0MFYzNi41MzIzQzYgMzUuNDgzOSA2LjQ4NDIyIDM0LjQzNTcgNy40NTE3MiAzMy43OTA2WiIgZmlsbD0iIzAwNENGRiIvPgo8cGF0aCBkPSJNMTkuNDY3OSAyMS4wNDg1QzE4LjMzOTEgMjEuNzc0MSAxNi44ODcxIDIxLjc3NDEgMTUuNzU4MyAyMS4wNDg1TDEyLjg1NDkgMTkuMTkzNkw2IDE0LjU5NjdWMTEuOTM1NEM2IDEwLjg4NzMgNy4yMDk2MSAxMC4zMjI2IDguMDE2MTIgMTAuODg3M0wyMS4yNDIgMTkuODM4OEwxOS40Njc5IDIxLjA0ODVaIiBmaWxsPSIjMDA0Q0ZGIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "ActiveCampaign Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 87,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6a5821818e344eb3b07144c08034ca3f.png"
+      }
+    ]
+  }
+}

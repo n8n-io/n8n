@@ -1,0 +1,1452 @@
+{
+  "workflow": {
+    "id": 2643,
+    "name": "Intelligent Web Query and Semantic Re-Ranking Flow using Brave and Google Gemini",
+    "views": 3995,
+    "recentViews": 2,
+    "totalViews": 3995,
+    "createdAt": "2024-12-16T13:55:44.230Z",
+    "description": "## **Workflow Description**\n\n\nThis workflow is a powerful, fully automated **web query and semantic reranking system** that allows users to perform precise, detailed searches, intelligently rank search results and provide high-quality, structured output. Built with **AI-powered components**, the workflow leverages **semantic query generation, result re-ranking, and real-time reporting** to deliver actionable insights.\n\nIt is particularly well-suited for **real-time data retrieval**, **market research**, and any domain requiring automated yet customizable search result processing.\n\n---\n\n### **How It Works**\n\n1. **Webhook Integration for Input**:  \n   - The workflow begins with a **Webhook Node** that captures the user's search query as input, enabling seamless integration with other systems.  \n\n2. **Step 1: Semantic Query Generation** (Powered by \"Semantic Search - Query Maker\"):  \n   - Using AI (Google Gemini), the initial query is refined and transformed into a **context-aware, expert-level search query**.  \n   - The process ensures that the search engine retrieves the most relevant and precise results.\n\n3. **Step 2: Web Search Execution**:  \n   - A free Brave Search API processes the refined query to fetch search results, ensuring speed and cost efficiency.\n\n4. **Step 3: Semantic Re-Ranking of Results** (Powered by \"Semantic Search - Result Re-Ranker\"):  \n   - The workflow reranks the search results based on relevance to the original question, prioritizing the most relevant URLs dynamically.  \n   - Results are passed through **AI-powered intelligent reranking** to ensure the final output reflects optimal relevance and quality.\n\n5. **Step 4: Structured Output Generation**:  \n   - Results are converted into a well-structured, organized JSON format, ranking the **top 10 search results** with their titles, links, and descriptions.  \n   - Missing ranks (if fewer than 10 results) are handled gracefully with placeholders, ensuring consistency.\n\n6. **Step 5: Real-Time Reporting**:  \n   - The reranked search results are sent back to the user or integrated system via the Webhook Node in a **JSON-formatted response**.  \n   - Reports are highly structured and ready for downstream processing or consumption.\n\n---\n\n### **Key Features**\n\n1. **AI-Powered Query Refinement**:  \n   - Transforms basic queries into detailed, expert-level search terms for optimal results.\n\n2. **Dual-Stage Semantic Search**:  \n   - Combines **query generation** and **result reranking** for precise, high-relevance outputs.\n\n3. **Top 10 Result Reranking**:  \n   - Dynamically ranks and organizes the top 10 results based on semantic relevance to the query.\n\n4. **Customizable Integration**:  \n   - Fully modifiable for alternative APIs or integrations, such as other search engines or custom ranking logic.\n\n5. **JSON-Formatted Structured Results**:  \n   - Outputs reranked results in a standardized format, ideal for integration into systems requiring machine-readable data.\n\n6. **Webhook-Based Flexibility**:  \n   - Works seamlessly with Webhook inputs for easy deployment in diverse workflows.\n\n7. **Cost-Effective API Usage**:  \n   - Pre-integrated with the free Brave Search API, minimizing operational costs while delivering accurate search results.\n\n---\n\n### **Instructions for API Setup**\n\n1. **Brave Search API**:  \n   - Visit [api.search.brave.com](https://api.search.brave.com) to obtain a free-tier API key for web search.  \n2. **AI Integration** (Google Gemini):  \n   - Visit Google AI Studio and generate an API key for semantic query generation and reranking.  \n3. **Webhook Configuration**:  \n   - Set up the input Webhook to capture search queries and the output Webhook to deliver reranked results.\n\n---\n\n### **Why Choose This Workflow?**\n\n- **Precision and Relevance**: Combines AI-based query generation with advanced reranking for accurate results.  \n- **Fully Customizable**: Easily adapt the workflow to alternative APIs, search engines, or ranking logic.  \n- **Real-Time Insights**: Provides structured, real-time output ready for immediate use.  \n- **Scalable and Modular**: Ideal for businesses, researchers, and data analysts needing a robust, repeatable solution.\n\n---\n\n### **Tags**  \nAI Workflow, Semantic Search, Query Refinement, Search Result Reranking, Real-Time Search, Web Search Automation, Google Search, Brave Search, News Search, API Integration, Market Research, Competitive Intelligence, Business Intelligence,Google Gemini, Anthropic Claude, OpenAI, GPT, LLM\n",
+    "workflow": {
+      "id": "wa2uEnSIowqSrHoY",
+      "meta": {
+        "instanceId": "cca06617664f52c5a019ea575691fdbce675dd95dc0452af5f13dbe76d615b69"
+      },
+      "name": "Intelligent Web Query and Semantic Re-Ranking Flow",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "8e7dc5cb-6822-4ef6-9e5a-2b350a1526bf",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -640,
+            -620
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1172,
+            "height": 970,
+            "content": "\n## Step 1. Set Up a Free Brave Web Search Query API Key\n\nTo attain the free web search API tier from Brave, follow these steps:\n\n1. Visit api.search.brave.com\n2. Create an account\n3. Subscribe to the free plan (no charge)\n4. Navigate to the API Keys section\n5. Generate an API key. For the subscription type, choose \"Free\".\n6. Go to the \"Query\" Nodes and change the \"X-Subscription-Token\" value to your API Key.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5bb3e68f-7693-4d4b-b794-843f2c3535e0",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1580,
+            -420
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 680,
+            "height": 360,
+            "content": "## If you require to change this Node to Webhook Or any Other Item:\n\n- In case you want to change the input type from Webhook to any other item, Make sure to go to the Query 1 and Query 1 Ranker and replace the Webhook Input to your Node's input."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f2fc02f9-a78a-4e87-be85-0032492a9f3f",
+          "name": "Date & Time",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            -820,
+            -240
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6f18ebbd-83db-4900-bc2e-0a9f23d6e8c8",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -1340,
+            -240
+          ],
+          "webhookId": "962f1468-c80f-4c0c-8555-a0acf648ede4",
+          "parameters": {
+            "path": "962f1468-c80f-4c0c-8555-a0acf648ede4",
+            "options": {},
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ba5ea83e-1b47-475b-863f-269ae293729a",
+          "name": "Auto-fixing Output Parser6",
+          "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+          "position": [
+            180,
+            -140
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ca426b6d-5412-4c5b-a55c-009a47c59a81",
+          "name": "Auto-fixing Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+          "position": [
+            -580,
+            -140
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "501d5390-5317-4973-a3e9-b0f502399c2b",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            -460,
+            -60
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"reasoning_summary\": \"Detailed explanation of each analytical chain’s purpose and insights, including key terms and considerations for query formulation.\",\n  \"final_search_query\": \"The single, best-fit search query derived from the meta-reasoning and multi-chain analysis, optimized to answer the research question.\"\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a27e75c7-0307-4d71-9266-5a56b297a6e3",
+          "name": "Query-1 Combined",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -80,
+            -240
+          ],
+          "parameters": {
+            "jsCode": "// Initialize an empty string to store all title, url, and description pairs\nlet aggregatedOutputText = \"\";\n\n// Loop through all items passed to this Function node\nfor (let item of items) {\n  // Access the JSON data from \"Query 1\" node for the current item\n  const queryData = item.json;\n\n  // Ensure there is a \"web.results\" array to process\n  if (queryData.web?.results && Array.isArray(queryData.web.results)) {\n    // Loop through all results in the \"web.results\" array\n    for (let result of queryData.web.results) {\n      // Extract the title, url, and description for each result\n      const title = result.title || \"No Title\";\n      const url = result.url || \"No URL\";\n      const description = result.description || \"No Description\";\n\n      // Append the values to the aggregated string\n      aggregatedOutputText += `Title: ${title}\\nURL: ${url}\\nDescription: ${description}\\n\\n`;\n    }\n  } else {\n    // If no results array, handle gracefully\n    aggregatedOutputText += \"No results found for this item.\\n\\n\";\n  }\n}\n\n// Trim the final string to remove any trailing newline and whitespace\naggregatedOutputText = aggregatedOutputText.trim();\n\n// Return a single item containing the aggregated output as a string\nreturn [\n  {\n    json: {\n      aggregated_text: aggregatedOutputText\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "acbdbe94-b5a7-4ec9-9fc8-c3ab147f42fa",
+          "name": "Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            640,
+            -240
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "text",
+            "responseBody": "={\n    \"Highest_RANKEDURL_1\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_1']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_1']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_1']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_2\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_2']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_2']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_2']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_3\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_3']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_3']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_3']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_4\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_4']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_4']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_4']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_5\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_5']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_5']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_5']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_6\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_6']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_6']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_6']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_7\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_7']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_7']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_7']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_8\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_8']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_8']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_8']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_9\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_9']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_9']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_9']['description'] }}\"\n    },\n    \"Highest_RANKEDURL_10\": {\n        \"title\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_10']['title'] }}\",\n        \"link\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_10']['link'] }}\",\n        \"description\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Highest_RANKEDURL_10']['description'] }}\"\n    },\n    \"Information_extracted\": \"{{ $item('0').$node['Semantic Search - Result Re-Ranker'].json['output']['Information_extracted'] }}\"\n}\n"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b8b6ae73-586a-406f-9641-57e2625f800c",
+          "name": "Semantic Search - Result Re-Ranker",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "onError": "continueRegularOutput",
+          "position": [
+            100,
+            -240
+          ],
+          "parameters": {
+            "text": "=\n**Objective:**\n\nFor the user's query, web search results are provided. Your tasks are:\n\n1. **Rank the links** based on how well they match the user's query.\n2. **Extract relevant information** from the descriptions provided. If no relevant information is found, return \"N/A\".\n\n---\n\n**Task:**\n\n**Step 1: Understand the User's Intent**\n\n- Determine what the user is truly and technically looking for.\n- The user's request query is: \"{{ $('Webhook').item.json.query['Research Question'] }}\"\n- The serach results below, however their  performance seem, have been based on this query \"{{ $item(\"0\").$node[\"Semantic Search -Query Maker\"].json[\"output\"][\"final_search_query\"] }}\". If the result are not satisfactory or missing due to bad query making, you should note that as well for the neww query making.\n- To nesure being time aware , realize todays date is: \"{{ $item(\"0\").$node[\"Date & Time\"].json[\"currentDate\"] }}\"\n\n- Follow a three-step chain of thought to comprehend the user's needs. Think out loud.\n\n---\n\n**Step 2: Rank the Links**\n\n- From the URLs and description snippets provided, **rank the top 10 websites** that are most likely to contain the required information.\n- Use the titles, descriptions, and sources to inform your ranking.\n\n**Links, Titles, and Descriptions:**\n\n{{ $json.aggregated_text }}\n\n---\n\nThis list completes the structure up to 20 results as you requested. Let me know if there’s anything more you need!\n\n---\n\n**Step 3: Analyze and Create a Follow-up Query**\n\n- Recognize that for the user's request:\n\n  `\"{{ $('Webhook').item.json.query['Research Question'] }}\"`\n\n  The results provided are based on the assistant's generated search query:\n\n  `\"{{ $item(\"0\").$node[\"Semantic Search -Query Maker\"].json[\"output\"][\"final_search_query\"] }}\"`\n\n- Analyze and revise any issues or new insights through multi-step thinking to create a follow-up query.\n\n**Indications and Priorities:**\n\n1. **No Results Received:** If no search items are shared, the search query may have been ineffective (e.g., too specific, incorrect parameters).\n2. **Insufficient or Unpromising Results:** If fewer than 20 but more than 5 results are provided, and none seem promising, the search query may need refinement.\n3. **Successful Results with Potential Follow-up:** If none of the above issues occurred and the search results provide answers or suggest a follow-up, create a new query. This could be a new topic, a deep dive, or a parallel factor that offers additional benefits.\n\n- Provide your chain of thought that connects the user's request to the actual information.\n\n- Deliver precise, detailed, and value-oriented information relevant to the user's query.\n\n**Step 4: Query making notes and examples**: \n\nThe queries must not be long tails , as they result in 0 websearch reutrns. We give you some examples of good web search queries:\nExamples:\n\nUser Question: \"What is the current state of the U.S. economy in 2024?\"\nEffective Search Query: \"U.S. Economy Analysis Report 2024\"\n\nUser Question: \"What are the recent advancements in artificial intelligence?\"\nEffective Search Query: \"2024 Artificial Intelligence Developments\"\n\nUser Question: \"How is climate change affecting agriculture globally?\"\nEffective Search Query: \"Global Impact of Climate Change on Agriculture 2024\"\n\nUser Question: \"What are the latest trends in cybersecurity threats?\"\nEffective Search Query: \"Cybersecurity Threats and Trends 2024\"\n\nUser Question: \"What is the outlook for renewable energy investments?\"\nEffective Search Query: \"Renewable Energy Investment Outlook 2024\"\n\n**Step 5: Query making*: \nor query making remember as we said:\n   - **Today's Date:** \"{{ $item(\"0\").$node[\"Date & Time\"].json[\"currentDate\"] }}\"\n **Search Inquiry:** \n   - **Search Topic to create the query upon it:**{{ $item(\"0\").$node[\"Webhook\"].json[\"query\"][\"Research Question\"] }}\"\"\n\n\n---\n\n**Step 6: Output Format**\n\nEnsure the response is in the following JSON format:\n\n{\n    \"chain_of_thought\": \"Insert your step-by-step reasoning here.\",\n    \"Highest_RANKEDURL_1\": {\n        \"title\": \"Insert the First Ranked URL's Title here.\",\n        \"link\": \"Insert the First Ranked URL here.\",\n        \"description\": \"Insert the First Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_2\": {\n        \"title\": \"Insert the Second Ranked URL's Title here.\",\n        \"link\": \"Insert the Second Ranked URL here.\",\n        \"description\": \"Insert the Second Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_3\": {\n        \"title\": \"Insert the Third Ranked URL's Title here.\",\n        \"link\": \"Insert the Third Ranked URL here.\",\n        \"description\": \"Insert the Third Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_4\": {\n        \"title\": \"Insert the Fourth Ranked URL's Title here.\",\n        \"link\": \"Insert the Fourth Ranked URL here.\",\n        \"description\": \"Insert the Fourth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_5\": {\n        \"title\": \"Insert the Fifth Ranked URL's Title here.\",\n        \"link\": \"Insert the Fifth Ranked URL here.\",\n        \"description\": \"Insert the Fifth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_6\": {\n        \"title\": \"Insert the Sixth Ranked URL's Title here.\",\n        \"link\": \"Insert the Sixth Ranked URL here.\",\n        \"description\": \"Insert the Sixth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_7\": {\n        \"title\": \"Insert the Seventh Ranked URL's Title here.\",\n        \"link\": \"Insert the Seventh Ranked URL here.\",\n        \"description\": \"Insert the Seventh Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_8\": {\n        \"title\": \"Insert the Eighth Ranked URL's Title here.\",\n        \"link\": \"Insert the Eighth Ranked URL here.\",\n        \"description\": \"Insert the Eighth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_9\": {\n        \"title\": \"Insert the Ninth Ranked URL's Title here.\",\n        \"link\": \"Insert the Ninth Ranked URL here.\",\n        \"description\": \"Insert the Ninth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_10\": {\n        \"title\": \"Insert the Tenth Ranked URL's Title here.\",\n        \"link\": \"Insert the Tenth Ranked URL here.\",\n        \"description\": \"Insert the Tenth Ranked URL's Description here.\"\n    },\n    \"Information_extracted\": \"Insert all extracted information relevant to the user's query or 'N/A' if none.\"\n}\n",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=\nYou are an expert information retrieval and critical evaluation assistant designed to process, rank, and extract high-relevance content from web search results for complex user queries. You must provide value-oriented insights while refining searches based on relevance and context sensitivity. \n\n**Your Process and Priorities:**\n\n#### 1. **Determine the User's Technical Intent**\n   - Interpret the user's core question provided as `{{ $item(\"0\").$node[\"Webhook\"].json[\"query\"][\"Research Question\"] }}`, discerning underlying objectives and specialized needs.\n   - Recognize that the search results may have been generated from a **secondary query**: `{{ $item(\"0\").$node[\"Semantic Search -Query Maker\"].json[\"output\"][\"final_search_query\"] }}`. \n   - Judge the adequacy of this generated query. If it does not meet the user’s objectives, highlight the need for query refinement and prepare to adapt the approach.\n   - Stay mindful of the date context, using `{{ $item(\"0\").$node[\"Date & Time\"].json[\"currentDate\"] }}` to assess the freshness of content or time-sensitive relevance.\n\n#### 2. **Rank Results Based on Analytical Relevance**\n   - From the search results provided, **rank the top 3 URLs** that most closely align with the user’s intent and technical needs.\n     - Use multi-dimensional analysis to assess how each link’s title, description, and source match the user’s objective.\n     - Prioritize results based on credibility, relevance, and their potential to add depth to the user’s inquiry.\n   - Your goal is to select the highest-value links, disregarding results that offer superficial, off-topic, or outdated information.\n\n#### 3. **Extract Key Information**\n   - For each of the top 3 ranked results, extract insights and details from the description snippets that directly address the user’s query.\n   - If no pertinent information is available in a description, record `\"N/A\"` to indicate its lack of relevance.\n\n#### 4. **Evaluate for Potential Query Improvement**\n   - Evaluate the relevance and coverage of search results:\n     - If fewer than 5 relevant results are present, consider that the initial query may be too narrow, specific, or otherwise misaligned.\n     - Generate a **refined query** that is adjusted to better match the user’s likely needs and produce higher-quality results.\n   - Use advanced language modifications, new keyword suggestions, or rephrasing to formulate a search query that enhances alignment with the user’s goals.\n"
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "retryOnFail": true,
+          "typeVersion": 1.4
+        },
+        {
+          "id": "a1ca671d-0b0c-4717-9def-93fdb965de8d",
+          "name": "Query",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -240,
+            -240
+          ],
+          "parameters": {
+            "url": "https://api.search.brave.com/res/v1/web/search",
+            "options": {},
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "q",
+                  "value": "={{ $json.output.final_search_query }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip"
+                },
+                {
+                  "name": "X-Subscription-Token",
+                  "value": "<Insert Your API Key Here>"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "d3cc4e7c-3ead-4d38-9b51-a11cd9d7faeb",
+          "name": "Webhook Call",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -180,
+            1040
+          ],
+          "parameters": {
+            "url": "https://primary-production-8aa4.up.railway.app/webhook-test/962f1468-c80f-4c0c-8555-a0acf648ede4",
+            "options": {},
+            "sendQuery": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "Research Question",
+                  "value": "what is the latest news in global world in politics and economy?"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "6931404b-94d6-4b9d-9f0a-124012212eb5",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -640,
+            420
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 1180,
+            "height": 840,
+            "content": "## Step 2. Setup the Webhook Call Node\n\n**Instructions for Setting Up the Webhook Call and Using It in Your Workflow**\n\nThis node is designed to send a **web search query** to the workflow (partly built in this chart) and return the results. Follow these steps to correctly configure and use it:\n\n1. **Locate the \"Webhook\" Node in the Workflow**:\n   - Navigate to the workflow above, the first item, the \"Webhook\" node.\n   - In the \"Webhook\" node, change the **Webhook URL option** from \"Test URL\" to \"Production URL.\"\n   - Copy the generated **Production URL**.\n\n2. **Paste the Webhook URL in the HTTP Node**:\n   - In your target workflow, locate the **HTTP Request** node.\n   - Paste the copied **Production URL** into the URL field of the HTTP Request node. This connects the two workflows.\n\n3. **Send the Research Request**:\n   - When sending the request to this workflow, make sure to include your web search query in the **\"Research Question\" parameter** of the HTTP Request node.\n\n4. **Move the Webhook Call Node**:\n   - Move this **Webhook Call Node** into the workflow where you need the research results. Ensure that it’s correctly connected and configured to send the data to the main workflow.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "01d73f91-1dd6-4b80-951c-9f944ea9d992",
+          "name": "Semantic Search -Query Maker",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            -560,
+            -240
+          ],
+          "parameters": {
+            "text": "=1. **Task:** `\"Your task is to develop a web search query that most effectively answers the research question given. Use meta-reasoning and multi-chain analysis to ensure a comprehensive approach.\"`\n\n2. **Structured Guidance for Chains of Thought:**  \n    a. **Chain 1:** Break down the research question, identifying keywords and relevant terms.  \n    b. **Chain 2:** Explore the context and potential sources, determining the types of results that would be most relevant.  \n    c. **Chain 3:** Refine the query for specificity and completeness, considering how to capture nuances of the question.\n\n3. **Final Query Generation:** Based on the insights from the three chains, generate a single, refined search query.\n\n\n4. Note, the queries must not be long tails , as they result in 0 websearch reutrns. We give you some examples of good web search queries:\nExamples:\n\nUser Question: \"What is the current state of the U.S. economy in 2024?\"\n\nEffective Search Query: \"U.S. Economy Analysis Report 2024\"\nUser Question: \"What are the recent advancements in artificial intelligence?\"\n\nEffective Search Query: \"2024 Artificial Intelligence Developments\"\nUser Question: \"How is climate change affecting agriculture globally?\"\n\nEffective Search Query: \"Global Impact of Climate Change on Agriculture 2024\"\nUser Question: \"What are the latest trends in cybersecurity threats?\"\n\nEffective Search Query: \"Cybersecurity Threats and Trends 2024\"\nUser Question: \"What is the outlook for renewable energy investments?\"\n\nEffective Search Query: \"Renewable Energy Investment Outlook 2024\"\n\n5. Data Input:\n   - **Today's Date:** \"{{ $item(\"0\").$node[\"Date & Time\"].json[\"currentDate\"] }}\"\n **Search Inquiry:** \n   - **Search Topic to create the query upon it:**{{ $item(\"0\").$node[\"Webhook\"].json[\"query\"][\"Research Question\"] }}\"\"\n\n6. Now develop the best fit web search query given the user request above under number 5\n---\n\n**Output Requirements:**  \nThe Assistant’s output should be in JSON format, structured as follows:\n\n{\n  \"reasoning_summary\": \"Detailed explanation of each analytical chain’s purpose and insights, including key terms and considerations for query formulation.\",\n  \"final_search_query\": \"The single, best-fit search query derived from the meta-reasoning and multi-chain analysis, optimized to answer the research question.\"\n}\n```\n\n---\n",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "You are an advanced data and research retrieval through smart search queires via Bing and Brave websearch APIs. "
+                },
+                {
+                  "type": "HumanMessagePromptTemplate",
+                  "message": "1. **Task:** `\"Your task is to develop a web search query that most effectively answers the research question given. Use meta-reasoning and multi-chain analysis to ensure a comprehensive approach.\"`\n\n2. **Structured Guidance for Chains of Thought:**  \n    a. **Chain 1:** Break down the research question, identifying keywords and relevant terms.  \n    b. **Chain 2:** Explore the context and potential sources, determining the types of results that would be most relevant.  \n    c. **Chain 3:** Refine the query for specificity and completeness, considering how to capture nuances of the question.\n\n3. **Final Query Generation:** Based on the insights from the three chains, generate a single, refined search query.\n\n4. Data Input:\n   - **Today's Date:** \"2024-11-12T10:21:33.764-05:00\"\n2. **Search Inquiry:** \n   - **Search Topic to create the query upon it:** \"What is the latest stock Market Analysis in mid-term?\"\n\n\n---\n\n**Output Requirements:**  \nThe Assistant’s output should be in JSON format, structured as follows:\n\n{\n  \"reasoning_summary\": \"Detailed explanation of each analytical chain’s purpose and insights, including key terms and considerations for query formulation.\",\n  \"final_search_query\": \"The single, best-fit search query derived from the meta-reasoning and multi-chain analysis, optimized to answer the research question.\"\n}\n```\n\n---\n"
+                },
+                {
+                  "type": "AIMessagePromptTemplate",
+                  "message": "Assessing query functionality\n\nI’m evaluating the viability of the assistant's proposed search query. The user questions if it would yield meaningful results on different search engines.\n\nClarifying the query\n\nOK, let me see. The task involves clarifying the user's needs, ensuring the response aligns with OpenAI's policies, and possibly re-evaluating and correcting any errors in the previous response.\n\nRefining search specifics\n\nI'm working through refining the search query to focus on specific terms like 'S&P 500', integrating dates such as 'November 2024', and emphasizing phrases for precision.\n\nSelf-reflecting on search queries\n\nToday, I’m thinking about how to validate search queries for accuracy and realism, ensuring they are practical and likely to yield productive results.\n\nAcknowledging insights\n\nI’m recognizing and correcting a search query to ensure it’s optimal and effectively aligned with advanced user needs, leading to a more precise output.\n\nCrafting a search query\n\nI’m crafting a search query to pinpoint the most pertinent recent mid-term stock market analyses. Starting with relevant terms and then exploring potential sources for context and relevance.\n\nPinpointing sources and specifics\n\nI'm gathering info from financial news, investment reports, and economic research institutions. I’m refining search terms like \"mid-term stock market analysis\" and \"market forecast\" to keep results current and nuanced.\n\nCrafting the query\n\nI’m finalizing the query by merging terms like 'latest' and 'stock market analysis' with 'mid-term', and considering synonyms such as 'market forecast' to refine the search for 2024.\n\nTweaking the search\n\nI adjusted the search terms to 'latest stock market mid-term outlook 2024,' removing excessive quotes for better clarity and relevance.\n\n\n{\n  \"reasoning_summary\": \"Chain 1: Broke down the research question to identify key terms such as 'latest', 'stock market analysis', and 'mid-term'. Considered synonyms like 'mid-term outlook', 'market forecast', and included the current year '2024' for recency.\\n\\nChain 2: Explored the context where the user seeks recent analyses of the stock market with a mid-term perspective. Relevant sources would be financial news outlets, investment banks, and economic research firms. The most useful results would be up-to-date articles or reports offering mid-term forecasts.\\n\\nChain 3: Refined the query by removing unnecessary quotation marks and simplifying it to reflect how an advanced user might search. Included terms like 'latest', 'mid-term outlook', and '2024' to enhance specificity without limiting the search results unnecessarily.\",\n  \"final_search_query\": \"latest stock market mid-term outlook 2024\"\n}"
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.4
+        },
+        {
+          "id": "696b4f97-ad29-406b-9157-44ad9d05c9cd",
+          "name": "Anthropic Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+          "position": [
+            740,
+            180
+          ],
+          "parameters": {
+            "model": "claude-3-5-haiku-20241022",
+            "options": {
+              "topP": 0.8,
+              "temperature": 0.4,
+              "maxTokensToSample": 4096
+            }
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "mVKB2CryW6bMm9Qo",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "82f25610-8b70-4aee-ad90-2616d3389f15",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            900,
+            180
+          ],
+          "parameters": {
+            "options": {
+              "topP": 0.7,
+              "maxTokens": 4096,
+              "maxRetries": 1,
+              "temperature": 0.5
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "wQQZLwJO9A5nFu8h",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f230bdf0-4a22-4abf-96cd-47f309f0c514",
+          "name": "Structured Output Parser2",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            260,
+            -60
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n    \"chain_of_thought\": \"Insert your step-by-step reasoning here.\",\n    \"Highest_RANKEDURL_1\": {\n        \"title\": \"Insert the First Ranked URL's Title here.\",\n        \"link\": \"Insert the First Ranked URL here.\",\n        \"description\": \"Insert the First Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_2\": {\n        \"title\": \"Insert the Second Ranked URL's Title here.\",\n        \"link\": \"Insert the Second Ranked URL here.\",\n        \"description\": \"Insert the Second Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_3\": {\n        \"title\": \"Insert the Third Ranked URL's Title here.\",\n        \"link\": \"Insert the Third Ranked URL here.\",\n        \"description\": \"Insert the Third Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_4\": {\n        \"title\": \"Insert the Fourth Ranked URL's Title here.\",\n        \"link\": \"Insert the Fourth Ranked URL here.\",\n        \"description\": \"Insert the Fourth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_5\": {\n        \"title\": \"Insert the Fifth Ranked URL's Title here.\",\n        \"link\": \"Insert the Fifth Ranked URL here.\",\n        \"description\": \"Insert the Fifth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_6\": {\n        \"title\": \"Insert the Sixth Ranked URL's Title here.\",\n        \"link\": \"Insert the Sixth Ranked URL here.\",\n        \"description\": \"Insert the Sixth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_7\": {\n        \"title\": \"Insert the Seventh Ranked URL's Title here.\",\n        \"link\": \"Insert the Seventh Ranked URL here.\",\n        \"description\": \"Insert the Seventh Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_8\": {\n        \"title\": \"Insert the Eighth Ranked URL's Title here.\",\n        \"link\": \"Insert the Eighth Ranked URL here.\",\n        \"description\": \"Insert the Eighth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_9\": {\n        \"title\": \"Insert the Ninth Ranked URL's Title here.\",\n        \"link\": \"Insert the Ninth Ranked URL here.\",\n        \"description\": \"Insert the Ninth Ranked URL's Description here.\"\n    },\n    \"Highest_RANKEDURL_10\": {\n        \"title\": \"Insert the Tenth Ranked URL's Title here.\",\n        \"link\": \"Insert the Tenth Ranked URL here.\",\n        \"description\": \"Insert the Tenth Ranked URL's Description here.\"\n    },\n    \"Information_extracted\": \"Insert all extracted information relevant to the user's query or 'N/A' if none.\"\n}\n"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "3421ebe5-6a86-435e-b9c6-e3dcf6dd7833",
+          "name": "Parser Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -180,
+            180
+          ],
+          "parameters": {
+            "options": {
+              "topP": 0.6,
+              "temperature": 0.4,
+              "maxOutputTokens": 4096
+            },
+            "modelName": "models/gemini-1.5-flash-002"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "rTbWGMQGwWtjhNaA",
+              "name": "Google Gemini(PaLM) Api account 4"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fd19e9f6-d8c7-45df-93d9-ecf7956b461f",
+          "name": "Agent Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -180,
+            -20
+          ],
+          "parameters": {
+            "options": {
+              "topP": 0.6,
+              "temperature": 0.4,
+              "safetySettings": {
+                "values": [
+                  {
+                    "category": "HARM_CATEGORY_HARASSMENT",
+                    "threshold": "BLOCK_NONE"
+                  },
+                  {
+                    "category": "HARM_CATEGORY_HATE_SPEECH",
+                    "threshold": "BLOCK_NONE"
+                  },
+                  {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                  },
+                  {
+                    "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+                    "threshold": "BLOCK_NONE"
+                  }
+                ]
+              },
+              "maxOutputTokens": 4086
+            },
+            "modelName": "models/gemini-1.5-flash-002"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "rTbWGMQGwWtjhNaA",
+              "name": "Google Gemini(PaLM) Api account 4"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "156e83ff-928a-4aca-af8b-0c0fa51acd56",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            -20
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 712,
+            "height": 370,
+            "content": "\n## Customized Models to Replace\n\nIn case you rather to use another LLM Model to Perform the Semantic Search and Re-Ranking, These nodes below are Optimized based on the LLM Structure of OpenAI GPT4o & Anthropic Claude.\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "b824ca9d-5676-4ca5-b97d-e5113d955de2",
+      "connections": {
+        "Query": {
+          "main": [
+            [
+              {
+                "node": "Query-1 Combined",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Date & Time",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Agent Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Semantic Search - Result Re-Ranker",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Semantic Search -Query Maker",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Date & Time": {
+          "main": [
+            [
+              {
+                "node": "Semantic Search -Query Maker",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parser Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Auto-fixing Output Parser6",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Auto-fixing Output Parser",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Query-1 Combined": {
+          "main": [
+            [
+              {
+                "node": "Semantic Search - Result Re-Ranker",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            []
+          ]
+        },
+        "Anthropic Chat Model": {
+          "ai_languageModel": [
+            []
+          ]
+        },
+        "Auto-fixing Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Semantic Search -Query Maker",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Auto-fixing Output Parser",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser2": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Auto-fixing Output Parser6",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Auto-fixing Output Parser6": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Semantic Search - Result Re-Ranker",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Semantic Search -Query Maker": {
+          "main": [
+            [
+              {
+                "node": "Query",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Semantic Search - Result Re-Ranker": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 20,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.dateTime": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatAnthropic": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.outputParserAutofixing": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Mind-Front",
+      "username": "mind-front",
+      "bio": "**Mind-Front** is a pilot project hosted at (https://www.mindfront.solutions), delivering intelligent, data-driven market reports to support strategic decision-making. \n\nTo help the n8n community, we’re sharing workflow solutions that address common automation challenges. Each template reflects our commitment to efficiency and adaptability, empowering users to streamline data processing and reporting, and focus on what matters most—insightful, strategic actions.\n",
+      "verified": false,
+      "links": [
+        "https://www.linkedin.com/in/bozorgk/"
+      ],
+      "avatar": "https://gravatar.com/avatar/3c3e018c09520b56636ae3cd2e71a4b36a3556a028c720c6a75fbf90c5bf79d0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 221,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.dateTime",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Date & Time",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Date & Time",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1145,
+        "icon": "file:anthropic.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+        "codex": {
+          "data": {
+            "alias": [
+              "claude",
+              "sonnet",
+              "opus"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatanthropic/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Anthropic Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSIzMiIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTMyLjczIDBoLTYuOTQ1TDM4LjQ1IDMyaDYuOTQ1ek0xMi42NjUgMCAwIDMyaDcuMDgybDIuNTktNi43MmgxMy4yNWwyLjU5IDYuNzJoNy4wODJMMTkuOTI5IDB6bS0uNzAyIDE5LjMzNyA0LjMzNC0xMS4yNDYgNC4zMzQgMTEuMjQ2eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Anthropic Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1175,
+        "icon": "fa:tools",
+        "name": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserautofixing/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Auto-fixing Output Parser"
+        },
+        "iconData": {
+          "icon": "tools",
+          "type": "icon"
+        },
+        "displayName": "Auto-fixing Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

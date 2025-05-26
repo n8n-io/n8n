@@ -1,0 +1,26 @@
+URL: https://docs.n8n.io/code/builtin/jmespath/
+Scraped_At: 2025-05-20T18:40:59.537739
+
+JMESPath method
+#
+This is an n8n-provided method for working with the
+JMESPath
+library.
+Python support
+You can use Python in the Code node. It isn't available in expressions.
+JavaScript
+Python
+Method
+Description
+Available in Code node?
+$jmespath()
+Perform a search on a JSON object using JMESPath.
+Method
+Description
+_jmespath()
+Perform a search on a JSON object using JMESPath.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,28 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.netlifytrigger/
+Scraped_At: 2025-05-20T19:07:20.460995
+
+Netlify Trigger node
+#
+Netlify
+offers hosting and serverless backend services for web applications and static websites.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Netlify Trigger integrations
+page.
+Related resources
+#
+n8n provides an app node for Netlify. You can find the node docs
+here
+.
+View
+example workflows and related content
+on n8n's website.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,2994 @@
+{
+  "workflow": {
+    "id": 3636,
+    "name": "Build your own Qdrant Vector Store MCP server",
+    "views": 499,
+    "recentViews": 77,
+    "totalViews": 499,
+    "createdAt": "2025-04-21T10:14:56.423Z",
+    "description": "### This n8n demonstrates how to build your own Qdrant MCP server to extend its functionality beyond that of the official implementation.\n\nThis n8n implementation exposes other cool API features from Qdrant such as facet search, grouped search and recommendations APIs. With this, we can build an easily customisable and maintainable Qdrant MCP server for business intelligence.\n\nThis MCP example is based off an official MCP reference implementation which can be found here - [https://github.com/qdrant/mcp-server-qdrant](https://github.com/qdrant/mcp-server-qdrant/)\n\n### How it works\n* A MCP server trigger is used and connected to 5 custom workflow tools. We're using custom workflow tools as there is quite a few nodes required for each task.\n* We use a mix of n8n supported Qdrant nodes for simple operations such as insert documents and similarity search, and HTTP node to hit the Qdrant API directly for Facet search, group search and recommendations.\n* We use \"Edit Field\" and \"Aggregate\" nodes to return suitable responses to the MCP client.\n\n### How to use\n* This Qdrant MCP server allows any compatible MCP client to manage a Qdrant Collection by supporting select and create operations. You will need to have a collection available before you can use this server. Use the Prerequisite manual steps to get started!\n* Connect your MCP client by following the n8n guidelines here - https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/#integrating-with-claude-desktop\n* Try the following queries in your MCP client:\n  * \"Can you help me list the available companies in the collection?\"\n  * \"What do customers say about product deliveries from company X?\"\n  * \"What do customers of company X and company Y say about product ease of use?\"\n\n### Requirements\n* Qdrant for vector store. This can be an a cloud-hosted instance or one you can self-host internally.\n* MCP Client or Agent for usage such as Claude Desktop - https://claude.ai/download\n\n### Customising this workflow\n* Depending on what queries you'll receive, adjust the tool inputs to make it easier for the agent to set the right parameters.\n* Not interested in Reviews? The techniques shared in this template can be used for other types of collections.\n* Remember to set the MCP server to require credentials before going to production and sharing this MCP server with others!",
+    "workflow": {
+      "meta": {
+        "instanceId": "408f9fb9940c3cb18ffdef0e0150fe342d6e655c3a9fac21f0f644e8bedabcd9",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "49620d3a-d4ec-4017-ade1-ff2ef5473c11",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -220,
+            -80
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 680,
+            "height": 660,
+            "content": "## 1. Set up an MCP Server Trigger\n[Read more about the MCP Server Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f0646a81-d328-4f07-a744-60f576b5a51e",
+          "name": "Insert",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -40,
+            380
+          ],
+          "parameters": {
+            "name": "insert_review",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "=Call this tool to insert a customer's review into our review database.",
+            "workflowInputs": {
+              "value": {
+                "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', `The contents of the review`, 'string') }}",
+                "text2": "null",
+                "operation": "insert",
+                "companyIds": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('companyIds', `The company ID is their url address.`, 'string') }}"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text2",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text2",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "companyIds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "companyIds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "21e8beac-dbd5-44d7-8472-4edff3f63308",
+          "name": "Search",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            80,
+            440
+          ],
+          "parameters": {
+            "name": "search_reviews",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}",
+              "cachedResultName": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to search our reviews database.",
+            "workflowInputs": {
+              "value": {
+                "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', `the query or search terms to use`, 'string') }}",
+                "text2": "null",
+                "operation": "search",
+                "companyIds": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('companyIds', `Optional, leave blank to search over all companies otherwise one or more company IDs comma-delimited. The company ID is their url address.`, 'string') }}"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text2",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text2",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "companyIds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "companyIds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "ffb100a4-9108-4ccd-a897-e5cd9e752232",
+          "name": "Recommend",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            280,
+            240
+          ],
+          "parameters": {
+            "name": "recommend_reviews",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to generate a recommendation for a review based on positive and/or negative preferences.",
+            "workflowInputs": {
+              "value": {
+                "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', `preferences to include.`, 'string') }}",
+                "text2": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text2', `preference to avoid.`, 'string') }}",
+                "operation": "recommend",
+                "companyIds": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('companyIds', `Optional, leave blank to search across all reviews otherwise one or more company IDs, comma-delimited. The company ID is their url address.`, 'string') }}"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text2",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text2",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "companyIds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "companyIds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "d1d53cbc-0a22-409d-9336-d8c98eeaa170",
+          "name": "Qdrant MCP Server",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            -40,
+            60
+          ],
+          "webhookId": "a1aff1b5-e5c7-4ca2-91eb-017c1fe32dab",
+          "parameters": {
+            "path": "a1aff1b5-e5c7-4ca2-91eb-017c1fe32dab"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "82d747a5-ff5f-44ff-9f68-cc1aa01ba1de",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            540,
+            280
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "operation"
+                },
+                {
+                  "name": "text"
+                },
+                {
+                  "name": "text2"
+                },
+                {
+                  "name": "companyIds"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "c7a2e948-5cd5-4545-a633-c1157e63edec",
+          "name": "Operation",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            760,
+            240
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "listCompanies",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "fe782b0f-f501-4985-a9d2-f63f4019177f",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "listCompanies"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "insert",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "81b134bc-d671-4493-b3ad-8df9be3f49a6",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "insert"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "search",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "8d57914f-6587-4fb3-88e0-aa1de6ba56c1",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "search"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "compare",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "7c38f238-213a-46ec-aefe-22e0bcb8dffc",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "compare"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "recommend",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "2c691501-786a-433f-a185-3a6e0d08d336",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "recommend"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "18d805db-376c-4583-963a-db1e5d09aa50",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            480,
+            -140
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 580,
+            "height": 320,
+            "content": "## 2. Expand Functionality Beyond Vendor Implementation\n[Read more about the Qdrant Node](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant)\n\nOfficially supported MCP servers are cool but may not always have the features you want. N8N MCP servers give you the freedom to expand and customise to fit your business or product needs and requirements.\n\nFor our Qdrant MCP server, we've added 2 additional capabilities from the Qdrant API; The Group Search and Recommendation API. With these, we can explore many more use-cases for our users.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ab8aeea3-0564-4c96-a67c-ff319df3297b",
+          "name": "Compare",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            220,
+            380
+          ],
+          "parameters": {
+            "name": "compare_reviews",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}",
+              "cachedResultName": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to compare search results across 2 or more companies.",
+            "workflowInputs": {
+              "value": {
+                "text": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('text', `the query or search terms to use`, 'string') }}",
+                "text2": "null",
+                "operation": "compare",
+                "companyIds": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('companyIds', `Two or more company IDs, comma-delimited. The company ID is their url address.`, 'string') }}"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text2",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text2",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "companyIds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "companyIds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "4f0876cb-dc07-486e-937b-334fa2cb754f",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1920,
+            860
+          ],
+          "parameters": {
+            "width": 213.30551928619226,
+            "height": 332.38559808882246,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n### 🚨Configure Your Qdrant Connection\n* Be sure to enter your endpoint address"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "02031bac-016f-4715-8413-6255cf73e103",
+          "name": "Recommend API",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1980,
+            900
+          ],
+          "parameters": {
+            "url": "=http://qdrant:6333/collections/trustpilot_reviews/points/recommend",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "strategy",
+                  "value": "average_vector"
+                },
+                {
+                  "name": "limit",
+                  "value": "={{ 3 }}"
+                },
+                {
+                  "name": "positive",
+                  "value": "={{ [$json.embeddings[0]] }}"
+                },
+                {
+                  "name": "negative",
+                  "value": "={{ [$json.embeddings[1]] }}"
+                },
+                {
+                  "name": "filter",
+                  "value": "={{\n$('Operation').first().json.companyIds\n  ? {\n    \"must\": {\n      \"key\": \"metadata.company_id\",\n      \"match\": {\n        \"any\": $('Operation').first().json.companyIds.split(',')\n      }\n    }\n  }\n  : {}\n}}"
+                },
+                {
+                  "name": "with_payload",
+                  "value": "={{ true }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "qdrantApi"
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "9d058dae-2f24-4e34-bdb6-ba5649a3b431",
+          "name": "Get Embeddings",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1580,
+            900
+          ],
+          "parameters": {
+            "url": "https://api.openai.com/v1/embeddings",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "input",
+                  "value": "={{ $json.text }}"
+                },
+                {
+                  "name": "model",
+                  "value": "text-embedding-3-small"
+                }
+              ]
+            },
+            "nodeCredentialType": "openAiApi"
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "dfbb9a02-91dd-4dc4-8738-0aff41db2156",
+          "name": "Preferences to Items",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1380,
+            900
+          ],
+          "parameters": {
+            "jsCode": "return [\n  { text: $input.first().json.text },\n  { text: $input.first().json.text2 }\n]"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7d6bda64-4f98-43d1-b181-343238f678bb",
+          "name": "Aggregate Embeddings",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1780,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToAggregate": {
+              "fieldToAggregate": [
+                {
+                  "renameField": true,
+                  "outputFieldName": "embeddings",
+                  "fieldToAggregate": "data[0].embedding"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8eacac44-9cfd-4aa0-be7d-534ae630a2d4",
+          "name": "Get Embeddings1",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1380,
+            560
+          ],
+          "parameters": {
+            "url": "https://api.openai.com/v1/embeddings",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "input",
+                  "value": "={{ $json.text }}"
+                },
+                {
+                  "name": "model",
+                  "value": "text-embedding-3-small"
+                }
+              ]
+            },
+            "nodeCredentialType": "openAiApi"
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5b23221c-aeb8-4a4f-b33b-75d46ba7a4fd",
+          "name": "Aggregate Embeddings1",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1580,
+            560
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToAggregate": {
+              "fieldToAggregate": [
+                {
+                  "renameField": true,
+                  "outputFieldName": "embeddings",
+                  "fieldToAggregate": "data[0].embedding"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bbbfaf2f-8294-401f-9f01-efeb58e99f15",
+          "name": "Group Search API",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1780,
+            560
+          ],
+          "parameters": {
+            "url": "http://qdrant:6333/collections/trustpilot_reviews/points/search/groups",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={{\n{\n  \"vector\": $json.embeddings[0],\n  \"group_by\": \"metadata.company_id\",\n  \"limit\": 10,\n  \"group_size\": 3,\n  \"with_payload\": true\n}\n}}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "qdrantApi"
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "bbed1c97-eebb-47f1-9486-73bade35d290",
+          "name": "Has Results?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2600,
+            560
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a83c0c10-74a7-4a52-b6c4-26dc8313023b",
+                  "operator": {
+                    "type": "object",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "e995b27a-f331-434c-a828-bc02f978b43c",
+          "name": "Simplify Group Results",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2180,
+            560
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "caf5bf23-087a-496f-8d20-56ab70e303a8",
+                  "name": "category",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "db3c2c92-b951-4365-9c19-d5d0f8654a42",
+                  "name": "results",
+                  "type": "array",
+                  "value": "={{\n$json.hits?.map(hit => ({\n  content: hit.payload.content,\n  metadata: hit.payload.metadata\n}))\n}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "e0c327a5-ab2e-46ad-9d4b-0fe8cdd1605c",
+          "name": "Empty Compare Response",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2820,
+            660
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "24ab771e-0e19-4bfe-bfee-2fed3a34f7fe",
+                  "name": "response",
+                  "type": "string",
+                  "value": "no results."
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "52890718-81b4-4880-9a12-b8456e96ad98",
+          "name": "Aggregate Compare Response",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            2820,
+            440
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "response"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bb87afe4-6910-4c79-9371-d49e77134ac3",
+          "name": "Embeddings OpenAI",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+          "position": [
+            1340,
+            -40
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "ba6e426b-9629-445f-b96c-b8b51fcafe3d",
+          "name": "Default Data Loader",
+          "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+          "position": [
+            1460,
+            -40
+          ],
+          "parameters": {
+            "options": {
+              "metadata": {
+                "metadataValues": [
+                  {
+                    "name": "company_id",
+                    "value": "={{ $json.companyIds ?? 'unspecified' }}"
+                  }
+                ]
+              }
+            },
+            "jsonData": "={{ $json.text }}",
+            "jsonMode": "expressionData"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "de9e7ffa-49e8-40de-acef-fd92216ec10c",
+          "name": "Recursive Character Text Splitter",
+          "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+          "position": [
+            1560,
+            80
+          ],
+          "parameters": {
+            "options": {},
+            "chunkSize": 3000
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9d639f7f-5c3e-478f-ba6f-70b2e06394de",
+          "name": "Simplify Recommend Response",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2180,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "56f12f89-75dc-4143-ae32-45f1561da19d",
+                  "name": "content",
+                  "type": "string",
+                  "value": "={{ $json.result[0].payload.content }}"
+                },
+                {
+                  "id": "57afc394-3793-4605-a751-8c0d446857e7",
+                  "name": "metadata",
+                  "type": "object",
+                  "value": "={{ $json.result[0].payload.metadata }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "736d02f1-8658-4d84-bdc6-3f43ad712a76",
+          "name": "Get Insert Response",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1780,
+            -200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "cb612470-0d50-4179-a9af-144e592369a8",
+                  "name": "response",
+                  "type": "string",
+                  "value": "ok"
+                }
+              ]
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2a557659-8668-4dba-b3a7-2bc18981ca10",
+          "name": "Get Search Response",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1780,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "response"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "017f0628-f08f-4d7c-b3da-83ada24bcfad",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1720,
+            500
+          ],
+          "parameters": {
+            "width": 213.30551928619226,
+            "height": 332.38559808882246,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n### 🚨Configure Your Qdrant Connection\n* Be sure to enter your endpoint address"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cbbc7999-e2c4-4d84-9c21-7ce47a70ef2d",
+          "name": "Insert Reviews",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            1380,
+            -200
+          ],
+          "parameters": {
+            "mode": "insert",
+            "options": {},
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "list",
+              "value": "trustpilot_reviews",
+              "cachedResultName": "trustpilot_reviews"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "268dd3b8-631e-498c-8c50-33e61244ef7a",
+          "name": "Search Reviews",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            1380,
+            240
+          ],
+          "parameters": {
+            "mode": "load",
+            "topK": 10,
+            "prompt": "={{ $json.text }}",
+            "options": {
+              "searchFilterJson": "={{\n$json.companyIds\n  ? {\n    \"must\": [\n      {\n        \"key\": \"metadata.company_id\",\n        \"match\": {\n          \"any\": $json.companyIds.split(',')\n        }\n      }\n    ]\n  }\n  : {}\n}}"
+            },
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "list",
+              "value": "trustpilot_reviews",
+              "cachedResultName": "trustpilot_reviews"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "45ff74b6-0e9e-4698-98b9-e778f1605df2",
+          "name": "Split Out Companies",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1980,
+            560
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "result.groups"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "1856fa8e-f184-4cef-b66f-6254e3f323ac",
+          "name": "Filter By CompanyId",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            2380,
+            560
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "6b6fac92-c001-4070-b8ed-0c63ef54d293",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{\n$('Operation').item.json.companyIds\n  ? $('Operation').item.json.companyIds.split(',').includes($json.id)\n  : true\n}}",
+                  "rightValue": "={{ $json.id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "3c468d41-9462-4ee0-b9c8-97e8213c0f32",
+          "name": "Aggregate Recommend Response",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            2600,
+            780
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "response"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "825ee679-b0bd-4b7a-8684-4a1f7959926e",
+          "name": "Has Results?1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2380,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a83c0c10-74a7-4a52-b6c4-26dc8313023b",
+                  "operator": {
+                    "type": "object",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "bfa17c34-7f84-40e2-8c9b-f92c0475fa05",
+          "name": "Empty Compare Response1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2600,
+            1000
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "24ab771e-0e19-4bfe-bfee-2fed3a34f7fe",
+                  "name": "response",
+                  "type": "string",
+                  "value": "no results."
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "93860126-eb7a-40b1-8a4e-1824d0aebe01",
+          "name": "Embeddings OpenAI1",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+          "position": [
+            1480,
+            400
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "c3d89756-9073-4640-88ba-eb2c5cf370a1",
+          "name": "ListCompanies",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -120,
+            240
+          ],
+          "parameters": {
+            "name": "listAvailableCompanies",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to list all available companies in the reviews database.",
+            "workflowInputs": {
+              "value": {
+                "text": "null",
+                "text2": "null",
+                "operation": "listCompanies",
+                "companyIds": "null"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text2",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text2",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "companyIds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "companyIds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "d9a02360-f9aa-4aea-b26f-f3482f55fc18",
+          "name": "List by Facet API",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1380,
+            -440
+          ],
+          "parameters": {
+            "url": "http://qdrant:6333/collections/trustpilot_reviews/facet",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n  \"key\": \"metadata.company_id\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "qdrantApi"
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "6822aee2-7dfe-43ea-8238-ea0a3c8f0188",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -720,
+            -740
+          ],
+          "parameters": {
+            "width": 440,
+            "height": 1320,
+            "content": "## Try It Out!\n### This n8n demonstrates how to build your own Qdrant MCP server to extend its functionality beyond that of the official implementation.\n\nThis n8n implementation exposes other cool API features from Qdrant such as facet search, grouped search and recommendations APIs. With this, we can build an easily customisable and maintainable Qdrant MCP server for business intelligence.\n\nThis MCP example is based off an official MCP reference implementation which can be found here -https://github.com/qdrant/mcp-server-qdrant/\n\n### How it works\n* A MCP server trigger is used and connected to 5 custom workflow tools. We're using custom workflow tools as there is quite a few nodes required for each task.\n* We use a mix of n8n supported Qdrant nodes for simple operations such as insert documents and similarity search, and HTTP node to hit the Qdrant API directly for Facet search, group search and recommendations.\n* We use \"Edit Field\" and \"Aggregate\" nodes to return suitable responses to the MCP client.\n\n### How to use\n* This Qdrant MCP server allows any compatible MCP client to manage a Qdrant Collection by supporting select and create operations. You will need to have a collection available before you can use this server. Use the Prerequisite manual steps to get started!\n* Connect your MCP client by following the n8n guidelines here - https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/#integrating-with-claude-desktop\n* Try the following queries in your MCP client:\n  * \"Can you help me list the available companies in the collection?\"\n  * \"What do customers say about product deliveries from company X?\"\n  * \"What do customers of company X and company Y say about product ease of use?\"\n\n### Requirements\n* Qdrant for vector store. This can be an a cloud-hosted instance or one you can self-host internally.\n* MCP Client or Agent for usage such as Claude Desktop - https://claude.ai/download\n\n### Customising this workflow\n* Depending on what queries you'll receive, adjust the tool inputs to make it easier for the agent to set the right parameters.\n* Not interested in Reviews? The techniques shared in this template can be used for other types of collections.\n* Remember to set the MCP server to require credentials before going to production and sharing this MCP server with others!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f0b1f04f-b3bd-4ad0-b128-17a96cf52b81",
+          "name": "Create Facet Index",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            260,
+            -580
+          ],
+          "parameters": {
+            "url": "http://qdrant:6333/collections/trustpilot_reviews/index",
+            "method": "PUT",
+            "options": {},
+            "jsonBody": "{\n  \"field_name\": \"metadata.company_id\",\n  \"field_schema\": \"keyword\"\n}",
+            "sendBody": true,
+            "specifyBody": "json"
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "481c298b-c9e7-412e-aaa0-2e1565fabda8",
+          "name": "Create Collection",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            60,
+            -580
+          ],
+          "parameters": {
+            "url": "http://qdrant:6333/collections/trustpilot_reviews",
+            "method": "PUT",
+            "options": {},
+            "jsonBody": "{\n  \"vectors\": {\n    \"distance\": \"Cosine\",\n    \"size\": 1536\n  }\n}",
+            "sendBody": true,
+            "specifyBody": "json"
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "07e1f0f3-6f24-4a67-9b07-75667f496a9a",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -220,
+            -740
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 700,
+            "height": 360,
+            "content": "## Prerequisite: Setup Qdrant Collection\nIf you don't have an existing Qdrant Collection, you can use this manual flow to get started.\n1. Creates a collection called \"trustpilot_reviews\"\n2. Creates an index to allow for facet search ie. list of values of a the \"company_id\" metadata key."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "df0dacdb-4238-475b-9d98-ae7ce9e3142d",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -140,
+            -580
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "8c0f0e65-82d2-427e-8c6d-2f89bd225f46",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -220,
+            -200
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 380,
+            "height": 100,
+            "content": "### Always Authenticate Your Server!\nBefore going to production, it's always advised to enable authentication on your MCP server trigger."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Insert": {
+          "ai_tool": [
+            [
+              {
+                "node": "Qdrant MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search": {
+          "ai_tool": [
+            [
+              {
+                "node": "Qdrant MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Compare": {
+          "ai_tool": [
+            [
+              {
+                "node": "Qdrant MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Operation": {
+          "main": [
+            [
+              {
+                "node": "List by Facet API",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Insert Reviews",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Search Reviews",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get Embeddings1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Preferences to Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recommend": {
+          "ai_tool": [
+            [
+              {
+                "node": "Qdrant MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Has Results?": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Compare Response",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Empty Compare Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Has Results?1": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Recommend Response",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Empty Compare Response1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ListCompanies": {
+          "ai_tool": [
+            [
+              {
+                "node": "Qdrant MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recommend API": {
+          "main": [
+            [
+              {
+                "node": "Simplify Recommend Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Embeddings": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Embeddings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Insert Reviews": {
+          "main": [
+            [
+              {
+                "node": "Get Insert Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Reviews": {
+          "main": [
+            [
+              {
+                "node": "Get Search Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Embeddings1": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Embeddings1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Group Search API": {
+          "main": [
+            [
+              {
+                "node": "Split Out Companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Collection": {
+          "main": [
+            [
+              {
+                "node": "Create Facet Index",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings OpenAI": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Insert Reviews",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings OpenAI1": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Search Reviews",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Default Data Loader": {
+          "ai_document": [
+            [
+              {
+                "node": "Insert Reviews",
+                "type": "ai_document",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter By CompanyId": {
+          "main": [
+            [
+              {
+                "node": "Has Results?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Companies": {
+          "main": [
+            [
+              {
+                "node": "Simplify Group Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate Embeddings": {
+          "main": [
+            [
+              {
+                "node": "Recommend API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Preferences to Items": {
+          "main": [
+            [
+              {
+                "node": "Get Embeddings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate Embeddings1": {
+          "main": [
+            [
+              {
+                "node": "Group Search API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simplify Group Results": {
+          "main": [
+            [
+              {
+                "node": "Filter By CompanyId",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simplify Recommend Response": {
+          "main": [
+            [
+              {
+                "node": "Has Results?1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recursive Character Text Splitter": {
+          "ai_textSplitter": [
+            [
+              {
+                "node": "Default Data Loader",
+                "type": "ai_textSplitter",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "Operation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Create Collection",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 44,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 5
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 7
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 5
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.embeddingsOpenAi": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.vectorStoreQdrant": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.documentDefaultDataLoader": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Jimleuk",
+      "username": "jimleuk",
+      "bio": "Freelance consultant based in the UK specialising in AI-powered automations. I work with select clients tackling their most challenging projects. For business enquiries, send me an email at hello@jimle.uk\n\nLinkedIn: https://www.linkedin.com/in/jimleuk/\nX/Twitter: https://x.com/jimle_uk",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/4ab99e51473df76838beeaac908747f7928c625f869794815cabe34016967d51?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1141,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.embeddingsopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Embeddings"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Embeddings OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Embeddings OpenAI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1191,
+        "icon": "fa:grip-lines-vertical",
+        "name": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.textsplitterrecursivecharactertextsplitter/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Text Splitters"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Recursive Character Text Splitter"
+        },
+        "iconData": {
+          "icon": "grip-lines-vertical",
+          "type": "icon"
+        },
+        "displayName": "Recursive Character Text Splitter",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1243,
+        "icon": "file:binary.svg",
+        "name": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentdefaultdataloader/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Document Loaders"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Default Data Loader"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3NjgiIGhlaWdodD0iMTAyNCI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTAgOTYwVjY0aDU3NmwxOTIgMTkydjcwNHptNzA0LTY0MEw1MTIgMTI4SDY0djc2OGg2NDB6TTMyMCA1MTJIMTI4VjI1NmgxOTJ6bS02NC0xOTJoLTY0djEyOGg2NHptMCA0NDhoNjR2NjRIMTI4di02NGg2NFY2NDBoLTY0di02NGgxMjh6bTI1Ni0zMjBoNjR2NjRIMzg0di02NGg2NFYzMjBoLTY0di02NGgxMjh6bTY0IDM4NEgzODRWNTc2aDE5MnptLTY0LTE5MmgtNjR2MTI4aDY0eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Default Data Loader",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1248,
+        "icon": "file:qdrant.svg",
+        "name": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Vector Stores",
+                "Tools",
+                "Root Nodes"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Qdrant Vector Store"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMjU2cHgiIGhlaWdodD0iMjk2cHgiIHZpZXdCb3g9IjAgMCAyNTYgMjk2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIj4KICAgIDx0aXRsZT5xZHJhbnQ8L3RpdGxlPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSI4MS41NjE5MDQ4JSIgeTE9IjQ0Ljg0MjEwNTMlIiB4Mj0iLTE4LjA4NTcxNDMlIiB5Mj0iNDQuODQyMTA1MyUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGMzM2NCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjQzkxNTQwIiBzdG9wLW9wYWNpdHk9IjAiIG9mZnNldD0iMTAwJSI+PC9zdG9wPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+CiAgICA8Zz4KICAgICAgICA8cG9seWdvbiBmaWxsPSIjMjQzODZDIiBwb2ludHM9IjIwMS4zMTcwNSAyNzEuNzIyNDI3IDE5NS40MjI3MTUgMTA5LjIxMjY3IDE4NC43NDc3ODEgNjYuMzY4MjM2OCAyNTYgNzMuOTExMjU0NSAyNTYgMjcwLjQ5MjUwOSAyMTIuNDc0NzU3IDI5NS42MTI2MjYiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWdvbiBmaWxsPSIjNzU4OUJFIiBwb2ludHM9IjI1NS45OTUxNTEgNzMuODk5ODEwNyAyMTIuNDY5OTA4IDk5LjAzNzM4NCAxMjIuNjQ5NjM0IDc5LjMzNDY0NzEgMTcuNTE2MDAwOCAxMjIuMTQwMjg4IDEuMTM3MDQ4NGUtMTQgNzMuODk5ODEwNyA2My45ODgzMTM3IDM2Ljk0OTkwNTMgMTI3Ljk5NjAyNCAwIDE5MS45ODYyNzcgMzYuOTQ5OTA1MyI+PC9wb2x5Z29uPgogICAgICAgIDxwb2x5bGluZSBmaWxsPSIjQjJCRkU4IiBwb2ludHM9IjAuMDAzMTAzNDA0MTIgNzMuODk5ODEwNyA0My41MjgzNDYyIDk5LjAzNzM4NCA2OC43NTkwMjE3IDE3NC4wNzM4MTYgMTUzLjk0OTQwNSAyNDIuMjM2MjA5IDEyOC4wMDEwNjcgMjk1LjU5OTI0MyA2My45OTMzNTY4IDI1OC42NDczOTggMC4wMDMxMDM0MDQxMiAyMjEuNjk3NDkyIDAuMDAzMTAzNDA0MTIgNzMuODk3ODcxIj48L3BvbHlsaW5lPgogICAgICAgIDxwb2x5bGluZSBmaWxsPSIjMjQzODZDIiBwb2ludHM9IjE1Ni44NTY5MDYgMjAyLjgwNzQ1OSAxMjguMDAxMDY3IDI0NS4zNDczNzEgMTI4LjAwMTA2NyAyOTUuNjAzMTIyIDE2OC45NDY2MDUgMjcxLjk3ODQ1OCAxOTAuMDQzOTM0IDI0MC40NzUwMjciPjwvcG9seWxpbmU+CiAgICAgICAgPHBvbHlnb24gZmlsbD0iIzc1ODlCRSIgcG9pbnRzPSIxMjguMDE4NTIzIDE5NS4xMDcxMzggODcuMDU1NTI4NyAxMjQuMTg0NjU2IDk1Ljg3ODcwMDUgMTAwLjY3ODMwOSAxMjkuNDIwNjggODQuNDE1Njk1NSAxNjguOTQ2NDExIDEyNC4xODU4MTkiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWxpbmUgZmlsbD0iI0IyQkZFOCIgcG9pbnRzPSI4Ny4wNTU1Mjg3IDEyNC4xNzg4MzcgMTI4LjAwMTA2NyAxNDcuODAzNTAxIDEyOC4wMDEwNjcgMTk1LjA5MTYyMSA5MC4xMzE3NzggMTk2LjcyMDkyNyA2Ny4yMjQ3NzYzIDE2Ny40NzEzNDQgODcuMDU1NTI4NyAxMjQuMTc4ODU2Ij48L3BvbHlsaW5lPgogICAgICAgIDxwb2x5Z29uIGZpbGw9IiMyNDM4NkMiIHBvaW50cz0iMTI4LjAwMTA2NyAxNDcuNzk5NjIxIDE2OC45NDY2MDUgMTI0LjE3Njg5NyAxOTYuODEzMjM0IDE3MC41NzY2NjggMTYzLjA5MDg2OSAxOTguNDM5NDE4IDEyOC4wMDEwNjcgMTk1LjA4OTI5MyI+PC9wb2x5Z29uPgogICAgICAgIDxwYXRoIGQ9Ik0xNjguOTQ2NjA1LDI3MS45NzQ1NzkgTDIxMi40NzE4NDgsMjk1LjYwMTE4MiBMMjEyLjQ3MTg0OCw5OS4wMzkzMjM3IEwxNzAuMjI2NzU5LDc0LjY1ODIwNSBMMTI4LjAwMTA2Nyw1MC4yNzcwODY0IEw4NS43NTU5NzgyLDc0LjY1ODIwNSBMNDMuNTMwMjg1OCw5OS4wMzkzMjM3IEw0My41MzAyODU4LDE5Ni41ODEyNTUgTDg1Ljc1NTk3ODIsMjIwLjk2MjM3MyBMMTI4LjAwMTA2NywyNDUuMzQ1NDMyIEwxNjguOTQ2NjA1LDIyMS42OTk0MzIgTDE2OC45NDY2MDUsMjcxLjk3NDU3OSBaIE0xNjguOTQ2NjA1LDE3MS40NDM2ODEgTDEyOC4wMDEwNjcsMTk1LjA4Nzc0MiBMODcuMDU1NTI4NywxNzEuNDQzNjgxIEw4Ny4wNTU1Mjg3LDEyNC4xNzQ5NTcgTDEyOC4wMDEwNjcsMTAwLjUzMDg5NyBMMTY4Ljk0NjYwNSwxMjQuMTc0OTU3IEwxNjguOTQ2NjA1LDE3MS40NDM2ODEiIGZpbGw9IiNEQzI0NEMiPjwvcGF0aD4KICAgICAgICA8cG9seWdvbiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIiBwb2ludHM9IjEyOC4wMTg1MjMgMjQ1LjM2Mjg4OCAxMjguMDE4NTIzIDE5NS4wOTkzNzkgODcuMjg2MzQ0MyAxNzEuNjU3MDQxIDg3LjI4NjM0NDMgMjIxLjgzNzE0NiI+PC9wb2x5Z29uPgogICAgPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "Qdrant Vector Store",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

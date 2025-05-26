@@ -1,0 +1,117 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/
+Scraped_At: 2025-05-20T18:47:27.762131
+
+Gmail node
+#
+Use the Gmail node to automate work in Gmail, and integrate Gmail with other applications. n8n has built-in support for a wide range of Gmail features, including creating, updating, deleting, and getting drafts, messages, labels, thread.
+On this page, you'll find a list of operations the Gmail node supports and links to more resources.
+Credentials
+Refer to
+Google credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Draft
+Create
+a draft
+Delete
+a draft
+Get
+a draft
+Get Many
+drafts
+Label
+Create
+a label
+Delete
+a label
+Get
+a label
+Get Many
+labels
+Message
+Add Label
+to a message
+Delete
+a message
+Get
+a message
+Get Many
+messages
+Mark as Read
+Mark as Unread
+Remove Label
+from a message
+Reply
+to a message
+Send
+a message
+Thread
+Add Label
+to a thread
+Delete
+a thread
+Get
+a thread
+Get Many
+threads
+Remove Label
+from thread
+Reply
+to a message
+Trash
+a thread
+Untrash
+a thread
+Templates and examples
+#
+✨🤖Automate Multi-Platform Social Media Content Creation with AI
+by Joseph LePage
+View template details
+Automated Web Scraping: email a CSV, save to Google Sheets & Microsoft Excel
+by Mihai Farcas
+View template details
+Suggest meeting slots using AI
+by n8n Team
+View template details
+Browse Gmail integration templates
+, or
+search all templates
+Related resources
+#
+Refer to Google's
+Gmail API documentation
+for detailed information about the API that this node integrates with.
+n8n provides a trigger node for Gmail. You can find the trigger node docs
+here
+.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Common issues
+#
+For common errors or issues and suggested resolution steps, refer to
+Common Issues
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

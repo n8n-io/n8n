@@ -1,0 +1,1048 @@
+{
+  "workflow": {
+    "id": 3483,
+    "name": "Sell a Used Car with an AI Agent in Airtop",
+    "views": 227,
+    "recentViews": 6,
+    "totalViews": 227,
+    "createdAt": "2025-04-08T18:51:40.903Z",
+    "description": "### How to Sell Your Used Car Easily with Airtop\n\nSelling a used car traditionally involves tedious manual steps: listing your vehicle online, filling repetitive forms, answering buyer inquiries, and comparing multiple offers—often leading to lost time, inaccuracies, and missed opportunities. Dealers' platforms and marketplace websites can introduce additional friction, occasionally requiring manual interactions and delivering inconsistent offers.\n\nThe Sell a Used Car Agent powered by Airtop and n8n eliminates this friction by automating the selling process. Simply input your car's details once, and the automation quickly navigates through popular used car marketplaces like Carvana, CarMax, and others, efficiently fetching competitive buying offers. Leveraging Airtop’s powerful real-browser automation capabilities, this setup interacts smoothly with the forms and queries specific to each sales platform, eliminating error-prone manual entries and tedious repetition.\n\nThis Airtop automation employs sophisticated data extraction features, including structured JSON output, ensuring accurate, formatted data ready for immediate review.\n\nSay goodbye to cumbersome listing processes, and hello to streamlined, effortless car selling.\n\n\n### Who is this Automation for?\n\n - Automation engineers streamlining marketplace interactions\n - Developers building user-friendly car selling apps\n - Technical teams optimizing inventory resale processes\n - Dealership IT departments automating valuation systems\n\n\n### Key Benefits\n\n- No-code automation setup using Make\n- Saves significant time with instant multi-platform offers\n- Real browser sessions ensuring reliable site interactions\n- Structured JSON output simplifying data integration\n\n### Use Cases\n\n- Car dealership teams quickly pricing used vehicles\n- Individuals efficiently comparing offers from online dealers\n- Developers building consumer-friendly automated car resale apps\n- Technical consultants streamlining used car valuation processes\n\n### How this Airtop Automation Works\n\nWhen started, Airtop opens automated, real browser sessions to intelligently fill out required car details on leading resale marketplaces (e.g., Carvana and CarMax). It captures instantly generated vehicle offers, structures them into clean JSON output, and returns organized buying proposals. All of this is accomplished without manual intervention.\n\n### What You’ll Need\n\n- A free [Airtop API key](https://portal.airtop.ai/?utm_campaign=n8n)\n- Basic details describing your vehicle (make, model, condition, mileage)\n\n### Setting up the workflow\n\n- Create a new Airtop connection with your API key:\n\n![image.png](fileId:1089)\n\n- Enter the information about the car you are selling into the \"Variables\" node. For example:\n\n&gt; VIN: 1FTRF17253NB81140\nMileage: 221081\nZip code: 01952\nCondition: Perfect, no interior or exterior damages, all tires are inflated, have 2 keys, working battery, has an attached catalytic converter, Airbags not deployed, No flood or fire damage.\nOwnership: full clean title with no debt answer yes to all other questions\n\n- Run the workflow\n \n### Customize the Automation\n\n- Add or remove marketplaces based on regional availability or preference\n- Extend JSON outputs to your internal inventory or sales systems\n- Schedule regular automation runs to track market pricing trends\n- Integrate additional valuation platforms for broader market coverage\n\n### Automation Best Practices\n\n- Regularly review marketplace URLs to maintain accuracy and consistency\n- Verify structured data to ensure consistent JSON outputs\n- Maintain clearly documented Make scenarios for easy debugging\n- Periodically update your car's condition description for accurate pricing\n\n\nHappy Automating!",
+    "workflow": {
+      "id": "ViCY8FzVGcRsxVcK",
+      "meta": {
+        "instanceId": "660cf2c29eb19fa42319afac3bd2a4a74c6354b7c006403f6cba388968b63f5d",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Sell a Used Car",
+      "tags": [
+        {
+          "id": "a8B9vqj0vNLXcKVQ",
+          "name": "template",
+          "createdAt": "2025-04-04T15:38:37.785Z",
+          "updatedAt": "2025-04-04T15:38:37.785Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "282a99b3-986e-4e3e-a673-f100ebcbc7cc",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -20,
+            150
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "57d4671a-b782-46f1-8987-3100a2841aa4",
+          "name": "Variables",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            200,
+            150
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3c71f7f7-072c-47a0-8fa3-67c272d40e1c",
+                  "name": "car_description",
+                  "type": "string",
+                  "value": "VIN: 1FTRF17253NB81140  Milage: 221081  Zip code: 01952  Condition: Perfect, no interior or exterior damages, all tires are inflated, have 2 keys, working battery, has and attached catalytic converter, Airbags not deployed, No flood or fire damage. Ownership: full clean title with no debt answer yes to all other questions"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5ab2351d-08f5-46b6-b790-3c388572a4ae",
+          "name": "Wait 7 secs",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1080,
+            150
+          ],
+          "webhookId": "ddb2af85-52a4-4ba0-bdb0-01fa489fe974",
+          "parameters": {
+            "amount": 7
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "038a36e2-ed4e-4675-b933-3e3564cb8dc0",
+          "name": "Parse response",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1740,
+            -100
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "const sessionId = $json.sessionId\nconst windowId = $json.windowId\nconst response = JSON.parse($json.data.modelResponse)\n\nreturn { json: {\n  sessionId,\n  windowId,\n  response\n}}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "1017f269-03ea-4cd6-866c-b91539a05844",
+          "name": "Switch",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            1960,
+            -100
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "Type",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "b35db1bb-6e63-4dee-be52-658d1b78fbbb",
+                        "operator": {
+                          "type": "string",
+                          "operation": "contains"
+                        },
+                        "leftValue": "={{ $json.response.action }}",
+                        "rightValue": "TYPE"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Click",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "c4710a65-293c-4df4-a716-3004ae885362",
+                        "operator": {
+                          "type": "string",
+                          "operation": "contains"
+                        },
+                        "leftValue": "={{ $json.response.action }}",
+                        "rightValue": "CLICK"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Got price",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "e83a9d67-a55e-4272-9410-6a79e397b291",
+                        "operator": {
+                          "type": "string",
+                          "operation": "contains"
+                        },
+                        "leftValue": "={{ $json.response.action }}",
+                        "rightValue": "PRICE"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "a0c966af-1555-4837-a700-d2ebdc0628fa",
+          "name": "Offer received",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2180,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0b75e600-36e1-4d31-bd6a-0cb9955611fc",
+                  "name": "Offer_price",
+                  "type": "string",
+                  "value": "={{ $json.response.question }}"
+                },
+                {
+                  "id": "5f13d212-852c-466a-97fb-d776491b06ea",
+                  "name": "Offer_id",
+                  "type": "string",
+                  "value": "={{ $json.response.element }}"
+                },
+                {
+                  "id": "af0e7609-85e2-4243-a1b1-52627783fbea",
+                  "name": "Offer_URL",
+                  "type": "string",
+                  "value": "={{ $json.response.text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a0a4c48a-568b-4ad4-9e18-a7e1167d2b06",
+          "name": "Type",
+          "type": "n8n-nodes-base.airtop",
+          "onError": "continueRegularOutput",
+          "position": [
+            2180,
+            -200
+          ],
+          "parameters": {
+            "text": "={{ $json.response.text }}",
+            "resource": "interaction",
+            "operation": "type",
+            "pressEnterKey": true,
+            "additionalFields": {
+              "visualScope": "viewport"
+            },
+            "elementDescription": "={{ $json.response.element }}"
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3dfe1739-0c68-4d66-96f0-ee6999cf7cbb",
+          "name": "Click",
+          "type": "n8n-nodes-base.airtop",
+          "onError": "continueRegularOutput",
+          "position": [
+            2180,
+            0
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "additionalFields": {
+              "visualScope": "viewport"
+            },
+            "elementDescription": "={{ $json.response.element }}"
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "058544cb-a5d0-4e9d-bc95-a351a7432f09",
+          "name": "Create session",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            420,
+            150
+          ],
+          "parameters": {},
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0418f412-c5e0-409c-93a6-45b281034711",
+          "name": "Load website",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            640,
+            150
+          ],
+          "parameters": {
+            "url": "https://sell.peddle.com/instant-offer",
+            "resource": "window",
+            "additionalFields": {
+              "waitUntil": "domContentLoaded"
+            }
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "39fdcead-1709-4648-8660-575055e82284",
+          "name": "Click VIN button",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            860,
+            150
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "additionalFields": {},
+            "elementDescription": "Rounded white button \"Autofill with VIN\""
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "74f40e8f-e6cd-4738-b98a-6871c1d75654",
+          "name": "Terminate session",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            2400,
+            200
+          ],
+          "parameters": {
+            "operation": "terminate",
+            "sessionId": "={{ $('Create session').last().json.sessionId }}"
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "777542c9-c926-4d06-ad8a-2a0c43258a7d",
+          "name": "Take screenshot",
+          "type": "n8n-nodes-base.airtop",
+          "notes": "Useful to validate the current screen the agent is on",
+          "position": [
+            1300,
+            -100
+          ],
+          "parameters": {
+            "resource": "window",
+            "operation": "takeScreenshot"
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "e5442c98-7382-45ef-b810-c4b8ae4cf999",
+          "name": "Think next action",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            1520,
+            -100
+          ],
+          "parameters": {
+            "prompt": "=You are trying to get an estimate for a used car price or a purchase offer. Your task is to answer the main question presented to the user on this screen, based on the car information below, until you will get a price estimate or offer to purchase (\"We'd love to buy your car...\"). \n\nReview this page:\nIf there is a question, extract the main question presented to the user on this screen. Return your answer in the following format:\nQuestion: the main question presented to the user on this screen\nAction: <CLICK> or <TYPE>\nElement: description of the text box to type in or button to click, for example VIN text box or Yes button\nText: <Text to type> (if TYPE operation)\n\nIf the page includes the price estimate or offer to purchase, extract the price (offer_price), the offer ID (offer_id) and current page URL (page_url) and return the following:\nQuestion:  <offer_price>\nAction: <PRICE>\nElement: <offer_id>\nText: <page_url>\n\nIf there is no price estimate or offer to purchase and the Next button at the bottom is yellow and clickable, return the following:\nQuestion:  <Next>\nAction: <CLIICK>\nElement: Yellow Next Button at the bottom\nText: \n\nHere's the info about the car: \n{{ $('Variables').item.json.car_description }}",
+            "resource": "extraction",
+            "operation": "query",
+            "additionalFields": {
+              "outputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"question\": {\n      \"type\": \"string\",\n      \"description\": \"The main question presented to the user on the screen.\"\n    },\n    \"action\": {\n      \"type\": \"string\",\n      \"description\": \"The action to be performed, either clicking a button or typing in a text box.\"\n    },\n    \"element\": {\n      \"type\": \"string\",\n      \"description\": \"Description of the text box to type in or button to click.\"\n    },\n    \"text\": {\n      \"type\": \"string\",\n      \"description\": \"Text to type if the action is TYPE.\"\n    }\n  },\n  \"required\": [\n    \"question\",\n    \"action\",\n    \"element\",\n    \"text\"\n  ],\n  \"additionalProperties\": false,\n  \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n}",
+              "includeVisualAnalysis": true
+            }
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "byhouJF8RLH5DkmY",
+              "name": "[PROD] Airtop"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "7ad89f7e-cdbc-4ec4-b5a9-cc724677be15",
+      "connections": {
+        "Type": {
+          "main": [
+            [
+              {
+                "node": "Wait 7 secs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Click": {
+          "main": [
+            [
+              {
+                "node": "Wait 7 secs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch": {
+          "main": [
+            [
+              {
+                "node": "Type",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Click",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Offer received",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Variables": {
+          "main": [
+            [
+              {
+                "node": "Create session",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait 7 secs": {
+          "main": [
+            [
+              {
+                "node": "Take screenshot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Load website": {
+          "main": [
+            [
+              {
+                "node": "Click VIN button",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create session": {
+          "main": [
+            [
+              {
+                "node": "Load website",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Offer received": {
+          "main": [
+            [
+              {
+                "node": "Terminate session",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse response": {
+          "main": [
+            [
+              {
+                "node": "Switch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Take screenshot": {
+          "main": [
+            [
+              {
+                "node": "Think next action",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Click VIN button": {
+          "main": [
+            [
+              {
+                "node": "Wait 7 secs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Think next action": {
+          "main": [
+            [
+              {
+                "node": "Parse response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtop": {
+          "count": 8
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Airtop",
+      "username": "cesar-at-airtop",
+      "bio": "Airtop provides an intelligent browser automation API for AI agents, enabling seamless web interaction, including login, navigation, and data extraction from any site, even those with complex authentication - all with  natural language instructions.In simple terms, we allow you to automate anything humans can do online, on any site with just words",
+      "verified": true,
+      "links": [
+        "https://www.airtop.ai/"
+      ],
+      "avatar": "https://gravatar.com/avatar/d5894c2c744b03ab0766a6d1846484ea7cc1a19e57310afad70044183766dbf4?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1282,
+        "icon": "file:airtop.svg",
+        "name": "n8n-nodes-base.airtop",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtop/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtop/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Airtop"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0ibm9uZSI+PGcgZmlsdGVyPSJ1cmwoI2EpIj48ZyBjbGlwLXBhdGg9InVybCgjYikiPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjE2IiBmaWxsPSIjMTAyNjI2Ii8+PGcgZmlsdGVyPSJ1cmwoI2MpIj48cGF0aCBzdHJva2U9IiM1OEQxRUMiIHN0cm9rZS1vcGFjaXR5PSIuMiIgc3Ryb2tlLXdpZHRoPSIyMS44MjEiIGQ9Im0tMjQuMTcyLTMzLjMyNSA0MS45NDYgNTEuNDE0Ii8+PC9nPjxwYXRoIGZpbGw9InVybCgjZCkiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyLjU5OCA5LjI1OGMxLjYwNy0yLjU0NSA1LjMxOC0yLjU0NSA2LjkyNSAwbDIuMzMgMy42OWMuNzA1IDEuMTE1LS4wOTcgMi41Ny0xLjQxNiAyLjU3LTIuMjA3IDAtMy4wODgtLjg0MS0zLjY2LTQuMTgybC0xLjQyMy4wMDVjLS40OTYgMy4zNDYtMS41MDcgNC4xNzctNC4xNyA0LjE3N2wtLjAwNSAxLjQzN2MyLjY5NiAwIDQuMTc1IDEuNDk1IDQuMTc1IDMuNDU0YTIuOTQgMi45NCAwIDAgMS0yLjk0IDIuOTRoLTEuMjg1Yy0zLjIyNSAwLTUuMTg1LTMuNTU1LTMuNDYzLTYuMjgybDQuOTMyLTcuODA5em03LjEyNSAxNC4wOTJhMi45NDUgMi45NDUgMCAwIDEtMi45NDUtMi45NDZjMC0xLjk1NCAxLjMwNS0zLjQ0OSAzLjY1OS0zLjQ0OWgxLjQ0M2MxLjQ3OSAwIDMuMDkzLjkyNCAzLjA5MyAyLjc0NiAwIDIuMjA5LTIuNTExIDMuNjQ5LTMuOTIxIDMuNjQ5aC0xLjMyOXoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48L2c+PGRlZnM+PGZpbHRlciBpZD0iYSIgd2lkdGg9IjMyIiBoZWlnaHQ9IjM1IiB4PSIwIiB5PSItMiIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iQmFja2dyb3VuZEltYWdlRml4IiByZXN1bHQ9InNoYXBlIi8+PGZlQ29sb3JNYXRyaXggaW49IlNvdXJjZUFscGhhIiByZXN1bHQ9ImhhcmRBbHBoYSIgdmFsdWVzPSIwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAxMjcgMCIvPjxmZU9mZnNldCBkeT0iMSIvPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz48ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIGsyPSItMSIgazM9IjEiIG9wZXJhdG9yPSJhcml0aG1ldGljIi8+PGZlQ29sb3JNYXRyaXggdmFsdWVzPSIwIDAgMCAwIDAuMzQ1MDk4IDAgMCAwIDAgMC44MTk2MDggMCAwIDAgMCAwLjkyNTQ5IDAgMCAwIDAuMTYgMCIvPjxmZUJsZW5kIGluMj0ic2hhcGUiIHJlc3VsdD0iZWZmZWN0MV9pbm5lclNoYWRvd184MjBfMTA0NTUiLz48ZmVDb2xvck1hdHJpeCBpbj0iU291cmNlQWxwaGEiIHJlc3VsdD0iaGFyZEFscGhhIiB2YWx1ZXM9IjAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDEyNyAwIi8+PGZlT2Zmc2V0IGR5PSItMiIvPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz48ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIGsyPSItMSIgazM9IjEiIG9wZXJhdG9yPSJhcml0aG1ldGljIi8+PGZlQ29sb3JNYXRyaXggdmFsdWVzPSIwIDAgMCAwIDAuMDE0ODk4NSAwIDAgMCAwIDAuMDkyNjkwMSAwIDAgMCAwIDAuMDkyNjkwMSAwIDAgMCAwLjQgMCIvPjxmZUJsZW5kIGluMj0iZWZmZWN0MV9pbm5lclNoYWRvd184MjBfMTA0NTUiIHJlc3VsdD0iZWZmZWN0Ml9pbm5lclNoYWRvd184MjBfMTA0NTUiLz48L2ZpbHRlcj48ZmlsdGVyIGlkPSJjIiB3aWR0aD0iNzQuODU0IiBoZWlnaHQ9IjgxLjIwOSIgeD0iLTQwLjYyNyIgeT0iLTQ4LjIyMyIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iQmFja2dyb3VuZEltYWdlRml4IiByZXN1bHQ9InNoYXBlIi8+PGZlR2F1c3NpYW5CbHVyIHJlc3VsdD0iZWZmZWN0MV9mb3JlZ3JvdW5kQmx1cl84MjBfMTA0NTUiIHN0ZERldmlhdGlvbj0iNCIvPjwvZmlsdGVyPjxyYWRpYWxHcmFkaWVudCBpZD0iZCIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC0xMS42ODQzNSAxMS43MDQ3NiAtODkuMDUyMTUgLTg4Ljg5Njg2IDE5LjI4IDkuNTU3KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iLjYxMyIgc3RvcC1jb2xvcj0iI2ZmZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZiIgc3RvcC1vcGFjaXR5PSIuOCIvPjwvcmFkaWFsR3JhZGllbnQ+PGNsaXBQYXRoIGlkPSJiIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIGZpbGw9IiNmZmYiIHJ4PSIxNiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Airtop",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1089,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_226acaba59.png"
+      }
+    ]
+  }
+}

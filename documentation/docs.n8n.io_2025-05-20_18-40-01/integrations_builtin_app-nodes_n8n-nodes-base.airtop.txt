@@ -1,0 +1,104 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtop/
+Scraped_At: 2025-05-20T18:45:34.990210
+
+Airtop node
+#
+Use the Airtop node to automate work in Airtop, and integrate Airtop with other applications. n8n has built-in support for a wide range of Airtop features, enabling you to control a cloud-based web browser for tasks like querying, scraping, and interacting with web pages.
+On this page, you'll find a list of operations the Airtop node supports, and links to more resources.
+Credentials
+Refer to
+Airtop credentials
+for guidance on setting up authentication.
+Operations
+#
+Session
+Create session
+Save profile on termination
+Terminate session
+Window
+Create a new browser window
+Load URL
+Take screenshot
+Close window
+Extraction
+Query page
+Query page with pagination
+Smart scrape page
+Interaction
+Click an element
+Hover on an element
+Type
+Templates and examples
+#
+Automated LinkedIn Profile Discovery with Airtop and Google Search
+by Airtop
+View template details
+Automate Web Interactions with Claude 3.5 Haiku and Airtop Browser Agent
+by Airtop
+View template details
+Build Lists of Profiles from Any Platform using Airtop and Google Sheets
+by Airtop
+View template details
+Browse Airtop integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+Airtop's documentation
+for more information about the service.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Contact
+Airtop's Support
+for assistance or to create a feature request.
+Node reference
+#
+Create a session and window
+#
+Create an Airtop browser session to get a
+Session ID
+, then use it to create a new browser window. After this, you can use any extraction or interaction operation.
+Extract content
+#
+Extract content from a web browser using these operations:
+Query page
+: Extract information from the current window.
+Query page with pagination
+: Extract information from pages with pagination or infinite scrolling.
+Smart scrape page
+: Get the window content as markdown.
+Get JSON responses by using the
+JSON Output Schema
+parameter in query operations.
+Interacting with pages
+#
+Click, hover, or type on elements by describing the element you want to interact with.
+Terminate a session
+#
+End your session to save resources. Sessions are automatically terminated based on the
+Idle Timeout
+set in the
+Create Session
+operation or can be manually terminated using the
+Terminate Session
+operation.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

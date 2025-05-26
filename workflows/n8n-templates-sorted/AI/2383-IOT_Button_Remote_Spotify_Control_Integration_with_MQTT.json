@@ -1,0 +1,2004 @@
+{
+  "workflow": {
+    "id": 2383,
+    "name": "IOT Button Remote / Spotify Control Integration with MQTT",
+    "views": 2794,
+    "recentViews": 0,
+    "totalViews": 2794,
+    "createdAt": "2024-08-18T07:01:52.004Z",
+    "description": "## Overview\nThis template integrates an IOT multi-button switch (meant for controlling a dimmable light) with Spotify playback functions, via MQTT messages.  This isn't likely to work without some tinkering, but should be a good head start on receiving/routing IOT/MQTT messages and hooking up to a Spotify-like API.\n## Requirements\n* An IOT device capable of generating events that can be delivered as MQTT messages through an MQTT Broker\n  * e.g. [Ikea Strybar remote](https://www.ikea.com/us/en/p/styrbar-remote-control-smart-white-80488370/)\n* An MQTT Broker to which n8n can connect and consume messages\n  * e.g. Zigbee2MQTT in HomeAssistant\n* A Spotify **developer-account** (which provides access to API functions via OAuth2 authorization)\n* A Spotify **user-account** (which provides access to Spotify streamed content, user settings, etc.)\n\n## Setup\n1. Create an MQTT Credential item in n8n and assign it to the MQTT Trigger node\n1. Modify the MQTT trigger node to match the topic for your IOT device messages\n1. Modify the switch/router nodes to map to the message text from your IOT button (e.g. arrow_left_click, brightness_up_click, etc.)\n1. Create a Spotify **developer-account** (or use the login for a **user-account**)\n1. Create an \"App\" in the **developer-account** to represent the n8n workflow\n    * Chicken/Egg ALERT: The n8n Spotify Credentials dialog box will display the \"OAuth Redirect URL\" required to create the App in Spotify, but the n8n Credential item itself cannot be created until AFTER the App has been created.\n1. Create a Spotify Credentials item in n8n\n    * Open the Settings on the Spotify App to find the required Client ID and Client Secret information.\n    * ALERT: Save this before proceeding to the Connect step.\n1. Connect the n8n Spotify Credential item to the Spotify **user-account**\n    * ALERT: Expect n8n to open a separate OAuth2 window on authorization.spotify.com here, which may require a login to the Spotify **user-account**\n1. Open each of the HTTP and Spotify nodes, one by one, and re-assign to **your** Spotify Credential (try not to miss any).\n    * (Then, probably, upvote this feature request: [https://community.n8n.io/t/select-credentials-via-expression/5150](https://community.n8n.io/t/select-credentials-via-expression/5150)\n1. Modify the variable values in the Globals node to match your own environment.\n    * target_spotify_playback_device_name - The name of a playback device available to the Spotify user-account\n    * favorite_playlist_name - The name of a playlist to start when one of the button actions is indicated in the MQTT message.  Used in example \"Custom Function 2\" sequence.\n\n## Notes\n* You're on your own for getting the multi-button remote switch talking to MQTT, figuring out what the exact MQTT topic name is, and mapping the message parts to the workflow (actions, etc.).\n* The next / previous actions are wired up to **not** transfer control to the target device. This alternative routing just illustrates a different behavior than the remaining actions/functions, which include activation of the target device when required.\n* Some of the Spotify API interactions use the Spotify node in n8n, but many of the available Spotify API functions are limited or not implemented at all in the Spotify node.  So, in other cases, a regular HTTP node is used with the Spotify OAuth2 API credential instead.  By modifying one of the examples included in the template, it should be possible to call nearly anything the Spotify API has to offer.\n\n## Spotify+n8n OAuth Mini-Tutorial\n### Definitions\n* The **developer-account** is the Spotify login for creating a **spotify-app** which will be associated with a **client id** and **client secret**.\n* The **user-account** is the Spotify login that has permission to stream songs, set up playback devices, etc.\n* ++A **spotify-login** allows access to a Spotify **user-account**, _or_ a Spotify **developer-account**, **_OR BOTH_**++\n* The **spotify-app**, which has a **client id** and **client secret**, is an object created in the **developer-account**.\n* The **app-implementation** (in this case, an ++n8n workflow++) uses the **spotify-app's** credentials (client id / client secret) to call Spotify API endpoints **on behalf of** a **user-account**.\n\n### Using One Spotify Login as Both User and Developer\nWhen an n8n _Spotify-node_ or _HTTP-node_ (i.e. an **app-implementation**) calls a Spotify API endpoint, the Credentials item **may** be using the **client id and client secret** from a **spotify-app**, which was created in a **developer-account** that is ++**one and the same _spotify-login_** as the **user-account**++.  However, it helps to remind yourself that from the Spotify API server's perspective, the **developer-account + spotify-app**, and the **user-account**, are ++**two independent entities**++.\n\n### n8n Spotify-OAuth2-API Credential Authorization Process\nThe **2** layers/steps, in the process of authorizing an n8n Spotify-OAuth2-API credential to make API calls, are:\n1. n8n must identify itself to Spotify as the **app-implementation** associated with the **developer-account/spotify-app** by sending the app's credentials (client id and client secret) to Spotify.\n    * The Client ID and Client Secret are supplied in the n8n Spotify OAuth2 Credentials UI/dialog-box\n2. Separately, n8n must obtain an authorization token from Spotify to represent the **permissions granted by the user** to execute actions (call API endpoints) **on behalf of** the user (i.e. access things that belong to the **user-account**).\n    * This authorization for the **user-account** access is obtained when the \"Connect\" or \"Reconnect\" button is clicked in the n8n Spotify Credentials UI/dialog-box (which pops up a separate authorization UI/browser-window managed by Spotify).\n    * The Authorization for a given **spotify-app** stays \"registered\" in the **user-account** until revoked.\n      * See: https://support.spotify.com/us/article/spotify-on-other-apps/\n      * Direct Link: https://www.spotify.com/account/apps/\n    * More than one **user-account** _can_ be authorized for a given **spotify-app**. A particular n8n Spotify-OAuth2-API credential item appears to cache an authorization token for the **user-account** that was **_most recently_** authorized.\n      * Up to 25 users can be allowed access to a **spotify-app** in Developer-Mode, but any **user-account** other than the one associated with the **developer-account** must be added by email address at **https://developer.spotify.com/dashboard/**_{{app-credential-id}}_**/users**\n    * **ALERT:** IF the browser running the n8n UI is ALSO logged into a Spotify account, and the **spotify-app** is already authorized for that Spotify account, the \"reconnect\" button in the Spotify-OAuth2-API credential dialog may automatically grab a token for that logged in **user-account**, offering no opportunity to select a different **user-account**.\n      * This can be managed somewhat by using \"incognito\" browser windows for n8n, Spotify, or both.\n\n### References\n* [n8n Spotify Credentials Docs](https://docs.n8n.io/integrations/builtin/credentials/spotify/)\n* [Spotify Authorization Docs](https://developer.spotify.com/documentation/web-api/concepts/authorization)\n\n",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "169e3a8c-82f5-4527-a187-27b8e5d903c1",
+          "name": "Spotify Next",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1300,
+            -40
+          ],
+          "parameters": {
+            "operation": "nextSong"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7840d6b8-7eb4-4ac2-8bd0-946561f7de38",
+          "name": "Spotify Resume",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1300,
+            660
+          ],
+          "parameters": {
+            "operation": "resume"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "35e768a3-b648-4d5e-a6a4-fa5f5be3d922",
+          "name": "Spotify Pause",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1300,
+            480
+          ],
+          "parameters": {
+            "operation": "pause"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0a391400-a8f0-4c1e-ac79-bbdea4aa21b4",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -361,
+            55
+          ],
+          "parameters": {
+            "width": 611.1911357340722,
+            "height": 291.1542012927053,
+            "content": "### Receive MQTT message from IKEA 5-button Switch, and route actions."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "164e904f-278d-4e48-81de-e1fc050e683a",
+          "name": "Spotify API - Volume up 5pct",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1300,
+            120
+          ],
+          "parameters": {
+            "url": "https://api.spotify.com/v1/me/player/volume",
+            "method": "PUT",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "=device_id",
+                  "value": "={{ $json.device.id }}"
+                },
+                {
+                  "name": "volume_percent",
+                  "value": "={{ Math.min($json.device.volume_percent + 5, 100) }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "spotifyOAuth2Api"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "a75cfc9b-ba21-4771-a2ff-f7aee843f344",
+          "name": "Spotify API - Volume down 5pct",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1300,
+            300
+          ],
+          "parameters": {
+            "url": "https://api.spotify.com/v1/me/player/volume",
+            "method": "PUT",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "device_id",
+                  "value": "={{ $json.device.id }}"
+                },
+                {
+                  "name": "volume_percent",
+                  "value": "={{ Math.max($json.device.volume_percent - 5, 20) }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "spotifyOAuth2Api"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "deae216d-aaaa-406c-b978-45b790c5d837",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -360,
+            608.2274931489221
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 906.3175117167951,
+            "height": 278.70214810442735,
+            "content": "### Find the target player device (or spotify device group) by name, and activate it."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2733fd1e-4c58-4f3e-bf7d-f4111fea6efc",
+          "name": "Spotify API - Get Available Devices",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -260,
+            680
+          ],
+          "parameters": {
+            "url": "https://api.spotify.com/v1/me/player/devices",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "nodeCredentialType": "spotifyOAuth2Api"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "1d7fcab5-e49d-4d03-8e7d-aa339afa45ec",
+          "name": "Extract Individual Devices",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -60,
+            680
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "devices"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7ae0af1c-2fbb-47e4-b2ab-670be441d86f",
+          "name": "Select Device by Name to get device_id",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            140,
+            680
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "069d11c8-75a2-4a5c-81c4-e6f771ee4829",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.name }}",
+                  "rightValue": "={{ $('Globals').first().json.target_spotify_playback_device_name }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "738d57fd-9dcb-4d3d-b070-73867c926d3f",
+          "name": "Custom Function 1 - P1",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            880,
+            840
+          ],
+          "parameters": {
+            "url": "https://api.spotify.com/v1/me/player/volume",
+            "method": "PUT",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "volume_percent",
+                  "value": "80"
+                }
+              ]
+            },
+            "nodeCredentialType": "spotifyOAuth2Api"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "e3fc6784-1612-427d-9b78-a3f4050ed176",
+          "name": "Custom Function 2 - P2",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1080,
+            840
+          ],
+          "parameters": {
+            "id": "spotify:track:4PTG3Z6ehGkBFwjybzWkR8"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "340f23ff-ae8a-4032-a641-30bc32af09c7",
+          "name": "Custom Function 1 - P3",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1300,
+            840
+          ],
+          "parameters": {
+            "operation": "nextSong"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "30a413da-5ce3-44a9-a43e-c6679b712087",
+          "name": "Spotify API - Activate Target Playback Device",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            360,
+            680
+          ],
+          "parameters": {
+            "url": "https://api.spotify.com/v1/me/player",
+            "method": "PUT",
+            "options": {},
+            "jsonBody": "={\n  \"device_ids\": [\n    \"{{ $('Select Device by Name to get device_id').first().json.id }}\"\n  ],\n  \"play\": true\n}",
+            "sendBody": true,
+            "sendQuery": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "nodeCredentialType": "spotifyOAuth2Api"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "91dd48fe-6c3c-4170-8392-3d9885e61047",
+          "name": "Route to Requested Function",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            900,
+            420
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "=volume_up",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('MQTT Trigger - Ikea Remote Switch').first().json.message }}",
+                        "rightValue": "brightness_up_click"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "volume_down",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "c0726ee0-31b2-48fd-a860-0b923d8c18e7",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('MQTT Trigger - Ikea Remote Switch').first().json.message }}",
+                        "rightValue": "brightness_down_click"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "play/pause",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "569014d8-0db4-4126-a0dd-7264a3b6db51",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('MQTT Trigger - Ikea Remote Switch').first().json.message }}",
+                        "rightValue": "toggle"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "custom_function_1",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "af6d07f3-0ac2-4c05-8535-26d618892b8b",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('MQTT Trigger - Ikea Remote Switch').first().json.message }}",
+                        "rightValue": "brightness_up_hold"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "custom_function_2",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "a5e8ce30-4b18-450a-8b15-342a698fec61",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('MQTT Trigger - Ikea Remote Switch').first().json.message }}",
+                        "rightValue": "brightness_down_hold"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {
+              "fallbackOutput": "extra"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "4a9ddd4d-ae2d-43c8-b3fd-70a2b15c5743",
+          "name": "Custom Function 2 - P1",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            840,
+            1020
+          ],
+          "parameters": {
+            "resource": "playlist",
+            "operation": "getUserPlaylists",
+            "returnAll": true
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "29f842ad-f7cb-47b5-81fe-349f193e54bb",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1040,
+            1020
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "f7b6844a-ad78-4f29-801b-cef817a42e94",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.name }}",
+                  "rightValue": "={{ $('Globals').first().json.favorite_playlist_name }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "cb038583-e930-4fee-9166-fa182d20868e",
+          "name": "Globals",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -100,
+            160
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "2124b4d2-f929-459d-b285-3ac18df3ab60",
+                  "name": "target_spotify_playback_device_name",
+                  "type": "string",
+                  "value": "My Smart-Speaker Playback Device"
+                },
+                {
+                  "id": "b7f0468d-c5c3-4424-8db8-af823a10c7f0",
+                  "name": "favorite_playlist_name",
+                  "type": "string",
+                  "value": "Discover Weekly"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "f4505b9a-6f04-4ff7-9384-05bae95b2fc8",
+          "name": "Custom Function 2 - P3",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1260,
+            1020
+          ],
+          "parameters": {
+            "id": "=spotify:playlist:{{ $json.id }}",
+            "operation": "startMusic"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2b2a81f9-69b6-42ca-accc-d4d987d6823c",
+          "name": "Oops. How was this reached?",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1080,
+            680
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e45f04d6-bb3c-4580-9ef4-307d3692ad29",
+          "name": "Spotify API - Get Device Status",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            440,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.spotify.com/v1/me/player",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "device_id",
+                  "value": "={{ $('Globals').first().json.target_spotify_playback_device_id }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "spotifyOAuth2Api"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "ffa38f10-f9b4-4a52-954e-39adcd924633",
+          "name": "Already playing on Target Device?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            640,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "92d0f5fc-0743-4ea7-aad3-c8b72481bb97",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('Spotify API - Get Device Status').first().json.device.name }}",
+                  "rightValue": "={{ $('Globals').first().json.target_spotify_playback_device_name }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f92ed1ea-c9a7-4818-9a8e-a5fa460177ea",
+          "name": "Is Playing?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1140,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "caa4edf5-6436-4416-92f7-febd63cd47c5",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $('Spotify API - Get Device Status').first().json.is_playing && !$('Spotify API - Activate Target Playback Device').isExecuted }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5580215d-0f20-4349-a7c2-b74f0e01080e",
+          "name": "Spotify Prev",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1300,
+            -200
+          ],
+          "parameters": {
+            "operation": "previousSong"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "4AquI6TQMHILfmvx",
+              "name": "Spotify App Credentials"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f3babdeb-86d4-4dc6-85a4-95c48f4f07ef",
+          "name": "MQTT Trigger - Remote Switch",
+          "type": "n8n-nodes-base.mqttTrigger",
+          "position": [
+            -280,
+            160
+          ],
+          "parameters": {
+            "topics": "zigbee2mqtt/MyIOTButton1234/action",
+            "options": {
+              "jsonParseBody": true
+            }
+          },
+          "credentials": {
+            "mqtt": {
+              "id": "65ppR4lt7hVNzfVG",
+              "name": "MQTT account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0c1bd86f-49f7-4505-9c8a-047dcb10a1bd",
+          "name": "Remote Action -> Function Router",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            100,
+            140
+          ],
+          "parameters": {
+            "rules": {
+              "rules": [
+                {
+                  "value2": "arrow_left_click",
+                  "outputKey": "left"
+                },
+                {
+                  "value2": "arrow_right_click",
+                  "outputKey": "right"
+                },
+                {
+                  "value2": "brightness_up_click",
+                  "outputKey": "up"
+                },
+                {
+                  "value2": "brightness_down_click",
+                  "outputKey": "down"
+                },
+                {
+                  "value2": "toggle",
+                  "outputKey": "on_off"
+                },
+                {
+                  "value2": "brightness_up_hold",
+                  "outputKey": "custom_function_1"
+                },
+                {
+                  "value2": "brightness_down_hold",
+                  "outputKey": "custom_function_2"
+                }
+              ]
+            },
+            "value1": "={{ $('MQTT Trigger - Ikea Remote Switch').first().json.message }}",
+            "dataType": "string"
+          },
+          "typeVersion": 2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Filter": {
+          "main": [
+            [
+              {
+                "node": "Custom Function 2 - P3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Globals": {
+          "main": [
+            [
+              {
+                "node": "Remote Action -> Function Router",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is Playing?": {
+          "main": [
+            [
+              {
+                "node": "Spotify Pause",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify Resume",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Custom Function 1 - P1": {
+          "main": [
+            [
+              {
+                "node": "Custom Function 2 - P2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Custom Function 2 - P1": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Custom Function 2 - P2": {
+          "main": [
+            [
+              {
+                "node": "Custom Function 1 - P3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Individual Devices": {
+          "main": [
+            [
+              {
+                "node": "Select Device by Name to get device_id",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Route to Requested Function": {
+          "main": [
+            [
+              {
+                "node": "Spotify API - Volume up 5pct",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Volume down 5pct",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Is Playing?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Custom Function 1 - P1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Custom Function 2 - P1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Oops. How was this reached?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify API - Get Device Status": {
+          "main": [
+            [
+              {
+                "node": "Already playing on Target Device?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remote Action -> Function Router": {
+          "main": [
+            [
+              {
+                "node": "Spotify Prev",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify Next",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Get Device Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Get Device Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Get Device Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Get Device Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Get Device Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Already playing on Target Device?": {
+          "main": [
+            [
+              {
+                "node": "Route to Requested Function",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify API - Get Available Devices",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "MQTT Trigger - Ikea Remote Switch": {
+          "main": [
+            [
+              {
+                "node": "Globals",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify API - Get Available Devices": {
+          "main": [
+            [
+              {
+                "node": "Extract Individual Devices",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Select Device by Name to get device_id": {
+          "main": [
+            [
+              {
+                "node": "Spotify API - Activate Target Playback Device",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify API - Activate Target Playback Device": {
+          "main": [
+            [
+              {
+                "node": "Route to Requested Function",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 7,
+    "workflowInfo": {
+      "nodeCount": 26,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.switch": {
+          "count": 2
+        },
+        "n8n-nodes-base.spotify": {
+          "count": 8
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 6
+        },
+        "n8n-nodes-base.mqttTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Hubschrauber",
+      "username": "hubschrauber",
+      "bio": "Software developer specializing in \"back-end plumbing\" to connect and sync data between large corporate systems, enabling application distribution/migration, scaling, and containerization.  Using n8n for various orchestration tasks both at home and \"on the job.\"",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/937647d994a5af6961d76103821d84448e970d74e6d0d303e8a76b56fd1da695?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 335,
+        "icon": "file:spotify.svg",
+        "name": "n8n-nodes-base.spotify",
+        "codex": {
+          "data": {
+            "alias": [
+              "Music",
+              "Song"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.spotify/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/spotify/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Spotify"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMWVkNzYwIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTMyIDBDMTQuMyAwIDAgMTQuMzM3IDAgMzJjMCAxNy43IDE0LjMzNyAzMiAzMiAzMiAxNy43IDAgMzItMTQuMzM3IDMyLTMyUzQ5LjY2MyAwIDMyIDBtMTQuNjggNDYuMTg0Yy0uNTczLjk1Ni0xLjc5NyAxLjIyMy0yLjc1My42NS03LjUzMi00LjU4OC0xNi45NzUtNS42Mi0yOC4xNC0zLjA5Ny0xLjA3LjIzLTIuMTQtLjQyLTIuMzctMS41cy40Mi0yLjE0IDEuNS0yLjM3YzEyLjE5Ni0yLjggMjIuNjctMS42MDYgMzEuMDgyIDMuNTU2YTIgMiAwIDAgMSAuNjg4IDIuNzUzem0zLjktOC43MTdjLS43MjYgMS4xODUtMi4yNTYgMS41My0zLjQ0Ljg0LTguNjAyLTUuMjc2LTIxLjcxNi02LjgwNS0zMS44ODUtMy43NDctMS4zMzguMzgyLTIuNzE0LS4zNDQtMy4wOTctMS42NDQtLjM4Mi0xLjMzOC4zNDQtMi43MTQgMS42ODItMy4wOTcgMTEuNjIyLTMuNTE3IDI2LjA3NC0xLjgzNSAzNS45NzYgNC4yNDQgMS4xNDcuNjg4IDEuNSAyLjIxNy43NjUgMy40MDN6bS4zNDQtOS4xYy0xMC4zMjMtNi4xMTctMjcuMzM2LTYuNy0zNy4yLTMuNzA4LTEuNTY4LjQ5Ny0zLjI1LS40Mi0zLjc0Ny0xLjk4OHMuNDItMy4yNSAxLjk4OC0zLjc0N2MxMS4zMTctMy40NCAzMC4xMjctMi43NTMgNDEuOTggNC4yODIgMS40MTUuODQgMS44NzMgMi42NzYgMS4wMzIgNC4xLS43NjUgMS40NTMtMi42MzggMS45MTItNC4wNTMgMS4wN3oiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Spotify",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 364,
+        "icon": "file:mqtt.svg",
+        "name": "n8n-nodes-base.mqttTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mqtttrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mqtt/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MQTT Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGJhc2VQcm9maWxlPSJ0aW55IiBvdmVyZmxvdz0idmlzaWJsZSIgdmVyc2lvbj0iMS4yIiB2aWV3Qm94PSIwIDAgMzIwIDMyMCI+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTcuMSAxMzMuOXY0Ni43YzczLjguMSAxMzQgNTkuMyAxMzUgMTMyLjRoNDUuNWMtMS4xLTk4LjQtODEuNS0xNzguMi0xODAuNS0xNzkuMSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik03LjEgMzcuM1Y4NGMxMjcuNC4xIDIzMS4xIDEwMi41IDIzMi4xIDIyOC45aDQ1LjVjLTEtMTUxLjUtMTI1LTI3NC42LTI3Ny42LTI3NS42Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMxMi45IDE5My41Vjk3LjZjLTExLjgtMTYuMS0yNS45LTMzLjQtNDAuNC00Ny44LTE2LTE1LjktMzQuMS0zMC4xLTUyLjMtNDIuN0gxMTljODguMyAzMS44IDE1OS4xIDEwMC4xIDE5My45IDE4Ni40Ii8+PHBhdGggZmlsbD0iIzYwNiIgZD0iTTcuMSAxODAuNnYxMTcuMWMwIDguNCA2LjggMTUuMyAxNS4zIDE1LjNIMTQyYy0xLTczLjItNjEuMS0xMzIuMy0xMzQuOS0xMzIuNG0wLTk2LjV2NDkuOGM5OSAuOSAxNzkuNCA4MC43IDE4MC40IDE3OS4xaDUxLjdDMjM4LjIgMTg2LjYgMTM0LjUgODQuMiA3LjEgODQuMW0zMDUuOCAyMTMuNVYxOTMuNUMyNzguMSAxMDcuMiAyMDcuMyAzOC45IDExOSA3LjFIMjIuNEMxNCA3LjEgNy4xIDEzLjkgNy4xIDIyLjR2MTVjMTUyLjYuOSAyNzYuNiAxMjQgMjc3LjYgMjc1LjZoMTNjOC40LS4xIDE1LjItNi45IDE1LjItMTUuNE0yNzIuNiA0OS44YzE0LjUgMTQuNCAyOC42IDMxLjcgNDAuNCA0Ny44VjIyLjRjMC04LjQtNi44LTE1LjMtMTUuMy0xNS4zaC03Ny4zYzE4IDEyLjYgMzYuMiAyNi44IDUyLjIgNDIuNyIvPjwvc3ZnPg=="
+        },
+        "displayName": "MQTT Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

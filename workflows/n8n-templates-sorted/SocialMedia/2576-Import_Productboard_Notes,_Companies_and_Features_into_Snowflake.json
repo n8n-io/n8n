@@ -1,0 +1,2008 @@
+{
+  "workflow": {
+    "id": 2576,
+    "name": "Import Productboard Notes, Companies and Features into Snowflake",
+    "views": 479,
+    "recentViews": 0,
+    "totalViews": 479,
+    "createdAt": "2024-11-25T17:27:56.565Z",
+    "description": "This workflow imports Productboard data into Snowflake, automating data extraction, mapping, and updates for features, companies, and notes. It supports scheduled weekly updates, data cleansing, and Slack notifications summarizing the latest insights.\n\n## Features\n- Fetches data from Productboard (features, companies, notes).\n- Maps and processes data for Snowflake tables.\n- Automates table creation, truncation, and updates.\n- Summarizes new and unprocessed notes.\n- Sends weekly Slack notifications with key insights.\n\n## Setup\n- Configure Productboard and Snowflake credentials in n8n.\n- Update Snowflake table schemas to match your setup.\n- Replace Slack channel ID and dashboard URL in the notification node.\n- Activate the workflow and set the desired schedule.",
+    "workflow": {
+      "meta": {
+        "instanceId": "21b41c2deb1c9e3f543253a0aa6a6e2c7bd7ef6bab90ffd478aa947c17d3b352",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Import Productboard Notes, Companies and Features into Snowflake",
+      "tags": [
+        {
+          "id": "6Ek7V8f4xbM9vWLj",
+          "name": "linear",
+          "createdAt": "2024-11-08T12:12:15.330Z",
+          "updatedAt": "2024-11-08T12:12:15.330Z"
+        },
+        {
+          "id": "XpcIJ8IHNenz3bWz",
+          "name": "productboard",
+          "createdAt": "2024-11-08T12:12:17.249Z",
+          "updatedAt": "2024-11-08T12:12:17.249Z"
+        },
+        {
+          "id": "17",
+          "name": "snowflake",
+          "createdAt": "2023-09-18T17:05:02.756Z",
+          "updatedAt": "2023-09-18T17:05:02.756Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "adcb71e4-880b-4c19-acbb-0708ae4af95f",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            5620,
+            1440
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 442.66083354762577,
+            "height": 155.09952210536395,
+            "content": "## Preview Slack Message\n:productboard: Weekly Update in :snowflake_logo: Completed\n27 new insights added in the last 7 days.\n88 insights remain unprocessed.\nYou can view the updated :metabase: dashboard below:\n<link metabase>\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8a590e59-cbcd-43f3-a0de-7c1391661fcf",
+          "name": "Manual mapping feature",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4380,
+            -180
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "feature_id",
+                  "stringValue": "={{ $json.id }}"
+                },
+                {
+                  "name": "feature_name",
+                  "stringValue": "={{ $json.name }}"
+                },
+                {
+                  "name": "feature_status",
+                  "stringValue": "={{ $json.status.name }}"
+                },
+                {
+                  "name": "feature_start_date",
+                  "stringValue": "={{ $json.timeframe.startDate }}"
+                },
+                {
+                  "name": "feature_end_date",
+                  "stringValue": "={{ $json.timeframe.endDate }}"
+                },
+                {
+                  "name": "feature_owner",
+                  "stringValue": "={{ $json.owner.email }}"
+                },
+                {
+                  "name": "feature_created_at",
+                  "stringValue": "={{ $json.createdAt }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "ca339c8f-71c0-432f-88ef-595b9bc24b98",
+          "name": "get productboard companies",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4060,
+            220
+          ],
+          "parameters": {
+            "url": "https://api.productboard.com/companies",
+            "options": {
+              "pagination": {
+                "pagination": {
+                  "nextURL": "={{ $response.body[\"links\"][\"next\"] }}",
+                  "paginationMode": "responseContainsNextURL",
+                  "requestInterval": 2000,
+                  "completeExpression": "={{ $response.body[\"links\"][\"next\"] === null }}",
+                  "paginationCompleteWhen": "other"
+                }
+              }
+            },
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "X-Version",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "Z0ptr85smbBZBIYx",
+              "name": "Productboard"
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "ba15244b-4311-4045-8087-47f05bea427e",
+          "name": "Manual mapping companies",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4760,
+            220
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "company_id",
+                  "stringValue": "={{ $json.id }}"
+                },
+                {
+                  "name": "company_name",
+                  "stringValue": "={{ $json.name }}"
+                },
+                {
+                  "name": "company_domain",
+                  "stringValue": "={{ $json.domain }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "d7c491cf-6545-40e1-9ee5-429e4f6b8cb4",
+          "name": "get productboard notes",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4500,
+            640
+          ],
+          "parameters": {
+            "url": " https://api.productboard.com/notes",
+            "options": {
+              "pagination": {
+                "pagination": {
+                  "parameters": {
+                    "parameters": [
+                      {
+                        "name": "pageCursor",
+                        "value": "={{ $response.body.pageCursor }}"
+                      }
+                    ]
+                  },
+                  "requestInterval": 2000,
+                  "completeExpression": "={{ $response.body.pageCursor === null }}",
+                  "paginationCompleteWhen": "other"
+                }
+              }
+            },
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "X-Version",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "Z0ptr85smbBZBIYx",
+              "name": "Productboard"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "beeb2cfc-c017-4691-b92f-ee10b943b08d",
+          "name": "Manual mapping notes",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            5200,
+            640
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "note_id",
+                  "stringValue": "={{ $json.id }}"
+                },
+                {
+                  "name": "note_title",
+                  "stringValue": "={{ $json.title }}"
+                },
+                {
+                  "name": "note_state",
+                  "stringValue": "={{ $json.state }}"
+                },
+                {
+                  "name": "note_company_id",
+                  "stringValue": "={{ $json.company.id }}"
+                },
+                {
+                  "name": "note_source",
+                  "stringValue": "={{ $json.source.origin }}"
+                },
+                {
+                  "name": "note_content",
+                  "stringValue": "={{ $json.content }}"
+                },
+                {
+                  "name": "note_created_at",
+                  "stringValue": "={{ $json.createdAt }}"
+                },
+                {
+                  "name": "note_created_by",
+                  "stringValue": "={{ $json.createdBy.name }}"
+                },
+                {
+                  "name": "note_owner",
+                  "stringValue": "={{ $json.owner.name }}"
+                },
+                {
+                  "name": "note_url",
+                  "stringValue": "={{ $json.displayUrl }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "770df012-b5a0-49f9-9614-8988c2436c34",
+          "name": "Split features",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            3920,
+            -180
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "910e27f0-b910-415e-a171-5c6cfce07dc4",
+          "name": "Split companies",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            4300,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f57f3865-8970-4771-aee6-2e656215b13e",
+          "name": "Split notes",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            4740,
+            640
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d3939c15-9523-49c1-93ba-7942d37a0ec0",
+          "name": "Split features in notes",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            5400,
+            900
+          ],
+          "parameters": {
+            "include": "selectedOtherFields",
+            "options": {},
+            "fieldToSplitOut": "features",
+            "fieldsToInclude": "id"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bde6dc0c-6104-4b84-8c09-33dbe0cfe69f",
+          "name": "Combine Feature ID + Note ID",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            5640,
+            900
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "note_id",
+                  "stringValue": "={{ $json.id }}"
+                },
+                {
+                  "name": "feature_id",
+                  "stringValue": "={{ $json.features.id }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "b47db956-ec4f-4342-b973-aa3277e397f2",
+          "name": "get productboard features",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3680,
+            -180
+          ],
+          "parameters": {
+            "url": "https://api.productboard.com/features",
+            "options": {
+              "pagination": {
+                "pagination": {
+                  "nextURL": "={{ $response.body[\"links\"][\"next\"] }}",
+                  "paginationMode": "responseContainsNextURL",
+                  "requestInterval": 3000,
+                  "completeExpression": "={{ $response.body[\"links\"][\"next\"] === null }}",
+                  "paginationCompleteWhen": "other"
+                }
+              }
+            },
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "X-Version",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "Z0ptr85smbBZBIYx",
+              "name": "Productboard"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "ef3cd766-3887-4d6b-981b-d8e72a06a655",
+          "name": "Update Productboard Notes",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            5940,
+            660
+          ],
+          "parameters": {
+            "table": "PRODUCTBOARD_NOTES",
+            "columns": "NOTE_ID,NOTE_TITLE,NOTE_STATE,NOTE_COMPANY_ID,NOTE_SOURCE,NOTE_CONTENT,NOTE_CREATED_BY,NOTE_OWNER,NOTE_CREATED_AT,NOTE_URL"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8dc03797-1ac9-47a8-8e4c-e85e9539b091",
+          "name": "Empty Table Productboard Notes",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            4260,
+            640
+          ],
+          "parameters": {
+            "query": "TRUNCATE TABLE PRODUCTBOARD_NOTES;",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "9d5a6d6f-a672-48b0-baf8-67b608690d28",
+          "name": "[CREATE] PRODUCTBOARD_NOTES",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            3280,
+            1140
+          ],
+          "parameters": {
+            "query": "CREATE OR REPLACE TABLE PRODUCTBOARD_NOTES (\n    note_id STRING NOT NULL,\n    note_title STRING,\n    note_state STRING,\n    note_company_id STRING,\n    note_source STRING,\n    note_content STRING,\n    note_created_by STRING,\n    note_owner STRING,\n    note_url STRING,\n    note_created_at TIMESTAMP_NTZ\n);",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ea27f38b-3199-46aa-959f-9c1502898696",
+          "name": "[CREATE] PRODUCTBOARD_COMPANIES",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            3520,
+            1140
+          ],
+          "parameters": {
+            "query": "CREATE OR REPLACE TABLE PRODUCTBOARD_COMPANIES (\n    company_id STRING NOT NULL,\n    company_name STRING,\n    company_domain STRING\n);",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7bb94678-d106-4b77-8a96-4c598b057d09",
+          "name": "Update Productboard Companies",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            5280,
+            220
+          ],
+          "parameters": {
+            "table": "PRODUCTBOARD_COMPANIES",
+            "columns": "COMPANY_ID,COMPANY_NAME,COMPANY_DOMAIN"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "86128f9b-8b16-4dc0-bdf5-1bab946716e2",
+          "name": "Manual mapping companies db",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            5020,
+            220
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "COMPANY_ID",
+                  "stringValue": "={{ $json.company_id }}"
+                },
+                {
+                  "name": "COMPANY_NAME",
+                  "stringValue": "={{ $json.company_name }}"
+                },
+                {
+                  "name": "COMPANY_DOMAIN",
+                  "stringValue": "={{ $json.company_domain }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "dd2a3264-4171-43af-9409-ad2e79091bfb",
+          "name": "Manual mapping notes db",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            5720,
+            660
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "NOTE_ID",
+                  "stringValue": "={{ $json.note_id }}"
+                },
+                {
+                  "name": "NOTE_TITLE",
+                  "stringValue": "={{ $json.note_title }}"
+                },
+                {
+                  "name": "NOTE_STATE",
+                  "stringValue": "={{ $json.note_state }}"
+                },
+                {
+                  "name": "NOTE_COMPANY_ID",
+                  "stringValue": "={{ $json.note_company_id }}"
+                },
+                {
+                  "name": "NOTE_CONTENT",
+                  "stringValue": "={{ $json.note_content }}"
+                },
+                {
+                  "name": "NOTE_CREATED_BY",
+                  "stringValue": "={{ $json.note_created_by }}"
+                },
+                {
+                  "name": "NOTE_CREATED_AT",
+                  "stringValue": "={{ $json.note_created_at }}"
+                },
+                {
+                  "name": "NOTE_SOURCE",
+                  "stringValue": "={{ $json.note_source }}"
+                },
+                {
+                  "name": "NOTE_OWNER",
+                  "stringValue": "={{ $json.note_owner }}"
+                },
+                {
+                  "name": "NOTE_URL",
+                  "stringValue": "={{ $json.note_url }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "d163879a-6020-4ace-b3ea-36c3d7b3675a",
+          "name": "Empty Table Productboard Companies",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            3820,
+            220
+          ],
+          "parameters": {
+            "query": "TRUNCATE TABLE PRODUCTBOARD_COMPANIES;",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "0dbf1a3c-ae8b-4e7b-afb5-d1363d3d7634",
+          "name": "[CREATE] PRODUCTBOARD_NOTES_FEATURES",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            3760,
+            1140
+          ],
+          "parameters": {
+            "query": "CREATE OR REPLACE TABLE PRODUCTBOARD_NOTES_FEATURES (\n    note_id STRING NOT NULL,\n    feature_id STRING\n)",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa9e8744-c348-481c-a6f9-083689ee8ea9",
+          "name": "Manual mapping feature note IDs db",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            6160,
+            920
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "NOTE_ID",
+                  "stringValue": "={{ $json.note_id }}"
+                },
+                {
+                  "name": "FEATURE_ID",
+                  "stringValue": "={{ $json.feature_id }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "718f041a-dd02-4331-a704-fd1aa809212b",
+          "name": "Update Productboard Note and Feature IDs",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            6380,
+            920
+          ],
+          "parameters": {
+            "table": "PRODUCTBOARD_NOTES_FEATURES",
+            "columns": "NOTE_ID,FEATURE_ID"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "51430e95-1eb9-4c47-a0cf-e05708e6d41b",
+          "name": "Empty Table Productboard Note and Feature IDs",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            4040,
+            640
+          ],
+          "parameters": {
+            "query": "TRUNCATE TABLE PRODUCTBOARD_NOTES_FEATURES;",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "8c03178f-baf1-4ed8-94d8-91e90ef5cd26",
+          "name": "Loop Over Items notes",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            5460,
+            640
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 100
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "0c6a787f-48da-479c-b45a-8122b8fada3f",
+          "name": "Loop Over Items features notes",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            5900,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 100
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "1adb9ff0-be18-4ceb-aae0-62186e75668f",
+          "name": "[CREATE] PRODUCTBOARD_FEATURES",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            3040,
+            1140
+          ],
+          "parameters": {
+            "query": "CREATE OR REPLACE TABLE PRODUCTBOARD_FEATURES (\n    feature_id STRING NOT NULL,\n    feature_name STRING,\n    feature_status STRING,\n    feature_start_date STRING,\n    feature_end_date STRING,\n    feature_owner STRING,\n    feature_created_at STRING\n);",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0357ba46-4934-4c3f-8f0a-676496a6eee6",
+          "name": "Empty Table Productboard Features",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            3440,
+            -180
+          ],
+          "parameters": {
+            "query": "TRUNCATE TABLE PRODUCTBOARD_FEATURES;",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "df076304-ce27-4801-8e0f-c268b313ef4e",
+          "name": "Loop Over Items features",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            4640,
+            -180
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 100
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "40732e40-5ff2-4b1f-b300-b6b734e31637",
+          "name": "Manual mapping features db",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4900,
+            -160
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "FEATURE_ID",
+                  "stringValue": "={{ $json.feature_id }}"
+                },
+                {
+                  "name": "FEATURE_NAME",
+                  "stringValue": "={{ $json.feature_name }}"
+                },
+                {
+                  "name": "FEATURE_STATUS",
+                  "stringValue": "={{ $json.feature_status }}"
+                },
+                {
+                  "name": "FEATURE_START_DATE",
+                  "stringValue": "={{ $json.feature_start_date }}"
+                },
+                {
+                  "name": "FEATURE_END_DATE",
+                  "stringValue": "={{ $json.feature_end_date }}"
+                },
+                {
+                  "name": "FEATURE_OWNER",
+                  "stringValue": "={{ $json.feature_owner }}"
+                },
+                {
+                  "name": "FEATURE_CREATED_AT",
+                  "stringValue": "={{ $json.feature_created_at }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "59a838c4-fef0-4902-b6d6-418934ac986f",
+          "name": "Update Productboard Features",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            5140,
+            -160
+          ],
+          "parameters": {
+            "table": "PRODUCTBOARD_FEATURES",
+            "columns": "FEATURE_ID,FEATURE_NAME,FEATURE_STATUS,FEATURE_START_DATE,FEATURE_END_DATE,FEATURE_OWNER,FEATURE_CREATED_AT"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "110ebd3a-50ac-4e9f-9297-f64759dfdd18",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            2980,
+            -180
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "weeks",
+                  "triggerAtDay": [
+                    1
+                  ],
+                  "triggerAtHour": 8
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3eb88f88-8fad-4aaf-b6f9-6f7d87e30018",
+          "name": "Slack",
+          "type": "n8n-nodes-base.slack",
+          "onError": "continueRegularOutput",
+          "position": [
+            5900,
+            1220
+          ],
+          "parameters": {
+            "text": "=",
+            "select": "channel",
+            "blocksUi": "={\n  \"blocks\": [\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \":productboard: Weekly Update in :snowflake_logo: Completed\\n\\n*{{ $json.NOTES_7_DAYS }}* new insights added in the last 7 days.\\n\\n*{{ $json.NOTES_UNPROCESSED }}* insights remain unprocessed.\\n\\nYou can view the updated :metabase: dashboard below:\"\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"Open Dashboard\",\n            \"emoji\": true\n          },\n          \"url\": \"https://metabase.com\"\n        }\n      ]\n    }\n  ]\n}",
+            "channelId": {
+              "__rl": true,
+              "mode": "name",
+              "value": "#product-notifications"
+            },
+            "messageType": "block",
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "SG3oDwwLGpxwoJSO",
+              "name": "Gardien Slack bot"
+            }
+          },
+          "executeOnce": true,
+          "retryOnFail": false,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "3a16d947-a218-4ec2-8081-19b676bb51c3",
+          "name": "Count Notes Last 7 days and Unprocessed",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            5660,
+            1220
+          ],
+          "parameters": {
+            "query": "SELECT\n    COUNT(DISTINCT CASE \n        WHEN DATEDIFF(DAY, NOTE_CREATED_AT, CURRENT_DATE()) <= 7 THEN note_id \n    END) AS notes_7_days,\n    COUNT(DISTINCT CASE \n        WHEN NOTE_STATE = 'unprocessed' THEN note_id \n    END) AS notes_unprocessed\nFROM PRODUCTBOARD_NOTES;\n",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": {
+              "id": "81",
+              "name": "Snowflake"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "2bdfb96c-1c38-444d-9507-ab74f3572129",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2980,
+            1060
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 983.4896175671602,
+            "height": 314.88047081122676,
+            "content": "## Setup snowflake tables"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "",
+      "connections": {
+        "Split notes": {
+          "main": [
+            [
+              {
+                "node": "Manual mapping notes",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Split features in notes",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Count Notes Last 7 days and Unprocessed",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split features": {
+          "main": [
+            [
+              {
+                "node": "Manual mapping feature",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split companies": {
+          "main": [
+            [
+              {
+                "node": "Manual mapping companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Empty Table Productboard Features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping notes": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items notes": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Manual mapping notes db",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping feature": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "get productboard notes": {
+          "main": [
+            [
+              {
+                "node": "Split notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping notes db": {
+          "main": [
+            [
+              {
+                "node": "Update Productboard Notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split features in notes": {
+          "main": [
+            [
+              {
+                "node": "Combine Feature ID + Note ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items features": {
+          "main": [
+            [
+              {
+                "node": "Empty Table Productboard Companies",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Manual mapping features db",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping companies": {
+          "main": [
+            [
+              {
+                "node": "Manual mapping companies db",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Productboard Notes": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "get productboard features": {
+          "main": [
+            [
+              {
+                "node": "Split features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping features db": {
+          "main": [
+            [
+              {
+                "node": "Update Productboard Features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "get productboard companies": {
+          "main": [
+            [
+              {
+                "node": "Split companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping companies db": {
+          "main": [
+            [
+              {
+                "node": "Update Productboard Companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine Feature ID + Note ID": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items features notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Productboard Features": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Productboard Companies": {
+          "main": [
+            [
+              {
+                "node": "Empty Table Productboard Note and Feature IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Empty Table Productboard Notes": {
+          "main": [
+            [
+              {
+                "node": "get productboard notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items features notes": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Manual mapping feature note IDs db",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Empty Table Productboard Features": {
+          "main": [
+            [
+              {
+                "node": "get productboard features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Empty Table Productboard Companies": {
+          "main": [
+            [
+              {
+                "node": "get productboard companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Manual mapping feature note IDs db": {
+          "main": [
+            [
+              {
+                "node": "Update Productboard Note and Feature IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Count Notes Last 7 days and Unprocessed": {
+          "main": [
+            [
+              {
+                "node": "Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Productboard Note and Feature IDs": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items features notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Empty Table Productboard Note and Feature IDs": {
+          "main": [
+            [
+              {
+                "node": "Empty Table Productboard Notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 35,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 8
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 4
+        },
+        "n8n-nodes-base.snowflake": {
+          "count": 13
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 3
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Romain Jouhannet",
+      "username": "rjouhann",
+      "bio": "Technical Product Manager with a background in software development. Experienced in launching products, leading teams, and creating API-first solutions. Skilled in SaaS, Self-Hosted products, major public clouds, and automation, with a focus on simplifying complex technical concepts for enterprise clients.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/romainj/"
+      ],
+      "avatar": "https://gravatar.com/avatar/d85f4c3b78e574e660ecc7f0ad9ffa5151f963e7a2c3d7cbc80c01c2ff01ce30?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 422,
+        "icon": "file:snowflake.svg",
+        "name": "n8n-nodes-base.snowflake",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.snowflake/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/snowflake/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Snowflake"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjMgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMjliNWU4IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0ibTguNjQ1IDE1LjMwNCAxMy4wMDggNy44YTMuNzIgMy43MiAwIDAgMCA0LjU4OS0uNjAxIDQgNCAwIDAgMCAxLjIyNy0yLjkwOFYzLjk2MmEzLjgxIDMuODEgMCAwIDAtMS44NjEtMy40MiAzLjgxIDMuODEgMCAwIDAtMy44OTMgMCAzLjgxIDMuODEgMCAwIDAtMS44NjEgMy40MnY4Ljg5NmwtNy4zODctNC40M2EzLjggMy44IDAgMCAwLTIuOTIyLS40IDMuNyAzLjcgMCAwIDAtMi4zIDEuODQ0IDQuMDUgNC4wNSAwIDAgMCAxLjQgNS40MjJtMzEuMjcgNy44IDEzLjAwOC03LjhhNC4wNTYgNC4wNTYgMCAwIDAgMS40LTUuNDI0IDMuNzUgMy43NSAwIDAgMC01LjIyLTEuNDUybC03LjMgNC4zN3YtOC44NEEzLjgxIDMuODEgMCAwIDAgMzkuOTQuNTM0YTMuODEgMy44MSAwIDAgMC0zLjg4OSAwIDMuODEgMy44MSAwIDAgMC0xLjg2MyAzLjQxNHYxNS4zMjNhNC4xIDQuMSAwIDAgMCAuNDk0IDIuMzY3IDMuNzUgMy43NSAwIDAgMCAyLjMgMS44NDQgMy43IDMuNyAwIDAgMCAyLjkyMi0uNG0tMTEuNTY3IDguODk0Yy4wMTMtLjI1LjEwOC0uNS4yNzItLjY4bDEuNTItMS41OGExLjA2IDEuMDYgMCAwIDEgLjY1OC0uMjgyaC4wNTdhMS4wNSAxLjA1IDAgMCAxIC42NTYuMjgybDEuNTIgMS41OGExLjEyIDEuMTIgMCAwIDEgLjI3Mi42ODF2LjA2YTEuMTMgMS4xMyAwIDAgMS0uMjcyLjY4M0wzMS41IDM0LjNhMS4wNCAxLjA0IDAgMCAxLS42NTYuMjg0aC0uMDU3YTEuMDQgMS4wNCAwIDAgMS0uNjU4LS4yODRsLTEuNTItMS41OGExLjEzIDEuMTMgMCAwIDEtLjI3Mi0uNjgzem0tNC42MDQtLjY1djEuMzY0YTEuNTQgMS41NCAwIDAgMCAuMzcyLjkzbDUuMTYgNS4zNTdhMS40MiAxLjQyIDAgMCAwIC44OTUuMzg2aDEuMzEyYTEuNDIgMS40MiAwIDAgMCAuODk1LS4zODZsNS4xNi01LjM1N2ExLjU0IDEuNTQgMCAwIDAgLjM3Mi0uOTN2LTEuMzY0YTEuNTQgMS41NCAwIDAgMC0uMzcyLS45M2wtNS4xNi01LjM1N2ExLjQyIDEuNDIgMCAwIDAtLjg5NS0uMzg2SDMwLjE2YTEuNDIgMS40MiAwIDAgMC0uODk1LjM4NmwtNS4xNiA1LjM2N2ExLjU1IDEuNTUgMCAwIDAtLjM3Mi45M20tMjEuODE4LTMuNzEgNy4zNjUgNC40MTctNy4zNjUgNC40MTNBNC4wNiA0LjA2IDAgMCAwIC41MTYgNDEuODhhMy43NSAzLjc1IDAgMCAwIDIuMyAxLjg0NCAzLjc1IDMuNzUgMCAwIDAgMi45MjItLjM5MmwxMy4wMDgtNy44YTQuMTEgNC4xMSAwIDAgMCAxLjktMy40OTIgNC4xNiA0LjE2IDAgMCAwLTEuOS0zLjQ5MmwtMTMuMDA4LTcuOGEzLjggMy44IDAgMCAwLTIuOTIyLS40IDMuNyAzLjcgMCAwIDAtMi4zIDEuODQ0IDQuMDUzIDQuMDUzIDAgMCAwIDEuNCA1LjQyMm0zOC45OTUgNC40NDJhNCA0IDAgMCAwIDEuOTEgMy40NzdsMTMgNy44YTMuNzQ1IDMuNzQ1IDAgMCAwIDUuMjItMS40NTEgNC4wNSA0LjA1IDAgMCAwLTEuNC01LjQyNGwtNy4zNTYtNC40MTQgNy4zNjUtNC40MTdhNC4wNTQgNC4wNTQgMCAwIDAgMS40LTUuNDIyIDMuNzQgMy43NCAwIDAgMC0yLjMtMS44NDQgMy43IDMuNyAwIDAgMC0yLjkyLjRsLTEzIDcuOGE0IDQgMCAwIDAtMS45MSAzLjUwN20tMTYuNjU1IDguNDQ2YTMuNyAzLjcgMCAwIDAtMi42MTEuNDY0bC0xMy4wMDggNy44YTQuMDU1IDQuMDU1IDAgMCAwLTEuNCA1LjQyMiAzLjc0IDMuNzQgMCAwIDAgMi4zIDEuODQzIDMuNzUgMy43NSAwIDAgMCAyLjkyMi0uMzkybDcuMzg3LTQuNDN2OC44M2EzLjgxIDMuODEgMCAwIDAgNS43NTUgMy40MjUgMy44MSAzLjgxIDAgMCAwIDEuODU4LTMuNDI1VjQ0LjQwNmEzLjkxIDMuOTEgMCAwIDAtMy4yMDUtMy45MDNtMjguNjYgOC4yNzYtMTMuMDA4LTcuOGEzLjc1IDMuNzUgMCAwIDAtMi45MjItLjM5MiAzLjc0IDMuNzQgMCAwIDAtMi4zIDEuODQzIDQuMSA0LjEgMCAwIDAtLjQ5NCAyLjM3djE1LjI1YTMuODEgMy44MSAwIDAgMCA1Ljc1NSAzLjQyNSAzLjgxIDMuODEgMCAwIDAgMS44NTktMy40MjV2LTguNzY0bDcuMjg3IDQuMzdhMy44IDMuOCAwIDAgMCAyLjkyMi40IDMuNyAzLjcgMCAwIDAgMi4zLTEuODQ0YzEuMDU3LTEuOS40NC00LjI4LTEuNC01LjQyMiIvPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Snowflake",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": []
+  }
+}

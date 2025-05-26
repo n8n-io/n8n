@@ -1,0 +1,433 @@
+{
+  "workflow": {
+    "id": 934,
+    "name": "Insert and retrieve data from a table in Stackby",
+    "views": 271,
+    "recentViews": 0,
+    "totalViews": 271,
+    "createdAt": "2021-02-11T07:58:01.917Z",
+    "description": "This workflow allows you to insert and retrieve data from a table in Stackby.\n\n![workflow-screenshot](fileId:410)\n\n**Set node:** The Set node is used to set the values for the name and id fields for a new record. You might want to add data from an external source, for example an API or a CRM. Based on your use-case, add the respective node before the Set node and configure your Set node accordingly.\n\n**Stackby node:** This node appends data from the previous node to a table in Stackby. Based on the values you want add to your table, enter the column names in the ***Column*** field.\n\n**Stackby1 node:** This node fetches all the data that is stored in the table in Stackby.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Set",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "ID",
+                  "value": 1
+                }
+              ],
+              "string": [
+                {
+                  "name": "Name",
+                  "value": "n8n"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Stackby",
+          "type": "n8n-nodes-base.stackby",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "table": "Table 1",
+            "columns": "ID, Name",
+            "stackId": "stbgReRhlmmAgT2suT"
+          },
+          "credentials": {
+            "stackbyApi": "Stackby API credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Stackby1",
+          "type": "n8n-nodes-base.stackby",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "table": "={{$node[\"Stackby\"].parameter[\"table\"]}}",
+            "stackId": "={{$node[\"Stackby\"].parameter[\"stackId\"]}}",
+            "operation": "list",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "stackbyApi": "Stackby API credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Set": {
+          "main": [
+            [
+              {
+                "node": "Stackby",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Stackby": {
+          "main": [
+            [
+              {
+                "node": "Stackby1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Set",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.stackby": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 451,
+        "icon": "file:stackby.png",
+        "name": "n8n-nodes-base.stackby",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.stackby/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/stackby/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Stackby"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAC91BMVEUAAAApJRwHBggfGxImIBjLeRIAjNFQqjnmQjZQqTgNKCUmIAQadHJOpTfvuhD6wxHlQjYAi9AyayNrHhlgMw8ANlEAd7K+NSsAbKL1vxDmQzfzvRAAh8ndQDT7wxFNojYAjNEAg8QAi9Dmsw9QqDjfrQ/kQjb4wRAAis5GlTHIOS9Ppzj3wBAAd7E/hiwAb6Y7fim3jgzdPzQAhshMozapgwvaPjMAhMWfewrQOzEAVH2JJx8AfLmKawiCJR7TPDFImjLMOi/hrg4Ae7hHlzEgRRZEki9RFhLIOC7ZqA1aRQVDkC8/iy3NoAu8NCngQTUAhcbaPzNLoDXVPTJKnTTVPTL5whEAgL7RPDH5wRFHlzIAfbvNOzAAerbiQTbEOC7Wpg7iQTUAic2+Ni3Row7hQTVCji8Acqv0vhDgQDVOpTe6NSzImw0/hiyyMyoAiMpNpTYAbKEAh8mvMikAZ5tNpDbdPzTxvBC/lAyoMCcAYpNMoTWiLiaxiQvaPzM6fCk2cyY2cyaXKyNLnzTrtw9KnjTptg8AgsIAgsKZdgrUPTIwZiJJnDPnsw7dqw5GlTEsXh8AT3YAf7/ksQ6FZwgASnB2Ihvhrw4ARWdHlzF6XgclThlxVwfIOS7bqg0dPhTTpAzrtxBLnjXptQ8AgsFKnDQAe7dPqDjdrA/bqg5PpzdFkjAAis1PpzdEkDD2vxBPpjf2vxD2vxAAicxPpze9Ny1OpjfMng29kwwAiMsAiMvfQDXzvRDeQDX0vhDEmA3eQDTyvBA9gisAhsgAaJvwuxDyvBA6fCkAZZemMCfvug/uuQ8AhcYAcakAhMbtuQ+7kQwAYI9LoDWwMymdLSXtuA8AXYsAT3YAW4gAg8MAWYWTKiLWPTIAV4KPKSKcegp2IhtJnDPmsw8ASW1JmjMsXh/ksQ7QPDErWx4AfrzPOzApWB0nVBsAfLoAQGAAQWEAeLQAd7JRqznoQzf9xBEAjdIAjtP7wxHmQjcAjNEAic1PqDjjQTarWRDCAAAA8nRSTlMAAwULDgX8+/jzEgkG/fn17+lfKRwbEg8J/vz8+/v7+fb08O/o5OHh3t7c2tfSu7eZlJKPj3Z0cWBcT09EQ0JBNCkmJSEdGBcWFhURCwoJ/vn39vXx8fDq6urm5OTa2dHR0MzJyMfHwL+7urq0rq6tqaWjn56enp6el4GBgYGAgH5zamlpXV1cUlJRUVBQSUdGQjk4ODc3Ly4rKycjHh0WDvXx8e/s5eHe2tPT0s7OzsfHxsTEwsG8vLu2trawrquqp6GalZWSjouLioSDgX19eXh3d3d3bWhnZWFhX1taWlVMSkRAPz86OjY1NS4tKycbGNIMkEAAAAMoSURBVEjHzdNVVBVRGIbh/wSIgIGA3Yog3SkpSIuEhS0WBiIigoKAiqBSiiISit3d3d3d3a0nKLnw1N7DrMXA7OMN3/27Zs0z/0CDXi9HpVPNJ1ob3ynZtrzeVSw2KVCq/R2jKhaLK810gXw/joilK6uK5ZNTbRfLV9bvESlVuhZqq8x+kbWtb3bFzz2vTtb+OaeK2vV3eGRt76OVYsWGvOASUo1GaaXJErKUk25AUf0kpLLDVO1jdQkv0qozarvM4qk4OJFQTVXFVE+5reaoGbqwbpfSqEri2gorIrRZUmVQVOMLwD2yQigUVkd5s6PSwlTTdMF1lFC2oATplXjc1mFNxVd53kOoWOhrgLy97Sx4rKgGPpZQNUdtcII3ZBmLRE1tGG/tyz5MNcwRfOLUUNv/Pk9l/mCRZN3smd43hqJaDu7HKlA79CWn9GozkWx6zkwfyYBGpVjFCBdYdaajSL7yw0w/Z4aWjOqyOscBUwVN0oYVE0So3bKQw/SR7TpLqB5q9LXFVB2me8NbY9yOWQaM07RSlVJZUlSJiEq6dqeK6/zQNyRUJ9piqmfc0mvNUNvUwq+e84RPY2lUMzuitpuNBtQTLxqO2moZVTl63c2IinE0Kh3IplF5JnvV1baiqEIT+SoL9FHbZnIxuO1uYs5nbktOY6pBc7mBtwbUpMo0Egg6pTDe9leKytAJfGlUmvO6CyQLa1E/1YF88Dhejlq9Vxx/68YC2cJza3/fSEwVpQMfd2Gqkc7gGd1IoJhp7bftqrjn4Ct0qkJwOyhA67mY4YM5NJdTaQQ+oKji/eCNEUr/jvvGeCC2anKqC/gi1yXxpFSKNZniVceJWFZH5ANk4VbPnus/uzFqQy6pQx3zuacNAIEXyzFVnxmYakOqBrCY70kZ1aFCWDmRRsVqHnskP2+8DuRspag+A9vl6a9J4nPSalAVAftl23MDKKpO5quBZDWpwlJ5RCmNqgWXrH2/A1Pt/ECWctI24da0iKwNuPsfVNaYam0KIRVk4ueGk1IBBKAnb8sF8vlHy6m+gzLz3C+5yLNeoNzcjEKS+aDsciRUDXj/AJL4Mhr51poGAAAAAElFTkSuQmCC"
+        },
+        "displayName": "Stackby",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 410,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/9c18da6047a54b50b4aa8f361332c8bd.png"
+      }
+    ]
+  }
+}

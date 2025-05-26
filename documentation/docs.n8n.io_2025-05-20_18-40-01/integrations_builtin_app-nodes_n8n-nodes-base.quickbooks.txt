@@ -1,0 +1,104 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbooks/
+Scraped_At: 2025-05-20T18:50:59.545254
+
+QuickBooks Online node
+#
+Use the QuickBooks node to automate work in QuickBooks, and integrate QuickBooks with other applications. n8n has built-in support for a wide range of QuickBooks features, including creating, updating, deleting, and getting bills, customers, employees, estimates, and invoices.
+On this page, you'll find a list of operations the QuickBooks node supports and links to more resources.
+Credentials
+Refer to
+QuickBooks credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Bill
+Create
+Delete
+Get
+Get All
+Update
+Customer
+Create
+Get
+Get All
+Update
+Employee
+Create
+Get
+Get All
+Update
+Estimate
+Create
+Delete
+Get
+Get All
+Send
+Update
+Invoice
+Create
+Delete
+Get
+Get All
+Send
+Update
+Void
+Item
+Get
+Get All
+Payment
+Create
+Delete
+Get
+Get All
+Send
+Update
+Void
+Purchase
+Get
+Get All
+Transaction
+Get Report
+Vendor
+Create
+Get
+Get All
+Update
+Templates and examples
+#
+Create a customer and send the invoice automatically
+by Harshil Agrawal
+View template details
+Create QuickBooks Online Customers With Sales Receipts For New Stripe Payments
+by Artur
+View template details
+Create a QuickBooks invoice on a new Onfleet Task creation
+by James Li
+View template details
+Browse QuickBooks Online integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,266 @@
+{
+  "workflow": {
+    "id": 771,
+    "name": "Get a volume and add it to your bookshelf",
+    "views": 368,
+    "recentViews": 0,
+    "totalViews": 368,
+    "createdAt": "2020-11-10T08:16:32.986Z",
+    "description": "![workflow-screenshot](fileId:301)",
+    "workflow": {
+      "id": "107",
+      "name": "Get a volume and add it to your bookshelf",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            260,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Books",
+          "type": "n8n-nodes-base.googleBooks",
+          "position": [
+            460,
+            300
+          ],
+          "parameters": {
+            "resource": "volume",
+            "volumeId": "XxUJ2U2FXtYC",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "googleBooksOAuth2Api": "google-books"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Books1",
+          "type": "n8n-nodes-base.googleBooks",
+          "position": [
+            660,
+            300
+          ],
+          "parameters": {
+            "shelfId": "2",
+            "resource": "bookshelfVolume",
+            "volumeId": "={{$node[\"Google Books\"].json[\"id\"]}}",
+            "operation": "add",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "googleBooksOAuth2Api": "google-books"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Books2",
+          "type": "n8n-nodes-base.googleBooks",
+          "position": [
+            860,
+            300
+          ],
+          "parameters": {
+            "shelfId": "={{$node[\"Google Books1\"].parameter[\"shelfId\"]}}",
+            "resource": "bookshelfVolume",
+            "myLibrary": true,
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "googleBooksOAuth2Api": "google-books"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Google Books": {
+          "main": [
+            [
+              {
+                "node": "Google Books1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Books1": {
+          "main": [
+            [
+              {
+                "node": "Google Books2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Google Books",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.googleBooks": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 397,
+        "icon": "file:googlebooks.svg",
+        "name": "n8n-nodes-base.googleBooks",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebooks/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Books"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0NDguNyA1MDAiPjxwYXRoIGZpbGw9IiMwQjVFOUYiIGQ9Ik00MjguMiAyMjEuOSA0OS4yIDYuNUMzMy0yLjYgMTguNS0xLjcgOS43IDYuOCAzLjQgMTIuOCAwIDIyLjQgMCAzNC45djQyOS45QzAgNDc3LjQgMy43IDQ4NyA5LjcgNDkzYzkuMSA4LjggMjMuMyA5LjcgMzkuNS4zbDM3OS4xLTIxNS40YzI3LjItMTUuNCAyNy4yLTQwLjQtLjEtNTYiLz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIyMjMuMTY4IiB4Mj0iMjIzLjE2OCIgeTE9Ijc2ODIuMjQxIiB5Mj0iODE4Mi4yNjkiIGdyYWRpZW50VHJhbnNmb3JtPSJtYXRyaXgoLjk5OTggMCAwIC0uOTk5OCAxLjIxMyA4MTgwLjcwNSkiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNmZmYiIHN0b3Atb3BhY2l0eT0iMCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZiIgc3RvcC1vcGFjaXR5PSIuMSIvPjwvbGluZWFyR3JhZGllbnQ+PHBhdGggZmlsbD0idXJsKCNhKSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJtNDI4LjMgMjIxLjktOTUtNTQtMS43LTEuMS0uMS4xTDQ5LjIgNi42Yy0xNS43LTktMjkuOS04LjMtMzguOS0uMkw4LjggNy43QzMuMiAxMy43IDAgMjMgMCAzNS4xdjQyOS43YzAgMTIuMSAzLjIgMjEuNCA5LjEgMjcuMmwtLjIuMmM4LjkgOS41IDIzLjcgMTAuNiA0MC40IDEuM0wzMzEuNSAzMzNsLjEuMXMxLjctMS4xIDEuOC0xLjFsOTUtNTRjMjcuMS0xNS41IDI3LjEtNDAuOC0uMS01Ni4xIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjRkZGIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Im00OS4yIDkuNCAzNzkgMjE1LjNjMTIuMyA2LjkgMTkuMiAxNiAyMC4zIDI1LjMgMC0xMC4xLTYuNy0yMC4zLTIwLjMtMjguMUw0OS4yIDYuNkMyMi05IDAgNCAwIDM1LjF2Mi44QzAgNi44IDIyLTUuOSA0OS4yIDkuNCIgY2xpcC1ydWxlPSJldmVub2RkIiBvcGFjaXR5PSIuMjUiLz48cGF0aCBmaWxsPSIjNDBEQ0ZGIiBkPSJNMzU4LjIgNzAuMkgxMzUuOVY0NDRsMjQyLjktMTM4VjkwLjljMC0xMS40LTkuMi0yMC43LTIwLjYtMjAuNyIvPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjcxMjEuNzUzIiB4Mj0iNzEyMy41OTIiIHkxPSItMzI0LjE5MiIgeTI9Ii0zMjcuNDk4IiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KDM4LjMxNiAwIDAgLTM2LjE5IC0yNzI1OTkuMjUgLTExNDMzLjIpIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNWI3YzhjIiBzdG9wLW9wYWNpdHk9IjAiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM1YjdjOGMiIHN0b3Atb3BhY2l0eT0iLjQiLz48L2xpbmVhckdyYWRpZW50PjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik0zNTguMiA3MC4ySDEzNS45djM3My42bDI0Mi45LTEzNy45di0yMTVjMC0xMS40LTkuMi0yMC43LTIwLjYtMjAuNyIvPjxwYXRoIGZpbGw9IiMwMDlCRjAiIGQ9Ik0xMzUuOSA3MC4ySDcwLjN2NDExbDY1LjYtMzcuMnoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMzU4LjIgNzAuMkg3MC4zdjIuM2gyODcuOWMxMS40IDAgMjAuNyA2LjkgMjAuNyAxOC4zLS4xLTExLjMtOS4zLTIwLjYtMjAuNy0yMC42IiBvcGFjaXR5PSIuMTUiLz48cGF0aCBmaWxsPSIjRkFGQUZBIiBkPSJtMjYxLjEgMTczLjMgMzMuOC0yMC45IDM1IDIwLjlWNzAuMmgtNjguOHoiLz48L3N2Zz4="
+        },
+        "displayName": "Google Books",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 301,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/b01306e50cb0449c893b4f08a0bd2e7b.png"
+      }
+    ]
+  }
+}

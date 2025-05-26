@@ -1,0 +1,46 @@
+URL: https://docs.n8n.io/courses/level-two/chapter-5/chapter-5.1/
+Scraped_At: 2025-05-20T18:42:11.243615
+
+Workflow 1: Merging data
+#
+Nathan's company stores its customer data in Airtable. This data contains information about the customers' ID, country, email, and join date, but lacks data about their respective region and subregion. You need to fill in these last two fields in order to create the reports for regional sales.
+To accomplish this task, you first need to make a copy of this table in your Airtable account:
+Next, build a small workflow that merges data from Airtable and a REST Countries API:
+Use the
+Airtable node
+to list the data in the Airtable table named
+customers
+.
+Use the
+HTTP Request node
+to get data from the REST Countries API:
+https://restcountries.com/v3.1/all
+. This will return data about world countries, split out into separate items.
+Use the
+Merge node
+to merge data from Airtable and the Countries API by country name, represented as
+customerCountry
+in Airtable and
+name.common
+in the Countries API, respectively.
+Use another Airtable node to update the fields
+region
+and
+subregion
+in Airtable with the data from the Countries API.
+The workflow should look like this:
+Workflow 1 for merging data from Airtable and the Countries API
+Quiz questions
+How many items does the
+HTTP Request node
+return?
+How many items does the
+Merge node
+return?
+How many unique regions are assigned in the customers table?
+What's the subregion assigned to the customerID 10?
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

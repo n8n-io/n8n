@@ -1,0 +1,910 @@
+{
+  "workflow": {
+    "id": 1749,
+    "name": "Rate limiting and waiting for external events",
+    "views": 5475,
+    "recentViews": 0,
+    "totalViews": 5475,
+    "createdAt": "2022-07-06T14:43:16.459Z",
+    "description": "**Task:**\nControl your data flow with rate limits and external cues\n\n**Main use cases:**\n- Control the rate of items flow into one or more services in your workflow\n- Wait for external events to occur before continuing with the rest of the workflow",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            400,
+            520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1500,
+            360
+          ],
+          "parameters": {
+            "width": 780,
+            "height": 360,
+            "content": "## 2. Wait for an external event\nUse this operation when an external step is needed in order to continue with the rest of the workflow.\nFor example - a workflow sends a purchase approval link to the merchant (using Gmail, Slack etc..) and waits for the merchant to click on it before continuing with the rest of the steps.\n\nIn this example, the `Customer Messenger` node mimics the email or messaging node.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            200,
+            380
+          ],
+          "parameters": {
+            "width": 300,
+            "height": 120,
+            "content": "### Click the `Execute Workflow` button and double click on the nodes to see the input and output items."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Create approval URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1540,
+            520
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "URL",
+                  "value": "={{$resumeWebhookUrl}}?name=nathan"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wait for external approval",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1940,
+            520
+          ],
+          "webhookId": "0bcafff8-9fc1-4415-95b1-00746bb1304d",
+          "parameters": {
+            "resume": "webhook",
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Rest of the workflow placeholder",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2140,
+            520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Customer Datastore",
+          "type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+          "position": [
+            580,
+            520
+          ],
+          "parameters": {
+            "operation": "getAllPeople",
+            "returnAll": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SplitInBatches",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            760,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 1
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            540,
+            360
+          ],
+          "parameters": {
+            "width": 900,
+            "height": 360,
+            "content": "## 1. Rate Limiting \nSometimes you need to slow down how often you are contacting a service.\n\nIn this example, `Customer Datastore` node simulates the big batches of requests coming at once, the `SplitInBatches` node handles each one individually in a loop, and the `Wait` node creates a 2 second delay between each message to a customer."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wait for time interval",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            920,
+            520
+          ],
+          "webhookId": "2b72e9d7-75b7-4ef5-87e7-2bfdfdbaa20f",
+          "parameters": {
+            "unit": "seconds",
+            "amount": 2
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "If - Are we Finished?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1280,
+            520
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{$node[\"SplitInBatches\"].context[\"noItemsLeft\"]}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Customer Messenger - Send URL to merchant",
+          "type": "n8n-nodes-base.n8nTrainingCustomerMessenger",
+          "position": [
+            1740,
+            520
+          ],
+          "parameters": {
+            "message": "={{$json[\"URL\"]}}",
+            "customerId": "1"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Customer Messenger - Send message to client",
+          "type": "n8n-nodes-base.n8nTrainingCustomerMessenger",
+          "position": [
+            1100,
+            520
+          ],
+          "parameters": {
+            "message": "=\nHi {{$node[\"Customer Datastore\"].json[\"name\"]}}\nThis message was sent at {{$now.toLocaleString(DateTime.TIME_WITH_SECONDS)}}",
+            "customerId": "={{$node[\"Customer Datastore\"].json[\"id\"]}}"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "SplitInBatches": {
+          "main": [
+            [
+              {
+                "node": "Wait for time interval",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Datastore": {
+          "main": [
+            [
+              {
+                "node": "SplitInBatches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create approval URL": {
+          "main": [
+            [
+              {
+                "node": "Customer Messenger - Send URL to merchant",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If - Are we Finished?": {
+          "main": [
+            [
+              {
+                "node": "Create approval URL",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "SplitInBatches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Customer Datastore",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for time interval": {
+          "main": [
+            [
+              {
+                "node": "Customer Messenger - Send message to client",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for external approval": {
+          "main": [
+            [
+              {
+                "node": "Rest of the workflow placeholder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Messenger - Send URL to merchant": {
+          "main": [
+            [
+              {
+                "node": "Wait for external approval",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Messenger - Send message to client": {
+          "main": [
+            [
+              {
+                "node": "If - Are we Finished?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": null,
+    "user": {
+      "name": "Jonathan",
+      "username": "jon-n8n",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/5240094f838126182ceefb50ca4a3cf75cc7dc0808efd4b9920d792e41bfc45e?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 496,
+        "icon": "file:n8nTrainingCustomerDatastore.svg",
+        "name": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+        "codex": {
+          "data": {
+            "categories": []
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Customer Datastore (n8n training)"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTcuODg3ODYgMjEuNDExQzcuNzE5ODYgMjEuMzA5IDcuNTA1ODYgMjEuNDI3IDcuNTA1ODYgMjEuNjIzVjI2LjkwM0M3LjUwNTg2IDI5LjE1MSAxMy4xMDM5IDMwLjk4NSAyMC4wMDU5IDMwLjk4NUMyNi45MDc5IDMwLjk4NSAzMi41MDU5IDI5LjE1MSAzMi41MDU5IDI2LjkwM1YyMS42MjNDMzIuNTA1OSAyMS40MjcgMzIuMjkxOSAyMS4zMDkgMzIuMTIzOSAyMS40MTFDMjkuMzcxOSAyMy4wOTEgMjQuNjgxOSAyMy44NzUgMjAuMDA1OSAyMy44NzVDMTUuMzI5OSAyMy44NzUgMTAuNjM5OSAyMy4wODkgNy44ODc4NiAyMS40MTFaIiBmaWxsPSIjNzE3MTcyIi8+CjxwYXRoIGQ9Ik03Ljg4NzkxIDMwLjMzOUM3LjcxOTkxIDMwLjIzNyA3LjUwNTkxIDMwLjM1NSA3LjUwNTkxIDMwLjU1MVYzNS44MzFDNy41MDU5MSAzOC4wNzkgMTMuMTAzOSAzOS45MTMgMjAuMDA1OSAzOS45MTNDMjYuOTA3OSAzOS45MTMgMzIuNTA1OSAzOC4wNzkgMzIuNTA1OSAzNS44MzFWMzAuNTUxQzMyLjUwNTkgMzAuMzU1IDMyLjI5MTkgMzAuMjM3IDMyLjEyMzkgMzAuMzM5QzI5LjM3MTkgMzIuMDE5IDI0LjY4MTkgMzIuODAzIDIwLjAwNTkgMzIuODAzQzE1LjMyOTkgMzIuODAzIDEwLjYzOTkgMzIuMDE5IDcuODg3OTEgMzAuMzM5Wk0yMS45MDE5IDE2Ljk2NUMyMS4yODU5IDE3LjE1NSAyMC42NDc5IDE3LjI1MSAyMC4wMDU5IDE3LjI1MUMxOS4zNTU5IDE3LjI1MSAxOC43MTM5IDE3LjE1NSAxOC4wOTc5IDE2Ljk2N0w3LjkyOTkxIDEzLjg0M0M3LjgwOTkxIDEzLjgwNyA3LjY3NzkxIDEzLjg2MyA3LjYyNzkxIDEzLjk3N0M3LjU0NTkxIDE0LjE2NSA3LjUwMzkxIDE0LjM1NSA3LjUwMzkxIDE0LjU0OVYxNy45NzVDNy41MDM5MSAyMC4yMjMgMTMuMTAxOSAyMi4wNTcgMjAuMDAzOSAyMi4wNTdDMjYuOTA1OSAyMi4wNTcgMzIuNTAzOSAyMC4yMjMgMzIuNTAzOSAxNy45NzVWMTQuNTQ5QzMyLjUwMzkgMTQuMzUzIDMyLjQ2MTkgMTQuMTYxIDMyLjM3OTkgMTMuOTczQzMyLjMyOTkgMTMuODU5IDMyLjE5NzkgMTMuODAzIDMyLjA3NzkgMTMuODM5TDIxLjkwMTkgMTYuOTY1WiIgZmlsbD0iIzcxNzE3MiIvPgo8cGF0aCBkPSJNMzguODk2IDYuNTc0OThMMjEuNDYyIDEuMjE4OThDMjAuNTA5MiAwLjkyNzAwOCAxOS40OTA4IDAuOTI3MDA4IDE4LjUzOCAxLjIxODk4TDEuMTA0IDYuNTc0OThDLTAuMzY4IDcuMDI2OTggLTAuMzY4IDguOTcyOTggMS4xMDQgOS40MjQ5OEw0LjE0NCAxMC4zNTlDMy40NzggMTEuMTgzIDMuMDY4IDEyLjE4OSAzLjAyNiAxMy4yOTFDMi40MjQgMTMuNjM1IDIgMTQuMjU3IDIgMTUuMDAxQzIgMTUuNjc1IDIuMzU2IDE2LjI0MSAyLjg2NiAxNi42MDVMMS4yNyAyMy43ODVDMS4xMzIgMjQuNDA5IDEuNjA2IDI1LjAwMSAyLjI0NiAyNS4wMDFINS43NTJDNi4zOTIgMjUuMDAxIDYuODY4IDI0LjQwOSA2LjcyOCAyMy43ODVMNS4xMzIgMTYuNjA1QzUuNjQ0IDE2LjI0MyA1Ljk5OCAxNS42NzUgNS45OTggMTUuMDAxQzUuOTk4IDE0LjI3NyA1LjU5NCAxMy42NzMgNS4wMiAxMy4zMjFDNS4wNjggMTIuMzgzIDUuNTQ4IDExLjU1MyA2LjMxNCAxMS4wMjVMMTguNTM4IDE0Ljc4MUMxOS4xMDQgMTQuOTU1IDIwLjE5IDE1LjE3MSAyMS40NjIgMTQuNzgxTDM4Ljg5NiA5LjQyNDk4QzQwLjM2OCA4Ljk3Mjk4IDQwLjM2OCA3LjAyODk4IDM4Ljg5NiA2LjU3NDk4WiIgZmlsbD0iI0ZGNkQ1QSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Customer Datastore (n8n training)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": null,
+            "name": null
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 541,
+        "icon": "file:n8nTrainingCustomerMessenger.svg",
+        "name": "n8n-nodes-base.n8nTrainingCustomerMessenger",
+        "codex": {
+          "data": {
+            "categories": []
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Customer Messenger (n8n training)"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAuOTU4Mzg2IDYuODM5NTdDLTAuMzE5NDYyIDcuMjMyNzUgLTAuMzE5NDYyIDguOTE5ODMgMC45NTgzODYgOS4zMTMwMkwxNi4wODk5IDEzLjk2MUMxNy4xOTMzIDE0LjMgMTguMTM2MSAxNC4xMTE1IDE4LjYyNzYgMTMuOTYxTDI5LjIzNTUgMTAuNzAxMkMyOS44OTk1IDExLjE1ODYgMzAuODM4NCAxMi4zNDAxIDMxLjM4NiAxMi45NDM5QzMxLjE5MzQgMTMuNDk1NiAzMS4yNTU2IDE0LjEyMzUgMzEuNjU0OCAxNC42MDlDMzIuMDI1OSAxNS4wNjAzIDMyLjU3NTYgMTUuMjQ0OSAzMy4xMTkyIDE1LjIwNjhMMzYuMDAzOSAyMC45MDE5QzM2LjI1NDcgMjEuMzk3NCAzNi45MDA2IDIxLjUzMzggMzcuMzI5OSAyMS4xODA4TDM5LjY4MyAxOS4yNDg5QzM5Ljc4MzQgMTkuMTY2NCAzOS44NjQxIDE5LjA2MjQgMzkuOTE4OSAxOC45NDQ2QzM5Ljk3MzggMTguODI2NyA0MC4wMDE1IDE4LjY5OCAzOS45OTk5IDE4LjU2OEMzOS45OTg0IDE4LjQzODEgMzkuOTY3NyAxOC4zMTAxIDM5LjkxIDE4LjE5MzZDMzkuODUyNCAxOC4wNzcgMzkuNzY5MyAxNy45NzUgMzkuNjY2OSAxNy44OTQ5TDM0LjY0MTggMTMuOTYxQzM0Ljc4NDIgMTMuNDM1NCAzNC43MTIgMTIuODU5NyAzNC4zNDA5IDEyLjQwODNDMzMuOTMxNyAxMS45MTA4IDMzLjMwMzggMTEuNzI2MyAzMi43MSAxMS44MjY2QzMyLjA3NjEgMTEuMTEwNCAzMS43MDEgMTAuODM5NiAzMS4xMjMyIDEwLjEyMzVMMzMuNzYxMiA5LjMxMzAyQzM1LjAzOSA4LjkxOTgzIDM1LjAzOSA3LjIzMjc1IDMzLjc2MTIgNi44Mzk1N0wxOC42Mjc2IDIuMTg5NTdDMTcuODAwNiAxLjkzNjgxIDE2LjkxNjkgMS45MzY4MSAxNi4wODk5IDIuMTg5NTdMMC45NTgzODYgNi44Mzk1N1oiIGZpbGw9IiNGRjZENUEiLz4KPHBhdGggZD0iTTI2LjkzNDYgMTMuODIxNkMyNi43MTQ0IDEzLjc2MjYgMjYuNDgyIDEzLjc2NjggMjYuMjY0IDEzLjgzMzhMMTguOTA5NSAxNi4wOTA2QzE4LjM3ODEgMTYuMjUzIDE3LjgyNTUgMTYuMzM1NiAxNy4yNjk5IDE2LjMzNThDMTYuNzA4MiAxNi4zMzU4IDE2LjE1MzYgMTYuMjUzNSAxNS42MjE4IDE2LjA5MDRMOC4zMjgzOSAxMy44NTQ5QzguMTYxODYgMTMuODAzOSA3Ljk4NjMgMTMuNzg5NCA3LjgxMzY2IDEzLjgxMjRDNy42NDEwMiAxMy44MzU0IDcuNDc1MzYgMTMuODk1MyA3LjMyNzk4IDEzLjk4ODFDNy4xNTMzNyAxNC4xMDk5IDYuOTgxODYgMTQuMjM2IDYuODEzNjMgMTQuMzY2NEM2Ljc5MDc2IDE0LjM4NDEgNi43Njk3IDE0LjQwMTYgNi43NDY4MyAxNC40MTcyTDYuNjQ4NTMgMTQuNDk0NEMzLjg2Mjk0IDE2LjcyNDcgMi4xMzU3NCAxOS44MjQxIDIuMTM1NzQgMjMuMjUxMkMyLjEzNTc0IDI2LjE4NTggMy40MDQ3NiAyOC44NzE3IDUuNTE0NzIgMzAuOTg0N0M0Ljc3Mzg5IDMzLjk2NTEgMi4yOTcyMyAzNi42MjI5IDIuMjY3MzQgMzYuNjUyNkMyLjIwMzI1IDM2LjcyIDIuMTYwNTYgMzYuODA0OSAyLjE0NDY0IDM2Ljg5NjZDMi4xMjg3MiAzNi45ODgzIDIuMTQwMjggMzcuMDgyNiAyLjE3Nzg3IDM3LjE2NzdDMi4yMTM4NSAzNy4yNTI3IDIuMjc0MjggMzcuMzI1IDIuMzUxNDYgMzcuMzc1NUMyLjQyODY1IDM3LjQyNjEgMi41MTkxMiAzNy40NTI1IDIuNjExMzcgMzcuNDUxNkM2LjU0MTYxIDM3LjQ1MTYgOS40ODY4OCAzNS41Njk5IDEwLjk0NTcgMzQuNDFDMTIuODgzNSAzNS4xMzcyIDE1LjAzNTQgMzUuNTU3NyAxNy4zMTIgMzUuNTU3N0MyMS40ODQ0IDM1LjU1NzcgMjUuMjYzNiAzNC4xOTA5IDI4LjAwNyAzMS45ODE3QzMwLjczODMgMjkuNzU2NiAzMi40MjcgMjYuNjg4OCAzMi40MjcgMjMuMjk4NUMzMi40MjcgMTkuNDg2MSAzMC4yOTA3IDE2LjA4IDI2LjkzNDYgMTMuODIxNloiIGZpbGw9IiM3MTcxNzIiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Customer Messenger (n8n training)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": null,
+            "name": null
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

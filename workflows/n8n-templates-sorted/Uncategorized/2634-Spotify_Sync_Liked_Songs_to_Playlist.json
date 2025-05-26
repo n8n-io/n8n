@@ -1,0 +1,1948 @@
+{
+  "workflow": {
+    "id": 2634,
+    "name": "Spotify Sync Liked Songs to Playlist",
+    "views": 428,
+    "recentViews": 0,
+    "totalViews": 428,
+    "createdAt": "2024-12-11T21:47:10.634Z",
+    "description": "# Short an simple:\nThis Workflow will sync (add and delete) your Liked Songs to an custom playlist that can be shared.\n\n## Setup:\n1. Create an app on the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).\n2. Create Spotify Credentials - Just click on one of the Spotify Nodes in the Workflow an click on \"create new credentials\" and follow the guide.\n3. Create the Spotify Playlist that you want to sync to.\n4. Copy the exact name of you playlist, go into Node \"Edit set Vars\" and replace the value \"CHANGE MEEEE\" with your playlist name.\n5. Set your Spotify Credentiels on every Spotify Node. (Should be marekd with Yellow and Red Notes)\n\n### Do you use Gotify?\n#### - No: Delete the Gotify Nodes (all the way to the right end of the Workflow)\n#### - Yes: Customize the Gotify Nodes to your needs.",
+    "workflow": {
+      "id": "gemC8tYGZk3LtBHG",
+      "meta": {
+        "instanceId": "14252f55409b74bfbc2ebbc1f88f70ee3158c04314bae8b95b4a969a5a5972e3",
+        "templateCredsSetupCompleted": false
+      },
+      "name": "Spotify Sync Liked Songs to Playlist",
+      "tags": [
+        {
+          "id": "TYGC4owzlQuowxvB",
+          "name": "Spotify",
+          "createdAt": "2024-03-14T16:54:47.712Z",
+          "updatedAt": "2024-03-14T16:54:47.712Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "7767a08e-43f0-4c07-968c-06dab188bf86",
+          "name": "Start",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            160,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9193f532-335e-4a6a-886e-64849f6fab55",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            180,
+            -100
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {}
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "41cffeb0-9dd5-4f71-8519-19f7339e2102",
+          "name": "Sort first added to first item",
+          "type": "n8n-nodes-base.sort",
+          "position": [
+            1480,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "sortFieldsUi": {
+              "sortField": [
+                {
+                  "fieldName": "added_at"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ed77edb1-25d4-4330-a6ad-3864117172e3",
+          "name": "Gotify Send deleted n from x",
+          "type": "n8n-nodes-base.gotify",
+          "position": [
+            3540,
+            220
+          ],
+          "parameters": {
+            "message": "=### Sync of Lieblingssongs to {{ $('Edit set Vars').item.json.varplaylistto }} finished.\n#### Deleted {{ $json.count_del }} Songs in {{ (($now.toUnixInteger()-$('Edit set intern vars').item.json.timestart)/60).toFixed(1) }} Minutes from {{ $('Edit set Vars').item.json.varplaylistto }}.",
+            "options": {
+              "contentType": "text/markdown"
+            },
+            "additionalFields": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f9e03838-03ea-44de-b3d5-6adb94f2324b",
+          "name": "Loop delete old",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            2560,
+            300
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "2aa10aab-fd65-4be3-95da-2471bacde57c",
+          "name": "Spotify delete old",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            2820,
+            320
+          ],
+          "parameters": {
+            "id": "={{ $('Set pluri').item.json.setpluri }}",
+            "trackID": "={{ $json.track.uri }}",
+            "resource": "playlist",
+            "operation": "delete"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "71a4391d-280b-4cbc-be5b-16f9bb02c161",
+          "name": "Edit set Vars",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            480,
+            100
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "1bacf493-c2bf-47f8-bcb4-a83010d8da57",
+                  "name": "varplaylistto",
+                  "type": "string",
+                  "value": "CHANGE MEEEEEEEEE"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "b0f18395-2bee-4e92-8905-a2faf8b8617b",
+          "name": "Edit success to del",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3180,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "2aab653d-b7ee-4d50-b8e5-fcae0c0da1f4",
+                  "name": "del",
+                  "type": "string",
+                  "value": "={{ $json.success }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "d205de9e-fefd-4a9b-933b-932e19873ee3",
+          "name": "Filter Playlist x",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1480,
+            160
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 1,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0665f0f3-fb32-4391-b1a9-ce1dee887392",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.name }}",
+                  "rightValue": "={{ $('Edit set Vars').item.json.varplaylistto }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5f81aa3f-631d-41c8-aaf7-0bced69ecb7a",
+          "name": "Compare Datasets",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            2260,
+            20
+          ],
+          "parameters": {
+            "options": {},
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "track.uri",
+                  "field2": "track.uri"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "7c86ca31-1e78-47d2-8c97-b796aa9b3eff",
+          "name": "count added",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            3320,
+            -280
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "added"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "80e6c5f5-6ca1-44a5-8f6a-2181854f3ad8",
+          "name": "Loop add missing",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            2560,
+            -240
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "executeOnce": false,
+          "typeVersion": 3
+        },
+        {
+          "id": "399c4489-82d3-4ca4-b875-5a3988cc1e56",
+          "name": "Spotify add Missing to x",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            2740,
+            -200
+          ],
+          "parameters": {
+            "id": "={{ $json.setpluri }}",
+            "trackID": "={{ $json.track.uri }}",
+            "resource": "playlist",
+            "additionalFields": {}
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "598693f1-9716-45b7-a53b-d4b16a9dbd5d",
+          "name": "Edit snapshot to added",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3160,
+            -280
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "2aab653d-b7ee-4d50-b8e5-fcae0c0da1f4",
+                  "name": "added",
+                  "type": "string",
+                  "value": "={{ $json.snapshot_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "29b6f2c3-7c03-4c22-9c40-12224adc36a9",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2480,
+            -380
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 552.0433138756023,
+            "height": 424.7557420711291,
+            "content": "### Spotify add all missing song from your Liked Songs to the Playlist."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2e6b61ee-67dd-473f-aca6-4bf81d348474",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2480,
+            140
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 526.4961431470259,
+            "height": 334.0270849934536,
+            "content": "### Spotify remove all songs that aren't in your Liked Songs anymore."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a7a32504-0805-4898-a054-3a9d1cbfdf00",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            120,
+            -180
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 208.40632224018503,
+            "height": 218.09160104224037,
+            "content": "Run the workflow every 24h at 0 o'clock"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "240bb516-434c-4050-af5c-8ecf3c270077",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1280,
+            -202
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 961.006341450897,
+            "height": 611.5473181162548,
+            "content": "## Compare the content of your Liked Songs and the target Playlist "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cd4fe1c5-88da-4925-b95e-a03c9cfb14fc",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            -80
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 365.4656320955345,
+            "height": 271.1720790719926,
+            "content": "# Edit here!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aa447ed6-9522-4f25-b0b6-7c8592b3d71a",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            -20
+          ],
+          "parameters": {
+            "width": 362.28928697919184,
+            "height": 267.99573395564994,
+            "content": "## Change the value to the name of your target playlist."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a7fd9f12-3f06-4613-9797-2cd754af4e44",
+          "name": "Cound deleted",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            3320,
+            231
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "del"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ebdc4b9d-09a9-4a41-b2a3-f9488decafd7",
+          "name": "Sort",
+          "type": "n8n-nodes-base.sort",
+          "position": [
+            2100,
+            160
+          ],
+          "parameters": {
+            "options": {
+              "disableDotNotation": false
+            },
+            "sortFieldsUi": {
+              "sortField": [
+                {
+                  "fieldName": "added_at"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1285f8fd-423a-418f-9ba0-b2e43f3f55d7",
+          "name": "Set pluri",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1680,
+            160
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f1589697-556f-451d-aada-55d2b0892eb2",
+                  "name": "setpluri",
+                  "type": "string",
+                  "value": "={{ $json.uri }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "55e994d9-cb66-4a30-9cda-ec373f5135a7",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1700,
+            -60
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combinationMode": "multiplex"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "83e47b30-dc30-4978-9de4-087f711f05b3",
+          "name": "Gotify",
+          "type": "n8n-nodes-base.gotify",
+          "position": [
+            3520,
+            -300
+          ],
+          "parameters": {
+            "message": "=### Sync of Liked Songs to {{ $('Edit set Vars').item.json.varplaylistto }} finished.\n#### Added {{ $('count added').item.json.count_added }} Songs in {{ (($now.toUnixInteger()-$('Edit set intern vars').item.json.timestart)/60).toFixed(1) }} Minutes to {{ $('Edit set Vars').item.json.varplaylistto }}.",
+            "options": {
+              "contentType": "text/markdown"
+            },
+            "additionalFields": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d58f4a88-d760-4d6f-a43f-d38575b5fa64",
+          "name": "Edit set intern vars",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            880,
+            80
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "88b47bd3-d1b6-4c7d-bec2-1606d8c39bde",
+                  "name": "timestart",
+                  "type": "string",
+                  "value": "={{ $now.toUnixInteger()}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "5bfaaa09-5310-49af-be6b-df0495eebefc",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1120,
+            -150
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 326.5743290776694,
+            "height": 513.8509299486715,
+            "content": "# Edit here!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0e47be4b-668b-4167-a191-2680f5750798",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1080,
+            -87
+          ],
+          "parameters": {
+            "width": 331.1762445648999,
+            "height": 481.41944245487934,
+            "content": "### You need to add your own spotify account here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b15d1e35-03bc-4ee9-b425-38b73f832807",
+          "name": "END",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2580,
+            0
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2ea585b8-645b-499d-8bef-9579f7283a38",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3140,
+            131
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 322.2176178216457,
+            "height": 271.6789308744022,
+            "content": "## (Optional) \n### Count the number of songs that were deleted"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bec19dea-11f6-4ac3-96c2-5b0b13079cab",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3120,
+            -400
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 322.2176178216457,
+            "height": 271.6789308744022,
+            "content": "## (Optional) \n### Count the number of songs that were added"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "44731884-1a40-49ca-bdc8-08f135e97fba",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1840,
+            37
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 210.26363071246638,
+            "height": 252.15185862696416,
+            "content": "# Edit here!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e9654402-2c58-458e-a235-ed1dd09bbc61",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1800,
+            100
+          ],
+          "parameters": {
+            "width": 223.1734532257829,
+            "height": 240.4901386983871,
+            "content": "### You need to add your own spotify account here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2d924a96-a313-448d-b563-abd4c56e8af9",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2800,
+            180
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 210.26363071246638,
+            "height": 252.15185862696416,
+            "content": "# Edit here!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9cbe2e02-7e5d-47b8-a333-5d09767790d6",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2760,
+            240
+          ],
+          "parameters": {
+            "width": 223.1734532257829,
+            "height": 240.4901386983871,
+            "content": "### You need to add your own spotify account here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f1d30def-79d5-4efe-9f24-d36866e971ee",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2740,
+            -340
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 210.26363071246638,
+            "height": 252.15185862696416,
+            "content": "# Edit here!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "957dc82b-6fe0-4018-add9-d904b8a1af9f",
+          "name": "Sticky Note15",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2700,
+            -280
+          ],
+          "parameters": {
+            "width": 223.1734532257829,
+            "height": 240.4901386983871,
+            "content": "### You need to add your own spotify account here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b63c2dcc-da0c-4074-bfa5-69aaeaa9e1db",
+          "name": "Spotify get Liked Songs",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1160,
+            -20
+          ],
+          "parameters": {
+            "resource": "library",
+            "returnAll": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "808389ac-65a8-444f-99a7-08eab4b48b3e",
+          "name": "Spotify get all playlists",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1160,
+            200
+          ],
+          "parameters": {
+            "resource": "playlist",
+            "operation": "getUserPlaylists",
+            "returnAll": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6232b653-27ba-4986-9f53-b5d9dfa2e6b8",
+          "name": "Spotify get Tracks of X",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1880,
+            160
+          ],
+          "parameters": {
+            "id": "={{ $json.setpluri }}",
+            "resource": "playlist",
+            "operation": "getTracks",
+            "returnAll": true
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "timezone": "Europe/Berlin",
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "saveManualExecutions": true
+      },
+      "versionId": "04d88525-7f76-435b-b70c-a7ace2517815",
+      "connections": {
+        "Sort": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Start": {
+          "main": [
+            [
+              {
+                "node": "Edit set Vars",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set pluri": {
+          "main": [
+            [
+              {
+                "node": "Spotify get Tracks of X",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "count added": {
+          "main": [
+            [
+              {
+                "node": "Gotify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Cound deleted": {
+          "main": [
+            [
+              {
+                "node": "Gotify Send deleted n from x",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit set Vars": {
+          "main": [
+            [
+              {
+                "node": "Edit set intern vars",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop delete old": {
+          "main": [
+            [
+              {
+                "node": "Edit success to del",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify delete old",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Compare Datasets": {
+          "main": [
+            [
+              {
+                "node": "Loop add missing",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "END",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "END",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Loop delete old",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop add missing": {
+          "main": [
+            [
+              {
+                "node": "Edit snapshot to added",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Spotify add Missing to x",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Edit set Vars",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Playlist x": {
+          "main": [
+            [
+              {
+                "node": "Set pluri",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify delete old": {
+          "main": [
+            [
+              {
+                "node": "Loop delete old",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit success to del": {
+          "main": [
+            [
+              {
+                "node": "Cound deleted",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit set intern vars": {
+          "main": [
+            [
+              {
+                "node": "Spotify get Liked Songs",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Spotify get all playlists",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit snapshot to added": {
+          "main": [
+            [
+              {
+                "node": "count added",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify get Liked Songs": {
+          "main": [
+            [
+              {
+                "node": "Sort first added to first item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify get Tracks of X": {
+          "main": [
+            [
+              {
+                "node": "Sort",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify add Missing to x": {
+          "main": [
+            [
+              {
+                "node": "Loop add missing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spotify get all playlists": {
+          "main": [
+            [
+              {
+                "node": "Filter Playlist x",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sort first added to first item": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 40,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.sort": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.gotify": {
+          "count": 2
+        },
+        "n8n-nodes-base.spotify": {
+          "count": 5
+        },
+        "n8n-nodes-base.summarize": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 16
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 2
+        },
+        "n8n-nodes-base.compareDatasets": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Dustin",
+      "username": "dh2io",
+      "bio": "",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/c9c34b45689935ea0b9c1f6516deb7bd4249ce786d107bb5d2b06ae8c06e98b5?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 335,
+        "icon": "file:spotify.svg",
+        "name": "n8n-nodes-base.spotify",
+        "codex": {
+          "data": {
+            "alias": [
+              "Music",
+              "Song"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.spotify/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/spotify/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Spotify"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMWVkNzYwIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTMyIDBDMTQuMyAwIDAgMTQuMzM3IDAgMzJjMCAxNy43IDE0LjMzNyAzMiAzMiAzMiAxNy43IDAgMzItMTQuMzM3IDMyLTMyUzQ5LjY2MyAwIDMyIDBtMTQuNjggNDYuMTg0Yy0uNTczLjk1Ni0xLjc5NyAxLjIyMy0yLjc1My42NS03LjUzMi00LjU4OC0xNi45NzUtNS42Mi0yOC4xNC0zLjA5Ny0xLjA3LjIzLTIuMTQtLjQyLTIuMzctMS41cy40Mi0yLjE0IDEuNS0yLjM3YzEyLjE5Ni0yLjggMjIuNjctMS42MDYgMzEuMDgyIDMuNTU2YTIgMiAwIDAgMSAuNjg4IDIuNzUzem0zLjktOC43MTdjLS43MjYgMS4xODUtMi4yNTYgMS41My0zLjQ0Ljg0LTguNjAyLTUuMjc2LTIxLjcxNi02LjgwNS0zMS44ODUtMy43NDctMS4zMzguMzgyLTIuNzE0LS4zNDQtMy4wOTctMS42NDQtLjM4Mi0xLjMzOC4zNDQtMi43MTQgMS42ODItMy4wOTcgMTEuNjIyLTMuNTE3IDI2LjA3NC0xLjgzNSAzNS45NzYgNC4yNDQgMS4xNDcuNjg4IDEuNSAyLjIxNy43NjUgMy40MDN6bS4zNDQtOS4xYy0xMC4zMjMtNi4xMTctMjcuMzM2LTYuNy0zNy4yLTMuNzA4LTEuNTY4LjQ5Ny0zLjI1LS40Mi0zLjc0Ny0xLjk4OHMuNDItMy4yNSAxLjk4OC0zLjc0N2MxMS4zMTctMy40NCAzMC4xMjctMi43NTMgNDEuOTggNC4yODIgMS40MTUuODQgMS44NzMgMi42NzYgMS4wMzIgNC4xLS43NjUgMS40NTMtMi42MzggMS45MTItNC4wNTMgMS4wN3oiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Spotify",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 401,
+        "icon": "file:gotify.png",
+        "name": "n8n-nodes-base.gotify",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gotify/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/gotify/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Gotify"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Gotify",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 836,
+        "icon": "file:compare.svg",
+        "name": "n8n-nodes-base.compareDatasets",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Compare",
+              "Dataset",
+              "Split",
+              "Sync",
+              "Syncing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Compare Datasets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzODQiIGhlaWdodD0iNTEyIj48cGF0aCBmaWxsPSIjZWQyMzBkIiBkPSJNMzUyIDQ0OEgzMmMtMTcuNjkgMC0zMiAxNC4zMS0zMiAzMnMxNC4zMSAzMS4xIDMyIDMxLjFoMzIwYzE3LjY5IDAgMzItMTQuMzEgMzItMzEuMXMtMTQuMy0zMi0zMi0zMiIvPjxwYXRoIGZpbGw9IiM2MmY3MzAiIGQ9Ik00OCAyMDhoMTEydjExMS4xYzAgMTcuNjkgMTQuMzEgMzEuMSAzMiAzMS4xczMyLTE0LjMxIDMyLTMxLjFWMjA4aDExMmMxNy42OSAwIDMyLTE0LjMyIDMyLTMyLjAxUzM1My42OSAxNDQgMzM2IDE0NEgyMjRWMzJjMC0xNy42OS0xNC4zMS0zMi4wMS0zMi0zMi4wMXMtMzIgMTQuMzQtMzIgMzIuMDJ2MTEySDQ4Yy0xNy42OSAwLTMyIDE0LjMxLTMyIDMxLjk5czE0LjMxIDMyIDMyIDMyIi8+PC9zdmc+"
+        },
+        "displayName": "Compare Datasets",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1240,
+        "icon": "file:sort.svg",
+        "name": "n8n-nodes-base.sort",
+        "codex": {
+          "data": {
+            "alias": [
+              "Sort",
+              "Order",
+              "Transform",
+              "Array",
+              "List",
+              "Item",
+              "Random"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sort/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Sort"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjODI4N0VCIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzAuNSA0MjIuNWMtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMzUxYzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMjRjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYzNTFjMCA2LjYyNy01LjM3MyAxMi0xMiAxMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGZpbGw9IiM4Mjg3RUIiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTM2LjA3NyAzMzMuNDgyYzkuMzk4LTkuMzQ2IDI0LjU5NC05LjMwNCAzMy45NC4wOTVsNzIuNDgzIDcyLjg4NyA3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMzgxLjUgODkuNWM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjM1MWMwIDYuNjI3LTUuMzczIDEyLTEyIDEyaC0yNGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMzUxYzAtNi42MjcgNS4zNzMtMTIgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjODI4N0VCIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00NzUuOTIzIDE3OC41MThjLTkuMzk4IDkuMzQ2LTI0LjU5NCA5LjMwNC0zMy45NDEtLjA5NUwzNjkuNSAxMDUuNTM2bC03Mi40ODIgNzIuODg3Yy05LjM0NyA5LjM5OS0yNC41NDMgOS40NDEtMzMuOTQxLjA5NXMtOS40NDEtMjQuNTQzLS4wOTUtMzMuOTQxbDg5LjUtOTBhMjQgMjQgMCAwIDEgMzQuMDM2IDBsODkuNSA5MGM5LjM0NiA5LjM5OCA5LjMwNCAyNC41OTQtLjA5NSAzMy45NDEiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvc3ZnPg=="
+        },
+        "displayName": "Sort",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1241,
+        "icon": "file:summarize.svg",
+        "name": "n8n-nodes-base.summarize",
+        "codex": {
+          "data": {
+            "alias": [
+              "Append",
+              "Array",
+              "Average",
+              "Concatenate",
+              "Count",
+              "Group",
+              "Item",
+              "List",
+              "Max",
+              "Min",
+              "Pivot",
+              "Sum",
+              "Summarise",
+              "Summarize",
+              "Transform",
+              "Unique"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Summarize"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjRjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzIgOTFjLTE1LjQ2NCAwLTI4IDEyLjUzNi0yOCAyOHYzMTdjMCAxNS40NjQgMTIuNTM2IDI4IDI4IDI4aDI0OGMxNS40NjQgMCAyOC0xMi41MzYgMjgtMjhWMTE5YzAtMTUuNDY0LTEyLjUzNi0yOC0yOC0yOGgtNmE2IDYgMCAwIDEtNi02VjQ5YTYgNiAwIDAgMSA2LTZoNmM0MS45NzQgMCA3NiAzNC4wMjYgNzYgNzZ2MzE3YzAgNDEuOTc0LTM0LjAyNiA3Ni03NiA3NkgxMzJjLTQxLjk3NCAwLTc2LTM0LjAyNi03Ni03NlYxMTljMC00MS45NzQgMzQuMDI2LTc2IDc2LTc2aDZhNiA2IDAgMCAxIDYgNnYzNmE2IDYgMCAwIDEtNiA2eiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iI0Y5MiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMjU2IDBjLTI3LjIzMiAwLTUwLjIyNyAxOC4xNDItNTcuNTU4IDQzSDE4MmE2IDYgMCAwIDAtNiA2djcwYTYgNiAwIDAgMCA2IDZoMTQ4YTYgNiAwIDAgMCA2LTZWNDlhNiA2IDAgMCAwLTYtNmgtMTYuNDQyQzMwNi4yMjcgMTguMTQyIDI4My4yMzIgMCAyNTYgMG0wIDQwYTE5LjkgMTkuOSAwIDAgMC0xMC41NDEgM0MyMzkuNzgxIDQ2LjUyOCAyMzYgNTIuODIzIDIzNiA2MGMwIDExLjA0NiA4Ljk1NCAyMCAyMCAyMHMyMC04Ljk1NCAyMC0yMGMwLTcuMTc3LTMuNzgxLTEzLjQ3Mi05LjQ1OS0xN0ExOS45IDE5LjkgMCAwIDAgMjU2IDQwbTEwMSAxNzljMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgyMzNjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ2LTI0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjRjkyIiBkPSJNMTk3IDIwN2MwIDEzLjI1NS0xMC43NDUgMjQtMjQgMjRzLTI0LTEwLjc0NS0yNC0yNCAxMC43NDUtMjQgMjQtMjQgMjQgMTAuNzQ1IDI0IDI0Ii8+PHBhdGggZmlsbD0iI0Y5MiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzU3IDM5NWMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDIzM2MtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMjRjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxMTJjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGZpbGw9IiNGOTIiIGQ9Ik0xOTcgMzgzYzAgMTMuMjU1LTEwLjc0NSAyNC0yNCAyNHMtMjQtMTAuNzQ1LTI0LTI0IDEwLjc0NS0yNCAyNC0yNCAyNCAxMC43NDUgMjQgMjQiLz48cGF0aCBmaWxsPSIjRjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNTcgMzA3YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMjMzYy02LjYyNyAwLTEyLTUuMzczLTEyLTEydi0yNGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDExMmM2LjYyNyAwIDEyIDUuMzczIDEyIDEyeiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iI0Y5MiIgZD0iTTE5NyAyOTVjMCAxMy4yNTUtMTAuNzQ1IDI0LTI0IDI0cy0yNC0xMC43NDUtMjQtMjQgMTAuNzQ1LTI0IDI0LTI0IDI0IDEwLjc0NSAyNCAyNCIvPjwvc3ZnPg=="
+        },
+        "displayName": "Summarize",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": []
+  }
+}

@@ -1,0 +1,2568 @@
+{
+  "workflow": {
+    "id": 2079,
+    "name": "Shopify Orders to D365 Business Central Sales Orders / Sales Invoices",
+    "views": 2519,
+    "recentViews": 0,
+    "totalViews": 2519,
+    "createdAt": "2024-02-03T01:32:29.117Z",
+    "description": "## Workflow Information 📌\n\n### Purpose 🎯\nThe intention of this workflow is to integrate New Shopify Orders into MS Dynamics Business Central:\n\n- **Point-of-Sale (POS):** POS orders will be created in Business Central as Sales Invoices given no fulfillment is expected.\n- **Web Orders:** This type of orders will be created as Business Central Sales Orders.\n\n### How to use it 🚀\n1. Edit the \"D365 BC Environment Settings\" node with your own account values (Company Id, Tenanant Id, Tax & Discount Items).\n2. Go to the \"Shopify\" node and edit the connection with your environment. More help [here](https://docs.n8n.io/integrations/builtin/credentials/shopify/).\n3. Go to the \"Lookup Customers\" node to edit the Business Central connection details with your environment settings.\n4. Set the required filters on the \"Shopify Order Filter\" node.\n5. Edit the \"Schedule Trigger\" node with the required frequency.\n\n### Useful Workflow Links 📚\n1. [Step-by-step Guide/ Integro Cloud Solutions](https://z0v4z2m6gixudcjglfbe.guidejar.xyz/categories/business-central)\n2. [Business Central REST API Documentation](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/api-reference/v2.0/)\n3. [Video Demo](https://www.loom.com/share/9e218cd53cf14a93bcb55d7b3d47ec45?sid=5fdfb8ab-8205-468a-b514-67193abac455)\n\n\n### Need Help?\nContact me at:\n✉️greg.lopez@integrocloudsolutions.com\n📥 https://www.linkedin.com/in/greg-lopez-08b5071b/\n\n\n\n",
+    "workflow": {
+      "id": "NGwD3pIHXBU0w5hC",
+      "meta": {
+        "instanceId": "ae2372ebbc56db2b55a9a46ac3affa802af144b84fd97c2796c22342aba529bd"
+      },
+      "name": "[n8n] - Shopify Orders to D365 Business Central Sales Orders / Sales Invoices",
+      "tags": [
+        {
+          "id": "2RJGhx5RHCJdXr52",
+          "name": "d365 business central",
+          "createdAt": "2023-08-08T23:10:56.527Z",
+          "updatedAt": "2023-08-08T23:10:56.527Z"
+        },
+        {
+          "id": "OPc1YLQyTimMr498",
+          "name": "shopify",
+          "createdAt": "2023-07-22T15:30:38.620Z",
+          "updatedAt": "2023-07-22T15:30:38.620Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "92db12db-d96d-4076-a9cd-441c4bdfe212",
+          "name": "GetFufillmentOrders",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            840,
+            300
+          ],
+          "parameters": {
+            "url": "=https://integrocloud.myshopify.com/admin/api/2024-01/orders/{{ $json.id }}/fulfillment_orders.json",
+            "options": {},
+            "sendHeaders": true,
+            "authentication": "predefinedCredentialType",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "nodeCredentialType": "shopifyAccessTokenApi"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "BkNv57yQW9PSPr6p",
+              "name": "Shopify HTTP Token Auth"
+            },
+            "shopifyAccessTokenApi": {
+              "id": "9P9B0Hcwyj2CpqeA",
+              "name": "Shopify Access Token account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "60e0bd37-a2d1-48c5-8b47-830094d5e2ae",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            780,
+            140
+          ],
+          "parameters": {
+            "width": 730.3433300216063,
+            "height": 394.8862809393426,
+            "content": "## Shopify Line Locations\nFor multi-location Shopify accounts, these group of nodes get the active location id for each order line."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e91817c-26bf-46f8-8185-696f07daa28c",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            400,
+            140
+          ],
+          "parameters": {
+            "width": 354.40926061252037,
+            "height": 398.9698970525732,
+            "content": "## Get Shopify Orders\n1.- Get Shopify Orders created/updated since one day prior. The Flow will get every order created or updated on the last 24 hours.\n\n2.- Filter to get paid orders."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "89f633a1-ac8f-4480-934b-e429717cb09f",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1557,
+            140
+          ],
+          "parameters": {
+            "width": 974.6786178827637,
+            "height": 520.8878646073657,
+            "content": "## Existing Customer Lookup (Business Central)\nLookup for existing customer in Business Central based on the logic defined in the URI, if a customer exist then that id is used, otherwhise a new customer will be created\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c973b647-c1c6-43dc-9b80-46e34d051fc4",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -640,
+            140
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 509.9611651710956,
+            "height": 705.3721586313337,
+            "content": "## Workflow Information 📌\n\n### Purpose 🎯\nThe intention of this workflow is to integrate New Shopify Orders into MS Dynamics Business Central:\n\n- **Point-of-Sale (POS):** POS orders will be created in Business Central as Sales Invoices given no fulfillment is expected.\n- **Web Orders:** This type of orders will be created as Business Central Sales Orders.\n\n### How to use it 🚀\n1. Edit the \"D365 BC Environment Settings\" node with your own account values (Company Id, Tenanant Id, Tax & Discount Items).\n2. Go to the \"Shopify\" node and edit the connection with your environment. More help [here](https://docs.n8n.io/integrations/builtin/credentials/shopify/).\n3. Go to the \"Lookup Customers\" node to edit the Business Central connection details with your environment settings.\n4. Set the required filters on the \"Shopify Order Filter\" node.\n5. Edit the \"Schedule Trigger\" node with the required frequency.\n\n### Useful Workflow Links 📚\n1. [Step-by-step Guide/ Integro Cloud Solutions](https://z0v4z2m6gixudcjglfbe.guidejar.xyz/categories/business-central)\n2. [Business Central REST API Documentation](https://learn.microsoft.com/en-us/dynamics365/business-central/dev-itpro/api-reference/v2.0/)\n3. [Video Demo](https://www.loom.com/share/9e218cd53cf14a93bcb55d7b3d47ec45?sid=5fdfb8ab-8205-468a-b514-67193abac455)\n\n\n### Need Help?\nContact me at:\n✉️greg.lopez@integrocloudsolutions.com\n📥 https://www.linkedin.com/in/greg-lopez-08b5071b/\n\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e7c4bf60-e040-4f41-9c8a-7729ffed88fd",
+          "name": "Shopify",
+          "type": "n8n-nodes-base.shopify",
+          "position": [
+            440,
+            300
+          ],
+          "parameters": {
+            "options": {
+              "status": "any",
+              "updatedAtMin": "={{$now.minus({days: 1})}}"
+            },
+            "operation": "getAll",
+            "returnAll": true,
+            "authentication": "accessToken"
+          },
+          "credentials": {
+            "shopifyAccessTokenApi": {
+              "id": "9P9B0Hcwyj2CpqeA",
+              "name": "Shopify Access Token account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "274b710d-e642-4bc6-bf8d-5852a721f037",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1560,
+            730.5378173588417
+          ],
+          "parameters": {
+            "width": 978.7262207141349,
+            "height": 502.3149881728773,
+            "content": "## Existing Order Lookup (Business Central)\n\n1.- This logic will avoid duplication of Business Central Sales Orders/Sales Invoices validating if an order with the same external Id exist already.\n\n2.- If a match is found then the order is ignored\n\n3.- The source of the order is evaluated, if the order was placed on the Point-of-Sale a Sales Invoice is created else a Sales Order will be created."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ccf15ee2-b805-4fa7-88ab-12bf3c864415",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2600,
+            700
+          ],
+          "parameters": {
+            "width": 1330.0330040471722,
+            "height": 434.94851154152406,
+            "content": "## Sales Order Creation\n\n1.- Map on the \"Sales Order Mapping\" node any requiered fields to be integrated into Business Central.\n\n2- The HTTP Node will perform a POST call to Business Central REST API to create the Sales Order.\n\n3. After the Sales Order gets created, all line items will be added into the Order. \n\n4. If there are any while creating line items, the Sales Order will be deleted.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5a78d974-d950-4e26-87cf-a42e4633a5d8",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -68.32736133691077,
+            140
+          ],
+          "parameters": {
+            "width": 442.73662194943114,
+            "height": 398.9698970525732,
+            "content": "## Configure Business Central Environment Variables\n1.- Enter your BC tenantId,companyId, name.\n2.- Set the SKU number for the Items to be used for Taxes and Discounts."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "95f15005-6c9b-46ae-9cb3-a89887189aed",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -20,
+            340
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "minutes"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "0c2ee7ac-3b27-4e6f-9e65-f1bba3ee494b",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1620,
+            260
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "58a528fe-f9f3-4522-bc4d-0fc91fbbf656",
+          "name": "New Customer?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2020,
+            260
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{ $json.value.length }}",
+                  "value2": 1
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e5222a97-002c-4433-aa7a-dbc6426b2a25",
+          "name": "Lookup Customers",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1840,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json[\"tenantId\"] }}/{{ $('D365 BC Environment Settings').item.json[\"environmentName\"] }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json[\"companyId\"] }})/customers?$filter=email eq '{{ $json.customer.email }}' and contains(email,'@')&$select=id,number,email",
+            "options": {},
+            "authentication": "genericCredentialType",
+            "genericAuthType": "oAuth2Api"
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1,
+          "continueOnFail": true
+        },
+        {
+          "id": "8d5ba820-04a7-413e-bb9e-8385dee5e78b",
+          "name": "SelectFields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1080,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "id",
+                  "value": "={{ $('Filter').item.json.id }}"
+                },
+                {
+                  "name": "name",
+                  "value": "={{ $('Filter').item.json.name }}"
+                },
+                {
+                  "name": "source_name",
+                  "value": "={{ $('Filter').item.json.source_name }}"
+                },
+                {
+                  "name": "shipping_address",
+                  "value": "={{ $('Filter').item.json.shipping_address }}"
+                },
+                {
+                  "name": "billing_address",
+                  "value": "={{ $('Filter').item.json.billing_address }}"
+                },
+                {
+                  "name": "customer",
+                  "value": "={{ $('Filter').item.json.customer }}"
+                },
+                {
+                  "name": "discount_codes",
+                  "value": "={{ $('Filter').item.json.discount_codes}}"
+                },
+                {
+                  "name": "shippingcost",
+                  "value": "={{ $('Filter').item.json.total_shipping_price_set.shop_money.amount }}"
+                },
+                {
+                  "name": "line_items",
+                  "value": "={{ $('Filter').item.json.line_items }}"
+                },
+                {
+                  "name": "fulfillment_orders",
+                  "value": "={{ $json.fulfillment_orders }}"
+                },
+                {
+                  "name": "currency",
+                  "value": "={{ $('Filter').item.json.currency }}"
+                },
+                {
+                  "name": "=created_at",
+                  "value": "={{ $('Filter').item.json.created_at }}"
+                },
+                {
+                  "name": "gateway",
+                  "value": "={{ $('Filter').item.json.payment_gateway_names[0] }}"
+                },
+                {
+                  "name": "total_tax",
+                  "value": "={{ $('Filter').item.json.total_tax }}"
+                },
+                {
+                  "name": "total_discounts",
+                  "value": "={{ $('Filter').item.json.total_discounts*-1 }}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d5120009-2efe-4ef1-9450-eedd475f95c7",
+          "name": "orderPreprocessing",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1340,
+            300
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "const orderJson = $input.item.json;\n\n// Create a map of line_item_id to assigned_location_id\nconst lineItemToLocationMap = {};\norderJson.fulfillment_orders.forEach(fulfillmentOrder => {\n  fulfillmentOrder.line_items.forEach(lineItem => {\n    lineItemToLocationMap[lineItem.line_item_id] = fulfillmentOrder.assigned_location_id;\n  });\n});\n\n// Update the line_items array with assigned_location_id\norderJson.line_items.forEach(lineItem => {\n  const assignedLocationId = lineItemToLocationMap[lineItem.id];\n  if (assignedLocationId !== undefined) {\n    lineItem.assigned_location_id = assignedLocationId;\n  }\n});\n\n// Add a new property 'pairedItem' to orderJson with the value of $itemIndex\norderJson.pairedItem = $itemIndex;\n\n// Add a new line item with specified fields for taxes if taxesAsLineItem is true\nif ($('D365 BC Environment Settings').item.json.taxesAsLineItem) {\n  const newLineItem = {\n    \"sku\": $('D365 BC Environment Settings').item.json.taxItemSku,\n    \"price\": orderJson.total_tax,\n    \"quantity\": 1\n  };\n  orderJson.line_items.push(newLineItem);\n}\n\n// Add a new line item with specified fields for discount\nif ($('D365 BC Environment Settings').item.json.discountsAsLineItem) {\nconst newDiscountLineItem = {\n  \"sku\": $('D365 BC Environment Settings').item.json.discountItemSku,\n  \"price\": orderJson.total_discounts,\n  \"quantity\": 1\n};\norderJson.line_items.push(newDiscountLineItem);\n}\n\n// Return the modified orderJson\nreturn orderJson;\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "28f0b15a-e1a6-4055-90ed-f3051f043792",
+          "name": "Create Customer",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2240,
+            320
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json[\"tenantId\"] }}/{{ $('D365 BC Environment Settings').item.json[\"environmentName\"] }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json[\"companyId\"] }})/customers",
+            "method": "POST",
+            "options": {
+              "response": {
+                "response": {}
+              }
+            },
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "displayName",
+                  "value": "={{ $('orderPreprocessing').item.json.customer.first_name }} {{ $('orderPreprocessing').item.json.customer.last_name }}"
+                },
+                {
+                  "name": "type",
+                  "value": "Person"
+                },
+                {
+                  "name": "email",
+                  "value": "={{ $('Loop Over Items').item.json.customer.email }}"
+                },
+                {
+                  "name": "taxLiable",
+                  "value": "true"
+                },
+                {
+                  "name": "currencyCode",
+                  "value": "={{ $('Loop Over Items').item.json.currency }}"
+                },
+                {
+                  "name": "addressLine1",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.address1 }}"
+                },
+                {
+                  "name": "addressLine2",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.address2 }}"
+                },
+                {
+                  "name": "city",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.city }}"
+                },
+                {
+                  "name": "state",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.province }}"
+                },
+                {
+                  "name": "country",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.country_code }}"
+                },
+                {
+                  "name": "postalCode",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.zip }}"
+                },
+                {
+                  "name": "phoneNumber",
+                  "value": "={{ $('Loop Over Items').item.json.shipping_address.phone }}"
+                }
+              ]
+            },
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1,
+          "continueOnFail": true,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "990fec80-30e3-44f8-a95d-f9afb2e495c5",
+          "name": "Set Business Central Customer Id",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1780,
+            500
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "order",
+                  "value": "={{ $('orderPreprocessing').item.json }}"
+                },
+                {
+                  "name": "bc_customer.id",
+                  "value": "={{ $json.value.isEmpty() ? $json.id : $json.value[0].id}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "313ac019-aedb-4d64-833d-c3582153e2c0",
+          "name": "Create Order Lines",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "position": [
+            3440,
+            900
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json.tenantId }}/{{ $('D365 BC Environment Settings').item.json.environmentName }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json.companyId }})/salesOrders({{ $json.so_id }})/salesOrderLines",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 0
+                }
+              },
+              "response": {
+                "response": {}
+              }
+            },
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "lineObjectNumber",
+                  "value": "={{ $json.line_items.sku }}"
+                },
+                {
+                  "name": "quantity",
+                  "value": "={{ $json.line_items.quantity }}"
+                },
+                {
+                  "name": "description",
+                  "value": "={{ $json.line_items.title }}"
+                },
+                {
+                  "name": "lineType",
+                  "value": "Item"
+                },
+                {
+                  "name": "unitPrice",
+                  "value": "={{ $json.line_items.price*1 }}"
+                }
+              ]
+            },
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "e0d63859-a480-4f69-bb30-77c9615777b6",
+          "name": "End",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            3720,
+            840
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "8c756b31-0b7f-4f9a-a7a3-5fccdcfcf8b8",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            3260,
+            900
+          ],
+          "parameters": {
+            "include": "allOtherFields",
+            "options": {},
+            "fieldToSplitOut": "=line_items"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e2ddcd9a-7502-49ae-9d5c-50f6c3084570",
+          "name": "DELETE Sales Order",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueRegularOutput",
+          "position": [
+            3720,
+            980
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json.tenantId }}/Production/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json.companyId }})/salesOrders({{ $json.so_id }})",
+            "method": "DELETE",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 1
+                }
+              },
+              "response": {
+                "response": {}
+              }
+            },
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "b5303dc5-bf56-4b1c-a231-15a322f26ac8",
+          "name": "D365 BC Environment Settings",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            180,
+            340
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "tenantId",
+                  "value": "{tenandId}"
+                },
+                {
+                  "name": "environmentName",
+                  "value": "Production"
+                },
+                {
+                  "name": "companyId",
+                  "value": "{CompanyId}"
+                },
+                {
+                  "name": "discountItemSku",
+                  "value": "N8N_DISCOUNT"
+                },
+                {
+                  "name": "taxItemSku",
+                  "value": "N8N_TAX_AMOUNT"
+                }
+              ],
+              "boolean": [
+                {
+                  "name": "taxesAsLineItem",
+                  "value": true
+                },
+                {
+                  "name": "discountsAsLineItem",
+                  "value": true
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e7925d36-5b30-4822-8eb1-a5a076a77669",
+          "name": "Create Sales Order",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Create Sales Order Header",
+          "onError": "continueErrorOutput",
+          "position": [
+            2880,
+            920
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json.tenantId }}/{{ $('D365 BC Environment Settings').item.json.environmentName }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json.companyId }})/salesOrders",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 5,
+                  "batchInterval": 5000
+                }
+              },
+              "response": {
+                "response": {}
+              }
+            },
+            "jsonBody": "={{$json}}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "id": "fce6d383-c372-4f65-83b5-d681dfa16323",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2600,
+            140
+          ],
+          "parameters": {
+            "width": 1330.0330040471722,
+            "height": 434.94851154152406,
+            "content": "## Sales Order Creation\n\n1. Map on the \"Sales Invoice Mapping\" node any requiered fields to be integrated into Business Central.\n\n2. The HTTP Node will perform a POST call to Business Central REST API to create the Sales Invoice.\n\n3. After the Sales Invoice gets created, all line items will be added into the Invoice. \n\n4. If there are any while creating line items, the Sales Invoice will be deleted.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "29d43335-713f-4bfc-a416-be41f7cc1311",
+          "name": "Set Lines Invoice",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3100,
+            360
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "so_id",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "name": "line_items",
+                  "value": "={{ $('Set Business Central Customer Id').item.json.order.line_items }}"
+                }
+              ]
+            },
+            "options": {
+              "dotNotation": true
+            },
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7d05a3d7-5bac-4099-8561-61b520c75e91",
+          "name": "Set Lines SO",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3100,
+            900
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "so_id",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "name": "line_items",
+                  "value": "={{ $('Set Business Central Customer Id').item.json.order.line_items }}"
+                }
+              ]
+            },
+            "options": {
+              "dotNotation": true
+            },
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e39a775a-4c89-47f0-8da9-e5cb33d03228",
+          "name": "Split Out Invoice",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            3260,
+            360
+          ],
+          "parameters": {
+            "include": "allOtherFields",
+            "options": {},
+            "fieldToSplitOut": "=line_items"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ff21ea27-091c-4ba7-bedb-1e26561ff042",
+          "name": "Create Invoice Lines",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "position": [
+            3440,
+            360
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json.tenantId }}/{{ $('D365 BC Environment Settings').item.json.environmentName }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json.companyId }})/salesInvoices({{ $json.so_id }})/salesInvoiceLines",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 0
+                }
+              },
+              "response": {
+                "response": {}
+              }
+            },
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "lineObjectNumber",
+                  "value": "={{ $json.line_items.sku }}"
+                },
+                {
+                  "name": "quantity",
+                  "value": "={{ $json.line_items.quantity }}"
+                },
+                {
+                  "name": "description",
+                  "value": "={{ $json.line_items.title }}"
+                },
+                {
+                  "name": "lineType",
+                  "value": "Item"
+                },
+                {
+                  "name": "unitPrice",
+                  "value": "={{ $json.line_items.price*1 }}"
+                }
+              ]
+            },
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "becfe8a8-9655-4386-b891-977271b26c7e",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            620,
+            300
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.financial_status }}",
+                  "value2": "paid"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "48edfcb3-5864-4794-8876-40bb7bec31f6",
+          "name": "Create Sales Invoice",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Create Sales Order Header",
+          "onError": "continueErrorOutput",
+          "position": [
+            2900,
+            380
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json.tenantId }}/{{ $('D365 BC Environment Settings').item.json.environmentName }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json.companyId }})/salesInvoices",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 5,
+                  "batchInterval": 5000
+                }
+              },
+              "response": {
+                "response": {}
+              }
+            },
+            "jsonBody": "={{$json}}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "id": "a2879c0f-55d2-442a-be5e-cb249af88561",
+          "name": "End1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            3720,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "4c979801-ab23-41a7-bc14-179d128c2bf7",
+          "name": "Sales Invoice",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2700,
+            380
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "customerId",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.bc_customer.id }}"
+                },
+                {
+                  "name": "invoiceDate",
+                  "stringValue": "={{ DateTime.fromISO($('Set Business Central Customer Id').item.json.order.created_at).toFormat('yyyy-MM-dd').toString() }}"
+                },
+                {
+                  "name": "externalDocumentNumber",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.id.toString() }}"
+                },
+                {
+                  "name": "currencyCode",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.currency }}"
+                },
+                {
+                  "name": "sellToAddressLine1",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.address1 }}"
+                },
+                {
+                  "name": "sellToAddressLine2",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.address2 }}"
+                },
+                {
+                  "name": "sellToCity",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.city }}"
+                },
+                {
+                  "name": "sellToCountry",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.country_code }}"
+                },
+                {
+                  "name": "sellToState",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.province }}"
+                },
+                {
+                  "name": "sellToPostCode",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.zip }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "022de50a-0030-434d-95b8-edef8eacb481",
+          "name": "Lookup Sales Order",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2120,
+            1080
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json[\"tenantId\"] }}/{{ $('D365 BC Environment Settings').item.json[\"environmentName\"] }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json[\"companyId\"] }})/salesOrders?$filter=externalDocumentNumber eq '{{ $json.order.id.toString() }}'&$select=id,number,externalDocumentNumber",
+            "options": {},
+            "authentication": "genericCredentialType",
+            "genericAuthType": "oAuth2Api"
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1,
+          "continueOnFail": true
+        },
+        {
+          "id": "8e646fe3-5a28-4bf4-8cc1-d31a13294218",
+          "name": "Sales Order Mapping",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2660,
+            920
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "customerId",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.bc_customer.id }}"
+                },
+                {
+                  "name": "OrderDate",
+                  "stringValue": "={{ DateTime.fromISO($('Set Business Central Customer Id').item.json.order.created_at).toFormat('yyyy-MM-dd').toString() }}"
+                },
+                {
+                  "name": "externalDocumentNumber",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.id.toString() }}"
+                },
+                {
+                  "name": "currencyCode",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.currency }}"
+                },
+                {
+                  "name": "sellToAddressLine1",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.address1 }}"
+                },
+                {
+                  "name": "sellToAddressLine2",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.address2 }}"
+                },
+                {
+                  "name": "sellToCity",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.city }}"
+                },
+                {
+                  "name": "sellToCountry",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.country_code }}"
+                },
+                {
+                  "name": "sellToState",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.province }}"
+                },
+                {
+                  "name": "sellToPostCode",
+                  "stringValue": "={{ $('Set Business Central Customer Id').item.json.order.shipping_address.zip }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "3839e2f2-54a2-4bbb-b0af-e10d5da0da82",
+          "name": "New SO?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2300,
+            1080
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{ $json.value.length }}",
+                  "operation": "smallerEqual"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "54292ca1-8d99-4ef8-8f46-a17633bd8a9d",
+          "name": "Lookup Sales Invoice",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2120,
+            920
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json[\"tenantId\"] }}/{{ $('D365 BC Environment Settings').item.json[\"environmentName\"] }}/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json[\"companyId\"] }})/salesInvoices?$filter=externalDocumentNumber eq '{{ $json.order.id.toString() }}'&$select=id,number,externalDocumentNumber",
+            "options": {},
+            "authentication": "genericCredentialType",
+            "genericAuthType": "oAuth2Api"
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1,
+          "continueOnFail": true
+        },
+        {
+          "id": "6c531d1b-a605-4212-88c9-292b818ca5d4",
+          "name": "New Invoice?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2300,
+            920
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{ $json.value.length }}",
+                  "operation": "smallerEqual"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6d7517eb-b32d-471d-93e3-4bbee0b7f06a",
+          "name": "POS?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1920,
+            1000
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.order.source_name }}",
+                  "value2": "pos"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b17c61c4-ce32-4b0f-88ac-aad47e5d785d",
+          "name": "DELETE Sales Invoice",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueRegularOutput",
+          "position": [
+            3720,
+            440
+          ],
+          "parameters": {
+            "url": "=https://api.businesscentral.dynamics.com/v2.0/{{ $('D365 BC Environment Settings').item.json.tenantId }}/Production/api/v2.0/companies({{ $('D365 BC Environment Settings').item.json.companyId }})/salesOrders({{ $json.so_id }})",
+            "method": "DELETE",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 1
+                }
+              },
+              "response": {
+                "response": {}
+              }
+            },
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "genericAuthType": "oAuth2Api",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "oAuth2Api": {
+              "id": "s8gGHYzOwlhE9yot",
+              "name": "PROD_businessCentral_integro"
+            }
+          },
+          "typeVersion": 4.1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "executionTimeout": 300,
+        "saveManualExecutions": false,
+        "saveExecutionProgress": true,
+        "saveDataSuccessExecution": "none"
+      },
+      "versionId": "82aaad0b-396d-4d9a-9550-731340124a18",
+      "connections": {
+        "POS?": {
+          "main": [
+            [
+              {
+                "node": "Lookup Sales Invoice",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Lookup Sales Order",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter": {
+          "main": [
+            [
+              {
+                "node": "GetFufillmentOrders",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New SO?": {
+          "main": [
+            [
+              {
+                "node": "Sales Order Mapping",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Shopify": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Create Order Lines",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New Invoice?": {
+          "main": [
+            [
+              {
+                "node": "Sales Invoice",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SelectFields": {
+          "main": [
+            [
+              {
+                "node": "orderPreprocessing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Lines SO": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New Customer?": {
+          "main": [
+            [
+              {
+                "node": "Create Customer",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sales Invoice": {
+          "main": [
+            [
+              {
+                "node": "Create Sales Invoice",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Customer": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [
+              {
+                "node": "Set Business Central Customer Id",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Lookup Customers",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Lookup Customers": {
+          "main": [
+            [
+              {
+                "node": "New Customer?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "D365 BC Environment Settings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Lines Invoice": {
+          "main": [
+            [
+              {
+                "node": "Split Out Invoice",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Invoice": {
+          "main": [
+            [
+              {
+                "node": "Create Invoice Lines",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Order Lines": {
+          "main": [
+            [
+              {
+                "node": "End",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "DELETE Sales Order",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Sales Order": {
+          "main": [
+            [
+              {
+                "node": "Set Lines SO",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Lookup Sales Order": {
+          "main": [
+            [
+              {
+                "node": "New SO?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "orderPreprocessing": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GetFufillmentOrders": {
+          "main": [
+            [
+              {
+                "node": "SelectFields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sales Order Mapping": {
+          "main": [
+            [
+              {
+                "node": "Create Sales Order",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Invoice Lines": {
+          "main": [
+            [
+              {
+                "node": "End1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "DELETE Sales Invoice",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Sales Invoice": {
+          "main": [
+            [
+              {
+                "node": "Set Lines Invoice",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Lookup Sales Invoice": {
+          "main": [
+            [
+              {
+                "node": "New Invoice?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "D365 BC Environment Settings": {
+          "main": [
+            [
+              {
+                "node": "Shopify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Business Central Customer Id": {
+          "main": [
+            [
+              {
+                "node": "POS?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 39,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 4
+        },
+        "n8n-nodes-base.set": {
+          "count": 7
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 2
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.shopify": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 8
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 11
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Greg Lopez",
+      "username": "greglopez",
+      "bio": "I help CFOs and Founders automate their ERP business processes, improving efficiency and reducing costs | Automation Expert | NetSuite | Business Central | Acumatica",
+      "verified": false,
+      "links": [
+        "https://www.linkedin.com/in/greg-lopez-08b5071b/"
+      ],
+      "avatar": "https://gravatar.com/avatar/4cf582e3df4b7e1eabb14cb1e183da6caee41328f6893fd4ba3e550c6a2797d2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 312,
+        "icon": "file:shopify.svg",
+        "name": "n8n-nodes-base.shopify",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.shopify/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/shopify/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Shopify"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNTggNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzk1YmY0NyIgZD0iTTQ5LjI1NSAxMi40ODRhLjYzLjYzIDAgMCAwLS41NjQtLjUyN2MtLjIyNS0uMDM3LTUuMTctLjM3Ni01LjE3LS4zNzZsLTMuNzctMy43N2MtLjM0LS4zNzYtMS4wOTItLjI2Ni0xLjM3Ni0uMTg4LS4wMzcgMC0uNzUyLjIyNS0xLjkyMi42MDUtMS4xMzctMy4zLTMuMTUtNi4zMDYtNi42OTYtNi4zMDZoLS4zMDNDMjguNDM4LjYwNSAyNy4xOTQgMCAyNi4xNDQgMGMtOC4yNTYuMDM3LTEyLjIgMTAuMzMzLTEzLjQzNCAxNS41OTRsLTUuNzcgMS43N2MtMS43Ny41NjQtMS44MzUuNjA1LTIuMDczIDIuMjkzTDAgNTcuMTc1IDM2LjQ2OCA2NGwxOS43NjMtNC4yNmMwLS4wMzctNi45NC00Ni44OTctNi45NzYtNDcuMjU1ek0zNC40MzEgOC44NmMtLjkxNy4zMDMtMS45NjMuNjA1LTMuMS45NDV2LS42OGExNSAxNSAwIDAgMC0uNzUyLTQuOTk5YzEuODQ4LjI4NCAzLjEgMi4zNTcgMy44NDMgNC43MzN6bS02LjA2OC00LjI5OGMuNjAzIDEuNzc4Ljg4MyAzLjY1LjgyNiA1LjUyN3YuMzRsLTYuMzc1IDEuOTYzYzEuMjQ4LTQuNjYgMy41NS02Ljk2MiA1LjU1LTcuODN6bS0yLjQ1LTIuMjkzYTEuOTQgMS45NCAwIDAgMSAxLjA1NS4zMzljLTIuNjYgMS4yMzgtNS40NzIgNC4zNjYtNi42NzggMTAuNjI3bC01LjA0NSAxLjU0NkMxNi42NjggMTAuMDMgMTkuOTg4IDIuMjYgMjUuOTEgMi4yNnoiLz48cGF0aCBmaWxsPSIjNWU4ZTNlIiBkPSJNNDguNjkxIDExLjk1N2MtLjIyNS0uMDM3LTUuMTctLjM3Ni01LjE3LS4zNzZsLTMuNzctMy43N2EuNzUuNzUgMCAwIDAtLjUyNy0uMjI1TDM2LjQ3MiA2NGwxOS43NjMtNC4yNi02Ljk4LTQ3LjIxOGEuNjguNjggMCAwIDAtLjU2NC0uNTY0eiIvPjxwYXRoIGQ9Im0yOS43NTggMjIuOS0yLjQ1NCA3LjI0MmExMS40IDExLjQgMCAwIDAtNC43NTItMS4xMzNjLTMuODQ4IDAtNC4wMzYgMi40MTItNC4wMzYgMy4wMTggMCAzLjI5OCA4LjYzNiA0LjU2NCA4LjYzNiAxMi4zMzMgMCA2LjEtMy44ODUgMTAuMDMtOS4xIDEwLjAzLTYuMjYgMC05LjQ2Ny0zLjg4NS05LjQ2Ny0zLjg4NWwxLjY2NS01LjU1czMuMjggMi44MyA2LjA3MyAyLjgzYTIuNDcgMi40NyAwIDAgMCAyLjU2NC0yLjQ5YzAtNC4zNC03LjEtNC41MjctNy4xLTExLjYxOCAwLTUuOTYyIDQuMjk4LTExLjc3IDEyLjkzNC0xMS43NyAzLjM5NC4wNSA1LjAxOCAxIDUuMDE4IDF6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Shopify",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": []
+  }
+}

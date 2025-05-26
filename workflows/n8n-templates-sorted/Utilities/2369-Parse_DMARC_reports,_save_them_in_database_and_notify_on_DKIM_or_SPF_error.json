@@ -1,0 +1,1753 @@
+{
+  "workflow": {
+    "id": 2369,
+    "name": "Parse DMARC reports, save them in database and notify on DKIM or SPF error",
+    "views": 2000,
+    "recentViews": 0,
+    "totalViews": 2000,
+    "createdAt": "2024-07-29T08:57:53.096Z",
+    "description": "## Who is it for\nIf you are a postmaster or you manage email server, you can set up DKIM and SPF records to ensure that spoofing your email address is hard. On your domain you can also set up DMARC record to receive XML reports from email providers (rua tag). Those reports contain data if email they received passed DKIM and SPF verifications. \n\nSince DMARC email is public, you will receive a lot of emails from email providers, not only if DKIM/SPF fail. There is no need for it - you probably only need to know if SPF/DKIM failed. \n\nSo this script is intended to automatically parse all DMARC reports that come from email providers, but ONLY send you notification if SPF or DKIM failed - meaning that either someone tries to spoof your email or your DKIM/SPF is improperly set up.\n\n## How it works\n- script monitors postmaster email for DMARC reprots (rua)\n- unpacks report and parses XML into JSON\n- maps JSON and formats fields for MySQL/MariaDB input\n\t- inputs into database\n\t- sends notification on DKIM or SPF failure\n\n## Remember to set up\n- email input mailbox\n- notification channels\n\t- for slack\n\t- for email\n",
+    "workflow": {
+      "id": "ATxZ5QYhdJq9mZDO",
+      "meta": {
+        "instanceId": "bdce9ec27bbe2b742054f01d034b8b468d2e7758edd716403ad5bd4583a8f649",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Parse DMARC reports",
+      "tags": [
+        {
+          "id": "w055QEEFrp6ZYNCr",
+          "name": "DevOps",
+          "createdAt": "2023-12-19T18:45:02.513Z",
+          "updatedAt": "2023-12-19T18:45:02.513Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "ce9ce59c-3cf6-45db-97fc-825cb8516da8",
+          "name": "Email Trigger (IMAP)",
+          "type": "n8n-nodes-base.emailReadImap",
+          "position": [
+            580,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "downloadAttachments": true
+          },
+          "credentials": {
+            "imap": {
+              "id": "vx30lEB3JcemyffM",
+              "name": "IMAP account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "903f949d-ab1e-48ec-a903-a1ebde4cfbe9",
+          "name": "End date format",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            800,
+            880
+          ],
+          "parameters": {
+            "date": "={{ $json.date_range_end.toDateTime('s') }}",
+            "format": "custom",
+            "options": {
+              "includeInputFields": true
+            },
+            "operation": "formatDate",
+            "customFormat": "yyyy-MM-dd hh:mm:ss",
+            "outputFieldName": "=date_range_end"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "3303e551-8557-4220-ab24-48fcb0859a26",
+          "name": "If multiple records to parse",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            560,
+            620
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "b809e758-c3d2-4cbf-bab8-54d278a435dd",
+                  "operator": {
+                    "type": "object",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.feedback.record[0] }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "513864bc-c124-452d-8be3-44feb73454ed",
+          "name": "Map fields for DB input and parse",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1200,
+            660
+          ],
+          "parameters": {
+            "options": {
+              "ignoreConversionErrors": true
+            },
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "621508ee-fbea-4233-aaf3-96b573a60bd5",
+                  "name": "full_data",
+                  "type": "object",
+                  "value": "={{ $json.feedback }}"
+                },
+                {
+                  "id": "d605e93a-0e0a-4584-aa1e-e38b49f264e7",
+                  "name": "org_name",
+                  "type": "string",
+                  "value": "={{ $json.feedback.report_metadata.org_name }}"
+                },
+                {
+                  "id": "604a5573-67db-4bb6-80d8-4421dce2406b",
+                  "name": "date_range_begin",
+                  "type": "string",
+                  "value": "={{ $json.feedback.report_metadata.date_range.begin }}"
+                },
+                {
+                  "id": "b9d7244f-9d58-43fc-a477-f0750c31e5e2",
+                  "name": "date_range_end",
+                  "type": "string",
+                  "value": "={{ $json.feedback.report_metadata.date_range.end }}"
+                },
+                {
+                  "id": "3570869a-9dc9-4b20-b48c-5f382825d021",
+                  "name": "domain",
+                  "type": "string",
+                  "value": "={{ $json.feedback.policy_published.domain }}"
+                },
+                {
+                  "id": "979e4eb4-6e39-4a3c-8f0a-21ecf8086a3c",
+                  "name": "policy_published",
+                  "type": "object",
+                  "value": "={{ $json.feedback.policy_published }}"
+                },
+                {
+                  "id": "91cdfa19-49c6-4e5d-a423-d76bbb61eddc",
+                  "name": "source_ip",
+                  "type": "string",
+                  "value": "={{ $json['fbr'].row.source_ip }}"
+                },
+                {
+                  "id": "2434b04e-3c5e-4e61-8be9-1f9c1ec2a6ce",
+                  "name": "mail_count",
+                  "type": "string",
+                  "value": "={{ $json['fbr'].row.count }}"
+                },
+                {
+                  "id": "09b73b84-0f6a-443b-8da0-c7ad9742a9c1",
+                  "name": "evaluated_disposition",
+                  "type": "string",
+                  "value": "={{ $json['fbr'].row.policy_evaluated.disposition }}"
+                },
+                {
+                  "id": "6c8e81ab-abc6-497c-8919-6b2e8008a1e8",
+                  "name": "evaluated_dkim",
+                  "type": "string",
+                  "value": "={{ $json['fbr'].row.policy_evaluated.dkim }}"
+                },
+                {
+                  "id": "fa8ca9d6-5e1b-402c-9afc-e6bf42e2c6ad",
+                  "name": "evaluated_spf",
+                  "type": "string",
+                  "value": "={{ $json['fbr'].row.policy_evaluated.spf }}"
+                },
+                {
+                  "id": "42f269c3-978a-45f6-bfe5-1fa1536500fb",
+                  "name": "identifiers",
+                  "type": "object",
+                  "value": "={{ $json['fbr'].identifiers }}"
+                },
+                {
+                  "id": "3375dc26-a739-4bf9-8a46-2f6739337921",
+                  "name": "auth_results",
+                  "type": "object",
+                  "value": "={{ $json['fbr'].auth_results }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "00cca3ae-1f0a-4ea9-8fb7-ac52d35c261b",
+          "name": "Begin format date",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            560,
+            880
+          ],
+          "parameters": {
+            "date": "={{ $json.date_range_begin.toDateTime('s') }}",
+            "format": "custom",
+            "options": {
+              "includeInputFields": true
+            },
+            "operation": "formatDate",
+            "customFormat": "yyyy-MM-dd hh:mm:ss",
+            "outputFieldName": "=date_range_begin"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "18c2305a-db44-4e4d-97b9-1f04018085b0",
+          "name": "Input into database",
+          "type": "n8n-nodes-base.mySql",
+          "position": [
+            620,
+            1100
+          ],
+          "parameters": {
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "dmarc",
+              "cachedResultName": "dmarc"
+            },
+            "options": {
+              "detailedOutput": true
+            },
+            "dataMode": "defineBelow",
+            "valuesToSend": {
+              "values": [
+                {
+                  "value": "={{ $json.full_data.toJsonString() }}",
+                  "column": "full_data"
+                },
+                {
+                  "value": "={{ $json.org_name }}",
+                  "column": "org_name"
+                },
+                {
+                  "value": "={{ $json.date_range_begin }}",
+                  "column": "date_range_begin"
+                },
+                {
+                  "value": "={{ $json.date_range_end }}",
+                  "column": "date_range_end"
+                },
+                {
+                  "value": "={{ $json.domain }}",
+                  "column": "domain"
+                },
+                {
+                  "value": "={{ $json.policy_published.toJsonString() }}",
+                  "column": "policy_published"
+                },
+                {
+                  "value": "={{ $json.source_ip }}",
+                  "column": "source_ip"
+                },
+                {
+                  "value": "={{ $json.mail_count }}",
+                  "column": "mail_count"
+                },
+                {
+                  "value": "={{ $json.evaluated_disposition }}",
+                  "column": "evaluated_disposition"
+                },
+                {
+                  "value": "={{ $json.evaluated_dkim }}",
+                  "column": "evaluated_dkim"
+                },
+                {
+                  "value": "={{ $json.evaluated_spf }}",
+                  "column": "evaluated_spf"
+                },
+                {
+                  "value": "={{ $json.identifiers == null ? null : $json.identifiers.toJsonString() }}",
+                  "column": "identifiers"
+                },
+                {
+                  "value": "={{ $json.auth_results == null ? null : $json.auth_results.toJsonString() }}",
+                  "column": "auth_results"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "mySql": {
+              "id": "HFwF4pL62FWEFHqR",
+              "name": "MySQL account"
+            }
+          },
+          "typeVersion": 2.4
+        },
+        {
+          "id": "c65c4cfb-3912-4b45-a5e0-3ab787e018c8",
+          "name": "If issue with DKIM or SPF",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            580,
+            1260
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "818b461b-4bdc-4842-9f89-d1d8966b8c0a",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEquals"
+                  },
+                  "leftValue": "={{ $json.evaluated_dkim }}",
+                  "rightValue": "pass"
+                },
+                {
+                  "id": "4322cb26-5ff1-4278-94ae-7ff278c61c6c",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEquals"
+                  },
+                  "leftValue": "={{ $json.evaluated_spf }}",
+                  "rightValue": "pass"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5d17bf15-ecef-40e8-acc4-6af5ad1c712d",
+          "name": "Rename Keys",
+          "type": "n8n-nodes-base.renameKeys",
+          "position": [
+            1000,
+            500
+          ],
+          "parameters": {
+            "keys": {
+              "key": [
+                {
+                  "newKey": "fbr",
+                  "currentKey": "feedback.record"
+                }
+              ]
+            },
+            "additionalOptions": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0e2b8c73-0f53-46f9-9692-cbe87c97862d",
+          "name": "Rename column for consistency",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            800,
+            660
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f563d673-bc82-4863-b132-d431ebe8f651",
+                  "name": "fbr",
+                  "type": "object",
+                  "value": "={{ $json.feedback.record }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5796c124-645d-460e-88df-0a909a33b6b1",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            300
+          ],
+          "parameters": {
+            "width": 394.2691415313225,
+            "height": 304.36194895591655,
+            "content": "## How it works\n- monitor postmaster email for DKIM reprots\n- unpack report and parse XML\n- map and format fields for DB input\n\t- input into database\n\t- send notification on DKIM or SPF failure\n\n## Remember to set up\n- email input mailbox\n- notification channels"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1457272e-630e-44ee-bb18-ac650d192cbf",
+          "name": "Unzip File",
+          "type": "n8n-nodes-base.compression",
+          "position": [
+            800,
+            300
+          ],
+          "parameters": {
+            "binaryPropertyName": "attachment_0"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "89ade90c-c7e3-4c6f-89cf-0e7ce1e55333",
+          "name": "Extract XML data",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            1020,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "xml",
+            "binaryPropertyName": "file_0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8fd70f3c-53d5-4d99-ad2c-d526089fe0f5",
+          "name": "Parse XML data to JSON",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            1220,
+            300
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b17352d9-135a-4c26-993f-0c1fdafc1fa3",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            300
+          ],
+          "parameters": {
+            "width": 394.2691415313225,
+            "height": 159.80531276753783,
+            "content": "## Preparation\nThis line is responsible for taking data from email and parsing it into JSON understandable by n8n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "31d2f822-aea6-41b4-bb1e-25b48cb3e972",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            500
+          ],
+          "parameters": {
+            "width": 394.2691415313225,
+            "height": 316.3177609714967,
+            "content": "## Mapping\nThis line is responsible for treating cases when XML has multiple info for domain. One DMARC report can contain more than one entries.\n\nLast node is responsible for matching data with database structure"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e8fc0f91-1bdf-4bc5-b488-4f2c169da9c0",
+          "name": "Split Out For Separate Entries",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            800,
+            500
+          ],
+          "parameters": {
+            "include": "allOtherFields",
+            "options": {},
+            "fieldToSplitOut": "feedback.record"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9ba7a0b8-80e6-4559-83ec-894533194dc7",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            860
+          ],
+          "parameters": {
+            "width": 394.2691415313225,
+            "height": 185.89072080153096,
+            "content": "## Date translate\nThis line is responsible for translating date format into understandable by MySQL/MariaDB\n\nIn next node data is being input into MySQL/MariaDB "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "96461e30-87f0-48f1-a43f-60185ea1d835",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            1180
+          ],
+          "parameters": {
+            "width": 394.2691415313225,
+            "height": 320.66532897716223,
+            "content": "## Notifications\nLast two nodes are responsible for sending notifications in case IF inside DMARC report is reported any issue with SPF or DKIM"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "192b95c6-cdfe-4b5e-94e1-94deb728b0e2",
+          "name": "Slack Post Message On Channel",
+          "type": "n8n-nodes-base.slack",
+          "disabled": true,
+          "position": [
+            1200,
+            1180
+          ],
+          "parameters": {
+            "text": "=DMARC evaluation failed for {{ $json.domain }} on  {{ $json.mail_count }} mails with disposition:  {{ $json.evaluated_disposition }}. DKIM:  {{ $json.evaluated_dkim }} SPF:  {{ $json.evaluated_spf }}",
+            "select": "channel",
+            "channelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "CCGJA1F1N",
+              "cachedResultName": "powiadomienia"
+            },
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "slackOAuth2Api": {
+              "id": "B0jUtT53pVAEPaQM",
+              "name": "Slack Oauth"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ce400c97-cae4-41db-ad8f-e678fc4a27fe",
+          "name": "Send Error Notification Email",
+          "type": "n8n-nodes-base.emailSend",
+          "disabled": true,
+          "position": [
+            1200,
+            1380
+          ],
+          "parameters": {
+            "text": "DMARC evaluation failed for {{ $json.domain }} on  {{ $json.mail_count }} mails with disposition:  {{ $json.evaluated_disposition }}. DKIM:  {{ $json.evaluated_dkim }} SPF:  {{ $json.evaluated_spf }}",
+            "options": {},
+            "subject": "DMARC problem",
+            "emailFormat": "text"
+          },
+          "typeVersion": 2.1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "errorWorkflow": "5",
+        "executionOrder": "v1",
+        "saveManualExecutions": true,
+        "saveExecutionProgress": true,
+        "saveDataSuccessExecution": "all"
+      },
+      "versionId": "1add308c-4aef-4a83-a958-bc66dead234f",
+      "connections": {
+        "Unzip File": {
+          "main": [
+            [
+              {
+                "node": "Extract XML data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Rename Keys": {
+          "main": [
+            [
+              {
+                "node": "Map fields for DB input and parse",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "End date format": {
+          "main": [
+            [
+              {
+                "node": "Input into database",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "If issue with DKIM or SPF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract XML data": {
+          "main": [
+            [
+              {
+                "node": "Parse XML data to JSON",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Begin format date": {
+          "main": [
+            [
+              {
+                "node": "End date format",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email Trigger (IMAP)": {
+          "main": [
+            [
+              {
+                "node": "Unzip File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse XML data to JSON": {
+          "main": [
+            [
+              {
+                "node": "If multiple records to parse",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If issue with DKIM or SPF": {
+          "main": [
+            [
+              {
+                "node": "Slack Post Message On Channel",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Send Error Notification Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If multiple records to parse": {
+          "main": [
+            [
+              {
+                "node": "Split Out For Separate Entries",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Rename column for consistency",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Rename column for consistency": {
+          "main": [
+            [
+              {
+                "node": "Map fields for DB input and parse",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out For Separate Entries": {
+          "main": [
+            [
+              {
+                "node": "Rename Keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map fields for DB input and parse": {
+          "main": [
+            [
+              {
+                "node": "Begin format date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 20,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.xml": {
+          "count": 1
+        },
+        "n8n-nodes-base.mySql": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.dateTime": {
+          "count": 2
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.emailSend": {
+          "count": 1
+        },
+        "n8n-nodes-base.renameKeys": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.compression": {
+          "count": 1
+        },
+        "n8n-nodes-base.emailReadImap": {
+          "count": 1
+        },
+        "n8n-nodes-base.extractFromFile": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Łukasz",
+      "username": "lukaszpp",
+      "bio": "Developer, automation enthusiast and dedicated CTO/CEO",
+      "verified": true,
+      "links": [
+        "https://sailingbyte.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/aae1a29225cc13556a92db7f75050da4bb664bf68e1d73407da6c9cd5a7a9a8a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 10,
+        "icon": "fa:inbox",
+        "name": "n8n-nodes-base.emailReadImap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/imap/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Email Trigger (IMAP)",
+          "color": "#44AA22"
+        },
+        "iconData": {
+          "icon": "inbox",
+          "type": "icon"
+        },
+        "displayName": "Email Trigger (IMAP)",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 11,
+        "icon": "fa:envelope",
+        "name": "n8n-nodes-base.emailSend",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMTP",
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Send Email",
+          "color": "#00bb88"
+        },
+        "iconData": {
+          "icon": "envelope",
+          "type": "icon"
+        },
+        "displayName": "Send Email",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 36,
+        "icon": "fa:edit",
+        "name": "n8n-nodes-base.renameKeys",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.renamekeys/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Rename Keys",
+          "color": "#772244"
+        },
+        "iconData": {
+          "icon": "edit",
+          "type": "icon"
+        },
+        "displayName": "Rename Keys",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "icon": "file:mysql.svg",
+        "name": "n8n-nodes-base.mySql",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mySql/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "MySQL"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg0NDUgMzAuMzY4NEMzNC42NjggMzAuMzEzOSAzMi45ODE1IDMwLjUzMTkgMzEuNTY2NSAzMS4xMzA0QzMxLjE1ODUgMzEuMjkzNCAzMC41MDU1IDMxLjI5MzkgMzAuNDUxIDMxLjgxMDRDMzAuNjY5IDMyLjAyODQgMzAuNjk2IDMyLjM4MTkgMzAuODg2NSAzMi42ODA5QzMxLjIxMyAzMy4yMjQ5IDMxLjc4NCAzMy45NTk0IDMyLjMwMSAzNC4zNDA0QzMyLjg3MiAzNC43NzU0IDMzLjQ0MzUgMzUuMjEwOSAzNC4wNDIgMzUuNTkxOUMzNS4xMDMgMzYuMjQ0OSAzNi4zIDM2LjYyNTkgMzcuMzM0IDM3LjI3ODRDMzcuOTMyNSAzNy42NTg5IDM4LjUzMSAzOC4xNDg5IDM5LjEyOTUgMzguNTU2OUMzOS40MjkgMzguNzc0NCAzOS42MTkgMzkuMTI3OSA0MCAzOS4yNjQ0VjM5LjE4MjlDMzkuODA5NSAzOC45Mzc5IDM5Ljc1NSAzOC41ODQ0IDM5LjU2NSAzOC4zMTI0QzM5LjI5MyAzOC4wNDA0IDM5LjAyMSAzNy43OTU0IDM4Ljc0OSAzNy41MjM0QzM3Ljk2IDM2LjQ2MjQgMzYuOTgwNSAzNS41Mzc0IDM1LjkxOTUgMzQuNzc1OUMzNS4wNDkgMzQuMTc3NCAzMy4xNDQ1IDMzLjM2MTQgMzIuNzkxIDMyLjM1NDRMMzIuNzM2NSAzMi4yOTk5QzMzLjMzNSAzMi4yNDU0IDM0LjA0MjUgMzIuMDI3OSAzNC42MTM1IDMxLjg2NDRDMzUuNTM4NSAzMS42MTk0IDM2LjM4MiAzMS42NzM5IDM3LjMzNCAzMS40Mjk0QzM3Ljc3MjggMzEuMzE0NyAzOC4yMDg0IDMxLjE4NzcgMzguNjQgMzEuMDQ4NFYzMC44MDM5QzM4LjE1MDUgMzAuMzEzOSAzNy43OTY1IDI5LjY2MTQgMzcuMjggMjkuMTk4OUMzNS44OTI1IDI4LjAwMTQgMzQuMzY5IDI2LjgzMTkgMzIuNzkxIDI1Ljg1MjlDMzEuOTQ3NSAyNS4zMDg5IDMwLjg1OTUgMjQuOTU0OSAyOS45NjE1IDI0LjQ5MjRDMjkuNjM1IDI0LjMyODkgMjkuMDkxIDI0LjI0NzQgMjguOTAwNSAyMy45NzU0QzI4LjQxMDUgMjMuMzc2OSAyOC4xMzg1IDIyLjU4NzkgMjcuNzg1IDIxLjg4MDRDMjYuOTk2NSAyMC4zODM5IDI2LjIzNDUgMTguNzI0OSAyNS41NTQgMTcuMTQ2OUMyNS4wNjQ1IDE2LjA4NTkgMjQuNzY1IDE1LjAyNDkgMjQuMTY2NSAxNC4wNDU0QzIxLjM2NDUgOS40MjA0MSAxOC4zMTc1IDYuNjE4NDIgMTMuNjM4MSAzLjg3MDQzQzEyLjYzMTYgMy4yOTk0MyAxMS40MzQ2IDMuMDU0NDMgMTAuMTU2MSAyLjc1NDkzTDguMTE1NTcgMi42NDU5M0M3LjY4MDU3IDIuNDU1NDMgNy4yNDUwNyAxLjkzODQzIDYuODY0MDcgMS42OTM5M0M1LjMxMzU3IDAuNzE0OTMyIDEuMzE0NTggLTEuNDA2NTYgMC4xNzE1ODIgMS4zOTU0M0MtMC41NjI5MTcgMy4xNjM0MyAxLjI2MDA4IDQuOTA0NDIgMS44ODU1OCA1LjgwMjQyQzIuMzQ4MDggNi40Mjc5MiAyLjk0NjU4IDcuMTM1NDIgMy4yNzMwOCA3Ljg0MjkyQzMuNDYzNTggOC4zMDQ5MiAzLjUxNzU3IDguNzk0OTIgMy43MDgwNyA5LjI4NDkxQzQuMTQzNTcgMTAuNDgxOSA0LjU1MTU3IDExLjgxNDkgNS4xMjI1NyAxMi45MzA0QzUuNDIyMDcgMTMuNTAxNCA1Ljc0ODA3IDE0LjEwMDQgNi4xMjkwNyAxNC42MTY5QzYuMzQ2NTcgMTQuOTE1OSA2LjcyNzU3IDE1LjA1MjQgNi44MDkwNyAxNS41NDE5QzYuNDI4MDcgMTYuMDg1OSA2LjQwMTA3IDE2LjkwMjQgNi4xODMwNyAxNy41ODI0QzUuMjAzNTcgMjAuNjU2NCA1LjU4NDU3IDI0LjQ2NTQgNi45NzIwNyAyNi43MjM0QzcuNDA3MDcgMjcuNDAzNCA4LjQ0MTA2IDI4Ljg5OTkgOS44Mjg1NiAyOC4zMjg0QzExLjA1MjYgMjcuODM4OSAxMC43ODA2IDI2LjI4NzkgMTEuMTM0NiAyNC45Mjc5QzExLjIxNjYgMjQuNjAxNCAxMS4xNjIxIDI0LjM4MzkgMTEuMzI1MSAyNC4xNjY0VjI0LjIyMDlMMTIuNDQwNiAyNi40Nzg5QzEzLjI4NDEgMjcuODExOSAxNC43NTMxIDI5LjE5OTQgMTUuOTc3IDMwLjEyNDRDMTYuNjMgMzAuNjEzOSAxNy4xNDcgMzEuNDU3NCAxNy45NjMgMzEuNzU2OVYzMS42NzQ5SDE3LjkwODVDMTcuNzQ1IDMxLjQyOTkgMTcuNTAwNSAzMS4zMjE0IDE3LjI4MyAzMS4xMzA5QzE2Ljc5MzUgMzAuNjQxNCAxNi4yNDkgMzAuMDQyOSAxNS44Njg1IDI5LjQ5ODRDMTQuNzI2MSAyNy45NzQ5IDEzLjcxOTEgMjYuMjg4NCAxMi44MjE2IDI0LjU0NjlDMTIuMzg2NiAyMy43MDM0IDEyLjAwNTYgMjIuNzc4NCAxMS42NTE2IDIxLjkzNTRDMTEuNDg4MSAyMS42MDg5IDExLjQ4ODEgMjEuMTE5NCAxMS4yMTYxIDIwLjk1NTlDMTAuODA4MSAyMS41NTQ0IDEwLjIwOTYgMjIuMDcxNCA5LjkxMDA2IDIyLjgwNTlDOS4zOTM1NiAyMy45NzU5IDkuMzM5MDYgMjUuNDE3NCA5LjE0ODU2IDI2LjkxMzlDOS4wNDAwNiAyNi45NDE0IDkuMDk0MDYgMjYuOTEzOSA5LjAzOTU2IDI2Ljk2ODRDOC4xNjkwNyAyNi43NTA0IDcuODY5NTcgMjUuODUyOSA3LjU0MzA3IDI1LjA5MTRDNi43MjcwNyAyMy4xNTk5IDYuNTkxMDcgMjAuMDU4NCA3LjI5ODU3IDE3LjgyNzlDNy40ODkwNyAxNy4yNTY0IDguMzA1MDcgMTUuNDYwOSA3Ljk3ODU3IDE0LjkxNjlDNy44MTU1NyAxNC4zOTk5IDcuMjcxMDcgMTQuMTAwOSA2Ljk3MjA3IDEzLjY5MjlDNi42MTg1NyAxMy4xNzU5IDYuMjM3NTcgMTIuNTIyOSA1Ljk5MjU3IDExLjk1MTlDNS4zMzk1NyAxMC40Mjg0IDUuMDEzMDcgOC43NDE5MiA0LjMwNjA3IDcuMjE3OTJDMy45Nzk1NyA2LjUxMDQyIDMuNDA4NTggNS43NzU5MiAyLjk0NTU4IDUuMTIzNDJDMi40MzAwOCA0LjM4NzkyIDEuODU4NTggMy44NzA5MyAxLjQ1MDU4IDMuMDAwNDNDMS4zMTQ1OCAyLjcwMTQzIDEuMTI0MDggMi4yMTE0MyAxLjM0MTU4IDEuODg0OTNDMS4zOTYwOCAxLjY2NzQzIDEuNTA0NTggMS41ODU5MyAxLjcyMjU4IDEuNTMxNDNDMi4wNzYwOCAxLjIzMTkzIDMuMDgzMDggMS42MTI5MyAzLjQzNjU4IDEuNzc1OTNDNC40NDMwNyAyLjE4MzkzIDUuMjg2NTcgMi41NjQ5MyA2LjEzMDA3IDMuMTM2NDNDNi41MTEwNyAzLjQwODQzIDYuOTE5MDcgMy45MjU0MyA3LjQwODU3IDQuMDYxNDNINy45ODAwN0M4Ljg1MDU2IDQuMjUxOTIgOS44MzAwNiA0LjExNTkyIDEwLjY0NjEgNC4zNjA0MkMxMi4wODgxIDQuODIyOTIgMTMuMzkzNiA1LjUwMjkyIDE0LjU2MzYgNi4yMzc0MkMxOC4xMjc1IDguNDk1NDIgMjEuMDY1NSAxMS43MDU5IDIzLjA1MTUgMTUuNTQxNEMyMy4zNzggMTYuMTY2OSAyMy41MTQgMTYuNzM4NCAyMy44MTMgMTcuMzkxNEMyNC4zODQ1IDE4LjcyNDQgMjUuMDkxNSAyMC4wODQ5IDI1LjY2MyAyMS4zOTA0QzI2LjIzNCAyMi42Njg5IDI2Ljc3ODUgMjMuOTc0OSAyNy41OTQ1IDI1LjAzNTlDMjguMDAyNSAyNS42MDY5IDI5LjYzNSAyNS45MDY0IDMwLjM2OTUgMjYuMjA1OUMzMC45MTM1IDI2LjQ1MDQgMzEuNzU3IDI2LjY2ODQgMzIuMjQ2NSAyNi45Njc0QzMzLjE3MTUgMjcuNTM4NCAzNC4wOTY1IDI4LjE5MTQgMzQuOTY3IDI4LjgxNzRDMzUuNDAyNSAyOS4xNDM5IDM2Ljc2MjUgMjkuODIzOSAzNi44NDQgMzAuMzY3OUwzNi44NDQ1IDMwLjM2ODRaTTkuMDk1MDYgNi43Mjc0MkM4LjcxODg4IDYuNzIzNzYgOC4zNDM4NSA2Ljc2OTQ4IDcuOTc5NTcgNi44NjM0MlY2LjkxNzkySDguMDM0MDdDOC4yNTIwNyA3LjM1MjkyIDguNjMyNTYgNy42NTI0MiA4LjkwNDU2IDguMDMzNDJMOS41MzA1NiA5LjMzOTQxTDkuNTg1MDYgOS4yODQ5MUM5Ljk2NjA2IDkuMDEyOTEgMTAuMTU2NiA4LjU3NzQyIDEwLjE1NjYgNy45MjQ0MkM5Ljk5MzA2IDcuNzMzOTIgOS45NjYwNiA3LjU0MzQyIDkuODMwMDYgNy4zNTI5MkM5LjY2NzA2IDcuMDgwOTIgOS4zMTMwNiA2Ljk0NDkyIDkuMDk1NTYgNi43MjY5Mkw5LjA5NTA2IDYuNzI3NDJaIiBmaWxsPSIjMDA1NDZCIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "MySQL",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 221,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.dateTime",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Date & Time",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Date & Time",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 440,
+        "icon": "fa:file-archive",
+        "name": "n8n-nodes-base.compression",
+        "codex": {
+          "data": {
+            "alias": [
+              "Zip",
+              "Gzip",
+              "uncompress",
+              "compress",
+              "decompress",
+              "archive",
+              "unarchive",
+              "Binary",
+              "Files",
+              "File"
+            ],
+            "details": "The Compression node is useful when you want to compress files to either gzip or zip format. You can even use this node to decompress your gzip and zip files.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.compression/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Compression",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "file-archive",
+          "type": "icon"
+        },
+        "displayName": "Compression",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1235,
+        "icon": "file:extractFromFile.svg",
+        "name": "n8n-nodes-base.extractFromFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "decode",
+              "decoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "PDF",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "txt",
+              "Text",
+              "RTF",
+              "XML",
+              "64",
+              "Base64",
+              "Convert"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Extract from File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAuOTM3NSAyQzAuNDE5NzMzIDIgMCAyLjQxOTczIDAgMi45Mzc1VjM3LjMyMjFDMCAzNy44Mzk5IDAuNDE5NzMzIDM4LjI1OTYgMC45Mzc1IDM4LjI1OTZIMjYuMjE1NEMyNi43MzMyIDM4LjI1OTYgMjcuMTUyOSAzNy44Mzk5IDI3LjE1MjkgMzcuMzIyMUwyNy4xNTI5IDMwLjY3MTlMMTYuNzk2OSAzMC42NzE5QzE0Ljg5ODQgMzAuNjcxOSAxMy4zNTk0IDI5LjEzMjkgMTMuMzU5NCAyNy4yMzQ0VjI1LjM1OTRDMTMuMzU5NCAyMy40NjA5IDE0Ljg5ODQgMjEuOTIxOSAxNi43OTY5IDIxLjkyMTlIMjcuMTUyOUwyNy4xNTI5IDE1Ljc4MjFIMTQuMzA4M0MxMy43OTA2IDE1Ljc4MjEgMTMuMzcwOCAxNS4zNjI0IDEzLjM3MDggMTQuODQ0NlYySDAuOTM3NVoiIGZpbGw9IiMzNTNGNkUiLz4KPHBhdGggZD0iTTE2LjAyNzEgMkMxNS45NDA4IDIgMTUuODcwOCAyLjA2OTk2IDE1Ljg3MDggMi4xNTYyNVYxMi44MTM0QzE1Ljg3MDggMTMuMDcyMyAxNi4wODA3IDEzLjI4MjEgMTYuMzM5NiAxMy4yODIxSDI2Ljk5NjdDMjcuMDgzIDEzLjI4MjEgMjcuMTUyOSAxMy4yMTIyIDI3LjE1MjkgMTMuMTI1OUwyNy4xNTI5IDEyLjYxNzFDMjcuMTUyOSAxMi4zNjg4IDI3LjA1NDUgMTIuMTMwNyAyNi44NzkxIDExLjk1NUwxNy4yMjI1IDIuMjc1MzhDMTcuMDQ2NiAyLjA5OTA4IDE2LjgwNzkgMiAxNi41NTg4IDJIMTYuMDI3MVoiIGZpbGw9IiMzNTNGNkUiLz4KPHBhdGggZD0iTTI5Ljc2NDIgMzQuNjUwM0MyOS4wMzQgMzMuOTE2IDI5LjAzNzQgMzIuNzI4OCAyOS43NzE2IDMxLjk5ODZMMzMuNjE5NyAyOC4xNzE5TDE2Ljc5NjkgMjguMTcxOUMxNi4yNzkxIDI4LjE3MTkgMTUuODU5NCAyNy43NTIxIDE1Ljg1OTQgMjcuMjM0NFYyNS4zNTk0QzE1Ljg1OTQgMjQuODQxNiAxNi4yNzkxIDI0LjQyMTkgMTYuNzk2OSAyNC40MjE5TDMzLjU0MTIgMjQuNDIxOUwyOS43NzE2IDIwLjY3MzNDMjkuMDM3NCAxOS45NDMxIDI5LjAzNCAxOC43NTU5IDI5Ljc2NDIgMTguMDIxNkMzMC40OTQ0IDE3LjI4NzQgMzEuNjgxNiAxNy4yODQgMzIuNDE1OSAxOC4wMTQyTDM5LjQ0NzEgMjUuMDA2NEMzOS44MDEgMjUuMzU4MyA0MCAyNS44MzY4IDQwIDI2LjMzNTlDNDAgMjYuODM1IDM5LjgwMSAyNy4zMTM1IDM5LjQ0NzEgMjcuNjY1NUwzMi40MTU5IDM0LjY1NzZDMzEuNjgxNiAzNS4zODc4IDMwLjQ5NDQgMzUuMzg0NSAyOS43NjQyIDM0LjY1MDNaIiBmaWxsPSIjMzUzRjZFIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Extract from File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,891 @@
+{
+  "workflow": {
+    "id": 857,
+    "name": "Create screenshots with uProc, save to Dropbox and send by email",
+    "views": 1660,
+    "recentViews": 0,
+    "totalViews": 1660,
+    "createdAt": "2020-12-29T09:29:59.391Z",
+    "description": "Do you want to create a website screenshot without browser extensions?\n\nThis workflow creates screenshots of any website using the uProc [**Get Screenshot by URL tool**](https://app.uproc.io/#/tools/processor/get/url/screenshot) and sends an email with the screenshots.\n\n![workflow-screenshot](fileId:357)\n\nYou need to add your credentials (Email and API Key - real -) located at [**Integration section**](https://app.uproc.io/#/settings/integration) to n8n.\n\nNode \"Create Web + Email Item\" can be replaced by any other supported service returning Website and Email values, like Google Sheets, Mailchimp, MySQL, or Typeform.\n\nEvery \"uProc\" node returns an image URL of the captured website. This generated URL will remain only 24 hours in our server.\n \nYou can set up the uProc node with several parameters:\n- width: you can choose one of the predefined values to generate the screenshot, or you can set up a custom width you want.\n- full-page: the tool will return a screenshot of the website from top to bottom with the defined width.\n\nIn our workflow, we generate two screenshots:\n1) One screenshot of 640 pixels width.\n2) One full-page screenshot of 640 pixels width.\n\nScreenshots are downloaded by \"Get File\" nodes and saved to the screenshots folder in Dropbox.\n\n![image.png](fileId:356)\n\nFinally, we use the Amazon SES node to send an HTML email with both screenshots to the specified email.\n\nWe will receive the next email:\n\n![image.png](fileId:355)",
+    "workflow": {
+      "id": "105",
+      "name": "screenshot",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            440,
+            580
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Create Web + Email Item",
+          "type": "n8n-nodes-base.functionItem",
+          "position": [
+            630,
+            580
+          ],
+          "parameters": {
+            "functionCode": "item.website = \"https://uproc.io\";\nitem.email = \"miquel@uproc.io\";\n\nreturn item;"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.awsSes",
+          "position": [
+            1660,
+            600
+          ],
+          "parameters": {
+            "body": "=Hi,\n<br><br>\nThese are your screenshots:<br>\n<table border=\"0\">\n<tr>\n<th>Simple screenshot</th><th>Fullpage screenshot</th>\n<tr>\n<td style=\"vertical-align: top; text-align: center\"><img src=\"{{$node[\"Generate Screenshot\"].json[\"message\"][\"result\"]}}\" width=\"320\"></td>\n<td style=\"vertical-align: top; text-align: center\"><img src=\"{{$node[\"Generate FullPage\"].json[\"message\"][\"result\"]}}\" width=\"320\"></td>\n</tr>\n</table>\n<br><br>\nThank you!",
+            "subject": "Your screenshots!",
+            "fromEmail": "miquel@uproc.io",
+            "isBodyHtml": true,
+            "toAddresses": [
+              "={{$node[\"Create Web + Email Item\"].json[\"email\"]}}"
+            ],
+            "additionalFields": {}
+          },
+          "credentials": {
+            "aws": "ses"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Generate FullPage",
+          "type": "n8n-nodes-base.uproc",
+          "position": [
+            850,
+            510
+          ],
+          "parameters": {
+            "url": "={{$node[\"Create Web + Email Item\"].json[\"website\"]}}",
+            "tool": "getUrlScreenshot",
+            "group": "image",
+            "width": "640",
+            "fullpage": "yes",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "uprocApi": "miquel-uproc"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Generate Screenshot",
+          "type": "n8n-nodes-base.uproc",
+          "position": [
+            840,
+            680
+          ],
+          "parameters": {
+            "url": "={{$node[\"Create Web + Email Item\"].json[\"website\"]}}",
+            "tool": "getUrlScreenshot",
+            "group": "image",
+            "width": "640",
+            "fullpage": "no",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "uprocApi": "miquel-uproc"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Get File",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1050,
+            510
+          ],
+          "parameters": {
+            "url": "={{$node[\"Generate FullPage\"].json[\"message\"][\"result\"]}}",
+            "options": {},
+            "responseFormat": "file",
+            "allowUnauthorizedCerts": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Get File1",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1050,
+            680
+          ],
+          "parameters": {
+            "url": "={{$node[\"Generate Screenshot\"].json[\"message\"][\"result\"]}}",
+            "options": {},
+            "responseFormat": "file",
+            "allowUnauthorizedCerts": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1460,
+            600
+          ],
+          "parameters": {
+            "mode": "passThrough"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Upload Screenshot",
+          "type": "n8n-nodes-base.dropbox",
+          "position": [
+            1270,
+            680
+          ],
+          "parameters": {
+            "path": "/screenshots/sample.png",
+            "binaryData": true
+          },
+          "credentials": {
+            "dropboxApi": "dropbox-miquel"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Upload fullpage",
+          "type": "n8n-nodes-base.dropbox",
+          "position": [
+            1270,
+            510
+          ],
+          "parameters": {
+            "path": "/screenshots/sample_fullpage.png",
+            "binaryData": true
+          },
+          "credentials": {
+            "dropboxApi": "dropbox-miquel"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get File": {
+          "main": [
+            [
+              {
+                "node": "Upload fullpage",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get File1": {
+          "main": [
+            [
+              {
+                "node": "Upload Screenshot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload fullpage": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate FullPage": {
+          "main": [
+            [
+              {
+                "node": "Get File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload Screenshot": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Generate Screenshot": {
+          "main": [
+            [
+              {
+                "node": "Get File1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Create Web + Email Item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Web + Email Item": {
+          "main": [
+            [
+              {
+                "node": "Generate FullPage",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Generate Screenshot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 10,
+      "nodeTypes": {
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.uproc": {
+          "count": 2
+        },
+        "n8n-nodes-base.awsSes": {
+          "count": 1
+        },
+        "n8n-nodes-base.dropbox": {
+          "count": 2
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.functionItem": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Miquel Colomer",
+      "username": "mcolomer",
+      "bio": "As a passionate developer and AI agent creator, I’ve been at the forefront of automation, pioneering workflows and training AI to handle complex tasks seamlessly. I’m an early adopter and expert of n8n, having worked with its powerful capabilities to create automation solutions for diverse industries. I founded n8nhackers, the first AI-powered agency focused on n8n, where we help businesses transform their workflows with cutting-edge automation.",
+      "verified": true,
+      "links": [
+        "https://n8nhackers.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/c4974f5be3985d7f30465d2d963967905bcb2f9b8a8ecaf8ba4396bfbd034db2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 8,
+        "icon": "file:dropbox.svg",
+        "name": "n8n-nodes-base.dropbox",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropbox/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/dropbox/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Dropbox"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjcgNjIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjEiIHk9IjEiLz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PHBhdGggZmlsbD0iIzAwN2VlNSIgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiIGQ9Ik0xOC44NzQuMDIgMCAxMi4xOGwxMy4wNjYgMTAuNTI2TDMyIDExLjAzMm0tMzIgMjIgMTguODc0IDEyLjRMMzIgMzQuNDIyIDEzLjA2NiAyMi42ODZNMzIgMzQuNDIybDEzLjE4OCAxMS4wMUw2NCAzMy4xNTIgNTAuOTk0IDIyLjY4Nk02NCAxMi4yOCA0NS4xODggMCAzMiAxMS4wMWwxOC45OTQgMTEuNjc0TTMyLjA2IDM2Ljc3OCAxOC44NzIgNDcuNzI2bC01LjY4Ni0zLjY5djQuMTc0TDMyLjA2IDU5LjUyMiA1MC45MzQgNDguMjF2LTQuMTc0bC01LjY4NiAzLjY5Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Dropbox",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.functionItem",
+        "codex": {
+          "data": {
+            "alias": [
+              "Javascript",
+              "Code",
+              "Custom Code",
+              "JS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function Item",
+          "color": "#ddbb33"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function Item",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 263,
+        "icon": "file:ses.svg",
+        "name": "n8n-nodes-base.awsSes",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsses/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "AWS SES"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNzQuMzc1IDg1Ij48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIyLjE4OCIgeT0iMi41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzg3NjkyOSIgZD0iTTE2LjU1OCAxMi43NSAwIDM4LjU5MWwxNi41NTggMjUuODQxIDEzLjIyNy0zLjMyNC42NTQtNDQuODY5eiIvPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Im0zNS4wNDkgNTkuNzg2LTE4LjQ5MSA0LjY0NVYxMi43NWwxOC40OTEgNC42NDV6Ii8+PGcgZmlsbD0iIzg3NjkyOSI+PHBhdGggZD0iTTMyLjg0OSAyMS42MTQgMzUuMDUgODAgNzAgNjIuODY3bC0uMDEtNDMuNjE1LTguOTE0IDEuNDQ4LTI4LjIyOC45MTN6Ii8+PHBhdGggZD0ibTQ2LjE4NCAzMy4xNDkgMTAuOTA2LS42MzIgMTAuNzc4LTE5LjE2NEw0MC42MTIgMCAzMC40MzkgNC4zNjR6Ii8+PC9nPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Im00MC42MTIgMCAyNy4yNTYgMTMuMzUzTDU3LjA5IDMyLjUxN3oiLz48cGF0aCBmaWxsPSIjODc2OTI5IiBkPSJNMzUuMDQ5IDUuNTM5IDU3LjA5IDQ0Ljc0MmwzLjc4OCAyMi41OTVMMzUuMDQ5IDgwbC0xMC40Ni01LjEzMVY5LjY0eiIvPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Ik02OS45OTEgMTkuMjUxIDcwIDYyLjg2NyAzNS4wNSA4MFY1LjUzOWwyMi4wNDEgMzkuMjAzTDY5Ljk5IDE5LjI1MXoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "AWS SES",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 431,
+        "icon": "file:uproc.png",
+        "name": "n8n-nodes-base.uproc",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uproc/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/uProc/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "uProc"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "uProc",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 355,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/054f388816e142ea8747f82b42e383fd.png"
+      },
+      {
+        "id": 356,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/1f578347545449f5bc1baac7787a6302.png"
+      },
+      {
+        "id": 357,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/51048c096878487d82127c57e79edd67.png"
+      }
+    ]
+  }
+}

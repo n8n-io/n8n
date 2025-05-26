@@ -1,0 +1,109 @@
+{
+  "workflow": {
+    "id": 528,
+    "name": "Receive updates for GitLab events",
+    "views": 2678,
+    "recentViews": 0,
+    "totalViews": 2678,
+    "createdAt": "2020-07-16T10:58:06.116Z",
+    "description": "Companion workflow for GitLab Trigger docs\n\n![workflow-screenshot](fileId:129)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Gitlab Trigger",
+          "type": "n8n-nodes-base.gitlabTrigger",
+          "position": [
+            460,
+            480
+          ],
+          "webhookId": "0e855b27-6465-42be-9610-c61b2e09cef9",
+          "parameters": {
+            "owner": "n8n-io",
+            "events": [
+              "*"
+            ],
+            "repository": "n8n-docs"
+          },
+          "credentials": {
+            "gitlabApi": "gitlab_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.gitlabTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 57,
+        "icon": "file:gitlab.svg",
+        "name": "n8n-nodes-base.gitlabTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gitlabtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/gitlab/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "GitLab Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNFMjQzMjkiIGQ9Im0zMC41IDU2Ljk2NyAxMC44NjMtMzMuMjAzSDE5LjYzN3oiLz48cGF0aCBmaWxsPSIjRkM2RDI2IiBkPSJNMzAuNSA1Ni45NjcgMTkuNjM3IDIzLjc2NEg0LjQxeiIvPjxwYXRoIGZpbGw9IiNGQ0EzMjYiIGQ9Ik00LjQxIDIzLjc2NCAxLjExIDMzLjg2Yy0uMy45Mi4wMyAxLjkyOC44MTcgMi40OTZMMzAuNSA1Ni45Njd6Ii8+PHBhdGggZmlsbD0iI0UyNDMyOSIgZD0iTTQuNDEgMjMuNzY0aDE1LjIyNkwxMy4wOTMgMy43ODFjLS4zMzYtMS4wMjktMS44MDItMS4wMjktMi4xMzkgMHoiLz48cGF0aCBmaWxsPSIjRkM2RDI2IiBkPSJtMzAuNSA1Ni45NjcgMTAuODYzLTMzLjIwM0g1Ni41OXoiLz48cGF0aCBmaWxsPSIjRkNBMzI2IiBkPSJtNTYuNTkgMjMuNzY0IDMuMyAxMC4wODZhMi4yMiAyLjIyIDAgMCAxLS44MTcgMi40OTdMMzAuNSA1Ni45Njd6Ii8+PHBhdGggZmlsbD0iI0UyNDMyOSIgZD0iTTU2LjU5IDIzLjc2NEg0MS4zNjJsNi41NDQtMTkuOTkyYy4zMzYtMS4wMyAxLjgwMi0xLjAzIDIuMTM5IDBsNi41NDMgMTkuOTkyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "GitLab Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 129,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/dfa9382d68204ab2ad0b074e07b4e179.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/
+Scraped_At: 2025-05-20T18:55:22.041171
+
+Core nodes library
+#
+This section provides information about n8n's core
+nodes
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

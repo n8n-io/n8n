@@ -1,0 +1,501 @@
+{
+  "workflow": {
+    "id": 824,
+    "name": "Create a table, and insert and update data in the table in Snowflake",
+    "views": 783,
+    "recentViews": 0,
+    "totalViews": 783,
+    "createdAt": "2020-12-14T07:08:20.253Z",
+    "description": "![workflow-screenshot](fileId:337)",
+    "workflow": {
+      "id": "172",
+      "name": "Create a table, and insert and update data in the table in Snowflake",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Set",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "id",
+                  "value": 1
+                }
+              ],
+              "string": [
+                {
+                  "name": "name",
+                  "value": "n8n"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Snowflake",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "query": "CREATE TABLE docs (id INT, name STRING);",
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "snowflake": "Snowflake n8n Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Snowflake1",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "table": "docs",
+            "columns": "id, name"
+          },
+          "credentials": {
+            "snowflake": "Snowflake n8n Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1050,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "id",
+                  "value": 1
+                }
+              ],
+              "string": [
+                {
+                  "name": "name",
+                  "value": "nodemation"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Snowflake2",
+          "type": "n8n-nodes-base.snowflake",
+          "position": [
+            1250,
+            300
+          ],
+          "parameters": {
+            "table": "={{$node[\"Snowflake1\"].parameter[\"table\"]}}",
+            "columns": "name",
+            "operation": "update"
+          },
+          "credentials": {
+            "snowflake": "Snowflake n8n Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Set": {
+          "main": [
+            [
+              {
+                "node": "Snowflake1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set1": {
+          "main": [
+            [
+              {
+                "node": "Snowflake2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Snowflake": {
+          "main": [
+            [
+              {
+                "node": "Set",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Snowflake1": {
+          "main": [
+            [
+              {
+                "node": "Set1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Snowflake",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.snowflake": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 422,
+        "icon": "file:snowflake.svg",
+        "name": "n8n-nodes-base.snowflake",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.snowflake/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/snowflake/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Snowflake"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjMgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMjliNWU4IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0ibTguNjQ1IDE1LjMwNCAxMy4wMDggNy44YTMuNzIgMy43MiAwIDAgMCA0LjU4OS0uNjAxIDQgNCAwIDAgMCAxLjIyNy0yLjkwOFYzLjk2MmEzLjgxIDMuODEgMCAwIDAtMS44NjEtMy40MiAzLjgxIDMuODEgMCAwIDAtMy44OTMgMCAzLjgxIDMuODEgMCAwIDAtMS44NjEgMy40MnY4Ljg5NmwtNy4zODctNC40M2EzLjggMy44IDAgMCAwLTIuOTIyLS40IDMuNyAzLjcgMCAwIDAtMi4zIDEuODQ0IDQuMDUgNC4wNSAwIDAgMCAxLjQgNS40MjJtMzEuMjcgNy44IDEzLjAwOC03LjhhNC4wNTYgNC4wNTYgMCAwIDAgMS40LTUuNDI0IDMuNzUgMy43NSAwIDAgMC01LjIyLTEuNDUybC03LjMgNC4zN3YtOC44NEEzLjgxIDMuODEgMCAwIDAgMzkuOTQuNTM0YTMuODEgMy44MSAwIDAgMC0zLjg4OSAwIDMuODEgMy44MSAwIDAgMC0xLjg2MyAzLjQxNHYxNS4zMjNhNC4xIDQuMSAwIDAgMCAuNDk0IDIuMzY3IDMuNzUgMy43NSAwIDAgMCAyLjMgMS44NDQgMy43IDMuNyAwIDAgMCAyLjkyMi0uNG0tMTEuNTY3IDguODk0Yy4wMTMtLjI1LjEwOC0uNS4yNzItLjY4bDEuNTItMS41OGExLjA2IDEuMDYgMCAwIDEgLjY1OC0uMjgyaC4wNTdhMS4wNSAxLjA1IDAgMCAxIC42NTYuMjgybDEuNTIgMS41OGExLjEyIDEuMTIgMCAwIDEgLjI3Mi42ODF2LjA2YTEuMTMgMS4xMyAwIDAgMS0uMjcyLjY4M0wzMS41IDM0LjNhMS4wNCAxLjA0IDAgMCAxLS42NTYuMjg0aC0uMDU3YTEuMDQgMS4wNCAwIDAgMS0uNjU4LS4yODRsLTEuNTItMS41OGExLjEzIDEuMTMgMCAwIDEtLjI3Mi0uNjgzem0tNC42MDQtLjY1djEuMzY0YTEuNTQgMS41NCAwIDAgMCAuMzcyLjkzbDUuMTYgNS4zNTdhMS40MiAxLjQyIDAgMCAwIC44OTUuMzg2aDEuMzEyYTEuNDIgMS40MiAwIDAgMCAuODk1LS4zODZsNS4xNi01LjM1N2ExLjU0IDEuNTQgMCAwIDAgLjM3Mi0uOTN2LTEuMzY0YTEuNTQgMS41NCAwIDAgMC0uMzcyLS45M2wtNS4xNi01LjM1N2ExLjQyIDEuNDIgMCAwIDAtLjg5NS0uMzg2SDMwLjE2YTEuNDIgMS40MiAwIDAgMC0uODk1LjM4NmwtNS4xNiA1LjM2N2ExLjU1IDEuNTUgMCAwIDAtLjM3Mi45M20tMjEuODE4LTMuNzEgNy4zNjUgNC40MTctNy4zNjUgNC40MTNBNC4wNiA0LjA2IDAgMCAwIC41MTYgNDEuODhhMy43NSAzLjc1IDAgMCAwIDIuMyAxLjg0NCAzLjc1IDMuNzUgMCAwIDAgMi45MjItLjM5MmwxMy4wMDgtNy44YTQuMTEgNC4xMSAwIDAgMCAxLjktMy40OTIgNC4xNiA0LjE2IDAgMCAwLTEuOS0zLjQ5MmwtMTMuMDA4LTcuOGEzLjggMy44IDAgMCAwLTIuOTIyLS40IDMuNyAzLjcgMCAwIDAtMi4zIDEuODQ0IDQuMDUzIDQuMDUzIDAgMCAwIDEuNCA1LjQyMm0zOC45OTUgNC40NDJhNCA0IDAgMCAwIDEuOTEgMy40NzdsMTMgNy44YTMuNzQ1IDMuNzQ1IDAgMCAwIDUuMjItMS40NTEgNC4wNSA0LjA1IDAgMCAwLTEuNC01LjQyNGwtNy4zNTYtNC40MTQgNy4zNjUtNC40MTdhNC4wNTQgNC4wNTQgMCAwIDAgMS40LTUuNDIyIDMuNzQgMy43NCAwIDAgMC0yLjMtMS44NDQgMy43IDMuNyAwIDAgMC0yLjkyLjRsLTEzIDcuOGE0IDQgMCAwIDAtMS45MSAzLjUwN20tMTYuNjU1IDguNDQ2YTMuNyAzLjcgMCAwIDAtMi42MTEuNDY0bC0xMy4wMDggNy44YTQuMDU1IDQuMDU1IDAgMCAwLTEuNCA1LjQyMiAzLjc0IDMuNzQgMCAwIDAgMi4zIDEuODQzIDMuNzUgMy43NSAwIDAgMCAyLjkyMi0uMzkybDcuMzg3LTQuNDN2OC44M2EzLjgxIDMuODEgMCAwIDAgNS43NTUgMy40MjUgMy44MSAzLjgxIDAgMCAwIDEuODU4LTMuNDI1VjQ0LjQwNmEzLjkxIDMuOTEgMCAwIDAtMy4yMDUtMy45MDNtMjguNjYgOC4yNzYtMTMuMDA4LTcuOGEzLjc1IDMuNzUgMCAwIDAtMi45MjItLjM5MiAzLjc0IDMuNzQgMCAwIDAtMi4zIDEuODQzIDQuMSA0LjEgMCAwIDAtLjQ5NCAyLjM3djE1LjI1YTMuODEgMy44MSAwIDAgMCA1Ljc1NSAzLjQyNSAzLjgxIDMuODEgMCAwIDAgMS44NTktMy40MjV2LTguNzY0bDcuMjg3IDQuMzdhMy44IDMuOCAwIDAgMCAyLjkyMi40IDMuNyAzLjcgMCAwIDAgMi4zLTEuODQ0YzEuMDU3LTEuOS40NC00LjI4LTEuNC01LjQyMiIvPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Snowflake",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 337,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/239a1509b271468da8c4b844b7c03dd0.png"
+      }
+    ]
+  }
+}

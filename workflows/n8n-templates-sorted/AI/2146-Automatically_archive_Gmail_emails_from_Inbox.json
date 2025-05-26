@@ -1,0 +1,625 @@
+{
+  "workflow": {
+    "id": 2146,
+    "name": "Automatically archive Gmail emails from Inbox",
+    "views": 2449,
+    "recentViews": 0,
+    "totalViews": 2449,
+    "createdAt": "2024-02-28T18:15:13.466Z",
+    "description": "## Use Case\nAutomatically archive emails in your Gmail inbox from the last day, **unless they have been starred.**\n\nBeen using this with my personal and work emails to stick to an **Inbox Zero** strategy, without having to click or swipe a lot. \n\n## Setup \n1. Add your Gmail creds\n\n## How to adjust this template\nSet your own schedule for when to run this. Otherwise, should be good to go. 🤞🏽",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "b1afd02d-6edf-4540-bf32-09d87cb8a27b",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            320,
+            220
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 379,
+            "height": 80,
+            "content": "### 👨‍🎤 Setup\n1. Add your Gmail creds"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3481e6c3-7706-4c7f-8ca6-c96f76d82021",
+          "name": "At midnight every work day",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            400,
+            340
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "expression": "0 0 * * 1-5"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3c74e4fd-e919-4acb-8092-658f2e71513b",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            520
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 202,
+            "height": 100,
+            "content": "👆 Set your schedule. I use this for work emails. For personal emails, I run this daily."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "de421702-d012-4ea1-826e-1a4756ff4856",
+          "name": "Get all emails in the last day",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            620,
+            340
+          ],
+          "parameters": {
+            "filters": {
+              "q": "label:inbox",
+              "receivedBefore": "={{ $now.minus({days: 1}) }}"
+            },
+            "resource": "thread",
+            "returnAll": true
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "8",
+              "name": "Work Gmail account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "ef43b756-5f9c-4c8d-830a-8ccb71562618",
+          "name": "Get the thread of each email",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            840,
+            340
+          ],
+          "parameters": {
+            "options": {},
+            "resource": "thread",
+            "threadId": "={{ $json.id }}",
+            "operation": "get"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "8",
+              "name": "Work Gmail account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "bfc3b7e1-651a-4eb5-8882-b21d120d982b",
+          "name": "Keep only starred emails in inbox",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1060,
+            340
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ JSON.stringify($json.messages).includes('STARRED') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3d8145dc-577d-4e9b-83a7-fdf06afa1b96",
+          "name": "for each message in the thread",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            1480,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "messages"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "1a9083a8-ffd2-403e-bf53-9b9eee87ff5b",
+          "name": "Archive message (remove from inbox)",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1700,
+            520
+          ],
+          "parameters": {
+            "labelIds": "=INBOX",
+            "messageId": "={{ $json.id }}",
+            "operation": "removeLabels"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "8",
+              "name": "Work Gmail account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "c51240d0-88cb-461b-82ba-929a2d8a9dde",
+          "name": "Archive thread  (remove from inbox)",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1340,
+            300
+          ],
+          "parameters": {
+            "labelIds": "=INBOX",
+            "resource": "thread",
+            "threadId": "={{ $json.id }}",
+            "operation": "removeLabels"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "8",
+              "name": "Work Gmail account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "3ca7074f-c912-456c-92e4-08cac8833471",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1060,
+            520
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 202,
+            "height": 100,
+            "content": "⭐ Keep starred emails in inbox.. Archive everything else!"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "At midnight every work day": {
+          "main": [
+            [
+              {
+                "node": "Get all emails in the last day",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the thread of each email": {
+          "main": [
+            [
+              {
+                "node": "Keep only starred emails in inbox",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all emails in the last day": {
+          "main": [
+            [
+              {
+                "node": "Get the thread of each email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "for each message in the thread": {
+          "main": [
+            [
+              {
+                "node": "Archive message (remove from inbox)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Keep only starred emails in inbox": {
+          "main": [
+            [
+              {
+                "node": "Archive thread  (remove from inbox)",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "for each message in the thread",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 10,
+      "nodeTypes": {
+        "n8n-nodes-base.gmail": {
+          "count": 4
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.itemLists": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Mutasem",
+      "username": "mutasem",
+      "bio": "Team lead @ n8n",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/mutasemdmour/"
+      ],
+      "avatar": "https://gravatar.com/avatar/16d9c92db78317b6af7d0935bee34a47c522cb81d35c234ff76ea580ff1f6c29?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

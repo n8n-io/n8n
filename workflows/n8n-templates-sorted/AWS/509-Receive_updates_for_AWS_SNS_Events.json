@@ -1,0 +1,109 @@
+{
+  "workflow": {
+    "id": 509,
+    "name": "Receive updates for AWS SNS Events",
+    "views": 632,
+    "recentViews": 0,
+    "totalViews": 632,
+    "createdAt": "2020-07-14T08:44:49.766Z",
+    "description": "Companion workflow for AWS SNS Trigger node docs\n\n![workflow-screenshot](fileId:107)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "AWS-SNS-Trigger",
+          "type": "n8n-nodes-base.awsSnsTrigger",
+          "position": [
+            440,
+            300
+          ],
+          "parameters": {
+            "topic": "arn:aws:sns:ap-south-1:100558637562:n8n-rocks"
+          },
+          "credentials": {
+            "aws": "amudhan-aws"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.awsSnsTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 265,
+        "icon": "file:sns.svg",
+        "name": "n8n-nodes-base.awsSnsTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.awssnstrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "AWS SNS Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDkwIiBoZWlnaHQ9IjI1MDAiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIiB2aWV3Qm94PSIwIDAgMjU2IDI1NyI+PHBhdGggZmlsbD0iIzk5NUI4MCIgZD0ibTk4Ljg3NSAyMzIuMDMzLTI2LjQzMy03LjQwOC0yNS4wMDEtMjguNTA4IDMxLjI3Mi0uODYzem0tNjEuMTI1LTE4LjgtMTQuODc1LTQuMTY2LTE0LjA1OC0xNi4wMzQgMTcuMDgyLTIuODA5eiIvPjxwYXRoIGZpbGw9IiM3QjNGNjUiIGQ9Im0wIDE5MS4wMTcgMTUuMjA0IDMuMDkxIDIuMjA3LTMuODgyVjU4LjUwM2wtMi4yMDctMi41NjFMMCA2NC42eiIvPjxwYXRoIGZpbGw9IiNDMTdCOUQiIGQ9Ik03My45MzMgNjkuNzA4IDE1LjIwOCA1NS45NDJ2MTM4LjE2Nmw4Ljc5OC0uODE4IDEzLjc0NCAxOS45NDMgMTAuNi0yMi4yMDUgMjUuNTgzLTIuMzc4eiIvPjxwYXRoIGZpbGw9IiM3QjNGNjUiIGQ9Im0zMy45NTggMTk4LjEzMyAyNi4wNjMgNS4yNSAxLjcxNi00LjA0NVYzNy40NGwtMS43MTYtMy42NjUtMjYuMDYzIDEzLjIwOHoiLz48cGF0aCBmaWxsPSIjQzE3QjlEIiBkPSJNMjA4LjczNCA4MS41MTYgNjAuMDIxIDMzLjc3NXYxNjkuNjEybDE3LjIyMS0yLjIxNiAyMS42MzMgMzAuODYyIDE3LjEyNi0zNS44NSA5Mi43MzMtMTEuOTMzeiIvPjxwYXRoIGZpbGw9IiM5OTVCODAiIGQ9Im0xODEuODMzIDI1Ni40OTItMzcuNTY2LTEwLjUyNS0zNS41MDktNDAuNSA0Ni4wMzMtLjQ2OHoiLz48cGF0aCBmaWxsPSIjN0IzRjY1IiBkPSJtODkuNTkxIDIwOC45NSAzOC4zMyA3LjQxNyAyLjk3Ny0yLjU2NlY0LjExN0wxMjcuOTIxIDBsLTM4LjMzIDE5LjE1OHoiLz48cGF0aCBmaWxsPSIjQzE3QjlEIiBkPSJNMjU2IDY0LjAzMyAxMjcuOTI1IDB2MjE2LjM2N2wyMi41OTctNC41MjggMzEuMzExIDQ0LjY1MyAyNi45MDEtNTYuMzA5LS4wMTctLjAwMkwyNTYgMTkwLjcwOHoiLz48L3N2Zz4="
+        },
+        "displayName": "AWS SNS Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 107,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/c2071aad48bb4247a9079e4a19853587.png"
+      }
+    ]
+  }
+}

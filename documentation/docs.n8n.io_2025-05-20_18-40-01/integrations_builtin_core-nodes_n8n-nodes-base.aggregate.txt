@@ -1,0 +1,92 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/
+Scraped_At: 2025-05-20T18:55:25.018539
+
+Aggregate
+#
+Use the Aggregate node to take separate items, or portions of them, and group them together into individual items.
+Node parameters
+#
+To begin using the node, select the
+Aggregate
+you'd like to use:
+Individual Fields
+: Aggregate individual fields separately.
+All Item Data
+: Aggregate all item data into a single list.
+Individual Fields
+#
+Input Field Name
+: Enter the name of the field in the input data to aggregate together.
+Rename Field
+: This toggle controls whether to give the field a different name in the aggregated output data. Turn this on to add a different field name. If you're aggregating multiple fields, you must provide new output field names. You can't leave multiple fields undefined.
+Output Field Name
+: This field is displayed when you turn on
+Rename Field
+. Enter the field name for the aggregated output data.
+Refer to
+Node options
+for more configuration options.
+All Item Data
+#
+Put Output in Field
+: Enter the name of the field to output the data in.
+Include
+: Select which fields to include in the output. Choose from:
+All fields
+: The output includes data from all fields with no further parameters.
+Specified Fields
+: If you select this option, enter a comma-separated list of fields the output should include data from in the
+Fields To Include
+parameter. The output will include only the fields in this list.
+All Fields Except
+: If you select this option, enter a comma-separated list of fields the output should exclude data from in the
+Fields To Exclude
+parameter. The output will include all fields not in this list.
+Refer to
+Node options
+for more configuration options.
+Node options
+#
+You can further configure this node using these
+Options
+:
+Disable Dot Notation
+: The node displays this toggle when you select the
+Individual Fields
+Aggregate. It controls whether to disallow referencing child fields using
+parent.child
+in the field name (turned on), or allow it (turned off, default).
+Merge Lists
+: The node displays this toggle when you select the
+Individual Fields
+Aggregate. Turn it on if the field to aggregate is a list and you want to output a single flat list rather than a list of lists.
+Include Binaries
+: The node displays this toggle for both Aggregate types. Turn it on if you want to include binary data from the input in the new output.
+Keep Missing And Null Values
+: The node displays this toggle when you select the
+Individual Fields
+Aggregate. Turn it on to add a null (empty) entry in the output list when there is a null or missing value in the input. If turned off, the output ignores null or empty values.
+Templates and examples
+#
+Scrape business emails from Google Maps without the use of any third party APIs
+by Akram Kadri
+View template details
+✨🤖Automate Multi-Platform Social Media Content Creation with AI
+by Joseph LePage
+View template details
+AI-Powered Social Media Content Generator & Publisher
+by Amjid Ali
+View template details
+Browse Aggregate integration templates
+, or
+search all templates
+Related resources
+#
+Learn more about
+data structure and data flow
+in n8n workflows.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

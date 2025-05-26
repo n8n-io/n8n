@@ -1,0 +1,1158 @@
+{
+  "workflow": {
+    "id": 2755,
+    "name": "Jotform to KlickTipp Integration - Webinar registration",
+    "views": 432,
+    "recentViews": 0,
+    "totalViews": 432,
+    "createdAt": "2025-01-20T09:28:25.362Z",
+    "description": "![Jotform WF.png](fileId:1064)\n\n**Community Node Disclaimer**: As this workflow relies on a community node, it is limited to self-hosted environments.\n\n**How It Works:**  \n\nJotform Webinar Registry Integration: This workflow streamlines the process of handling webinar registrations submitted via JotForm. It ensures the data is correctly formatted and seamlessly integrates with KlickTipp.  \nData Transformation: Input data is validated and transformed to meet KlickTipp’s API requirements, including formatting phone numbers, converting dates, and validating URLs.  \n\n**Key Features**  \n\n**JotForm Trigger:**  \n- Captures new form submissions, including participant details and webinar preferences.  \n\n**Data Processing:**  \n- Standardizes and validates input fields  \n- Converts phone numbers to numeric-only format with international prefixes.  \n- Transforms dates into UNIX timestamps.  \n- Validates LinkedIn URLs and applies fallback URLs if validation fails.  \n- Scales numerical fields, such as work experience, for specific use cases.  \n\n**Subscriber Management in KlickTipp:**  \n- Adds or updates participants as subscribers in KlickTipp.  \n- Includes custom field mappings, such as:  \n\t- Personal information (name, email, phone number).  \n\t- Webinar details (chosen webinar, start date/time).  \n\t- Preferences (reminder intervals, questions for presenters).\n- Tags contacts for segmentation: Adds fixed and dynamic tags to contacts.\n  \n\n**Error Handling:**  \n- Validates critical fields like phone numbers, URLs, and dates to prevent incorrect data submissions.  \n\n**Setup Instructions**  \n\n**Install and Configure Nodes:**  \n- Set up the JotForm and KlickTipp nodes in your n8n instance.  \n- Authenticate your JotForm and KlickTipp accounts.  \n\n**Custom Field Preparation in KlickTipp:**  \nCreate the necessary custom fields to match the data structure:  \n\n| Name | Datentyp |\n| - | - |\n| Jotform_URL_Linkedin | URL |\n| Jotform_Workexperience_in_Years | Dezimalzahl |\n| Jotform_Webinar_start_timestamp | Datum & Zeit |\n| Jotform_Questions/Notes | Absatz |\n| Jotform_webinar | Zeile |\n| Jotform_reminder | Zeile |  \n\nAfter creating fields, allow 10-15 minutes for them to sync. If fields don’t appear, reconnect your KlickTipp credentials.  \n\n**Field Mapping and Adjustments:**  \nVerify and customize field assignments in the workflow to align with your specific form and subscriber list setup.  \n\n**Workflow Logic**  \n\n1. **Trigger via JotForm Submission:** A new form submission from JotForm initiates the workflow  \n2. **Data Transformation:** Processes raw form data to ensure compatibility with KlickTipp’s API.  \n3. **Add to KlickTipp Subscriber List:** Adds participants to the designated KlickTipp list, including webinar-specific details.  \n4. **Get all tags from KlickTipp and create a list:**\nFetches all existing Tags and turns them into an array\n\n5. **Define tags to dynamically set for contacts:** Definiton of variables that are received from the form submission and should be converted into tags\n\n6. **Merge tags of both lists:** Checks whether the list of existing tags in KlickTipp contains the tags which should be dynamically set based on the form submission\n\n7. **Tag creation and tagging contacts:** Creates new tags if it previously did not exist and then tags the contact\n\n\n\n**Benefits**  \n\n**Efficient lead generation:** Contacts from forms are automatically imported into KlickTipp and can be used immediately, saving time and increasing the conversion rate.  \n**Automated processes:** Experts can start workflows directly, such as welcome emails or course admissions, reducing administrative effort.  \n**Error-free data management:** The template ensures precise data mapping, avoids manual corrections and reinforces a professional appearance.  \n\n**Testing and Deployment:**  \n\nTest the workflow by filling the form on Jotform and verifying data updates in KlickTipp.  \n\n**Notes:**  \n\n**Customization:** Update field mappings within the KlickTipp nodes to align with your account setup. This ensures accurate data syncing.  \n",
+    "workflow": {
+      "meta": {
+        "instanceId": "95b3ab5a70ab1c8c1906357a367f1b236ef12a1409406fd992f60255f0f95f85"
+      },
+      "nodes": [
+        {
+          "id": "f13c4b60-5b5f-474b-b79b-45c4fb9cc067",
+          "name": "Subscribe contact in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Adds the contact to KlickTipp using the transformed webinar registration data.",
+          "position": [
+            -800,
+            600
+          ],
+          "parameters": {
+            "email": "={{ $('New webinar booking via JotForm').item.json.Email }}",
+            "fields": {
+              "dataFields": [
+                {
+                  "fieldId": "fieldFirstName",
+                  "fieldValue": "={{ $('New webinar booking via JotForm').item.json.Name.first }}"
+                },
+                {
+                  "fieldId": "fieldLastName",
+                  "fieldValue": "={{ $('New webinar booking via JotForm').item.json.Name.last }}"
+                },
+                {
+                  "fieldId": "fieldBirthday",
+                  "fieldValue": "={{ $json.birthday }}"
+                },
+                {
+                  "fieldId": "field214129",
+                  "fieldValue": "={{ $json.linkdein_url }}"
+                },
+                {
+                  "fieldId": "field214128",
+                  "fieldValue": "={{ $json.work_experience_in_years }}"
+                },
+                {
+                  "fieldId": "field214132",
+                  "fieldValue": "={{ $json['webinar_start_date&time'] }}"
+                },
+                {
+                  "fieldId": "field214125",
+                  "fieldValue": "={{ $('New webinar booking via JotForm').item.json['Bitte lassen Sie uns wissen, wenn Sie vor dem Webinar Fragen/Hinweise an unsere Referenten haben.'] }}"
+                },
+                {
+                  "fieldId": "field214431",
+                  "fieldValue": "={{ $('New webinar booking via JotForm').item.json['Webinar Auswahl:'] }}"
+                },
+                {
+                  "fieldId": "field214432",
+                  "fieldValue": "={{ $('New webinar booking via JotForm').item.json['In welchem Intervall möchtest Du erinnert werden?'] }}"
+                }
+              ]
+            },
+            "listId": "358895",
+            "resource": "subscriber",
+            "operation": "subscribe",
+            "smsNumber": "={{ $json.mobile_number }}"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "7aa2b991-782d-4171-ac30-131c2062e17c",
+          "name": "Convert and set webinar data",
+          "type": "n8n-nodes-base.set",
+          "notes": "This node formats the data received from the Jotform submission, ensuring it is correctly formatted for further processing at the KlickTipp API endpoint.",
+          "position": [
+            -1020,
+            600
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f1263cb6-654a-4d07-9073-c015b720e6b7",
+                  "name": "mobile_number",
+                  "type": "string",
+                  "value": "={{ \n// Converts a phone number to numeric-only format with international code prefixed by \"00\"\n$json.Mobilrufnummer.full\n    .replace(/^\\+/, '00')   // Replace leading \"+\" with \"00\"\n    .replace(/[^0-9]/g, '') // Remove non-numeric characters\n}}"
+                },
+                {
+                  "id": "b09cc146-e614-478a-8f33-324d813e0120",
+                  "name": "birthday",
+                  "type": "string",
+                  "value": "={{ \n// Converts a date to a UNIX timestamp (in seconds)\nMath.floor(\n    new Date(\n      $json.Geburtstag.year + '-' + \n      $json.Geburtstag.month + '-' + \n      $json.Geburtstag.day + 'T00:00:00'\n    ).getTime() / 1000\n  )\n}}"
+                },
+                {
+                  "id": "cecd4621-b31b-43d0-9076-08f0bde83f5b",
+                  "name": "linkdein_url",
+                  "type": "string",
+                  "value": "={{ \n// Validates if the URL matches the correct format; returns it if valid, else a default fallback URL\n/^https?:\\/\\/[^\\s$.?#].[^\\s]*$/.test($json['LinkedIn Profil Link/URL (ACHTUNG keine Formatprüfung bei Eingabe)']) \n    ? $json['LinkedIn Profil Link/URL (ACHTUNG keine Formatprüfung bei Eingabe)'] \n    : 'https://www.URLnichtImPassendenFormat.de' \n}}"
+                },
+                {
+                  "id": "1c455eb9-0750-4d69-9dab-390847a3d582",
+                  "name": "work_experience_in_years",
+                  "type": "string",
+                  "value": "={{\n// Multiplies the decimalnumber value by 100\n$json['Berufserfahrung in Jahren'] * 100 }}"
+                },
+                {
+                  "id": "f8e5ecc7-1549-409f-a6d5-e5beb773baef",
+                  "name": "webinar_start_date&time",
+                  "type": "string",
+                  "value": "={{ \n  (() => {\n    // Input format example: '2025-01-31 13:00'\n    const rawDate = $json['Termin Auswahl:']; \n\n    // Ensure the raw date is provided and in the expected format\n    if (!rawDate || typeof rawDate !== 'string') return ''; // Return empty string if invalid\n\n    // Split the date and time into components\n    const [datePart, timePart] = rawDate.split(' '); // Example: ['2025-01-31', '13:00']\n    if (!datePart || !timePart) return ''; // Return empty string if date or time is missing\n\n    // Validate the date format (YYYY-MM-DD)\n    const [year, month, day] = datePart.split('-'); // Split year, month, day\n    if (!year || !month || !day || year.length !== 4 || month.length !== 2 || day.length !== 2) return ''; // Validate format\n\n    // Combine into ISO 8601 format (YYYY-MM-DDTHH:mm) with Germany's local timezone offset\n    const isoDateTime = `${year}-${month}-${day}T${timePart}:00+01:00`;\n\n    // Create a Date object in Germany's timezone\n    const localDate = new Date(isoDateTime);\n\n    // Convert the local time to a UTC UNIX timestamp in seconds\n    return Math.floor(localDate.getTime() / 1000); \n  })()\n}}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2dade6bf-6b65-45db-9a33-9faca1860924",
+          "name": "New webinar booking via JotForm",
+          "type": "n8n-nodes-base.jotFormTrigger",
+          "notes": "Triggers the workflow when a new form submission is received on JotForm.",
+          "position": [
+            -1260,
+            600
+          ],
+          "webhookId": "a8dd1d6b-dc1c-4293-84dd-59ee063c1fbd",
+          "parameters": {
+            "form": "250054687472360"
+          },
+          "credentials": {
+            "jotFormApi": {
+              "id": "71GlBAECuZVP7vMO",
+              "name": "Ricardo's JotForm account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "d796b45c-64c8-4d6b-b267-9b828ef24345",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -660,
+            940
+          ],
+          "parameters": {
+            "width": 839.0148942368631,
+            "height": 1288.9426551387483,
+            "content": "### Introduction\nThis workflow streamlines the process of handling webinar registrations submitted via JotForm. It ensures the data is correctly formatted and seamlessly integrates with KlickTipp. Input data is validated and transformed to meet KlickTipp’s API requirements, including formatting phone numbers, converting dates, and validating URLs.\n\n### Benefits\n- **Efficient lead generation**: Contacts from forms are automatically imported into KlickTipp and can be used immediately, saving time and increasing the conversion rate.\n- **Automated processes**: Experts can start workflows directly, such as welcome emails or course admissions, reducing administrative effort.\n- **Error-free data management**: The template ensures precise data mapping, avoids manual corrections, and reinforces a professional appearance.\n\n### Key Feature\n- **JotForm Trigger**: Captures new form submissions, including participant details and webinar preferences.\n- **Data Processing**: Standardizes and validates input fields:\n  - Converts phone numbers to numeric-only format with international prefixes.\n  - Transforms dates into UNIX timestamps.\n  - Validates LinkedIn URLs and applies fallback URLs if validation fails.\n  - Scales numerical fields, such as work experience, for specific use cases.\n- **Subscriber Management in KlickTipp**: Adds or updates participants as subscribers in KlickTipp. Includes custom field mappings and tags, such as:\n  - Personal information: Name, email, phone number.\n  - Webinar details: Chosen webinar, start date/time.\n  - Preferences: Reminder intervals, questions for presenters.\n  - Contact segmentation: Creates new tags based on form submission if necessary and adds these dynamic tags as well as fixed tags to contacts.\n\n- **Error Handling**: Validates critical fields like phone numbers, URLs, and dates to prevent incorrect data submissions.\n\n#### Setup Instructions\n1. Set up the JotForm and KlickTipp nodes in your n8n instance.\n2. Authenticate your JotForm and KlickTipp accounts.\n3. Create the necessary custom fields to match the data structure\n4. Verify and customize field assignments in the workflow to align with your specific form and subscriber list setup.\n![Source example](https://mail.cdndata.io/user/images/kt1073234/share_link_jotform_fields.png#full-width)\n\n### Testing and Deployment:\n1. Test the workflow by filling the form on JotForm.\n2. Verify data updates in KlickTipp.\n\n- **Customization**: Update field mappings within the KlickTipp nodes to align with your account setup. This ensures accurate data syncing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "81832238-a21c-4d2f-b8f2-6a0050370884",
+          "name": "Define Array of tags from Jotform",
+          "type": "n8n-nodes-base.set",
+          "notes": "This node defines tags based on the form submission, such as the webinar selection, date, and reminder interval, and saves them as an array for further processing.",
+          "position": [
+            -500,
+            500
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "814576c1-ba16-4546-9815-2b7dec324f94",
+                  "name": "tags",
+                  "type": "array",
+                  "value": "={{ [\n//Every line represents one of the dynamic values that are received from the form submission in order to create an array/list of tags. If you want to add another variable, keep in mind to add a comma at the end of the last line and only then to add your parameter at the end of this list.\n  $('New webinar booking via JotForm').item.json['Webinar Auswahl:'], \n  $('New webinar booking via JotForm').item.json['Termin Auswahl:'], \n  $('New webinar booking via JotForm').item.json['In welchem Intervall möchtest Du erinnert werden?']\n] }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "99beae4f-ab6e-4975-a6b8-baade0279f24",
+          "name": "Split Out Jotform tags",
+          "type": "n8n-nodes-base.splitOut",
+          "notes": "In this node we split the created array again into items so we can merge them with the existing tags we request from KlickTipp.",
+          "position": [
+            -320,
+            500
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "tags"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "283d964b-3a37-4ac9-9562-26af43ef32d5",
+          "name": "Tag contact directly in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Applies existing tags to a subscriber in KlickTipp. This enables the use of specific signatures, sign out automations as well as the automation of emails and campaigns or other automations.",
+          "position": [
+            840,
+            500
+          ],
+          "parameters": {
+            "email": "={{ $('New webinar booking via JotForm').item.json.Email }}",
+            "tagId": "={{$json.tag_ids}}",
+            "resource": "contact-tagging"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "412ea807-11bb-47a1-ae60-168396bbfb3a",
+          "name": "Tag creation check",
+          "type": "n8n-nodes-base.if",
+          "notes": "This node checks the result of the tag comparison and branches the workflow accordingly in order to directly tag the contact or to create the tag first and to then follow through with the tagging.",
+          "position": [
+            140,
+            580
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "d9567816-9236-434d-b46e-e47f4d36f289",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.exist }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "50478814-aab3-4ec8-94e4-59ff8e30e632",
+          "name": "Aggregate tags to add to contact",
+          "type": "n8n-nodes-base.aggregate",
+          "notes": "This node aggregates all IDs of the existing tags to a list.",
+          "position": [
+            640,
+            500
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToAggregate": {
+              "fieldToAggregate": [
+                {
+                  "renameField": true,
+                  "outputFieldName": "tag_ids",
+                  "fieldToAggregate": "tag_id"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "feeb10fa-3eff-4c60-8d2c-77d0da3becf8",
+          "name": "Create the tag in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Creates a new tag in KlickTipp if it does not already exist.",
+          "position": [
+            440,
+            700
+          ],
+          "parameters": {
+            "name": "={{ $json.name }}",
+            "operation": "create"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "bf19001c-5369-4d40-ba94-f9d919222455",
+          "name": "Aggregate array of created tags",
+          "type": "n8n-nodes-base.aggregate",
+          "notes": "This node aggregates all IDs of the newly created tags to a list.",
+          "position": [
+            640,
+            700
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToAggregate": {
+              "fieldToAggregate": [
+                {
+                  "renameField": true,
+                  "outputFieldName": "tag_ids",
+                  "fieldToAggregate": "id"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "eb4c28a3-30d2-42fb-986c-14b31497611c",
+          "name": "Tag contact KlickTipp after trag creation",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Associates a specific tag with a subscriber in KlickTipp using their email address. This enables the use of specific signatures, signout automations as well as the automation of emails and campaigns or other automations.",
+          "position": [
+            840,
+            700
+          ],
+          "parameters": {
+            "email": "={{ $('New webinar booking via JotForm').item.json.Email }}",
+            "tagId": "={{$json.tag_ids}}",
+            "resource": "contact-tagging"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "5df24c47-f8d9-4f34-8257-00f06ede36ad",
+          "name": "Get list of all existing tags",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "This node fetches all tags that already exist in KlickTipp.",
+          "position": [
+            -500,
+            700
+          ],
+          "parameters": {},
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "7c2b8718-6f79-4a6a-afb4-3c429882fd98",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "notes": "This node merges the tags which are fetched via the form with the existing tags we requested in order to identify if new tags need to be created.",
+          "position": [
+            -80,
+            580
+          ],
+          "parameters": {
+            "mode": "combineBySql",
+            "query": "SELECT \n    input1.tags AS name,  -- Extracts the tag name from input1\n    IF(input2.value IS NOT NULL, true, false) AS exist, -- Checks if the tag exists in input2 (returns true if found, false otherwise)\n    input2.id AS tag_id  -- Retrieves the ID of the tag from input2 if it exists, otherwise returns NULL\nFROM \n    input1\nLEFT JOIN \n    input2 \nON \n    input1.tags = input2.value  -- Matches tags from input1 with values in input2"
+          },
+          "notesInFlow": true,
+          "typeVersion": 3
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Tag creation check",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Tag creation check": {
+          "main": [
+            [
+              {
+                "node": "Aggregate tags to add to contact",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Create the tag in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Jotform tags": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create the tag in KlickTipp": {
+          "main": [
+            [
+              {
+                "node": "Aggregate array of created tags",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert and set webinar data": {
+          "main": [
+            [
+              {
+                "node": "Subscribe contact in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get list of all existing tags": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Subscribe contact in KlickTipp": {
+          "main": [
+            [
+              {
+                "node": "Get list of all existing tags",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Define Array of tags from Jotform",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate array of created tags": {
+          "main": [
+            [
+              {
+                "node": "Tag contact KlickTipp after trag creation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New webinar booking via JotForm": {
+          "main": [
+            [
+              {
+                "node": "Convert and set webinar data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate tags to add to contact": {
+          "main": [
+            [
+              {
+                "node": "Tag contact directly in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Define Array of tags from Jotform": {
+          "main": [
+            [
+              {
+                "node": "Split Out Jotform tags",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.jotFormTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-klicktipp.klicktipp": {
+          "count": 5
+        }
+      }
+    },
+    "user": {
+      "name": "KlickTipp",
+      "username": "KlickTipp",
+      "bio": "Reach more people. 100% GDPR compliant. Quickly create automated email campaigns, SMS and marketing automations. Market your knowledge independently of Google & Co., sell lucrative products and activate your customers.",
+      "verified": true,
+      "links": [
+        "https://www.klicktipp.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/38677fedcb7c47d414fa2b6ecabb1f51a1f0efaecd06f316971632d6c192e2ff?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 227,
+        "icon": "file:jotform.png",
+        "name": "n8n-nodes-base.jotFormTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.jotformtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/jotForm/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "JotForm Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAC/VBMVEUAAAD//////////////vz////////69fL////+/v76+vr////y8vL+/v7y8vL////////z8/P////////////////////////////////////////////////////////////////0hjL////3o1rtgzD1mU32nET////z8/Py8vL09PTx8fHy8vLzhjH2lEj09PTPcSjw8PD859v60bjVnIHJcjbFZwTEbSn09PTq0sf2nk7Jbyv//Pzy8vL4uo7Hbyz0j0DyhjP3pFvzhzT0oVr4oFe9bSzTkG/////y8vLx8fH//v7+/f3zhjP4+Pj29vb9/Pz09PTty7n6+vrZr5voxrXbsp31hzLEbCjszLzqyrrpyLfiuqbetaGlf272o1nHbyv7+/vnw7Hivargt6Ouinn0hS/uz77sybbUqJOohHOngXHyhTH89vPu7u7YrZjXq5bTpZCxkICjfGz2oVj3n0/JbynDWQD++vj47OX14df03M/vzLnkv63dtKCwjHuqhXT3pF73pFvJczfIbijHbCL78ez77+jl3drds57TrpvQp5TJo5HIn4y2l4m2jn2pgWynfmmkeWVjYF+dcV2cbllLTEyQXEP1mjr/kjbGcTPIcC/YeC7zgyzzgyQAAADw6+np6en36OD35tzw39jT09Pv0cHpzsHYyMG9vb3RwLrjwrPxyLDLsqa+p5+cm5r0uZG+mojAl4R6fHyrh3edeGmhe2ifdmX2p2T2pWL+rWD/p1zPhlxXV1f2n1X1kUD/kDTmfy/UdS7fei3OciskJCTEYgD18vHt6Ofj4+Pr5OHc3NzU1NT74dLf08/c0c3y18nx1cXLurX5zLCwsLDduKXvvZ/Bp5u7oJXNoY3eqIzGmYT3s4Lwr4K6lIL/vIDZnX50dHTSk3PlmW9vb2+DcmrvllufcVhMUVP1m1HsjU+2c06XZk7/pk3MfUv1lEdJRkRHQ0L/lz7zjT3GcTXAbC71lywrKyvLbh/JaADFZwDMYwDDXQCtWQDpOOnoAAAASXRSTlMA/fr3BQYCA5caPfz2F/qcVfz08+TXzsW4qYp7Yl9EQCIR+J34/fz8+dbFuKmdlmJfTBH+/f34+PPk5M7OnJyXl4uLe3tEIyMXxnip4AAABZxJREFUSMeNlwV0E0EQhpMLhAR3d3d3d5jkLp5CG2KlDZQWCpTi7u7u7u7u7u7u7m6P2Usv+5K7Nvx9fS+52y8z88/e3q5MSsmSBV5JkUL2X1ImVxK+aZNyjRqULduwcbkKzVIIl4MpOf6nSV+vVuHdu3Z9OjBz5swDc6rXrl+hOX8raaXAhFPWyczef7s7vnDRgkRF3N0OzfldM11KTCfJ5BHNlx0AKhUrXDh+0Ps2LXW6lodD3VWrDe4AXCmCJx5WKVPnQLQ4U3nGQJfL9bmNrr1Odyh0yODuVYozLBhKq3FQomHzZAQ5kwrYDTN2xg/ap0O4ZZFuoe7B3VcDa0mrgdTlcZi0U8pCAIwcOBi2o+vA+EFF2+gQPhg6ZPbQX0uA02s1aQ1QRokDJdgC2QCjArBwdsbAQS7X/rk6LHlOaLdZx/Z0ANag1WgypIWSFSlNWXUWUMh5Fi5/2xnv8mbd/gjC3TsBy5q0GlRqKJFGoGm9BZAF4OEed4rtcA18KWTtnt19ORg5JBPoin51o4XKbMgmwMNdXVGYNd+obu6h7p7AhWt9dEmln+dKWSFkBXjYmjXXNtx9NnfevDa6I+jXsUdYCvrlo8v4J52H2OyL3HbZctvqfrcev2o5b6gbGxUBRkC/BKWF8oj4klZnhFTgg3v2adsqJKKFdVTnB3u+/hj65Q82CkwUzmBIrUZICJwDGJALtAB3bNd5zJZJr2f9fIeNYjUI09ClEUroUj7w0yIC2wl829ll66S/nTEbI0XJz+hTIsabJcuOgYFqsTmsVetIAo/v0mX71ukjMGsLElQZoBSCfOCUQHKm6kVgh7VTu5sDnNuc09cRH/T+sEmDofnI6YARwX37IbzJiZGnnsDAgtm06roIYuFpMvtnDb3NYSERIxEe73TGTL9EArOmANhYI40sGf6lB7lfYLa32RZiH2ntOHaAM2ZK9HESmNP4wxm0kJ43XMVPLiruAsKRGHlTTIzzzQrCgm9y0mmm4juVNQDucdFsQ7Oto/vHRE8ZF87DejGclRiWPxMt2ftQLTPb+jpaWMcOiI6ZOgKMACK/SLMy5Uc4L5bsD7c12yIcLTrei94yZR2wLKBMAbDWIIe8COf2BqZwh7ZhrSL6tRjtGRA9aQFJmvpFYT0DuRHOBYoAuE9YiL1fi7HR/aeu8rI4OQPFKSAXwjkD4WHmsNaRDut4zwSPAb8SWQIDaxDKKe4UPs5RBB7tiXt+PoEFvahkhFRScM8oW99Ix8a4iTeMAmwSlUxgqbQXRdkiIq1x/SeSp8krkV9GkraUYYujWtntY+ImroXArKlYQMOkWtUrKsTu2OjxLCDzQ3KGaE3A8q2ik4TCre2j4iYIbWJFBWs1FsLklZqevUP62sd4xhm8sFGjDSBNerzB4PSUejB6m1s7xk04503agiwlETV4a1GQB0PcK27F2quj+l9nRVYR0pJgobdTgYsBC5bN0yY/3XYKP5E3Y0C6gpDAxUBYhiis3zztxfz15BOHVgmoSW/03uaFQGZchoQFkMKaJ3s/fliIboVjuUK64TxFAzOQTrz0Ihw7ee/8lfxiK6TrK5TCALj0ihZ9DhZOPvpQDxyWS9wlhYrFQHYERa8bDk5OO3oGLCatN11IRPkQE73oODiNboXTvoglx8E5EBK9YhFe+j0WYqm7YuHQjGqExC93I6y8ArF6oxRFrc6DiMS2goWlsUYOkpKCtEl6Q8MiGYTNpkRAeisVlM1SAIdLbuKCSI6sGgcnsn1MUqkYyFaAsuKNa5I2QyElZSW3zIlFlUPGPDgs6c06Q8PToBgVcqhlyhTBjgnoi4KRy32ggncyez4cEPSAki6zwBB508hMDyhBj0aqrJnAp0xZVenTkFv/eyhLnj9v7lw5VaqcuXLnzZ88+KFM+jhIr4j1D0bzMYIsXruBAAAAAElFTkSuQmCC"
+        },
+        "displayName": "JotForm Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 1064,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Jotform_WF_5f1968316d.png"
+      }
+    ]
+  }
+}

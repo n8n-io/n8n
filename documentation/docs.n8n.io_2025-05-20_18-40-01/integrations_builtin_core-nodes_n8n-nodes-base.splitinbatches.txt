@@ -1,0 +1,148 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/
+Scraped_At: 2025-05-20T18:56:42.849049
+
+Loop Over Items
+#
+The Loop Over Items node helps you loop through data when needed.
+The node saves the original incoming data, and with each iteration, returns a predefined amount of data through the
+loop
+output.
+When the node execution completes, it combines all of the processed data and returns it through the
+done
+output.
+When to use the Loop Over Items node
+#
+By default, n8n nodes are designed to process a list of input items (with some exceptions, detailed below). Depending on what you're trying to achieve, you often don't need the Loop Over Items node in your workflow. You can learn more about how n8n processes multiple items on the
+looping in n8n
+page.
+These links highlight some of the cases where the Loop Over Items node can be useful:
+Loop until all items are processed
+: describes how the Loop Over Items node differs from normal item processing and when you might want to incorporate this node.
+Node exceptions
+: outlines specific cases and nodes where you may need to use the Loop Over Items node to manually build looping logic.
+Avoiding rate limiting
+: demonstrates how to batch API requests to avoid rate limits from other services.
+Node parameters
+#
+Batch Size
+#
+Enter the number of items to return with each call.
+Node options
+#
+Reset
+#
+If turned on, the node will reset with the current input-data newly initialized with each loop. Use this when you want the Loop Over Items node to treat incoming data as a new set of data instead of a continuation of previous items.
+For example, you can use the Loop Over Items node with the reset option and an
+If node
+to query a paginated service when you don't know how many pages you need in advance. The loop queries pages one at a time, performs any processing, and increments the page number. The loop reset ensures the loop recognizes each iteration as a new set of data. The If node evaluates an exit condition to decide whether to perform another iteration or not.
+Include a valid termination condition
+For workflows like the example described above, it's critical to include a valid termination condition for the loop. If your termination condition never matches, your workflow execution will get stuck in an infinite loop.
+When enabled, you can adjust the reset conditions by switching the parameter representation from
+Fixed
+to
+Expression
+. The results of your expression evaluation determine when the node will reset item processing.
+Templates and examples
+#
+Scrape business emails from Google Maps without the use of any third party APIs
+by Akram Kadri
+View template details
+Back Up Your n8n Workflows To Github
+by Jonathan
+View template details
+OpenAI GPT-3: Company Enrichment from website content
+by Lucas Perret
+View template details
+Browse Loop Over Items (Split in Batches) integration templates
+, or
+search all templates
+Read RSS feed from two different sources
+#
+This workflow allows you to read an RSS feed from two different sources using the Loop Over Items node. You need the Loop Over Items node in the workflow as the RSS Feed Read node only processes the first item it receives. You can also find the
+workflow
+on n8n.io.
+The example walks through building the workflow, but assumes you are already familiar with n8n. To build your first workflow, including learning how to add nodes to a workflow, refer to
+Try it out
+.
+The final workflow looks like this:
+View workflow file
+Copy the workflow file above and paste into your instance, or manually build it by following these steps:
+Add the manual trigger.
+Add the Code node.
+Copy this code into the Code node:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+return
+[
+{
+json
+:
+{
+url
+:
+'https://medium.com/feed/n8n-io'
+,
+}
+},
+{
+json
+:
+{
+url
+:
+'https://dev.to/feed/n8n'
+,
+}
+}
+];
+Add the Loop Over Items node.
+Configure Loop Over Items: set the batch size to
+1
+in the
+Batch Size
+field.
+Add the RSS Feed Read node.
+Select
+Test Workflow
+. This runs the workflow to load data into the RSS Feed Read node.
+Configure RSS Feed Read: map
+url
+from the input to the
+URL
+field. You can do this by dragging and dropping from the
+INPUT
+panel, or using this expression:
+{{ $json.url }}
+.
+Select
+Test Workflow
+to run the workflow and see the resulting data.
+Check that the node has processed all items
+#
+To check if the node still has items to process, use the following expression:
+{{$node["Loop Over Items"].context["noItemsLeft"]}}
+. This expression returns a boolean value. If the node still has data to process, the expression returns
+false
+, otherwise it returns
+true
+.
+Get the current running index of the node
+#
+To get the current running index of the node, use the following expression:
+{{$node["Loop Over Items"].context["currentRunIndex"];}}
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,503 @@
+{
+  "workflow": {
+    "id": 2528,
+    "name": "Sync Google Calendar Events to Outlook",
+    "views": 3833,
+    "recentViews": 1,
+    "totalViews": 3833,
+    "createdAt": "2024-11-05T10:07:58.573Z",
+    "description": "## What this workflow does\nThis workflow is used as a bridge between your private Google Calendar to your Work Outlook Calendar. The same mentality can be used with other calendar types.\n\n## Description\nSend a copy of a Google Calendar event to your Outlook work account as a reminder to yourself or co-workers that you are booked for private matters like \"Dentist appointment\", \"Taking kids to Disney Land\" etc.\n\n## How it works\n- Create event\n-- You create a Google Calendar event.\n-- A trigger in n8n reacts and collects the event info.\n-- An Outlook event is created with the same information in your Outlook Calendar.\n- Cancel\n-- You cancel an event in Google Calendar\n-- A trigger in n8n reacts and collects the canceled event info.\n-- Using the Outlook node to getAll events searches for the event in your Outlook Calendar.\n-- If the event is found it is then deleted.\n-- An email with the details of the cancelation is then sent to your Outook e-mail address.\n\nThe n8n Merge node is used to combine results from two different nodes that are necessary to create the cancelled event e-mail notification.\n\n## Important notice\nMake sure you use a dedicated Google Calendar for private events that will be displayed in your work Outlook calendar in order to avoid displaying unwanted calendar events that you do not wish to share with your co-workers.\n\n## Requirements\n- Active workflow*\n- Google Calendar OAuth2 API\n- Microsoft Outlook OAuth2 API\n\n.*The Google Calendar trigger is activated only if this workflow is active. You can however TEST the workflow in the editor by clicking “Test step”. You will then receive a response from Google Calendar that you can use in order to view what data Google Sends.\n",
+    "workflow": {
+      "id": "0HVA2TOmkdNpH5DP",
+      "meta": {
+        "instanceId": "ba8f1362d8ed4c2ce84171d2f481098de4ee775241bdc1660d1dce80434ec7d4",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Google calendar to Outlook",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "e7e75d4a-ee5a-4ee7-b69d-71d8eb51fe55",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            920,
+            800
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineAll"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "6e159340-910c-4c1e-9e6b-c6ef679309be",
+          "name": "Incoming Event Trigger",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            500,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerOn": "eventCreated",
+            "calendarId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "your_email@gmail.com",
+              "cachedResultName": "Your Name"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "IgBZqXCtaacRpIKt",
+              "name": "Your Name Google Calendar account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7ffb13c3-7d16-4bd8-aed0-7f6378394a1c",
+          "name": "Cancel Event Trigger",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            280,
+            600
+          ],
+          "parameters": {
+            "options": {},
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerOn": "eventCancelled",
+            "calendarId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "your_email@gmail.com",
+              "cachedResultName": "Your Name"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "IgBZqXCtaacRpIKt",
+              "name": "Your Name Google Calendar account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f0e81f5b-a813-4e03-9400-a97842b6b9b5",
+          "name": "Create Outlook Event",
+          "type": "n8n-nodes-base.microsoftOutlook",
+          "position": [
+            740,
+            360
+          ],
+          "parameters": {
+            "subject": "={{ \"From private: \" + $json.summary }}",
+            "resource": "event",
+            "operation": "create",
+            "calendarId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "AAMkAGUxOTQ4ZmU0LWMxYjUtNDRiZi1iYjdlLTNmYTFhOWQ3MWZhNwBGAAAAAABlzj22ZOwJQZOQBjwNTK5fBwBW9yW5dIfsR51ayk6B4bZSAAAAAAEGAABW9yW5dIfsR51ayk6B4bZSAAAAAeGaAAA=",
+              "cachedResultName": "Calendar"
+            },
+            "endDateTime": "={{ $json.end.dateTime != undefined ? $json.end.dateTime : $json.end.date }}",
+            "startDateTime": "={{ $json.start.dateTime != undefined ? $json.start.dateTime : $json.start.date }}",
+            "additionalFields": {
+              "body": "={{ $json.description != undefined ? $json.description + \"\\n\" : \"\" + $json.htmlLink }}"
+            }
+          },
+          "credentials": {
+            "microsoftOutlookOAuth2Api": {
+              "id": "IsGdpQBgFdZ9bMsM",
+              "name": "Microsoft Outlook account (alex NLD)"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0e7c3511-cb4a-46a7-937e-57bdf6bdc00c",
+          "name": "Get Event to Cancel",
+          "type": "n8n-nodes-base.microsoftOutlook",
+          "position": [
+            520,
+            600
+          ],
+          "parameters": {
+            "limit": 1,
+            "filters": {
+              "custom": "=contains(subject, '{{ $json.summary }}')"
+            },
+            "resource": "event",
+            "calendarId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "AAMkAGUxOTQ4ZmU0LWMxYjUtNDRiZi1iYjdlLTNmYTFhOWQ3MWZhNwBGAAAAAABlzj22ZOwJQZOQBjwNTK5fBwBW9yW5dIfsR51ayk6B4bZSAAAAAAEGAABW9yW5dIfsR51ayk6B4bZSAAAAAeGaAAA=",
+              "cachedResultName": "Calendar"
+            },
+            "fromAllCalendars": false
+          },
+          "credentials": {
+            "microsoftOutlookOAuth2Api": {
+              "id": "IsGdpQBgFdZ9bMsM",
+              "name": "Microsoft Outlook account (work email)"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6540c5f5-963b-4260-8c10-1c7f5bb75315",
+          "name": "Delete Event",
+          "type": "n8n-nodes-base.microsoftOutlook",
+          "position": [
+            780,
+            600
+          ],
+          "parameters": {
+            "eventId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "resource": "event",
+            "operation": "delete",
+            "calendarId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "AAMkAGUxOTQ4ZmU0LWMxYjUtNDRiZi1iYjdlLTNmYTFhOWQ3MWZhNwBGAAAAAABlzj22ZOwJQZOQBjwNTK5fBwBW9yW5dIfsR51ayk6B4bZSAAAAAAEGAABW9yW5dIfsR51ayk6B4bZSAAAAAeGaAAA=",
+              "cachedResultName": "Calendar"
+            }
+          },
+          "credentials": {
+            "microsoftOutlookOAuth2Api": {
+              "id": "IsGdpQBgFdZ9bMsM",
+              "name": "Microsoft Outlook account (alex NLD)"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "03cf261c-4c26-4db1-a335-e249c0f590ec",
+          "name": "Send E-mail with details",
+          "type": "n8n-nodes-base.microsoftOutlook",
+          "position": [
+            1060,
+            620
+          ],
+          "parameters": {
+            "subject": "={{ $json.subject + \" Cancelled\" }}",
+            "bodyContent": "<h1>Event cancelled via Google Calendar</h1>",
+            "toRecipients": "your_email@work.zom",
+            "additionalFields": {
+              "bodyContentType": "html"
+            }
+          },
+          "credentials": {
+            "microsoftOutlookOAuth2Api": {
+              "id": "IsGdpQBgFdZ9bMsM",
+              "name": "Microsoft Outlook account (work email)"
+            }
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "34dc3a4d-0db5-4efc-8814-c94d3468540a",
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Send E-mail with details",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete Event": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Get Event to Cancel": {
+          "main": [
+            [
+              {
+                "node": "Delete Event",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Cancel Event Trigger": {
+          "main": [
+            [
+              {
+                "node": "Get Event to Cancel",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Incoming Event Trigger": {
+          "main": [
+            [
+              {
+                "node": "Create Outlook Event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftOutlook": {
+          "count": 4
+        },
+        "n8n-nodes-base.googleCalendarTrigger": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Alexander Bentlund",
+      "username": "nld-alex",
+      "bio": "Gen-AI creator that fell in love with n8n's simplicity and diversitity.",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/1cd002ee45ad6bd46aa53abf75f64049d4876f5cd292f98ee1a47be36e724af4?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 433,
+        "icon": "file:outlook.svg",
+        "name": "n8n-nodes-base.microsoftOutlook",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftoutlook/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Microsoft Outlook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODEiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMjM3MmJhIiBzdHJva2U9Im5vbmUiIGQ9Ik03Ny45IDE5LjJINDYuODZWMEwwIDguMjMyVjcxLjk4TDQ2Ljg2IDgwVjYxLjg0N0g3Ny45YzEuMjY2IDAgMi4xLTEuMDU1IDIuMS0yLjFWMjEuMzJjMC0xLjI2Ni0uODQ0LTIuMS0yLjEtMi4xek0yMS45NTIgNTQuNDZjLTE1LjQtMS4wNTUtMTQuNzc2LTI5LjEzLjQyMi0yOS45NzQgMTYuNjc1LS44NDQgMTYuMjUzIDMxLjAzLS40MjIgMjkuOTc0bTU1LjUxNSA0LjY0NEg0Ni44NlYzNS4wNGw5LjUgOS4wNzdjLjQyMi40MjIuODQ0LjYzMyAxLjQ3Ny42MzNzMS4wNTUtLjIgMS40NzgtLjYzM0w3Ny40NjcgMjcuMjN6bTAtMzUuNDYyLTE5LjYzIDE4LjE1M0w0Ni44NiAzMS40NXYtOS43aDMwLjM5NnYxLjloLjJ6bS01NS4wOTIgNi41NDNjLTguMjMyLjQyMi04LjQ0MyAxOC4zNjQtLjIgMTguNTc1IDguNjU0LjQyMiA4LjY1NC0xOC45OTcuMi0xOC41NzUiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Microsoft Outlook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 539,
+        "icon": "file:googleCalendar.svg",
+        "name": "n8n-nodes-base.googleCalendarTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlecalendartrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Google Calendar Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTYxLjA1MiAxOC45NDdIMTguOTQ3djQyLjEwNWg0Mi4xMDV6Ii8+PHBhdGggZmlsbD0iI2VhNDMzNSIgZD0iTTYxLjA1MyA4MCA4MCA2MS4wNTNINjEuMDUzeiIvPjxwYXRoIGZpbGw9IiNmYmJjMDQiIGQ9Ik04MCAxOC45NDdINjEuMDUzdjQyLjEwNUg4MHoiLz48cGF0aCBmaWxsPSIjMzRhODUzIiBkPSJNNjEuMDUyIDYxLjA1M0gxOC45NDdWODBoNDIuMTA1eiIvPjxwYXRoIGZpbGw9IiMxODgwMzgiIGQ9Ik0wIDYxLjA1M3YxMi42MzJBNi4zMTQgNi4zMTQgMCAwIDAgNi4zMTYgODBoMTIuNjMyVjYxLjA1M3oiLz48cGF0aCBmaWxsPSIjMTk2N2QyIiBkPSJNODAgMTguOTQ3VjYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDczLjY4NSAwSDYxLjA1M3YxOC45NDd6Ii8+PHBhdGggZmlsbD0iIzQyODVmNCIgZD0iTTYxLjA1MyAwSDYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDAgNi4zMTZ2NTQuNzM3aDE4Ljk0N1YxOC45NDdoNDIuMTA1VjB6TTI3LjU4NCA1MS42MTFjLTEuNTc0LTEuMDYzLTIuNjYzLTIuNjE2LTMuMjU4LTQuNjY4bDMuNjUzLTEuNTA1cS40OTggMS44OTQgMS43MzcgMi45MzdjMS4yMzkgMS4wNDMgMS44MjEgMS4wMzcgMi45ODkgMS4wMzdxMS43OTIgMCAzLjA3OS0xLjA4OWMxLjI4Ny0xLjA4OSAxLjI5LTEuNjUzIDEuMjktMi43NzRhMy40NCAzLjQ0IDAgMCAwLTEuMzU4LTIuODExYy0uOTA1LS43MjctMi4wNDItMS4wODktMy40LTEuMDg5aC0yLjExMXYtMy42MTZIMzIuMXExLjc1MiAwIDIuOTUzLS45NDdjMS4yMDEtLjk0NyAxLjItMS40OTUgMS4yLTIuNTk1cTAtMS40NjctMS4wNzQtMi4zNDJjLTEuMDc0LS44NzUtMS42MjEtLjg3OS0yLjcyMS0uODc5cS0xLjYxLS4wMDItMi41NTguODU4Yy0uOTQ4Ljg2LTEuMTA2IDEuMzAxLTEuMzc5IDIuMTExbC0zLjYxNi0xLjUwNWMuNDc5LTEuMzU4IDEuMzU4LTIuNTU4IDIuNjQ3LTMuNTk1czIuOTM3LTEuNTU4IDQuOTM3LTEuNTU4cTIuMjItLjAwMiAzLjk4OS44NThjMS43NjkuODYgMi4xMDUgMS4zNjggMi43NzQgMi4zNzlzMSAyLjE1MyAxIDMuNDE2cTAgMS45MzItLjkzMiAzLjI3NGMtLjkzMiAxLjM0Mi0xLjM4NCAxLjU3OS0yLjI4OSAyLjA1OHYuMjE2YTYuOTUgNi45NSAwIDAgMSAyLjkzNyAyLjI4OXExLjE0NiAxLjUzOCAxLjE0NyAzLjY4NGMuMDAxIDIuMTQ2LS4zNjMgMi43MTEtMS4wODkgMy44MzJzLTEuNzMyIDIuMDA1LTMuMDA1IDIuNjQ3Yy0xLjI3OS42NDItMi43MTYuOTY4LTQuMzExLjk2OC0xLjg0Ny4wMDUtMy41NTMtLjUyNi01LjEyNi0xLjU4OXptMjIuNDM3LTE4LjEyNi00LjAxIDIuOS0yLjAwNS0zLjA0MiA3LjE5NS01LjE4OWgyLjc1OHYyNC40NzloLTMuOTM3VjMzLjQ4NHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Calendar Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

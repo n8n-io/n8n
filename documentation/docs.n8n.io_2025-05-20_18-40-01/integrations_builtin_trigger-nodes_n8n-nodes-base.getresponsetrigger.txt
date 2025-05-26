@@ -1,0 +1,27 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.getresponsetrigger/
+Scraped_At: 2025-05-20T19:06:29.312530
+
+GetResponse Trigger node
+#
+GetResponse
+is an online platform that offers email marketing software, landing page creator, webinar hosting, and much more.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+GetResponse Trigger integrations
+page.
+Events
+#
+Receive notifications when a customer is subscribed to a list
+Receive notifications when a customer is unsubscribed from a list
+Receive notifications when an email is opened
+Receive notifications when an email is clicked
+Receive notifications when a survey is submitted
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

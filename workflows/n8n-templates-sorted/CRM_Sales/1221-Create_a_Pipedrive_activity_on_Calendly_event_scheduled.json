@@ -1,0 +1,515 @@
+{
+  "workflow": {
+    "id": 1221,
+    "name": "Create a Pipedrive activity on Calendly event scheduled",
+    "views": 1321,
+    "recentViews": 0,
+    "totalViews": 1321,
+    "createdAt": "2021-09-08T08:45:12.497Z",
+    "description": "This workflow is triggered when a meeting is scheduled via Calendly. Then, an activity is automatically created in Pipedrive and 15 minutes after the end of the meeting, a message is sent to the interviewer in Slack, reminding them to write down their notes and insights from the meeting. \n\n![workflow-screenshot](fileId:534)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Calendly Trigger",
+          "type": "n8n-nodes-base.calendlyTrigger",
+          "position": [
+            -600,
+            1700
+          ],
+          "webhookId": "f3436daa-42cd-4ac9-93ff-750a9cc28165",
+          "parameters": {
+            "events": [
+              "invitee.created"
+            ]
+          },
+          "credentials": {
+            "calendlyApi": "calendly_api"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Pipedrive",
+          "type": "n8n-nodes-base.pipedrive",
+          "position": [
+            -400,
+            1600
+          ],
+          "parameters": {
+            "type": "call",
+            "subject": "={{$json[\"payload\"][\"event_type\"][\"name\"]}} with {{$json[\"payload\"][\"invitee\"][\"name\"]}} on {{$json[\"payload\"][\"event\"][\"invitee_start_time\"]}}",
+            "resource": "activity",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "pipedriveApi": "pipedriveapi"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Date & Time",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            -400,
+            1800
+          ],
+          "parameters": {
+            "value": "={{$json[\"payload\"][\"event\"][\"end_time\"]}}",
+            "action": "calculate",
+            "options": {},
+            "duration": 15,
+            "timeUnit": "minutes",
+            "dataPropertyName": "feedback_time"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Slack",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            0,
+            1800
+          ],
+          "parameters": {
+            "text": "={{$json[\"payload\"][\"event\"][\"assigned_to\"][0]}}, today you had a {{$json[\"payload\"][\"event_type\"][\"name\"]}} {{$json[\"payload\"][\"event_type\"][\"kind\"]}} meeting with {{$json[\"payload\"][\"invitee\"][\"name\"]}}. Please write your notes from the call here [link] and mark this message with ✅ when you're done.",
+            "channel": "salesteam",
+            "blocksUi": {
+              "blocksValues": []
+            },
+            "attachments": [],
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": "slack_nodeqa"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wait",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            -200,
+            1800
+          ],
+          "webhookId": "05c224b9-6ca7-40e7-97cb-bc1ddc3b55af",
+          "parameters": {
+            "resume": "specificTime",
+            "dateTime": "={{$json[\"feedback_time\"]}}"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Wait": {
+          "main": [
+            [
+              {
+                "node": "Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Date & Time": {
+          "main": [
+            [
+              {
+                "node": "Wait",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calendly Trigger": {
+          "main": [
+            [
+              {
+                "node": "Date & Time",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Pipedrive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.dateTime": {
+          "count": 1
+        },
+        "n8n-nodes-base.pipedrive": {
+          "count": 1
+        },
+        "n8n-nodes-base.calendlyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Lorena",
+      "username": "lorenanda",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/df6358bcce2351cf878beab8f89b9f000f50588aaa728f7ea57127c1b85e7b06?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 28,
+        "icon": "file:pipedrive.svg",
+        "name": "n8n-nodes-base.pipedrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.pipedrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/pipedrive/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Pipedrive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiB2aWV3Qm94PSIwIDAgMzIgMzIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PG1hc2sgaWQ9Im1hc2swMDEiIG1hc2stdHlwZT0iYWxwaGEiIG1hc2tVbml0cz0idXNlclNwYWNlT25Vc2UiIHg9IjAiIHk9IjAiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0iIzI2MjkyQyI+PHBhdGggZD0iTTIuNzM2OTQgMEgyOS4yNjMxQzMwLjc3NDYgMCAzMiAxLjIyNTA3IDMyIDIuNzM2OTVWMjkuMjYzMUMzMiAzMC43NzQ2IDMwLjc3NDkgMzIgMjkuMjYzMSAzMkgyLjczNjk0QzEuMjI1MzcgMzIgMCAzMC43NzQ5IDAgMjkuMjYzMVYyLjczNjk1QzAgMS4yMjUzNyAxLjIyNTA4IDAgMi43MzY5NCAwWiIgZmlsbD0iIzI2MjkyQyI+PC9wYXRoPjwvbWFzaz48ZyBtYXNrPSJ1cmwoI21hc2swMDEpIiBmaWxsPSIjMjYyOTJDIj48cGF0aCBkPSJNMi43MzY5NCAwSDI5LjI2MzFDMzAuNzc0NiAwIDMyIDEuMjI1MDcgMzIgMi43MzY5NVYyOS4yNjMxQzMyIDMwLjc3NDYgMzAuNzc0OSAzMiAyOS4yNjMxIDMySDIuNzM2OTRDMS4yMjUzNyAzMiAwIDMwLjc3NDkgMCAyOS4yNjMxVjIuNzM2OTVDMCAxLjIyNTM3IDEuMjI1MDggMCAyLjczNjk0IDBaIiBmaWxsPSIjMjYyOTJDIj48L3BhdGg+PC9nPjxtYXNrIGlkPSJtYXNrMSIgbWFzay10eXBlPSJhbHBoYSIgbWFza1VuaXRzPSJ1c2VyU3BhY2VPblVzZSIgeD0iNyIgeT0iNCIgd2lkdGg9IjE4IiBoZWlnaHQ9IjI0IiBmaWxsPSIjMjYyOTJDIj48cGF0aCBkPSJNMTMuMzM0OCAxMy4xNzY2QzEzLjMzNDggMTUuMzE5NCAxNC40MjE5IDE3LjYzMTEgMTYuODE0MSAxNy42MzExQzE4LjU4ODEgMTcuNjMxMSAyMC4zODE5IDE2LjI0NjEgMjAuMzgxOSAxMy4xNDUxQzIwLjM4MTkgMTAuNDI2NCAxOC45NzE4IDguNjAxMjcgMTYuODczMSA4LjYwMTI3QzE1LjE2MyA4LjYwMTI3IDEzLjMzNDggOS44MDI1OCAxMy4zMzQ4IDEzLjE3NjZaTTE3LjcxNTggNC42MzE1OUMyMi4wMDUxIDQuNjMxNTkgMjQuODg5MSA4LjAyODczIDI0Ljg4OTEgMTMuMDg1NkMyNC44ODkxIDE4LjA2MjkgMjEuODUwOSAyMS41Mzc4IDE3LjUwNzYgMjEuNTM3OEMxNS40MzY4IDIxLjUzNzggMTQuMTEwMyAyMC42NTA5IDEzLjQxNjggMjAuMDA4OUMxMy40MjE3IDIwLjE2MTEgMTMuNDI1IDIwLjMzMTYgMTMuNDI1IDIwLjUxMzZWMjcuMjYzMkg4Ljk4MTY0VjkuMjc5N0M4Ljk4MTY0IDkuMDE4MjQgOC44OTgwMiA4LjkzNTUyIDguNjM4OTcgOC45MzU1Mkg3LjExMDg1VjQuOTk3MjlIMTAuODM5M0MxMi41NTYgNC45OTcyOSAxMi45OTU0IDUuODcwOTcgMTMuMDc5IDYuNTQ0NDRDMTMuNzc1OSA1Ljc2MzQyIDE1LjIyMDQgNC42MzE1OSAxNy43MTU4IDQuNjMxNTlaIiBmaWxsPSIjMjYyOTJDIj48L3BhdGg+PC9tYXNrPjxnIG1hc2s9InVybCgjbWFzazEpIiBmaWxsPSIjMjYyOTJDIj48cGF0aCBkPSJNMTMuMzM0OCAxMy4xNzY2QzEzLjMzNDggMTUuMzE5NCAxNC40MjE5IDE3LjYzMTEgMTYuODE0MSAxNy42MzExQzE4LjU4ODEgMTcuNjMxMSAyMC4zODE5IDE2LjI0NjEgMjAuMzgxOSAxMy4xNDUxQzIwLjM4MTkgMTAuNDI2NCAxOC45NzE4IDguNjAxMjcgMTYuODczMSA4LjYwMTI3QzE1LjE2MyA4LjYwMTI3IDEzLjMzNDggOS44MDI1OCAxMy4zMzQ4IDEzLjE3NjZaTTE3LjcxNTggNC42MzE1OUMyMi4wMDUxIDQuNjMxNTkgMjQuODg5MSA4LjAyODczIDI0Ljg4OTEgMTMuMDg1NkMyNC44ODkxIDE4LjA2MjkgMjEuODUwOSAyMS41Mzc4IDE3LjUwNzYgMjEuNTM3OEMxNS40MzY4IDIxLjUzNzggMTQuMTEwMyAyMC42NTA5IDEzLjQxNjggMjAuMDA4OUMxMy40MjE3IDIwLjE2MTEgMTMuNDI1IDIwLjMzMTYgMTMuNDI1IDIwLjUxMzZWMjcuMjYzMkg4Ljk4MTY0VjkuMjc5N0M4Ljk4MTY0IDkuMDE4MjQgOC44OTgwMiA4LjkzNTUyIDguNjM4OTcgOC45MzU1Mkg3LjExMDg1VjQuOTk3MjlIMTAuODM5M0MxMi41NTYgNC45OTcyOSAxMi45OTU0IDUuODcwOTcgMTMuMDc5IDYuNTQ0NDRDMTMuNzc1OSA1Ljc2MzQyIDE1LjIyMDQgNC42MzE1OSAxNy43MTU4IDQuNjMxNTlaIiBmaWxsPSIjRkZGRkZGIj48L3BhdGg+PC9nPjwvc3ZnPgo="
+        },
+        "displayName": "Pipedrive",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 221,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.dateTime",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Date & Time",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Date & Time",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 302,
+        "icon": "file:calendly.svg",
+        "name": "n8n-nodes-base.calendlyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.calendlytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/calendly/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Calendly Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjUuOCA1MzUuNzMiPjxkZWZzPjxzdHlsZT4uY2xzLTJ7ZmlsbDojMDA2YmZmfS5jbHMtM3tmaWxsOiMwYWU5ZWZ9PC9zdHlsZT48L2RlZnM+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxvZ29fYXNzZXRzIiBkYXRhLW5hbWU9IkxvZ28gYXNzZXRzIj48ZyBpZD0iQnJhbmRfbWFyayIgZGF0YS1uYW1lPSJCcmFuZCBtYXJrIj48cGF0aCBkPSJtNDQzLjc0IDMzNy42Mi0yNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAxLTEyMC44MiA2OS43NWgtNTQuMzNhMTM5LjUyIDEzOS41MiAwIDAgMS0xMjAuODItNjkuNzVsLTI3LjE2LTQ3LjA1YTEzOS41MiAxMzkuNTIgMCAwIDEgMC0xMzkuNTFsMjcuMTYtNDcuMDVBMTM5LjUzIDEzOS41MyAwIDAgMSAyNDEuNDMgODEuM2g1NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAxIDEyMC44MiA2OS43NmwyNy4xNiA0Ny4wNWExMzkgMTM5IDAgMCAxIDguNTUgMTcuNTVjMCAuMTIuMDkuMjMuMTMuMzVhMTAyLjE1IDEwMi4xNSAwIDAgMCA0NC4zMy0xOC4yNGMwLS4xNC0uMDgtLjI4LS4xMy0uNDNhMjM3LjggMjM3LjggMCAwIDAtMzMuMjktNjcuNTggMjQwLjcgMjQwLjcgMCAwIDAtNTItNTMuNDggMjM5LjMgMjM5LjMgMCAwIDAtMzEyLjY4IDM2MC44IDIzOS40MyAyMzkuNDMgMCAwIDAgMzk4LTk4LjY5Yy4wNS0uMTUuMDktLjI5LjEzLS40M2ExMDIuMTUgMTAyLjE1IDAgMCAwLTQ0LjMzLTE4LjI0YzAgLjEyLS4wOS4yMy0uMTMuMzVhMTM5IDEzOSAwIDAgMS04LjU4IDE3LjU1IiBzdHlsZT0iZmlsbDpub25lIi8+PHBhdGggZD0iTTM2MC40IDM0Ny40Yy0xNyAxNS4wOS0zOC4yMSAzMy44Ny03Ni43OCAzMy44N2gtMjNjLTI3Ljg4IDAtNTMuMjMtMTAuMTItNzEuMzctMjguNDktMTcuNzItMTcuOTQtMjcuNDgtNDIuNS0yNy40OC02OS4xNnYtMzEuNTFjMC0yNi42NiA5Ljc2LTUxLjIyIDI3LjQ4LTY5LjE2IDE4LjE0LTE4LjM3IDQzLjQ5LTI4LjQ5IDcxLjM3LTI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYgMTguNzggNzYuNzggMzMuODcgMTcuNjUgMTUuNjUgMzIuOSAyOS4xNiA3My41MiAyOS4xNmExMTYgMTE2IDAgMCAwIDE4LjUtMS40OGMwLS4xMi0uMDgtLjIzLS4xMy0uMzVhMTM5IDEzOSAwIDAgMC04LjU1LTE3LjU1bC0yNy4xNi00Ny4wNUExMzkuNTMgMTM5LjUzIDAgMCAwIDI5NS43NiA4MS4zaC01NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAwLTEyMC44MiA2OS43NmwtMjcuMTYgNDcuMDVhMTM5LjUyIDEzOS41MiAwIDAgMCAwIDEzOS41MWwyNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44MiA2OS43NWg1NC4zM2ExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44Mi02OS43NWwyNy4xNi00Ny4wNWExMzkgMTM5IDAgMCAwIDguNTUtMTcuNTVjMC0uMTIuMDktLjIzLjEzLS4zNWExMTYgMTE2IDAgMCAwLTE4LjUtMS40OGMtNDAuNjIgMC01NS44NyAxMy41MS03My41MiAyOS4xNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTI4My42MiAxODNoLTIzYy00Mi40MiAwLTcwLjMgMzAuMy03MC4zIDY5LjA5djMxLjUxYzAgMzguNzkgMjcuODggNjkuMDkgNzAuMyA2OS4wOWgyM2M2MS44MiAwIDU3LTYzIDE1MC4zLTYzYTE0NCAxNDQgMCAwIDEgMjYuMzcgMi40MSAxMzkuNCAxMzkuNCAwIDAgMCAwLTQ4LjQ2IDE0My4zIDE0My4zIDAgMCAxLTI2LjM3IDIuNDJjLTkzLjMzLS4wMS04OC40OC02My4wNi0xNTAuMy02My4wNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTUxMy45MSAzMTUuMTNhMTMwLjIgMTMwLjIgMCAwIDAtNTMuNjItMjNjMCAuMTYtLjA1LjMyLS4wOC40N2ExMzguNSAxMzguNSAwIDAgMS03Ljc5IDI3LjE2QTEwMi4xNSAxMDIuMTUgMCAwIDEgNDk2Ljc1IDMzOGMwIC4xNC0uMDguMjgtLjEzLjQzQTIzNy44IDIzNy44IDAgMCAxIDQ2My4zMyA0MDZhMjQwLjcgMjQwLjcgMCAwIDEtNTIgNTMuNDhBMjM5LjMgMjM5LjMgMCAwIDEgOTguNjUgOTguNjVhMjM5LjQzIDIzOS40MyAwIDAgMSAzOTggOTguNjljLjA1LjE1LjA5LjI5LjEzLjQzQTEwMi4xNSAxMDIuMTUgMCAwIDEgNDUyLjQyIDIxNmExMzkuNCAxMzkuNCAwIDAgMSA3LjggMjcuMThjMCAuMTUgMCAuMy4wNy40NGExMjkuOTQgMTI5Ljk0IDAgMCAwIDUzLjYyLTIzYzE1LjI5LTExLjMxIDEyLjMzLTI0LjA5IDEwLTMxLjY1QzQ5MC4yMiA3OS41MiAzODguMzMgMCAyNjcuODYgMCAxMTkuOTMgMCAwIDExOS45MyAwIDI2Ny44NnMxMTkuOTMgMjY3Ljg3IDI2Ny44NiAyNjcuODdjMTIwLjQ3IDAgMjIyLjM2LTc5LjUyIDI1Ni0xODguOTQgMi4zOC03LjU2IDUuMzQtMjAuMzQtOS45NS0zMS42NiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PC9nPjwvZz48L2c+PC9zdmc+"
+        },
+        "displayName": "Calendly Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 13,
+        "name": "Support"
+      }
+    ],
+    "image": [
+      {
+        "id": 534,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/c22d773a0f804cf68ce430f9b6d51150.png"
+      }
+    ]
+  }
+}

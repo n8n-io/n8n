@@ -1,0 +1,1046 @@
+{
+  "workflow": {
+    "id": 2068,
+    "name": "dub.co URL Shortener",
+    "views": 642,
+    "recentViews": 0,
+    "totalViews": 642,
+    "createdAt": "2024-01-27T21:45:20.267Z",
+    "description": "**A n8n workflow designed to shorten URLs using Dub.co API.**\n\n**How it works:**\nIt shortens a url using Dub.co API, with the ability to use custom domains and projects. It updates the current shortened url if the slug has been already used.\n\n**Estimated Time:** Around 15 minutes.\n**Requirements:** A Dub.co account.\n**Configuration:** \nConfigure the \"API Auth\" node to add your Dub.co API key, project slug, and the long URL. There some extras that you're able to configure too. You will be able to do that by clicking the \"API Auth\" node and filling the fields.\n**Detailed Instructions:** Sticky notes within the workflow provide extensive setup information and guidance.\n\nKeywords: n8n workflow, dub.co, dub.sh, url shortener, short urls, short links",
+    "workflow": {
+      "id": "ReXF4z8ZKcEd6Kea",
+      "meta": {
+        "instanceId": "10e1a946d44026e16f5f1b336bb25f918a0e45738f9dee8024757614581d7d73"
+      },
+      "name": "dub.co URL Shortener",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "63170148-b769-43b6-9a7a-02baa9f76b02",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1480,
+            1100
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 346.4519761795601,
+            "height": 227.3959699655325,
+            "content": "## Dub.co API Limits:\nDub’s API is capped at 10 requests per second per user."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "defd82ef-25a0-4aa4-8681-d352e5fe8275",
+          "name": "When clicking \"Test Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            1231,
+            560
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "fec7fb8a-3f88-4de9-8392-5c7929a712e7",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "disabled": true,
+          "position": [
+            1480,
+            460
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 826.4578951225271,
+            "height": 605.7992490141105,
+            "content": "## Dub.co API\n**Create** Link. [Based on their API docs](https://dub.co/docs/api-reference/endpoint/create-a-new-link)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8c87aad8-519c-491b-b272-f21dfd5b069f",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1171,
+            460
+          ],
+          "parameters": {
+            "height": 870.5323777622334,
+            "content": "## Control Stack"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a6cfe224-95d9-47d6-a900-667eed065264",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            486,
+            460
+          ],
+          "parameters": {
+            "width": 655.6800599837106,
+            "height": 462.29577922809585,
+            "content": "# README\n\n## Dub.co API Workflow Configuration\n| Required | Input Field           | Description                                      |\n|----------|-----------------------|--------------------------------------------------|\n|✓| **`Dub API Key`**     | _API Key for Dub.co integration._                 |\n|✓| **`Long URL`**               | _The long URL to be shortened._                    |\n| | **`Custom Slug`**           | _Slug is the path of shortened URL - default is random 7 characters._               |\n|✓| **`Project Slug`**                  | _Enter Your Dub project slug, The slug for the project to create links for. E.g. for app.dub.co/acme, the project slug is 'acme'._                   |\n| | **`Custom Domain`** | _Custom domain linked to Dub.co._                 |\n\n\n\n\n\n\n\nYou'll need to add the details listed above in the \"API Auth\" node by clicking on it and filling the fields ==>"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f3164150-9730-4d20-9aef-9ae7f84e73fc",
+          "name": "API Auth",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1240,
+            820
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Dub API Key",
+                  "stringValue": "=<Required: Get your Dub API Key from https://app.dub.co/settings/tokens>"
+                },
+                {
+                  "name": "Long URL",
+                  "stringValue": "https://n8n.io"
+                },
+                {
+                  "name": "Custom Slug",
+                  "stringValue": "=<Optional: Slug is the path of shortened URL - default is random 7 characters>"
+                },
+                {
+                  "name": "Project Slug",
+                  "stringValue": "=<Required: Enter Your Dub project slug, The slug for the project to create links for. E.g. for app.dub.co/acme, the project slug is 'acme'.>"
+                },
+                {
+                  "name": "Custom Domain",
+                  "stringValue": "=<Optional: The domain of the short link. If not provided, the primary domain for the project will be used (or dub.sh if the project has no domains)>"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "a2279ab1-6550-43ef-a41d-c24c669bb2b6",
+          "name": "CREATE",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Create Link",
+          "position": [
+            1540,
+            560
+          ],
+          "parameters": {
+            "url": "https://api.dub.co/links",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 10,
+                  "batchInterval": 60000
+                }
+              },
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "jsonBody": "={\n{{ $ifEmpty(`\"domain\": \"${$json[\"Custom Domain\"] || \"undefined\"}\",`, \"\").replace('\"domain\": \"<Optional: The domain of the short link. If not provided, the primary domain for the project will be used (or dub.sh if the project has no domains)>\",', \"\").replace('\"domain\": \"undefined\",', \"\") }}\n{{ $ifEmpty(`\"key\": \"${$json[\"Custom Slug\"] || \"undefined\"}\",`, \"\").replace('\"key\": \"<Optional: Slug is the path of shortened URL - default is random 7 characters>\",', \"\").replace('\"key\": \"undefined\",', \"\") }}\n  \"url\": \"{{ $json[\"Long URL\"] }}\",\n  \"comments\": \"Updated using N8N.io workflow: {{$workflow.name}}\"\n}",
+            "sendBody": true,
+            "sendQuery": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "projectSlug",
+                  "value": "={{ $json[\"Project Slug\"] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $json['Dub API Key'] }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "970d062f-9206-4ec6-acdd-3fc1cc87db69",
+          "name": "IF Slug available",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1760,
+            560
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.statusCode }}",
+                  "value2": "200",
+                  "operation": "regex"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d25eedfd-95a7-4c17-8a76-1cdfae6670d1",
+          "name": "RETRIEVE",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Retrieve the link id",
+          "position": [
+            1540,
+            840
+          ],
+          "parameters": {
+            "url": "=https://api.dub.co/links/info",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 10,
+                  "batchInterval": 60000
+                }
+              },
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "projectSlug",
+                  "value": "={{ $('API Auth').item.json[\"Project Slug\"] }}"
+                },
+                {
+                  "name": "key",
+                  "value": "={{ $('API Auth').item.json[\"Custom Slug\"] }}"
+                },
+                {
+                  "name": "domain",
+                  "value": "={{ $('API Auth').item.json[\"Custom Domain\"] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('API Auth').item.json[\"Dub API Key\"] }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "18bf5187-422c-486e-84c4-c2f79855ba25",
+          "name": "UPDATE",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Update Link",
+          "position": [
+            1780,
+            840
+          ],
+          "parameters": {
+            "url": "=https://api.dub.co/links/{{ $json.body.id }}",
+            "method": "PUT",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 10,
+                  "batchInterval": 60000
+                }
+              },
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "jsonBody": "={\n    {{ $ifEmpty(`\"domain\": \"${$('API Auth').item.json[\"Custom Domain\"] || \"undefined\"}\",`, \"\").replace('\"domain\": \"<Optional: The domain of the short link. If not provided, the primary domain for the project will be used (or dub.sh if the project has no domains)>\",', \"\").replace('\"domain\": \"undefined\",', \"\") }}\n{{ $ifEmpty(`\"key\": \"${$('API Auth').item.json[\"Custom Slug\"] || \"undefined\"}\",`, \"\").replace('\"key\": \"<Optional: Slug is the path of shortened URL - default is random 7 characters>\",', \"\").replace('\"key\": \"undefined\",', \"\") }}\n\n  \"url\": \"{{ $('API Auth').item.json[\"Long URL\"] }}\",\n  \"comments\": \"Updated using N8N.io workflow: {{$workflow.name}}\"\n}",
+            "sendBody": true,
+            "sendQuery": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "projectSlug",
+                  "value": "={{ $('API Auth').item.json[\"Project Slug\"] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('API Auth').item.json[\"Dub API Key\"] }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "c16dc19b-f807-4784-a323-5d790cebe718",
+          "name": "Shortened URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2120,
+            840
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "Shortened URL",
+                  "value": "={{ $json.body.shortLink }}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "44d31a47-dd84-4b07-a606-2da99a73cad1",
+          "name": "Done",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1240,
+            1060
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3.2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "3b5edd9c-e373-4dc1-95d0-b320beb47020",
+      "connections": {
+        "CREATE": {
+          "main": [
+            [
+              {
+                "node": "IF Slug available",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE": {
+          "main": [
+            [
+              {
+                "node": "Shortened URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "API Auth": {
+          "main": [
+            [
+              {
+                "node": "CREATE",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "RETRIEVE": {
+          "main": [
+            [
+              {
+                "node": "UPDATE",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Shortened URL": {
+          "main": [
+            [
+              {
+                "node": "Done",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF Slug available": {
+          "main": [
+            [
+              {
+                "node": "Shortened URL",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "RETRIEVE",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Test Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "API Auth",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 12,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Murtaja Ziad",
+      "username": "murtajaziad",
+      "bio": "full-stack web developer & freelancer",
+      "verified": false,
+      "links": [
+        "https://murtajaziad.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/9cfc90668d3803390c014361b72749389f8c886b6840dfa99034a55ccf2c8cb0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

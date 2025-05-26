@@ -1,0 +1,764 @@
+{
+  "workflow": {
+    "id": 865,
+    "name": "Gathering tasks in Typeform and send to ClickUp",
+    "views": 906,
+    "recentViews": 0,
+    "totalViews": 906,
+    "createdAt": "2020-12-31T00:12:31.643Z",
+    "description": "Using Typeform to push task requests to an n8n webhook that then categorizes the request and assigns it in ClickUp accordingly.\n\n![image.png](fileId:385)\n\nIn order to get his workflow working for yourself, you will need:\n- ClickUp account\n- Typeform account\n- Credentials for these services\n- ClickUp configured with appropriate lists\n- Typeform setup with options that correspond with ClickUp lists.\n\nYou may modify this workflow to meet your specific needs and configuration. This is a very simple version of this workflow and you can make it as complicated as you wish to meet your requirements.",
+    "workflow": {
+      "id": "16",
+      "name": "User Request Management",
+      "nodes": [
+        {
+          "name": "ClickUp",
+          "type": "n8n-nodes-base.clickUp",
+          "position": [
+            1180,
+            490
+          ],
+          "parameters": {
+            "list": "={{$json[\"ListID\"]}}",
+            "name": "={{$node[\"Typeform Trigger\"].json[\"Give this request a short title.\"]}}",
+            "team": "8583125",
+            "space": "12732821",
+            "folder": "25402375",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "content": "={{$node[\"Typeform Trigger\"].json[\"Describe in detail what you would like to see happen for this request.\"]}}\n\nRequested by:\n{{$node[\"Typeform Trigger\"].json[\"Your full name\"]}}\n{{$node[\"Typeform Trigger\"].json[\"Your email address\"]}}",
+              "priority": "={{$json[\"How urgent is this request?\"]}}"
+            }
+          },
+          "credentials": {
+            "clickUpOAuth2Api": "ClickUp Cred"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Typeform Trigger",
+          "type": "n8n-nodes-base.typeformTrigger",
+          "position": [
+            530,
+            500
+          ],
+          "webhookId": "80816cb6-d987-44b2-8981-f95d1af1f6a8",
+          "parameters": {
+            "formId": "LE36uLN1"
+          },
+          "credentials": {
+            "typeformApi": "Typeform"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "ListID 54684957",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            940,
+            560
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "ListID",
+                  "value": 54684957
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "ListID 54685003",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            940,
+            280
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "ListID",
+                  "value": 54685003
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "ListID 54685000",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            940,
+            420
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "ListID",
+                  "value": 54685000
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "ListID 54684997",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            940,
+            700
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "ListID",
+                  "value": 54684997
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Pick List",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            730,
+            500
+          ],
+          "parameters": {
+            "rules": {
+              "rules": [
+                {
+                  "value2": "Document Request"
+                },
+                {
+                  "output": 1,
+                  "value2": "Presentation Request"
+                },
+                {
+                  "output": 2,
+                  "value2": "Update Request"
+                },
+                {
+                  "output": 3,
+                  "value2": "Workflow Request"
+                }
+              ]
+            },
+            "value1": "={{$node[\"Typeform Trigger\"].json[\"What type of a request are you making?\"]}}",
+            "dataType": "string"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "settings": {},
+      "connections": {
+        "Pick List": {
+          "main": [
+            [
+              {
+                "node": "ListID 54685003",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "ListID 54685000",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "ListID 54684957",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "ListID 54684997",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ListID 54684957": {
+          "main": [
+            [
+              {
+                "node": "ClickUp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ListID 54684997": {
+          "main": [
+            [
+              {
+                "node": "ClickUp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ListID 54685000": {
+          "main": [
+            [
+              {
+                "node": "ClickUp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ListID 54685003": {
+          "main": [
+            [
+              {
+                "node": "ClickUp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Typeform Trigger": {
+          "main": [
+            [
+              {
+                "node": "Pick List",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 8,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 4
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.clickUp": {
+          "count": 1
+        },
+        "n8n-nodes-base.typeformTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "jason",
+      "username": "tephlon",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/ee7788870e9ab8d34c979c940727f579ecc3c3e8f60069d1297d51eb30af831e?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 51,
+        "icon": "file:typeform.svg",
+        "name": "n8n-nodes-base.typeformTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Form"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.typeformtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/typeform/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Typeform Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4Ljg4NzYgMC4wNzM4OTg0QzI0LjAzMTYgLTAuMzQ5NjE4IDI3LjcyNiAxLjAxNTY2IDMxLjcwMTIgNC45ODg0NkMzNS45OTMgOS4yNzc2NyAzOC44NDYzIDE0LjgzNjEgMzkuNjE1MiAyMC43NTdDNDAuNDcwOCAyNy4zNDE1IDM5LjI5NCAzMi4yNTUxIDM1LjY2OTcgMzUuODUyNUMzMi4yMDQgMzkuMjkyNCAyNy4xNDE5IDQwLjQyNyAyMC4zNzk3IDM5Ljg2MTdMMjAuMDk5OCAzOS44MzcxQzE0LjM0MTUgMzkuMzA3NyAxMC4yNjg2IDM3LjQxOTcgNi4zMjIzMyAzMy40MjMxQzIuMTA3MTEgMjkuMTU0IC0wLjExNDA5NCAyNC4zMDcgMC4wMDQ1MTUwMyAxOS4yMTk2QzAuMDYyNTI4MiAxNi43MjkgMC43NjgwNDYgMTQuNjA2MyAyLjEyODY3IDEyLjUyMzZDMy4wMjA2OCAxMS4xNTgyIDMuOTI2NTcgMTAuMDkzMSA1LjgyMTQ5IDguMTM5N0w2LjQ1Mzg5IDcuNDkxOTNMNy4xNTEgNi43ODUzNUMxMS42NDE4IDIuMjcxMjggMTQuNTk4NCAwLjQyNzA0MiAxOC44ODc2IDAuMDczODk4NFpNMzEuMzk1NSA1LjI5NDMyQzI3LjUwOTkgMS40MTEgMjMuOTQwMSAwLjA5MTc4OTggMTguOTIzMSAwLjUwNDg1M0MxNC42OTUgMC44NTI5NjYgMTEuNzkxMyAyLjcwMDEgNy4yNDcwNiA3LjMwMjcxTDYuOTE4MzIgNy42MzYyNUM0LjcwNDI2IDkuODg3MDQgMy42NjY2OSAxMS4wMzc4IDIuNzUyNzEgMTIuMzY4N0wyLjYxOTcyIDEyLjU2NDlMMi40OTA2OCAxMi43NjAxQzEuMTcyNjEgMTQuNzc3NyAwLjQ5Mjg3MyAxNi44MjI4IDAuNDM2ODEgMTkuMjI5NkMwLjMyMTE0MyAyNC4xOTA5IDIuNDkyMjggMjguOTI4NiA2LjYzMDAyIDMzLjExOTJDMTAuNTY2MyAzNy4xMDU4IDE0LjYxMDIgMzguOTQ1NiAyMC40MTU4IDM5LjQzMDhMMjAuNzAzOCAzOS40NTM5QzI3LjIwNzEgMzkuOTU0IDMyLjA1NTYgMzguODMwNCAzNS4zNjUgMzUuNTQ1NkMzOC44ODEyIDMyLjA1NTYgNDAuMDI2MSAyNy4yNzUxIDM5LjE4NjQgMjAuODEyN0MzOC40MzAxIDE0Ljk4OTEgMzUuNjIxNSA5LjUxNzczIDMxLjM5NTUgNS4yOTQzMlpNMjYuMDE0MSAxNC41NDlWMTYuNjYxNEgyMS41Mjc4VjI4Ljc2ODFIMTkuMjkzMVYxNi42NjE0SDE0LjgwNjhWMTQuNTQ5SDI2LjAxNDFaIiBmaWxsPSIjMjYyNjI3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Typeform Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 129,
+        "icon": "file:clickup.svg",
+        "name": "n8n-nodes-base.clickUp",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clickup/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clickUp/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "ClickUp"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMCAwIDE1NSAxNTUiPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYSIgeDE9IjAlIiB5MT0iNjguMDElIiB5Mj0iNjguMDElIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjODkzMEZEIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNDlDQ0Y5Ii8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImIiIHgxPSIwJSIgeTE9IjY4LjAxJSIgeTI9IjY4LjAxJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI0ZGMDJGMCIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0ZGQzgwMCIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxnIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Im0uNCAxMTkuMTIgMjMuODEtMTguMjRDMzYuODYgMTE3LjM5IDUwLjMgMTI1IDY1LjI2IDEyNWMxNC44OCAwIDI3Ljk0LTcuNTIgNDAuMDItMjMuOWwyNC4xNSAxNy44QzExMiAxNDIuNTIgOTAuMzQgMTU1IDY1LjI2IDE1NWMtMjUgMC00Ni44Ny0xMi40LTY0Ljg2LTM1Ljg4Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTY1LjE4IDM5Ljg0IDIyLjggNzYuMzYgMy4yMSA1My42NCA2NS4yNy4xNmw2MS41NyA1My41Mi0xOS42OCAyMi42NHoiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "ClickUp",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 385,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/dcf013dda6604fef8ef3c90070ced6ed.png"
+      }
+    ]
+  }
+}

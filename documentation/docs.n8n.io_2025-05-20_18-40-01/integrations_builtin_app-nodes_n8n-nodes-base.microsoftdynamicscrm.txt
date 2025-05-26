@@ -1,0 +1,54 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftdynamicscrm/
+Scraped_At: 2025-05-20T18:49:29.810246
+
+Microsoft Dynamics CRM node
+#
+Use the Microsoft Dynamics CRM node to automate work in Microsoft Dynamics CRM, and integrate Microsoft Dynamics CRM with other applications. n8n has built-in support for  creating, updating, deleting, and getting Microsoft Dynamics CRM accounts.
+On this page, you'll find a list of operations the Microsoft Dynamics CRM node supports and links to more resources.
+Credentials
+Refer to
+Microsoft credentials
+for guidance on setting up authentication.
+Operations
+#
+Account
+Create
+Delete
+Get
+Get All
+Update
+Templates and examples
+#
+Automated Web Scraping: email a CSV, save to Google Sheets & Microsoft Excel
+by Mihai Farcas
+View template details
+Create a Branded AI-Powered Website Chatbot
+by Wayne Simpson
+View template details
+Hacker News to Video Content
+by Alex Kim
+View template details
+Browse Microsoft Dynamics CRM integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

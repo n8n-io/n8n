@@ -1,0 +1,44 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshdesk/
+Scraped_At: 2025-05-20T18:47:17.332509
+
+Freshdesk node
+#
+Use the Freshdesk node to automate work in Freshdesk and integrate Freshdesk with other applications. n8n has built-in support for a wide range of Freshdesk features, including creating, updating, deleting, and getting contacts and tickets.
+On this page, you'll find a list of operations the Freshdesk node supports and links to more resources.
+Credentials
+Refer to
+Freshdesk credentials
+for guidance on setting up authentication.
+Operations
+#
+Contact
+Create a new contact
+Delete a contact
+Get a contact
+Get all contacts
+Update a contact
+Ticket
+Create a new ticket
+Delete a ticket
+Get a ticket
+Get all tickets
+Update a ticket
+Templates and examples
+#
+Create ticket on specific customer messages in Telegram
+by tanaypant
+View template details
+Create a new Freshdesk ticket
+by amudhan
+View template details
+Automate CSAT Surveys with Freshdesk & Store Responses in Google Sheets
+by PollupAI
+View template details
+Browse Freshdesk integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

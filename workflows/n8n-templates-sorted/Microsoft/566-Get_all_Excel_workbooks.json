@@ -1,0 +1,212 @@
+{
+  "workflow": {
+    "id": 566,
+    "name": "Get all Excel workbooks",
+    "views": 7171,
+    "recentViews": 0,
+    "totalViews": 7171,
+    "createdAt": "2020-07-28T23:26:39.687Z",
+    "description": "Companion workflow for Excel node docs\n\n![workflow-screenshot](fileId:160)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Microsoft Excel",
+          "type": "n8n-nodes-base.microsoftExcel",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "filters": {},
+            "operation": "getAll"
+          },
+          "credentials": {
+            "microsoftExcelOAuth2Api": "ms-oauth-creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Microsoft Excel",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftExcel": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 322,
+        "icon": "file:excel.svg",
+        "name": "n8n-nodes-base.microsoftExcel",
+        "codex": {
+          "data": {
+            "alias": [
+              "_Excel",
+              "Excel",
+              "Sheet",
+              "CSV",
+              "Spreadsheet"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftexcel/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Microsoft Excel 365"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0iIzAyNzIzQiIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGQ9Ik00My4xIDIwLjIyN2g5LjUxMnY0LjY5MmgtOS41MTN6bTAtNy4wMzRoOS41MTJ2NC42OWgtOS41MTN6bTAgMTQuMjI3aDkuNTEydjQuNjkxaC05LjUxM3ptMCA3LjAzNmg5LjUxMnY0LjY5MWgtOS41MTN6Ii8+PHBhdGggZD0iTTQzLjEgNDEuNjQ5aDkuNTEydjQuNjloLTkuNTEzek01OC4wNyA2Ljc4SDM1LjE0NlYuMzdMLjM3IDYuNDY3djQ3LjIybDM0Ljc3NiA1Ljk0MnYtNy4xODZINTguMDdjLjkzNSAwIDEuNTU5LS43ODEgMS41NTktMS41NTVWOC4zNDRjMC0uNzgxLS42MjQtMS41NTUtMS41Ni0xLjU1NVY2Ljc4ek0yMC4wMTggNDAuNTU0bC0zLjI3NC04LjU5M2gtLjE0OGMwIC4xNDktMy4yNzUgOC4xMy0zLjI3NSA4LjEzbC00LjM2Ni0uMzEyTDE0LjEgMjkuNjE2IDkuNDIyIDE5LjQ1M2w0LjM2Ny0uMzEyIDIuOTYzIDcuOTc0aC4xNDhjMC0uMTQ4IDMuMjc0LTguMjg3IDMuMjc0LTguMjg3bDQuNTIyLS4zMTItNS40NTcgMTEuMTAxIDUuNjE0IDExLjEwMi00LjgzNC0uMTQ5ek01Ny42IDUwLjcxN0gzNS4xNDZ2LTQuMzdoNS40NTh2LTQuNjkxaC01LjQ1OHYtMi4zNTJoNS40NTh2LTQuNjloLTUuNDU4di0yLjM0N2g1LjQ1OHYtNC42OWgtNS40NThWMjUuMjNoNS40NTh2LTQuNjloLTUuNDU4di0yLjM0NWg1LjQ1OHYtNC42OTJoLTUuNDU4di00LjY5aDIyLjQ1NnY0MS45MDNoLS4wMDF6Ii8+PHBhdGggZD0iTTQyLjcyOSAxOS44NTdoOS41MTJ2NC42OTFINDIuNzN6bTAtNy4wMzVoOS41MTJ2NC42OTFINDIuNzN6bTAgMTQuMjI4aDkuNTEydjQuNjlINDIuNzN6bTAgNy4wMzZoOS41MTJ2NC42OTFINDIuNzN6Ii8+PHBhdGggZD0iTTQyLjcyOSA0MS4yNzloOS41MTJ2NC42OUg0Mi43M3pNNTcuNjk5IDYuNDFIMzQuNzc2VjBMMCA2LjA5OHY0Ny4yMmwzNC43NzYgNS45NDF2LTcuMTg1aDIyLjkyM2MuOTM2IDAgMS41Ni0uNzgxIDEuNTYtMS41NTVWNy45NzRjMC0uNzgxLS42MjQtMS41NTUtMS41Ni0xLjU1NXpNMTkuNjQ3IDQwLjE4NGwtMy4yNzQtOC41OTNoLS4xNDhjMCAuMTQ4LTMuMjc0IDguMTMtMy4yNzQgOC4xM2wtNC4zNjctLjMxMiA1LjE0Ni0xMC4xNjMtNC42NzgtMTAuMTYzIDQuMzY3LS4zMTMgMi45NjIgNy45NzRoLjE0OWMwLS4xNDggMy4yNzQtOC4yODYgMy4yNzQtOC4yODZsNC41MjItLjMxMy01LjQ1OCAxMS4xMDIgNS42MTUgMTEuMTAxLTQuODM0LS4xNDh6TTU3LjIzIDUwLjM0N0gzNC43NzZ2LTQuMzdoNS40NTd2LTQuNjkyaC01LjQ1N3YtMi4zNTJoNS40NTd2LTQuNjloLTUuNDU3di0yLjM0N2g1LjQ1N3YtNC42OWgtNS40NTdWMjQuODZoNS40NTd2LTQuNjloLTUuNDU3di0yLjM0Nmg1LjQ1N3YtNC42OTJoLTUuNDU3di00LjY5aDIyLjQ1NnY0MS45MDR6Ii8+PC9nPjwvc3ZnPg=="
+        },
+        "displayName": "Microsoft Excel 365",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 160,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/bb41eacccac4463f90a2d68c5509b55f.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+URL: https://docs.n8n.io/integrations/community-nodes/blocklist/
+Scraped_At: 2025-05-20T19:08:13.858865
+
+n8n community node blocklist
+#
+n8n maintains a blocklist of community nodes. You can't install any node on this list.
+n8n may add community nodes to the blocklist for a range of reasons, including:
+The node is intentionally malicious
+It's low quality (low enough to be harmful)
+If you are a community node creator whose node is on the blocklist, and you believe this is a mistake, contact
+hello@n8n.io
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

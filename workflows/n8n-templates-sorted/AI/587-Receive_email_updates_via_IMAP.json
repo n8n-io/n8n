@@ -1,0 +1,124 @@
+{
+  "workflow": {
+    "id": 587,
+    "name": "Receive email updates via IMAP",
+    "views": 2806,
+    "recentViews": 0,
+    "totalViews": 2806,
+    "createdAt": "2020-08-04T11:49:38.550Z",
+    "description": "Companion workflow for IMAP Email node docs\n\n![workflow-screenshot](fileId:176)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "IMAP Email",
+          "type": "n8n-nodes-base.emailReadImap",
+          "position": [
+            760,
+            400
+          ],
+          "parameters": {
+            "options": {
+              "allowUnauthorizedCerts": false
+            }
+          },
+          "credentials": {
+            "imap": "imap_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.emailReadImap": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 10,
+        "icon": "fa:inbox",
+        "name": "n8n-nodes-base.emailReadImap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/imap/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Email Trigger (IMAP)",
+          "color": "#44AA22"
+        },
+        "iconData": {
+          "icon": "inbox",
+          "type": "icon"
+        },
+        "displayName": "Email Trigger (IMAP)",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 176,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/906db02a74754801a8ed79a4cab072c3.png"
+      }
+    ]
+  }
+}

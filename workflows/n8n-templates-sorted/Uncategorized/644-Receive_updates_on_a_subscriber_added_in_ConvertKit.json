@@ -1,0 +1,187 @@
+{
+  "workflow": {
+    "id": 644,
+    "name": "Receive updates on a subscriber added in ConvertKit",
+    "views": 265,
+    "recentViews": 0,
+    "totalViews": 265,
+    "createdAt": "2020-09-10T09:48:15.274Z",
+    "description": "![workflow-screenshot](fileId:219)",
+    "workflow": {
+      "id": "28",
+      "name": "Receive updates when a subscriber is added through a form in ConvertKit",
+      "nodes": [
+        {
+          "name": "ConvertKit Trigger",
+          "type": "n8n-nodes-base.convertKitTrigger",
+          "position": [
+            690,
+            260
+          ],
+          "webhookId": "55336480-7be1-4432-8fc8-d860572c1c18",
+          "parameters": {
+            "event": "formSubscribe",
+            "formId": 1657198
+          },
+          "credentials": {
+            "convertKitApi": "convertkit"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.convertKitTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 361,
+        "icon": "file:convertKit.svg",
+        "name": "n8n-nodes-base.convertKitTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.convertkittrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/convertKit/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "ConvertKit Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNzIiIGhlaWdodD0iMTYwIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjRkI2OTcwIiBkPSJNODIuNzIgMTI2LjMxNmMyOS43NyAwIDUyLjc4LTIyLjYyMiA1Mi43OC01MC41MjYgMC0yNi4xNDMtMjEuNjE3LTQyLjEwNi0zNS45MzUtNDIuMTA2LTE5Ljk0NSAwLTM1LjkzIDE0LjA4NC0zOC4xOTggMzQuOTg4LS40MTggMy44NTYtMy40NzYgNy4wOS03LjM1NSA3LjA2MS02LjQyMy0uMDQ2LTE1Ljc0Ni0uMS0yMS42NTgtLjA4LTIuNTU1LjAwOC00LjY2OS0yLjA2NS00LjU0My00LjYxOC44OS0xOC4xMjMgNi45MTQtMzUuMDcgMTguNDAyLTQ4LjA4N0M1OC45NzYgOC40ODggNzcuNTYxIDAgOTkuNTY1IDBjMzYuOTY5IDAgNzEuODY5IDMzLjc4NiA3MS44NjkgNzUuNzkgMCA0Ni41MDgtMzguMzEyIDg0LjIxLTg3LjkyNyA4NC4yMS0zNS4zODQgMC03MS4wMjEtMjMuMjU4LTgzLjQ2NC01NS43NzVhLjcuNyAwIDAgMS0uMDMtLjM3N2MuMTY1LS45NjIuNDk0LTEuODQxLjgxOC0yLjcwNy40NzEtMS4yNTguOTMxLTIuNDg4Ljg2NC0zLjkwNmwtLjIxNS00LjUyOWE1LjUyIDUuNTIgMCAwIDEgMy4xOC01LjI2M2wxLjc5OC0uODQyYTYuOTggNi45OCAwIDAgMCAzLjkxMi01LjA3NSA2Ljk5IDYuOTkgMCAwIDEgNi44ODctNS43MzZjNS4yODIgMCA5Ljg3NSAzLjUxNSAxMS41OSA4LjUxMiA4LjMwNyAyNC4yMTIgMjEuNTExIDQyLjAxNCA1My44NzMgNDIuMDE0Ii8+PC9zdmc+"
+        },
+        "displayName": "ConvertKit Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 219,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/cb2fb4d6287846ce880912890ffcc81d.png"
+      }
+    ]
+  }
+}

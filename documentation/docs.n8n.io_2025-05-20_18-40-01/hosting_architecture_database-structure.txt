@@ -1,0 +1,128 @@
+URL: https://docs.n8n.io/hosting/architecture/database-structure/
+Scraped_At: 2025-05-20T18:43:19.347300
+
+Database structure
+#
+This page describes the purpose of each table in the n8n database.
+Database and query technology
+#
+By default, n8n uses SQLite as the database. If you are using another database the structure will be similar, but the data-types may be different depending on the database.
+n8n uses
+TypeORM
+for queries and migrations.
+To inspect the n8n database, you can use
+DBeaver
+, which is an open-source universal database tool.
+Tables
+#
+These are the tables n8n creates during setup.
+auth_identity
+#
+Stores details of external authentication providers when using
+SAML
+.
+auth_provider_sync_history
+#
+Stores the history of a SAML connection.
+credentials_entity
+#
+Stores the
+credentials
+used to authenticate with integrations.
+event_destinations
+#
+Contains the destination configurations for
+Log streaming
+.
+execution_data
+#
+Contains the workflow at time of running, and the execution data.
+execution_entity
+#
+Stores all saved workflow executions. Workflow settings can affect which executions n8n saves.
+execution_metadata
+#
+Stores
+Custom executions data
+.
+installed_nodes
+#
+Lists the
+community nodes
+installed in your n8n instance.
+installed_packages
+#
+Details of npm community nodes packages installed in your n8n instance.
+installed_nodes
+lists each individual node.
+installed_packages
+lists npm packages, which may contain more than one node.
+migrations
+#
+A log of all database migrations. Read more about
+Migrations
+in TypeORM's documentation.
+project
+#
+Lists the
+projects
+in your instance.
+project_relation
+#
+Describes the relationship between a user and a
+project
+, including the user's
+role type
+.
+role
+#
+Not currently used. Foruse in future work on custom roles.
+settings
+#
+Records custom instance settings. These are settings that you can't control using environment variables. They include:
+Whether the instance owner is set up
+Whether the user chose to skip owner and user management setup
+License key
+shared_credentials
+#
+Maps credentials to users.
+shared_workflow
+#
+Maps workflows to users.
+tag_entity
+#
+All workflow tags created in the n8n instance. This table lists the tags.
+workflows_tags
+records which workflows have which tags.
+user
+#
+Contains user data.
+variables
+#
+Store
+variables
+.
+webhook_entity
+#
+Records the active webhooks in your n8n instance's workflows. This isn't just webhooks uses in the Webhook node. It includes all active webhooks used by any trigger node.
+workflow_entity
+#
+Your n8n instance's saved workflows.
+workflow_history
+#
+Store previous versions of workflows.
+workflow_statistics
+#
+Counts workflow IDs and their status.
+workflows_tags
+#
+Maps tags to workflows.
+tag_entity
+contains tag details.
+Entity Relationship Diagram (ERD)
+#
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

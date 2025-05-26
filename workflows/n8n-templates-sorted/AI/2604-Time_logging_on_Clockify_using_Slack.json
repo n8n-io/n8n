@@ -1,0 +1,1246 @@
+{
+  "workflow": {
+    "id": 2604,
+    "name": "Time logging on Clockify using Slack",
+    "views": 3574,
+    "recentViews": 2,
+    "totalViews": 3574,
+    "createdAt": "2024-12-03T18:12:28.591Z",
+    "description": "# Time Logging on Clockify Using Slack\n\n## **How it works**\nThis workflow simplifies time tracking for teams and agencies by integrating **Slack** with **Clockify**. It enables users to log, update, or delete time entries directly within Slack, leveraging an AI-powered assistant for seamless and conversational interactions. Key features include:\n\n- **Effortless Time Logging**: Create and manage time entries in Clockify without leaving Slack.\n- **AI-Powered Assistant**: Get step-by-step guidance to ensure accurate and efficient time logging.\n- **Project and Client Management**: Retrieve project and client information from Clockify effortlessly.\n- **Overlap Prevention**: Avoid overlapping entries with built-in time validation.\n- **Automated Descriptions**: Generate ethical, grammatically correct descriptions for time logs.\n\n## **Set up steps**\n### 1. **Prepare your integrations**\n- Ensure you have active accounts for both Slack and Clockify.\n- Generate your Clockify API credentials for integration.\n\n### 2. **Import the workflow**\n- Download and import the workflow template into your n8n instance.\n- Configure the workflow to connect with your Slack and Clockify accounts.\n\n### 3. **Configure the workflow**\n- Add your Clockify API credentials in the workflow settings.\n- Set up the Slack Trigger to listen for app mentions or specific commands.\n\n### 4. **Test the workflow**\n- Use Slack to create a time entry and verify it in Clockify.\n- Test updating and deleting existing entries to ensure smooth functionality.\n- Check for any overlapping time logs or incorrect data entries.\n\n## **Why use this workflow?**\n- **Efficiency**: Eliminate the need to switch between tools for time tracking.\n- **Accuracy**: AI-driven validation ensures error-free entries.\n- **Automation**: Simplify repetitive tasks like updating or deleting time logs.\n- **Proactive Guidance**: Conversational assistant ensures smooth operations.\n",
+    "workflow": {
+      "id": "WsksMHrmAQrG32db",
+      "meta": {
+        "instanceId": "92fc20bda79393649a623da4b0a65937bcc52015ab24e5a11633573bf81c05ba"
+      },
+      "name": "ClockifyBlockiaWorkflow",
+      "tags": [
+        {
+          "id": "0zJNrNQJD49aoFYO",
+          "name": "Clockify",
+          "createdAt": "2024-12-02T21:53:54.940Z",
+          "updatedAt": "2024-12-02T21:53:54.940Z"
+        },
+        {
+          "id": "JvuYX1WC7uT4mYl7",
+          "name": "Slack",
+          "createdAt": "2024-12-02T21:53:56.825Z",
+          "updatedAt": "2024-12-02T21:53:56.825Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "98efbcb6-7d13-436d-bb78-22999944b4da",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -800,
+            260
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "oMvpfPJuOGdwct9R",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e32c1a0-3fb6-4fb6-b706-805b16f95528",
+          "name": "Calculator",
+          "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+          "position": [
+            -20,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "363b9823-5c97-4da6-889f-4fa83fac539f",
+          "name": "Create New Time Entry",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            -120,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/6735b75fe9244e75e2123fba/time-entries",
+            "method": "POST",
+            "jsonBody": "{\n  \"billable\": true,\n  \"description\": \"{logDescription}\",\n  \"end\": \"{endTime}\",\n  \"projectId\": \"{projectId}\",\n  \"start\": \"{startTime}\",\n  \"type\": \"REGULAR\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "toolDescription": "Call this workflow whenever you need to work with Clockify for create a new time entry.",
+            "nodeCredentialType": "clockifyApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "logDescription",
+                  "type": "string",
+                  "description": "Description of the time log entry"
+                },
+                {
+                  "name": "endTime",
+                  "type": "string",
+                  "description": "Represents an end date of the time log in yyyy-MM-ddThh:mm:ssZ format."
+                },
+                {
+                  "name": "projectId",
+                  "type": "string",
+                  "description": "Represents project unique identifier across the system."
+                },
+                {
+                  "name": "startTime",
+                  "type": "string",
+                  "description": "Represents a start date of the time log in yyyy-MM-ddThh:mm:ssZ format."
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "dac03c89-823e-46c5-af76-39b09b0b073b",
+          "name": "GetClientsTool",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            -380,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/6735b75fe9244e75e2123fba/clients",
+            "fields": "id,name,workspaceId",
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "name",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Call this tool whenever you need to get or filter clients on Clockify, especially if you need to find client id by name.",
+            "optimizeResponse": true,
+            "nodeCredentialType": "clockifyApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "name",
+                  "type": "string",
+                  "description": "Filters client results that matches with the string provided in their client name."
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3a615bf3-c237-423b-919d-62c161dd0a50",
+          "name": "Get All Time Entries",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            -260,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/6735b75fe9244e75e2123fba/user/{userId}/time-entries",
+            "fields": "id,description,userId,projectId,workspaceId,timeInterval",
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "start",
+                  "value": "{startTime}",
+                  "valueProvider": "fieldValue"
+                },
+                {
+                  "name": "end",
+                  "value": "{endTime}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "toolDescription": "Call this tool whenever you need to get time entries on Clockify for a given user identified by its user Id (not name).\nBy default fetch entries from the last month if no dates are provided.",
+            "optimizeResponse": true,
+            "nodeCredentialType": "clockifyApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "startTime",
+                  "type": "string",
+                  "description": "Represents start date in yyyy-MM-ddThh:mm:ssZ format. Optional"
+                },
+                {
+                  "name": "endTime",
+                  "type": "string",
+                  "description": "Represents end date in yyyy-MM-ddThh:mm:ssZ format. Optional"
+                },
+                {
+                  "name": "userId",
+                  "type": "string",
+                  "description": "Id of the user that is logged in, for which we are retrieving time logs"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "29bc1d81-07b2-42e3-bc3b-0bd30aaa796a",
+          "name": "Current loggedin user",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            100,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.clockify.me/api/v1/user",
+            "fields": "id,email,name",
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "toolDescription": "Gel the current logged in user that you are operating from. Use it to get user profikle information, especially its id, email, name etc.",
+            "optimizeResponse": true,
+            "nodeCredentialType": "clockifyApi"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5472ac8d-b843-4031-acfb-4b5f60d8e84f",
+          "name": "GetProjectsTool",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            -520,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/6735b75fe9244e75e2123fba/projects",
+            "fields": "id,name,currency,clientId,workspaceId",
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "name",
+                  "value": "{projectName}",
+                  "valueProvider": "fieldValue"
+                },
+                {
+                  "name": "clients",
+                  "value": "{clientId}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "toolDescription": "Call this tool whenever you need to get projects on Clockify. \nThis is a tool to use if you want to find all projects and project ids for the logged in user.\n\nOptionally you can filter projects by clients or by project names.",
+            "optimizeResponse": true,
+            "nodeCredentialType": "clockifyApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "projectName",
+                  "type": "string",
+                  "description": "Project name; not project ID; not client ID; can be empty"
+                },
+                {
+                  "name": "clientId",
+                  "type": "string",
+                  "description": "Client unique identifier, this is not a name of the client; so if you fail you need to try again with client id; can be empty"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "89e935ef-34c8-4b9b-9182-ccf4c339e7d1",
+          "name": "Update Time Entry",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            240,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/6735b75fe9244e75e2123fba/time-entries/{id}",
+            "method": "PUT",
+            "jsonBody": "{\n  \"billable\": true,\n  \"description\": \"{logDescription}\",\n  \"end\": \"{endTime}\",\n  \"projectId\": \"{projectId}\",\n  \"start\": \"{startTime}\",\n  \"type\": \"REGULAR\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "toolDescription": "Call this workflow whenever you need to work with Clockify for update an existing time entry.",
+            "nodeCredentialType": "clockifyApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "logDescription",
+                  "type": "string",
+                  "description": "Description of the time log entry"
+                },
+                {
+                  "name": "endTime",
+                  "type": "string",
+                  "description": "Represents an end date of the time log in yyyy-MM-ddThh:mm:ssZ format."
+                },
+                {
+                  "name": "projectId",
+                  "type": "string",
+                  "description": "Represents project unique identifier across the system."
+                },
+                {
+                  "name": "startTime",
+                  "type": "string",
+                  "description": "Represents a start date of the time log in yyyy-MM-ddThh:mm:ssZ format."
+                },
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Id of the time entry"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "88a0e515-ee3e-4546-a053-a11b135bde18",
+          "name": "Delete Time Entry",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            380,
+            260
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/6735b75fe9244e75e2123fba/time-entries/{id}",
+            "method": "DELETE",
+            "authentication": "predefinedCredentialType",
+            "toolDescription": "Call this workflow whenever you need to work with Clockify for deleating an existing time entry.",
+            "nodeCredentialType": "clockifyApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "id",
+                  "type": "string",
+                  "description": "Id of the time entry"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "sArgwd7fRqmYH3Pc",
+              "name": "Clockify account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "19ddc949-1ee3-4871-8c5c-415e9d560d26",
+          "name": "DateConverter",
+          "type": "@n8n/n8n-nodes-langchain.toolCode",
+          "position": [
+            540,
+            260
+          ],
+          "parameters": {
+            "name": "DateToMilisecondsConvertorTool",
+            "jsCode": "// Example: convert the incoming query to uppercase and return it\nreturn (new Date(query)).getTime() ",
+            "description": "Call this tool to convert dates from format to miliseconds.\nExample 2024-12-02T21:04:23.623Z date is converted into time miliseconds.\n\nthis ideally is combinated with calculator to calculate duration periods."
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "ec208aa4-8f58-4837-8bf7-42e11cd10ab9",
+          "name": "ClockifyBlockia",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -600,
+            20
+          ],
+          "parameters": {
+            "text": "={{ $json.text }}",
+            "options": {
+              "systemMessage": "=You are an smart assistant assisting engineers in the time logging management on Clockify for an agency called Blockia Labs using conversational chat system. Be precise and concise, you are engineers best friend copilot.\nYour goals is to guide and help engineers in the logging process; by proactively guiding them one step again in the process and giving them options and proactive guidance, not passively waiting only on instructions.\n\nNote that todays day is {{ $now.toUTC() }}\n\nFor date duration calculation use the date convertor tool along with the calculator.\nUse step by step guidance and reasoning for this process.\n\nFor creates, updates and delete operations always double confirm with the user. Especially when deleting, make the confirmation one by one since deleting is critical ops.\n\nMake sure the descriptions are checked, ethic and gramatically correct. \nMake sure there is no overlap in time entries or logging when one user is working on more projects at the same time. \nReturn a simple mardown resposne (no bold or ****)",
+              "passthroughBinaryImages": true
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "75718cd6-00e1-4d7f-91a8-150c5cf5522f",
+          "name": "Slack Trigger",
+          "type": "n8n-nodes-base.slackTrigger",
+          "position": [
+            -1140,
+            -240
+          ],
+          "webhookId": "cc2d1f3f-c366-48a5-9285-b424f00504cf",
+          "parameters": {
+            "options": {
+              "resolveIds": true
+            },
+            "trigger": [
+              "app_mention"
+            ],
+            "watchWorkspace": true
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "FAG5NeHyfVWEAZBF",
+              "name": "Slack account 2"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "638463bd-4e71-4260-91b4-b5068db7abe6",
+          "name": "Execution Data",
+          "type": "n8n-nodes-base.executionData",
+          "position": [
+            -820,
+            -240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "4c0d8360-a353-4ae5-901a-f66065b00258",
+          "name": "Window Buffer Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -660,
+            260
+          ],
+          "parameters": {
+            "sessionKey": "={{ $json.user }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 10
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "81bc56b4-2864-4b3e-801c-2c96244d524c",
+          "name": "Add reaction",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            -500,
+            -400
+          ],
+          "webhookId": "81d9777e-2ea1-4938-966a-e2fe491d0bba",
+          "parameters": {
+            "name": "+1",
+            "resource": "reaction",
+            "channelId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Execution Data').item.json.channel }}"
+            },
+            "timestamp": "={{ $json.ts }}"
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "FAG5NeHyfVWEAZBF",
+              "name": "Slack account 2"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b330f17f-b0c1-4025-813f-d20ca1b1d896",
+          "name": "Send reply",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            -240,
+            -240
+          ],
+          "webhookId": "81d9777e-2ea1-4938-966a-e2fe491d0bba",
+          "parameters": {
+            "text": "={{ $json.output }}",
+            "select": "channel",
+            "channelId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Execution Data').item.json.channel }}"
+            },
+            "otherOptions": {
+              "mrkdwn": true,
+              "thread_ts": {
+                "replyValues": {
+                  "thread_ts": "={{ $('Execution Data').item.json.ts }}"
+                }
+              },
+              "link_names": false,
+              "unfurl_links": false,
+              "includeLinkToWorkflow": false
+            }
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "FAG5NeHyfVWEAZBF",
+              "name": "Slack account 2"
+            }
+          },
+          "typeVersion": 2.2
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "91f32f58-1060-4473-9313-7a5b31dbcf26",
+      "connections": {
+        "Calculator": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DateConverter": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Slack Trigger": {
+          "main": [
+            [
+              {
+                "node": "Execution Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execution Data": {
+          "main": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Add reaction",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GetClientsTool": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ClockifyBlockia": {
+          "main": [
+            [
+              {
+                "node": "Send reply",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GetProjectsTool": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete Time Entry": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Time Entry": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get All Time Entries": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Window Buffer Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create New Time Entry": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Current loggedin user": {
+          "ai_tool": [
+            [
+              {
+                "node": "ClockifyBlockia",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.slack": {
+          "count": 2
+        },
+        "n8n-nodes-base.slackTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.executionData": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolCode": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolCalculator": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 7
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Blockia Labs",
+      "username": "blockia",
+      "bio": "Our mission is simple but transformative: We empower enterprises to explore, adopt, and scale AI agents by offering a structured, flexible, and practical approach to innovation.",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/2be36b8ee2585d733868409c8289ec6a960568e73d8e21bfa1bbdd1546df23a3?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 846,
+        "icon": "fa:tasks",
+        "name": "n8n-nodes-base.executionData",
+        "codex": {
+          "data": {
+            "alias": [
+              "Filter",
+              "_Set",
+              "Data"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Execution Data",
+          "color": "#29A568"
+        },
+        "iconData": {
+          "icon": "tasks",
+          "type": "icon"
+        },
+        "displayName": "Execution Data",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1195,
+        "icon": "fa:calculator",
+        "name": "@n8n/n8n-nodes-langchain.toolCalculator",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolcalculator/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Calculator"
+        },
+        "iconData": {
+          "icon": "calculator",
+          "type": "icon"
+        },
+        "displayName": "Calculator",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1197,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.toolCode",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolcode/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code Tool"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Code Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1264,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slackTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.slacktrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Slack Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

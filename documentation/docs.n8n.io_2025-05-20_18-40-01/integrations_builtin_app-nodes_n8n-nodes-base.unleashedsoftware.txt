@@ -1,0 +1,28 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.unleashedsoftware/
+Scraped_At: 2025-05-20T18:52:22.275575
+
+Unleashed Software node
+#
+Use the Unleashed Software node to automate work in Unleashed Software, and integrate Unleashed Software with other applications. n8n has built-in support for a wide range of Unleashed Software features, including getting sales orders and stock on hand.
+On this page, you'll find a list of operations the Unleashed Software node supports and links to more resources.
+Credentials
+Refer to
+Unleashed Software credentials
+for guidance on setting up authentication.
+Operations
+#
+Sales Order
+Get all sales orders
+Stock On Hand
+Get a stock on hand
+Get all stocks on hand
+Templates and examples
+#
+Browse Unleashed Software integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,95 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.github/
+Scraped_At: 2025-05-20T18:47:24.774395
+
+GitHub node
+#
+Use the GitHub node to automate work in GitHub, and integrate GitHub with other applications. n8n has built-in support for a wide range of GitHub features, including creating, updating, deleting, and editing files, repositories, issues, releases, and users.
+On this page, you'll find a list of operations the GitHub node supports and links to more resources.
+Credentials
+Refer to
+GitHub credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+File
+Create
+Delete
+Edit
+Get
+List
+Issue
+Create
+Create Comment
+Edit
+Get
+Lock
+Organization
+Get Repositories
+Release
+Create
+Delete
+Get
+Get Many
+Update
+Repository
+Get
+Get Issues
+Get License
+Get Profile
+Get Pull Requests
+List Popular Paths
+List Referrers
+Review
+Create
+Get
+Get Many
+Update
+User
+Get Repositories
+Invite
+Workflow
+Disable
+Dispatch
+Enable
+Get
+Get Usage
+List
+Templates and examples
+#
+Back Up Your n8n Workflows To Github
+by Jonathan
+View template details
+Building RAG Chatbot for Movie Recommendations with Qdrant and Open AI
+by Jenny
+View template details
+Chat with GitHub API Documentation: RAG-Powered Chatbot with Pinecone & OpenAI
+by Mihai Farcas
+View template details
+Browse GitHub integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

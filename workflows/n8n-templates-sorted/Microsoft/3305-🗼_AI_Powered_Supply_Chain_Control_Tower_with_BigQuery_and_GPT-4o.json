@@ -1,0 +1,790 @@
+{
+  "workflow": {
+    "id": 3305,
+    "name": "🗼 AI Powered Supply Chain Control Tower with BigQuery and GPT-4o",
+    "views": 3210,
+    "recentViews": 23,
+    "totalViews": 3210,
+    "createdAt": "2025-03-24T10:55:56.536Z",
+    "description": "*Tags: Supply Chain, Logistics, Control Tower*\n\n### Context\n\nHey! I’m Samir, a Supply Chain Engineer and Data Scientist from Paris, and the founder of [LogiGreen Consulting](https://logi-green.com).\n\nWe design tools to help companies improve their **logistics processes** using data analytics, AI, and automation—to **reduce costs and minimize environmental impact**.\n\n&gt; Let’s use N8N to build smarter and more sustainable supply chains!\n\n📬 For business inquiries, you can add me on [LinkedIn](https://www.linkedin.com/in/samir-saci)\n\n### Who is this template for?\n\nThis workflow template is designed for **logistics operations** that need a monitoring solution for their **distribution chains**.\n\n![Supply Chain Control Tower](https://miro.medium.com/v2/resize:fit:1050/1*0qKAg2B2ZpC-HH0TXmRewA.png) \n\nConnected to your Transportation Management Systems, this AI agent can answer any question about the shipments handled by your distribution teams.\n\n### How does it work?\n\nThe workflow is connected to a **Google BigQuery** table that stores **outbound order data** (customer deliveries).\n\n![BigQuery Table](https://www.samirsaci.com/content/images/size/w1000/2025/03/image-14.png)\n\nHere’s what the AI agent does:\n1. 🤔 Receives a user question via chat.  \n2. 🧠 Understands the request and **generates the correct SQL query**.  \n3. ✅ Executes the SQL query using a **BigQuery** node.  \n4. 💬 Responds to the user in **plain English**.\n\n![Example of Interactions](https://www.samirsaci.com/content/images/size/w1000/2025/03/Chat-Screen.png)\n\nThanks to the chat memory, users can ask follow-up questions to dive deeper into the data.\n\n### What do I need to get started?\n\nThis workflow requires **no advanced programming skills**.\n\nYou’ll need:\n- A **Google BigQuery account** with an SQL table storing transactional records.\n- An **OpenAI API key** (GPT-4o) for the chat model.\n\n### Next Steps\n\nFollow the sticky notes in the workflow to configure each node and start using **AI to support your supply chain operations**.\n\n![Tutorial Screenshot](https://www.samirsaci.com/content/images/2025/04/image.png)  \n[🎥 Watch My Tutorial](https://www.loom.com/share/50271f9d50214d7184830985497a75ec?sid=d0c410dc-29f1-488f-b89a-4011de0ded07)\n\n🚀 Curious how N8N can transform your logistics operations?  \n\n### Notes\n\n- The chat trigger can easily be replaced with **Teams**, **Telegram**, or **Slack** for a better user experience.\n- You can also connect this to a customer chat window using a **webhook**.\n\n*This workflow was built using N8N version 1.82.1*  \n*Submitted: March 24, 2025*\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "6a5e68bcca67c4cdb3e0b698d01739aea084e1ec06e551db64aeff43d174cb23"
+      },
+      "nodes": [
+        {
+          "id": "53b36910-966f-45ba-a425-a3260a55059f",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            340,
+            480
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "177235e8-c925-43d0-9695-10f072e26350",
+          "name": "AI Control Tower Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=You are an AI-powered SQL assistant specialized in supply chain analytics. \nYour role is to execute SQL queries on BigQuery and return only the results in a structured format.\n\nToday we are May 31, 2021.\n\n### **Behavior & Rules**\n1️⃣ **Query Execution:**\n   - Your only task is to process user requests and return **direct results** from BigQuery.\n   - Do **not** display the SQL query.\n   - Only return structured **data** as output.\n\n2️⃣ **Data Presentation:**\n   - Format the results as a **table** whenever possible.\n   - If results are numerical (counts, percentages, aggregates), return them **clearly and concisely**.\n   - If results contain multiple rows, return **only the first 10** for preview, unless the user specifies otherwise.\n\n3️⃣ **Handling Large Datasets:**\n   - If the user asks for many rows, show the first **100 rows max** unless specified.\n   - Provide a **summary** when dealing with large data instead of showing everything.\n\n4️⃣ **Response Format:**\n   - ✅ **For counts & metrics:**  \n     `\"There were 5,432 delayed shipments in the last 21 days.\"`\n   - ✅ **For tables:**  \n     | ShipmentID | City  | Store  | Order Date | Delivery Date | On Time? |\n     |-----------|-------|--------|------------|--------------|----------|\n     | 12345     | NYC   | ST1    | 2024-03-10 | 2024-03-15   | No       |\n     | 67890     | Paris | ST4    | 2024-03-11 | 2024-03-16   | Yes      |\n\n5️⃣ **Clarifying Unclear Requests:**\n   - If the user request is **too broad**, ask for clarification instead of running an expensive query.\n\n---\n\n### Schema Awareness\nAll SQL queries must use the BigQuery table:  \n`transport.shipments`  \n\nThis table includes fields such as:\n- `Shipment ID`, `City`, `Store`, `Order Date`, `Delivery Date`, `On Time Delivery`\n- As well as operational timestamps: `Transmission`, `Loading`, `Airport Arrival`, etc.\n- And status flags: `Transmission OnTime`, `Loading OnTime`, `Airport OnTime`, `Store Open`\n\nUse these fields appropriately when analyzing shipment performance.\n\n---\n\n### Tool Usage Instruction (for \"bigquery_tool\")\n\nWhenever you need to run a SQL query, use the tool called `bigquery_tool`.\n\nYou must provide the query in the following format:\n```json\n{\n  \"query\": \"SELECT COUNT(*) FROM `transport.shipments` WHERE `On Time Delivery` = FALSE\"\n}\n"
+            }
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "5366cc5f-85d3-44d2-9b1b-62febfcb44e3",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -100,
+            -120
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 200,
+            "height": 520,
+            "content": "### 1. Workflow Trigger with Chat\nThis workflow uses a simple chat window as a trigger. You can replace it with Telegram, Slack, Teams or a webhook trigger linked to your chat.\n\n#### How to setup?\n*Nothing to do.*\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4218a062-12f8-437d-ab22-5a653a3089b2",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            140,
+            -120
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 700,
+            "height": 740,
+            "content": "### 2. AI Agent equipped with the query tool\nIn order to have more control on the input of the BigQuery node, we don't use the BigQuery tool. Instead we have a set of nodes to retrieve the SQL query, clean it and send it to a BigQuery Node.\n\n#### How to setup?\n- **AI Agent with the Chat Model**:\n   1. Add a **chat model** with the required credentials *(Example: Open AI 4o-mini)*\n   2. Adapt the **name of your BigQuery table** in the system prompt *(Example: transports.shipments)*\n   3. Adapt the **tables fields explanation** in the system prompt\n  [Learn more about the AI Agent Node](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent)\n- Copy and past the **nodes in the yellow sticker** in another workflow. Point the query tool to this workflow.\n[Learn more about the Custom n8n Workflow Tool node](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c5967f58-00e8-4f03-9110-913547f7ab9c",
+          "name": "Call Query Tool",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            640,
+            440
+          ],
+          "parameters": {
+            "name": "bigquery_tool",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "4Os7DoxHjFuTwWio",
+              "cachedResultName": "🔨 Big Query Tool"
+            },
+            "description": "=Use this tool to run an SQL query and fetch the result from the BigQuery database.\n\nThe tool expects input in the following format:\n{\n  \"query\": \"SELECT COUNT(*) FROM `transport.shipments` WHERE `On Time Delivery` = FALSE\"\n}\n\nOnly provide the SQL query as a string inside the 'query' key. Do not include code formatting (like ```sql), comments, or explanations. The tool will return only the raw result from the database.\n",
+            "workflowInputs": {
+              "value": {
+                "query": "={{ $fromAI(\"query\", \"SQL query to run\") }}"
+              },
+              "schema": [
+                {
+                  "id": "query",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "query",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "query"
+              ],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "429813c8-b07f-4551-aeea-1744a1225449",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            900,
+            -120
+          ],
+          "parameters": {
+            "width": 760,
+            "height": 460,
+            "content": "### 3. Big Query Workflow\nExecute the SQL query generated by the AI agent in Big Query. Retrieve the results and send them back to the AI Agent.\n\n### How to set up?\n- Paste these nodes in a separate workflow so you can use it with multiple agents.\n- **Google BigQuery API**:\n   1. Add your Google Translate API credentials\n   2. The project in which your table is located\n  [Learn more about the Google BigQuery Node](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebigquery)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bede0624-8923-4af0-8adc-8be22d556066",
+          "name": "Query Database",
+          "type": "n8n-nodes-base.googleBigQuery",
+          "position": [
+            1520,
+            180
+          ],
+          "parameters": {
+            "options": {},
+            "sqlQuery": "={{ $json.query }}",
+            "projectId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "=",
+              "cachedResultUrl": "=",
+              "cachedResultName": "="
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "137e4dbc-db8d-4ec7-a3e0-478dde6ef27c",
+          "name": "Trigger Executed by the AI Tool",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            960,
+            180
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "query"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "42a2801e-582e-4340-83af-ef0041eab4f9",
+          "name": "Sanitising the Query",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1240,
+            180
+          ],
+          "parameters": {
+            "jsCode": "return [\n  {\n    json: {\n      query: $input.first().json.query.replace(/```sql|```/g, \"\").trim()\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7c86fda0-116c-47ad-aaf5-8b83d2c083c6",
+          "name": "Chat Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            480,
+            480
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "e1408ac1-24da-4d38-8fdf-c110a54d3f55",
+          "name": "Chat with the User",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -60,
+            240
+          ],
+          "webhookId": "ee7c418b-d7d6-41f9-8e87-0f71b8ae1cf9",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "bc49829b-45f2-4910-9c37-907271982f14",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            900,
+            380
+          ],
+          "parameters": {
+            "width": 780,
+            "height": 540,
+            "content": "### 4. Do you need more details?\nFind a step-by-step guide in this tutorial\n![Guide](https://www.samirsaci.com/content/images/2025/04/image.png)\n[🎥 Watch My Tutorial](https://www.loom.com/share/50271f9d50214d7184830985497a75ec?sid=d0c410dc-29f1-488f-b89a-4011de0ded07)"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Chat Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Control Tower Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Query Tool": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Control Tower Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Control Tower Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Chat with the User": {
+          "main": [
+            [
+              {
+                "node": "AI Control Tower Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sanitising the Query": {
+          "main": [
+            [
+              {
+                "node": "Query Database",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Trigger Executed by the AI Tool": {
+          "main": [
+            [
+              {
+                "node": "Sanitising the Query",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 12,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.googleBigQuery": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Samir Saci",
+      "username": "samirsaci",
+      "bio": "Automation, AI and Analytics for Supply Chain & Business Optimization\nHelping businesses streamline operations using n8n, AI agents, and data science to enhance efficiency and sustainability. \nLinkedin: www.linkedin.com/in/samir-saci",
+      "verified": true,
+      "links": [
+        "https://linktr.ee/samirsaci"
+      ],
+      "avatar": "https://gravatar.com/avatar/d3644476a59e5813c5f00a7933977e2be8805cbdc574958b9cc6a53b45bedd6a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 479,
+        "icon": "file:googleBigQuery.svg",
+        "name": "n8n-nodes-base.googleBigQuery",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlebigquery/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google BigQuery"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNTgiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzQzODZmYSIgZD0iTTE0LjQ4IDU0LjQ3My41NTggMzAuMzU5YTQuMTYgNC4xNiAwIDAgMSAwLTQuMTY0TDE0LjQ4IDIuMDgyQTQuMTYgNC4xNiAwIDAgMSAxOC4wOCAwaDI3Ljg1N2MxLjQ4LjAwNyAyLjg0NS44IDMuNTg1IDIuMDgybDEzLjkyIDI0LjExM2E0LjE2IDQuMTYgMCAwIDEgMCA0LjE2NEw0OS41MiA1NC40NzNhNC4xNiA0LjE2IDAgMCAxLTMuNiAyLjA4MkgxOC4wN2E0LjE3IDQuMTcgMCAwIDEtMy41OTMtMi4wODJ6Ii8+PHBhdGggZmlsbD0iIzAwMCIgZD0iTTQwLjY5NyAyMC41MTJzMy44NyA5LjI4My0xLjQwNiAxNC41NDUtMTQuODgzIDEuODk0LTE0Ljg4MyAxLjg5NEw0My45NSA1Ni41NDdoMS45ODRhNC4xNiA0LjE2IDAgMCAwIDMuNi0yLjA4Mmw5LjIxNi0xNS45NTh6IiBvcGFjaXR5PSIuMSIvPjxwYXRoIGQ9Ik00NS4yNjYgMzkuNTA3IDQxIDM1LjIzYS43LjcgMCAwIDAtLjE1OC0uMTIgMTEuNjMgMTEuNjMgMCAwIDAtMS40OTktMTUuODU5IDExLjYzIDExLjYzIDAgMCAwLTE2LjM5NiAxNi40MzYgMTEuNjMgMTEuNjMgMCAwIDAgMTUuODYzIDEuNDYuNy43IDAgMCAwIC4xMTMuMTVsNC4yNzcgNC4yNzdhLjY3LjY3IDAgMCAwIC45NDcgMGwxLjEyLTEuMTJhLjY3LjY3IDAgMCAwIDAtLjk0N3pNMzEuNjQgMzYuNzQxYTguNzUgOC43NSAwIDAgMS02LjE4OC0xNC45MzcgOC43NSA4Ljc1IDAgMCAxIDE0LjkzNyA2LjE4OCA4Ljc1IDguNzUgMCAwIDEtOC43NDkgOC43NDltLTUuNTkzLTkuMjE2djMuNjE2YTYuNCA2LjQgMCAwIDAgMi4zMzggMi4zNzV2LTYuMDEzem00LjM3NS0yLjk5OHY5Ljc3MmE2LjUgNi41IDAgMCAwIDIuMzM4IDB2LTkuNzcyem02Ljc2NCA2LjYwNnYtMi4xNDJIMzQuODV2NC41YTYuNDMgNi40MyAwIDAgMCAyLjMzOC0yLjM2OHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google BigQuery",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

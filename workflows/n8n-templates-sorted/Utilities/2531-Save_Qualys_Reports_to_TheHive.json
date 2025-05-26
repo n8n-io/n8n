@@ -1,0 +1,2042 @@
+{
+  "workflow": {
+    "id": 2531,
+    "name": "Save Qualys Reports to TheHive",
+    "views": 694,
+    "recentViews": 0,
+    "totalViews": 694,
+    "createdAt": "2024-11-05T18:14:55.243Z",
+    "description": "![n8n](https://uploads.n8n.io/templates/n8n.png)\n\n# Automate Report Generation with n8n & Qualys\n\n## Introducing the Save Qualys Reports to TheHive Workflow—a robust solution designed to automate the retrieval and storage of Qualys reports in TheHive.\n\nThis workflow fetches reports from Qualys, filters out already processed reports, and creates cases in TheHive for the new reports. It runs every hour to ensure continuous monitoring and up-to-date vulnerability management, making it ideal for Security Operations Centers (SOCs).\n\n**How It Works:**\n\n- **Set Global Variables:** Initializes necessary global variables like `base_url` and `newtimestamp`. This step ensures that the workflow operates with the correct configuration and up-to-date timestamps. Ensure to change the `Global Variables` to match your environment. \n  \n- **Fetch Reports from Qualys:** Sends a GET request to the Qualys API to retrieve finished reports. Automating this step ensures timely updates and consistent data retrieval.\n  \n- **Convert XML to JSON:** Converts the XML response to JSON format for easier data manipulation. This transformation simplifies further processing and integration into TheHive.\n  \n- **Filter Reports:** Checks if the reports have already been processed using their creation timestamps. This filtering ensures that only new reports are handled, avoiding duplicates.\n  \n- **Process Each Report:** Loops through the list of new reports, ensuring each is processed individually. This step-by-step handling prevents issues related to bulk processing and improves reliability.\n  \n- **Create Case in TheHive:** Generates a new case in TheHive for each report, serving as a container for the report data. Automating case creation improves efficiency and ensures that all relevant data is captured.\n  \n- **Download and Attach Report:** Downloads the report from Qualys and attaches it to the respective case in TheHive. This automation ensures that all data is properly archived and easily accessible for review.\n\n\n**Get Started:**\n\n- Ensure your [Qualys](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-creds-base.qualysApi) and [TheHive](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehiveproject/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.theHiveProject) integrations are properly set up.\n- Customize the workflow to fit your specific vulnerability management needs.\n\n\n**Need Help?**\n\n- Join the discussion on our Forum or check out resources on Discord!\n\n\nDeploy this workflow to streamline your vulnerability management process, improve response times, and enhance the efficiency of your security operations.",
+    "workflow": {
+      "meta": {
+        "instanceId": "03e9d14e9196363fe7191ce21dc0bb17387a6e755dcc9acc4f5904752919dca8"
+      },
+      "nodes": [
+        {
+          "id": "f97d8638-b081-4b09-9a83-265f8f99d2dc",
+          "name": "When clicking \"Test workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            460,
+            400
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2df27d6b-b89b-4af0-bdbf-4bc1e0dfc95a",
+          "name": "Global Variables",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            780,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "6a8a0cbf-bf3e-4702-956e-a35966d8b9c5",
+                  "name": "base_url",
+                  "type": "string",
+                  "value": "https://qualysapi.qg3.apps.qualys.com"
+                },
+                {
+                  "id": "fa441581-e50e-4766-adb1-e791b3031aac",
+                  "name": "newtimestamp",
+                  "type": "string",
+                  "value": "={{ $now.toUTC().toString() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "f280aaec-10e1-4d4f-9233-75130f7e2601",
+          "name": "Fetch Reports from Qualys",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1180,
+            460
+          ],
+          "parameters": {
+            "": "",
+            "url": "={{ $json.base_url }}/api/2.0/fo/report",
+            "method": "GET",
+            "options": {},
+            "sendBody": false,
+            "sendQuery": true,
+            "curlImport": "",
+            "infoMessage": "",
+            "sendHeaders": false,
+            "specifyQuery": "keypair",
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "action",
+                  "value": "list"
+                },
+                {
+                  "name": "state",
+                  "value": "Finished"
+                }
+              ]
+            },
+            "httpVariantWarning": "",
+            "nodeCredentialType": "qualysApi",
+            "provideSslCertificates": false
+          },
+          "credentials": {
+            "qualysApi": {
+              "id": "KdkmNjVYkDUzHAvw",
+              "name": "Qualys account"
+            }
+          },
+          "typeVersion": 4.2,
+          "extendsCredential": "qualysApi"
+        },
+        {
+          "id": "481066cc-8ac2-4382-9203-33b78f76af77",
+          "name": "Remove Already Processed Reports",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1700,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "10408e4e-fa76-4e35-bb23-5c34f698f4b4",
+                  "operator": {
+                    "type": "dateTime",
+                    "operation": "after"
+                  },
+                  "leftValue": "={{ $json.LAUNCH_DATETIME }}",
+                  "rightValue": "={{ $('Get Last Timestamp').item.json[\"timestamp\"] || $today.minus({year: 50}).toUTC() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "4dfdb8c9-ab22-48a4-ada0-d1edd30b9460",
+          "name": "Any Reports to Process?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1880,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0d2bcbb2-e2b8-476e-8090-2ad350dd58d2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.ID }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "94e678e8-669f-47ee-9530-4652ff11b99f",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            2120,
+            520
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "28dc3495-5af2-4b31-ac20-a3c7ee11f19f",
+          "name": "Wait",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            2380,
+            540
+          ],
+          "webhookId": "9b6f1b01-42f9-4f51-b0f5-47262da9c9ca",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "06e5daf2-334a-430e-8dbf-c8feeb20d015",
+          "name": "Update Timestamp",
+          "type": "n8n-nodes-base.n8n",
+          "position": [
+            2380,
+            380
+          ],
+          "parameters": {
+            "operation": "update",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "n9Vh6tvRs0Y2y7V9",
+              "cachedResultName": "Timestamp Storage Qualys (#n9Vh6tvRs0Y2y7V9)"
+            },
+            "requestOptions": {},
+            "workflowObject": "={\n  \"name\": \"Timestamp Storage\",\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"9ff52fe4-011e-4460-a8c5-a38bff47966a\",\n              \"name\": \"timestamp\",\n              \"value\": \"{{ $('Global Variables').item.json[\"newtimestamp\"] }}\",\n              \"type\": \"string\"\n            }\n          ]\n        },\n        \"includeOtherFields\": true,\n        \"options\": {}\n      },\n      \"id\": \"8903e1d5-e9cd-4694-94d8-502ecbe58ebe\",\n      \"name\": \"Set Timestamp\",\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.3,\n      \"position\": [\n        1020,\n        220\n      ]\n    },\n    {\n      \"parameters\": {},\n      \"id\": \"ca615aab-24e4-4f25-81ad-3e697426c236\",\n      \"name\": \"Execute Workflow Trigger\",\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1,\n      \"position\": [\n        800,\n        220\n      ]\n    }\n  ],\n  \"connections\": {\n    \"Execute Workflow Trigger\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Set Timestamp\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"settings\": {\n   \n  },\n  \"staticData\": null\n}\n"
+          },
+          "credentials": {
+            "n8nApi": {
+              "id": "61",
+              "name": "n8n account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "387c0d2a-09e0-4227-8910-f0a30106787a",
+          "name": "Get Last Timestamp",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            980,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": "n9Vh6tvRs0Y2y7V9"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6c0d8608-da13-4fa1-a612-aa43ac607af6",
+          "name": "XML",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            1340,
+            460
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "511d290e-5cad-4d34-b54c-de45b11dab45",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1520,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "REPORT_LIST_OUTPUT.RESPONSE.REPORT_LIST.REPORT"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "45f7c06b-63c0-4bae-b301-33633e751a61",
+          "name": "Create Case",
+          "type": "n8n-nodes-base.theHiveProject",
+          "position": [
+            2640,
+            540
+          ],
+          "parameters": {
+            "resource": "case",
+            "caseFields": {
+              "value": {
+                "tlp": 2,
+                "flag": false,
+                "tags": "Qualys Scan",
+                "title": "={{ $json.TITLE }}",
+                "description": "=- **ID:** {{ $json[\"ID\"] }}\n- **Type:** {{ $json[\"TYPE\"] }}\n- **User Login:** {{ $json[\"USER_LOGIN\"] }}\n- **Launch Datetime:** {{ $json[\"LAUNCH_DATETIME\"] }}\n- **Output Format:** {{ $json[\"OUTPUT_FORMAT\"] }}\n- **Size:** {{ $json[\"OUTPUT_FORMAT\"] }}\n- **Status:** {{ $json[\"STATUS\"][\"STATE\"] }}\n- **Expiration Datetime:** {{ $json[\"EXPIRATION_DATETIME\"] }}\n"
+              },
+              "schema": [
+                {
+                  "id": "title",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": true,
+                  "displayName": "Title",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "description",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": true,
+                  "displayName": "Description",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "severity",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "Low",
+                      "value": 1
+                    },
+                    {
+                      "name": "Medium",
+                      "value": 2
+                    },
+                    {
+                      "name": "High",
+                      "value": 3
+                    },
+                    {
+                      "name": "Critical",
+                      "value": 4
+                    }
+                  ],
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Severity (Severity of information)",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "startDate",
+                  "type": "dateTime",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Start Date",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "endDate",
+                  "type": "dateTime",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "End Date",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "tags",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Tags",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "flag",
+                  "type": "boolean",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Flag",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "tlp",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "White",
+                      "value": 0
+                    },
+                    {
+                      "name": "Green",
+                      "value": 1
+                    },
+                    {
+                      "name": "Amber",
+                      "value": 2
+                    },
+                    {
+                      "name": "Red",
+                      "value": 3
+                    }
+                  ],
+                  "removed": false,
+                  "required": false,
+                  "displayName": "TLP (Confidentiality of information)",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "pap",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "White",
+                      "value": 0
+                    },
+                    {
+                      "name": "Green",
+                      "value": 1
+                    },
+                    {
+                      "name": "Amber",
+                      "value": 2
+                    },
+                    {
+                      "name": "Red",
+                      "value": 3
+                    }
+                  ],
+                  "removed": true,
+                  "required": false,
+                  "displayName": "PAP (Level of exposure of information)",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "summary",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Summary",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "status",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "Duplicated",
+                      "value": "Duplicated",
+                      "description": "Stage: Closed"
+                    },
+                    {
+                      "name": "FalsePositive",
+                      "value": "FalsePositive",
+                      "description": "Stage: Closed"
+                    },
+                    {
+                      "name": "Indeterminate",
+                      "value": "Indeterminate",
+                      "description": "Stage: Closed"
+                    },
+                    {
+                      "name": "InProgress",
+                      "value": "InProgress",
+                      "description": "Stage: InProgress"
+                    },
+                    {
+                      "name": "New",
+                      "value": "New",
+                      "description": "Stage: New"
+                    },
+                    {
+                      "name": "Other",
+                      "value": "Other",
+                      "description": "Stage: Closed"
+                    },
+                    {
+                      "name": "TruePositive",
+                      "value": "TruePositive",
+                      "description": "Stage: Closed"
+                    }
+                  ],
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Status",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "assignee",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "Angel",
+                      "value": "angel@n8n.io"
+                    },
+                    {
+                      "name": "John Smith",
+                      "value": "john@n8n.io"
+                    }
+                  ],
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Assignee",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "caseTemplate",
+                  "type": "options",
+                  "display": true,
+                  "options": [],
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Case Template",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "tasks",
+                  "type": "array",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Tasks",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "sharingParameters",
+                  "type": "array",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Sharing Parameters",
+                  "defaultMatch": false
+                },
+                {
+                  "id": "observableRule",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Observable Rule",
+                  "defaultMatch": false
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": []
+            }
+          },
+          "credentials": {
+            "theHiveProjectApi": {
+              "id": "6O5aPdkMaQmc8I9B",
+              "name": "The Hive 5 account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b38d3176-2c87-4460-b22c-e08ccae93e44",
+          "name": "Download Report",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3060,
+            540
+          ],
+          "parameters": {
+            "": "",
+            "url": "={{ $('Global Variables').item.json.base_url }}/api/2.0/fo/report/",
+            "method": "GET",
+            "options": {},
+            "sendBody": false,
+            "sendQuery": true,
+            "curlImport": "",
+            "infoMessage": "",
+            "sendHeaders": false,
+            "specifyQuery": "keypair",
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "action",
+                  "value": "fetch"
+                },
+                {
+                  "name": "id",
+                  "value": "={{ $('Loop Over Items').item.json.ID }}"
+                }
+              ]
+            },
+            "httpVariantWarning": "",
+            "nodeCredentialType": "qualysApi",
+            "provideSslCertificates": false
+          },
+          "credentials": {
+            "qualysApi": {
+              "id": "KdkmNjVYkDUzHAvw",
+              "name": "Qualys account"
+            }
+          },
+          "typeVersion": 4.2,
+          "extendsCredential": "qualysApi"
+        },
+        {
+          "id": "9b005b38-be40-4f36-954e-ef829b894436",
+          "name": "Add Report As Attachment",
+          "type": "n8n-nodes-base.theHiveProject",
+          "position": [
+            3420,
+            540
+          ],
+          "parameters": {
+            "caseId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Create Case').item.json._id }}"
+            },
+            "options": {},
+            "resource": "case",
+            "operation": "addAttachment",
+            "attachmentsUi": {
+              "values": [
+                {}
+              ]
+            }
+          },
+          "credentials": {
+            "theHiveProjectApi": {
+              "id": "6O5aPdkMaQmc8I9B",
+              "name": "The Hive 5 account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8a1fda04-2028-41a0-95db-3aa958fc7446",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            460,
+            560
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "hours"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "25f91441-f95a-4da8-9d62-acecc22b6789",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2920,
+            164.82441481723265
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 361.5043838490178,
+            "height": 550.0452010151306,
+            "content": "![Qualys](https://uploads.n8n.io/templates/qualys.png)\nCreate a new case in TheHive\nIn this section, we create a new case in TheHive as a container for our PDF report. The case must be created first to have a case ID to use to upload the file as an attachment. \n\nEach new report generates a case in TheHive, ensuring that the report is properly attached to the created case for better tracking and organization.\n\nFor more information about this endpoint, visit the [API quick reference](https://cdn2.qualys.com/docs/qualys-api-quick-reference.pdf)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3f84b5c8-4f1c-4dc9-a9ce-8f8936bfbf98",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1140,
+            20
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 318.2931356227883,
+            "height": 698.5851033452675,
+            "content": "![Qualys](https://uploads.n8n.io/templates/qualys.png)\n## Fetch reports from Qualys\nFor more information about this endpoint, visit the [API quick reference](https://cdn2.qualys.com/docs/qualys-api-quick-reference.pdf). The results of the api call are converted from XML to JSON."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3843690-484f-4ff4-b47b-1b8fc76e93de",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            320,
+            20
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 400.5192406950739,
+            "height": 694.6109995985548,
+            "content": "![scheduled](https://uploads.n8n.io/templates/scheduled.png)\n## Run every hour\nThe first time the workflow runs, no timestamp will exist in the subworkflow, so it will query all the Qualys scans to generate reports for all of them. Otherwise it will check only for newer scans. \n\nThis schedule allows for an organization to create a running export of their reports and store them somewhere operational both for historical purposes and for tracking and accountability purposes. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "21c4c9ae-203d-480e-8459-c36726d57d92",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            720,
+            20
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 400.5192406950739,
+            "height": 696.1026552732698,
+            "content": "![n8n](https://uploads.n8n.io/templates/n8n.png)\n## Set time Stamp\nTo ensure we do not duplicate data in TheHive, we set a timestamp like a bookmark for every time we run this workflow. We then use the previous timestamp if available to only get the newest scan results from Qualys. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ef250f59-304d-4710-80e8-e8e81e4a4f68",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1460,
+            20
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1067.9843739266996,
+            "height": 696.1026552732698,
+            "content": "![n8n](https://uploads.n8n.io/templates/n8n.png)\n## Split out all reports to ensure they are all processed. \nWhen we get the response from Qualys, multiple reports are embedded in the JSON, so we use the split out node to process all the reports at once. Before the reports can be saved however, they must go through a filter, checking the time of creation against the time stamp at the beginning. Any that are newer than the timestamp are copied to TheHive.\nA wait node is added for a second to ensure that there are no rate request issues when querying TheHive.\nThe timestamp node updates the value in the subworkflow that stores the timestamp value. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3dff5dc9-95a6-48f5-aee7-d839a385578f",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2540,
+            160.4112877153152
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 361.5043838490178,
+            "height": 554.458328117048,
+            "content": "![TheHive](https://uploads.n8n.io/templates/thehive.png)\n## Create a new case in TheHive\nIn this section, we create a new case in TheHive as a container for our PDF report. The case must be created first to have a case ID to use to upload the file as an attachment. Each new report generates a case in TheHive, ensuring that the report is properly attached to the created case for better tracking and organization."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5509f907-e2bb-4045-864e-283d3da5d5ce",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3300,
+            200
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 361.5043838490178,
+            "height": 514.8696158323633,
+            "content": "![TheHive](https://uploads.n8n.io/templates/thehive.png)\nHere we attach the PDF file as an attachment to the Case in TheHive. \n\nThis step automates the attachment of the downloaded report to the created case, ensuring all relevant information is consolidated in one place.\n\n "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d0a7d953-91de-448b-adfb-72d8c52b9efe",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -340,
+            20
+          ],
+          "parameters": {
+            "width": 646.7396383244529,
+            "height": 1327.6335333503064,
+            "content": "![n8n](https://uploads.n8n.io/templates/n8n.png)\n\n# Automate Report Generation with n8n & Qualys\n\n## Introducing the Save Qualys Reports to TheHive Workflow—a robust solution designed to automate the retrieval and storage of Qualys reports in TheHive.\n\nThis workflow fetches reports from Qualys, filters out already processed reports, and creates cases in TheHive for the new reports. It runs every hour to ensure continuous monitoring and up-to-date vulnerability management, making it ideal for Security Operations Centers (SOCs).\n\n**How It Works:**\n\n- **Set Global Variables:** Initializes necessary global variables like `base_url` and `newtimestamp`. This step ensures that the workflow operates with the correct configuration and up-to-date timestamps. Ensure to change the `Global Variables` to match your environment. \n  \n- **Fetch Reports from Qualys:** Sends a GET request to the Qualys API to retrieve finished reports. Automating this step ensures timely updates and consistent data retrieval.\n  \n- **Convert XML to JSON:** Converts the XML response to JSON format for easier data manipulation. This transformation simplifies further processing and integration into TheHive.\n  \n- **Filter Reports:** Checks if the reports have already been processed using their creation timestamps. This filtering ensures that only new reports are handled, avoiding duplicates.\n  \n- **Process Each Report:** Loops through the list of new reports, ensuring each is processed individually. This step-by-step handling prevents issues related to bulk processing and improves reliability.\n  \n- **Create Case in TheHive:** Generates a new case in TheHive for each report, serving as a container for the report data. Automating case creation improves efficiency and ensures that all relevant data is captured.\n  \n- **Download and Attach Report:** Downloads the report from Qualys and attaches it to the respective case in TheHive. This automation ensures that all data is properly archived and easily accessible for review.\n\n\n**Get Started:**\n\n- Ensure your [Qualys](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-creds-base.qualysApi) and [TheHive](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehiveproject/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.theHiveProject) integrations are properly set up.\n- Customize the workflow to fit your specific vulnerability management needs.\n\n\n**Need Help?**\n\n- Join the discussion on our Forum or check out resources on Discord!\n\n\nDeploy this workflow to streamline your vulnerability management process, improve response times, and enhance the efficiency of your security operations."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "XML": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait": {
+          "main": [
+            [
+              {
+                "node": "Create Case",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Remove Already Processed Reports",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Case": {
+          "main": [
+            [
+              {
+                "node": "Download Report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download Report": {
+          "main": [
+            [
+              {
+                "node": "Add Report As Attachment",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [
+              {
+                "node": "Update Timestamp",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Global Variables": {
+          "main": [
+            [
+              {
+                "node": "Get Last Timestamp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Global Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Last Timestamp": {
+          "main": [
+            [
+              {
+                "node": "Fetch Reports from Qualys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Any Reports to Process?": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Timestamp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add Report As Attachment": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fetch Reports from Qualys": {
+          "main": [
+            [
+              {
+                "node": "XML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Test workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Global Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remove Already Processed Reports": {
+          "main": [
+            [
+              {
+                "node": "Any Reports to Process?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 23,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.n8n": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.xml": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 8
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "n8n-nodes-base.theHiveProject": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Angel Menendez",
+      "username": "djangelic",
+      "bio": "Angel Menendez is a Staff Developer Advocate at n8n.io, specializing in low-code tools for cybersecurity workflows. From Puerto Rico, Angel's tech journey began by helping his father translate technical books. He later started a web development business and transitioned from a career as a flight attendant to cybersecurity engineering. His workflows have saved companies significant time. Outside work, Angel enjoys time with his two sons, riding electric bikes, reading, and exploring new places.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/fdbe38425d21378d8c9ba8916e1eb0b320add299f12cc23fcd4961d4e6e00bec?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 826,
+        "icon": "file:n8n.svg",
+        "name": "n8n-nodes-base.n8n",
+        "codex": {
+          "data": {
+            "alias": [
+              "Workflow",
+              "Execution"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/api/authentication/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "n8n"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyMzAgMTIwIj48cGF0aCBmaWxsPSIjRUE0QjcxIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yMDQgNDhjLTExLjE4MyAwLTIwLjU4LTcuNjQ5LTIzLjI0NC0xOGgtMjcuNTA4YTEyIDEyIDAgMCAwLTExLjgzNiAxMC4wMjdsLS45ODcgNS45MTlBMjMuOTQgMjMuOTQgMCAwIDEgMTMyLjYyNiA2MGEyMy45NCAyMy45NCAwIDAgMSA3Ljc5OSAxNC4wNTRsLjk4NyA1LjkxOUExMiAxMiAwIDAgMCAxNTMuMjQ4IDkwaDMuNTA4QzE1OS40MiA3OS42NDkgMTY4LjgxNyA3MiAxODAgNzJjMTMuMjU1IDAgMjQgMTAuNzQ1IDI0IDI0cy0xMC43NDUgMjQtMjQgMjRjLTExLjE4MyAwLTIwLjU4LTcuNjQ5LTIzLjI0NC0xOGgtMy41MDhjLTExLjczMiAwLTIxLjc0NC04LjQ4Mi0yMy42NzMtMjAuMDU0bC0uOTg3LTUuOTE5QTEyIDEyIDAgMCAwIDExNi43NTIgNjZoLTkuNTA4QzEwNC41OCA3Ni4zNTEgOTUuMTgzIDg0IDg0IDg0cy0yMC41OC03LjY0OS0yMy4yNDQtMThINDcuMjQ0QzQ0LjU4IDc2LjM1MSAzNS4xODMgODQgMjQgODQgMTAuNzQ1IDg0IDAgNzMuMjU1IDAgNjBzMTAuNzQ1LTI0IDI0LTI0YzExLjE4MyAwIDIwLjU4IDcuNjQ5IDIzLjI0NCAxOGgxMy41MTJDNjMuNDIgNDMuNjQ5IDcyLjgxNyAzNiA4NCAzNnMyMC41OCA3LjY0OSAyMy4yNDQgMThoOS41MDhhMTIgMTIgMCAwIDAgMTEuODM2LTEwLjAyN2wuOTg3LTUuOTE5QzEzMS41MDQgMjYuNDgyIDE0MS41MTYgMTggMTUzLjI0OCAxOGgyNy41MDhDMTgzLjQyIDcuNjQ5IDE5Mi44MTcgMCAyMDQgMGMxMy4yNTUgMCAyNCAxMC43NDUgMjQgMjRzLTEwLjc0NSAyNC0yNCAyNG0wLTEyYzYuNjI3IDAgMTItNS4zNzMgMTItMTJzLTUuMzczLTEyLTEyLTEyLTEyIDUuMzczLTEyIDEyIDUuMzczIDEyIDEyIDEyTTI0IDcyYzYuNjI3IDAgMTItNS4zNzMgMTItMTJzLTUuMzczLTEyLTEyLTEyLTEyIDUuMzczLTEyIDEyIDUuMzczIDEyIDEyIDEybTcyLTEyYzAgNi42MjctNS4zNzMgMTItMTIgMTJzLTEyLTUuMzczLTEyLTEyIDUuMzczLTEyIDEyLTEyIDEyIDUuMzczIDEyIDEybTk2IDM2YzAgNi42MjctNS4zNzMgMTItMTIgMTJzLTEyLTUuMzczLTEyLTEyIDUuMzczLTEyIDEyLTEyIDEyIDUuMzczIDEyIDEyIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "n8n",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 857,
+        "icon": "file:thehiveproject.svg",
+        "name": "n8n-nodes-base.theHiveProject",
+        "codex": {
+          "data": {
+            "alias": [
+              "Security",
+              "Monitoring",
+              "Incident",
+              "Response",
+              "Alert"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive5/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/thehive5/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "TheHive 5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48ZGVmcz48c3R5bGU+LmNscy0ye2ZpbGw6I2YzZDAyZn08L3N0eWxlPjwvZGVmcz48cGF0aCBmaWxsPSIjMjUyNTI1IiBkPSJNMjkwIDE1MEExNDAgMTQwIDAgMSAxIDE1MCAxMGExNDAgMTQwIDAgMCAxIDE0MCAxNDAiLz48cGF0aCBkPSJNMjA0LjYyIDIxMC42YTE1LjEgMTUuMSAwIDAgMS02LjY4IDEuMzggMTcuNDkgMTcuNDkgMCAwIDEtMTYuMTEtMTAuOTNsLTQuODMtMTEuNi03LjMxLTE4LjI4YTUuMDUgNS4wNSAwIDAgMC0uNy0yLjEybC0xMC4xLTI1LjMxYzE2LjE1IDIuODYgNDUuOTMgMjAuMTYgNTUuNjggNDMuNzIgMy40OCA5LjQ5LS43NiAxOS42Ni05LjkgMjMuMTRtLTU0Ljg3IDI3LjIxYy0xMS41OCAwLTIxLTguNS0yNC44NS0yMS41bDQ5Ljg1LjE2Yy0zLjkgMTMuMzMtMTMuNDEgMjEuMzgtMjUgMjEuMzRtLTQ4LTI2LjE0YTE0LjMgMTQuMyAwIDAgMS02LjY3LTEuNDNjLTguNzYtMy44OS0xMy4yOS0xNC4wOS05LjQtMjIuODUgOS45MS0yMy44NSAzOS44MS00MC45NSA1Ni00My4zNkwxMzEgMTcwbC03Ljc5IDE5LjI5LTUgMTEuNTdhMTguMzQgMTguMzQgMCAwIDEtMTYuNTMgMTAuODNtNDIuNjMtNDUuMTYgNS42OS0xMy42OSA1LjU3IDEzLjcxem0tNy43OSAxOS4yOSAzLjE5LTguMDYgMjAuMzcuMDcgMy4xMyA4LjA4em0tNSAxMS41NyAzNi4xNy4xMiAzLjEzIDguMDktNDIuNDgtLjE1em0xOC41Ni05MC44N2M5LjQ4IDAgMTcuNTMgOS4xOCAxNy41IDE2LjU2IDAgOC43Ny0xNC40MyA5LjQzLTE3LjIzIDkuNDEtMy4xNiAwLTE3LjIxLS40LTE3LjE4LTkuNTMtLjY3LTcuMzggNy40My0xNi40OCAxNi45MS0xNi40NG0tMTMuMi0uNDJhMy43NSAzLjc1IDAgMCAxLTMuMzktMi4xNWwtNS44MS0xMi4zNGEzLjc0IDMuNzQgMCAxIDEgNi43Ny0zLjE5bDUuODEgMTIuMzRhMy43NCAzLjc0IDAgMCAxLTEuNzkgNSAzLjggMy44IDAgMCAxLTEuNTkuMzZtMjYuMjQtLjAyYTMuOCAzLjggMCAwIDEtMS41OS0uMzYgMy43NCAzLjc0IDAgMCAxLTEuNzktNWw1LjgyLTEyLjM1YTMuNzQgMy43NCAwIDEgMSA2Ljc3IDMuMkwxNjYuNTEgMTA0YTMuNzUgMy43NSAwIDAgMS0zLjM5IDIuMTUiIGNsYXNzPSJjbHMtMiIvPjxwYXRoIGQ9Ik0yMDQuMzYgMTU3LjgxYTMuNzQgMy43NCAwIDAgMS0zLjI2LTUuNTZsMTQuNDEtMjUuODctMzIuODctNTYuN2gtNjUuMjhMODQuNTQgMTI2LjNsMTUuNjYgMjUuODNhMy43NCAzLjc0IDAgMCAxLTYuNCAzLjg3TDc3IDEyOC4yOGEzLjcyIDMuNzIgMCAwIDEgMC0zLjgxbDM1LTYwLjQxYTMuNzcgMy43NyAwIDAgMSAzLjI0LTEuODdoNjkuNmEzLjc1IDMuNzUgMCAwIDEgMy4xNiAxLjg3bDM1IDYwLjQxYTMuNzMgMy43MyAwIDAgMSAwIDMuN2wtMTUuNDQgMjcuNzJhMy43NSAzLjc1IDAgMCAxLTMuMjggMS45MiIgY2xhc3M9ImNscy0yIi8+PC9zdmc+"
+        },
+        "displayName": "TheHive 5",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

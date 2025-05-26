@@ -1,0 +1,19 @@
+URL: https://docs.n8n.io/source-control-environments/understand/
+Scraped_At: 2025-05-20T19:09:58.625584
+
+Understand source control and environments
+#
+Feature availability
+Available on Enterprise.
+You need to be an n8n instance owner, admin, or project owner to set up source control, and to send work to and from Git.
+Environments in n8n
+: The purpose of environments, and how they work in n8n.
+Git in n8n
+: How n8n uses Git.
+Branch patterns
+: The possible relationships between n8n instances and Git branches.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,1605 @@
+{
+  "workflow": {
+    "id": 1415,
+    "name": "Plex automatic QBittorent throttler",
+    "views": 1076,
+    "recentViews": 0,
+    "totalViews": 1076,
+    "createdAt": "2022-01-29T04:21:36.671Z",
+    "description": "Have you ever wanted to throttle Plex when connecting remotely to your server? Well here is the script for you! The instructions to deploy are below:\n\nYou will need: \n- A plex server with Plex Pass (for webhooks)\n- n8n running locally (either in docker on via the desktop app)\n- Qbittorent with WebUI enabled\n\n1. Begin by installing n8n by visiting n8n.io. You can install the desktop version or the docker version, whichever works best for your but I'm doing this on my desktop version of n8n. \n2. Copy the code from this page into your n8n install canvas. You should see the script appear before your eyes. ![workflow-screenshot](fileId:596)\n3. From there, you Double click on the Webhook node at the beginning of the script. Copy both the Test and Production URLs that appear there. ![Screen Shot 20220128 at 9.13.13 PM.png](fileId:595)\n4. Now make your way to Plex and visit your settings. On the left, you should see the webhooks option if you have Plex Pass. ![Screen Shot 20220128 at 9.15.20 PM.png](fileId:597)This will setup your triggers.\n5. Next visit your qBitTorrent instance and enable WebUI. Notate your Username, Password, and Port. You will also need to know the IP of the machine that qbittorent is running on. If you have an iPhone you can connect to the same wireless network as your computer and use the Fing app to scan the network for the IP.\n6. Open up the script and edit the Global Variables to reflect the values you copied. ![Screen Shot 20220128 at 9.20.14 PM.png](fileId:598)\n7. Hit save at the top right, and then activate the script. \n8. Enjoy!! \n",
+    "workflow": {
+      "id": 11,
+      "name": "Plex Automatic Throttler",
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            60,
+            440
+          ],
+          "webhookId": "72a05ff6-05f5-4e7a-9eee-54a350bb6a47",
+          "parameters": {
+            "path": "72a05ff6-05f5-4e7a-9eee-54a350bb6a47",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Switch",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            640,
+            580
+          ],
+          "parameters": {
+            "rules": {
+              "rules": [
+                {
+                  "value2": "media.resume",
+                  "operation": "contains"
+                },
+                {
+                  "output": 1,
+                  "value2": "media.play",
+                  "operation": "contains"
+                },
+                {
+                  "output": 2,
+                  "value2": "media.pause",
+                  "operation": "contains"
+                },
+                {
+                  "output": 3,
+                  "value2": "media.stop",
+                  "operation": "contains"
+                }
+              ]
+            },
+            "value1": "={{$node[\"Webhook\"].json[\"body\"][\"payload\"]}}",
+            "dataType": "string"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Resume",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            860,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Check if Local",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            460,
+            440
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{$json[\"body\"][\"payload\"]}}",
+                  "value2": "\"local\":false",
+                  "operation": "contains"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Play",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            860,
+            440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Don't Do Anything",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            660,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Pause",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            860,
+            680
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Stop",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            860,
+            840
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Get QB Cookie",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1260,
+            360
+          ],
+          "parameters": {
+            "url": "=http://{{$node[\"Global Variables\"].json[\"qbittorent\"][\"internalIP\"]}}:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}/api/v2/auth/login",
+            "options": {
+              "fullResponse": true
+            },
+            "responseFormat": "string",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "username",
+                  "value": "={{$node[\"Global Variables\"].json[\"qbittorent\"][\"username\"]}}"
+                },
+                {
+                  "name": "password",
+                  "value": "={{$node[\"Global Variables\"].json[\"qbittorent\"][\"password\"]}}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "Referer",
+                  "value": "=http://localhost:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Get QB Cookie1",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1260,
+            760
+          ],
+          "parameters": {
+            "url": "=http://{{$node[\"Global Variables\"].json[\"qbittorent\"][\"internalIP\"]}}:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}/api/v2/auth/login",
+            "options": {
+              "fullResponse": true
+            },
+            "responseFormat": "string",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "username",
+                  "value": "={{$node[\"Global Variables\"].json[\"qbittorent\"][\"username\"]}}"
+                },
+                {
+                  "name": "password",
+                  "value": "={{$node[\"Global Variables\"].json[\"qbittorent\"][\"password\"]}}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "Referer",
+                  "value": "=http://localhost:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Global Variables",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            280,
+            440
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "qbittorent.username",
+                  "value": "yourusername"
+                },
+                {
+                  "name": "qbittorent.password",
+                  "value": "yourpassword"
+                },
+                {
+                  "name": "qbittorent.internalIP",
+                  "value": "192.168.1.218"
+                },
+                {
+                  "name": "qbittorent.port",
+                  "value": "2020"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Check Throttle State",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1460,
+            360
+          ],
+          "parameters": {
+            "url": "=http://{{$node[\"Global Variables\"].json[\"qbittorent\"][\"internalIP\"]}}:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}/api/v2/transfer/speedLimitsMode",
+            "options": {
+              "fullResponse": true
+            },
+            "requestMethod": "POST",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "Referer",
+                  "value": "=http://localhost:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}"
+                },
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Check if Throttled",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1680,
+            360
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{$json[\"body\"]}}",
+                  "value2": 1,
+                  "operation": "equal"
+                }
+              ],
+              "string": []
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Do Nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1900,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Check Throttle State2",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1460,
+            760
+          ],
+          "parameters": {
+            "url": "=http://{{$node[\"Global Variables\"].json[\"qbittorent\"][\"internalIP\"]}}:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}/api/v2/transfer/speedLimitsMode",
+            "options": {
+              "fullResponse": true
+            },
+            "requestMethod": "POST",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie1\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "Referer",
+                  "value": "=http://localhost:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}"
+                },
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie1\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Check if Throttled1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1660,
+            760
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{$json[\"body\"]}}",
+                  "value2": 1,
+                  "operation": "equal"
+                }
+              ],
+              "string": []
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Do Nothing1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1900,
+            860
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Throttle Connection",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1060,
+            360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Resume Downloads",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1060,
+            760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Disable Throttle",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1900,
+            660
+          ],
+          "parameters": {
+            "url": "=http://{{$node[\"Global Variables\"].json[\"qbittorent\"][\"internalIP\"]}}:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}/api/v2/transfer/toggleSpeedLimitsMode",
+            "options": {},
+            "requestMethod": "POST",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie1\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "Referer",
+                  "value": "=http://localhost:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}"
+                },
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie1\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Enable Throttle",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1900,
+            440
+          ],
+          "parameters": {
+            "url": "=http://{{$node[\"Global Variables\"].json[\"qbittorent\"][\"internalIP\"]}}:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}/api/v2/transfer/toggleSpeedLimitsMode",
+            "options": {},
+            "requestMethod": "POST",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "Referer",
+                  "value": "=http://localhost:{{$node[\"Global Variables\"].json[\"qbittorent\"][\"port\"]}}"
+                },
+                {
+                  "name": "Cookie",
+                  "value": "={{$node[\"Get QB Cookie\"].json[\"headers\"][\"set-cookie\"][0].match(/[^;]*/).toString()}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "settings": {},
+      "connections": {
+        "Play": {
+          "main": [
+            [
+              {
+                "node": "Throttle Connection",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Stop": {
+          "main": [
+            [
+              {
+                "node": "Resume Downloads",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Pause": {
+          "main": [
+            [
+              {
+                "node": "Resume Downloads",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Resume": {
+          "main": [
+            [
+              {
+                "node": "Throttle Connection",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch": {
+          "main": [
+            [
+              {
+                "node": "Resume",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Play",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Pause",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Global Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get QB Cookie": {
+          "main": [
+            [
+              {
+                "node": "Check Throttle State",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Local": {
+          "main": [
+            [
+              {
+                "node": "Don't Do Anything",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Switch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get QB Cookie1": {
+          "main": [
+            [
+              {
+                "node": "Check Throttle State2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Global Variables": {
+          "main": [
+            [
+              {
+                "node": "Check if Local",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Resume Downloads": {
+          "main": [
+            [
+              {
+                "node": "Get QB Cookie1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Throttled": {
+          "main": [
+            [
+              {
+                "node": "Do Nothing",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Enable Throttle",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Throttled1": {
+          "main": [
+            [
+              {
+                "node": "Disable Throttle",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Do Nothing1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Throttle Connection": {
+          "main": [
+            [
+              {
+                "node": "Get QB Cookie",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Throttle State": {
+          "main": [
+            [
+              {
+                "node": "Check if Throttled",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Throttle State2": {
+          "main": [
+            [
+              {
+                "node": "Check if Throttled1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 22,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 9
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 6
+        }
+      }
+    },
+    "user": {
+      "name": "Angel Menendez",
+      "username": "djangelic",
+      "bio": "Angel Menendez is a Staff Developer Advocate at n8n.io, specializing in low-code tools for cybersecurity workflows. From Puerto Rico, Angel's tech journey began by helping his father translate technical books. He later started a web development business and transitioned from a career as a flight attendant to cybersecurity engineering. His workflows have saved companies significant time. Outside work, Angel enjoys time with his two sons, riding electric bikes, reading, and exploring new places.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/fdbe38425d21378d8c9ba8916e1eb0b320add299f12cc23fcd4961d4e6e00bec?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 595,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/19b71c7980e24e42932e1cee359ac456.png"
+      },
+      {
+        "id": 596,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/c5d6c8cd12c64238a405c9180ebf9c6e.png"
+      },
+      {
+        "id": 597,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/41d0b2503a1e42bfbcb65719d43e239e.png"
+      },
+      {
+        "id": 598,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/26038cdb5d7847e9b26bf2a803a54fe5.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,247 @@
+{
+  "workflow": {
+    "id": 1035,
+    "name": "Get all the slides from a presentation and get thumbnails of pages",
+    "views": 1579,
+    "recentViews": 0,
+    "totalViews": 1579,
+    "createdAt": "2021-04-13T08:29:18.539Z",
+    "description": "This workflow allows you to get all the slides from a presentation and get thumbnails of pages.\n\n![workflow-screenshot](fileId:475)\n\n**Google Slides node:** This Google Slides node will get all the slides from a presentation.\n\n**Google Slides1 node:** This node will return thumbnails of the pages that were returned by the previous node.\n\nBased on your use case, to upload the thumbnails to Dropbox, Google Drive, etc, you can use the respective nodes.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            270,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Slides",
+          "type": "n8n-nodes-base.googleSlides",
+          "position": [
+            470,
+            280
+          ],
+          "parameters": {
+            "operation": "getSlides",
+            "returnAll": true,
+            "authentication": "oAuth2",
+            "presentationId": "11myCBTn3IT-Iww01WMz43L7HUmQdL6cCR6NCtpsZer0"
+          },
+          "credentials": {
+            "googleSlidesOAuth2Api": "Google Slides Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Slides1",
+          "type": "n8n-nodes-base.googleSlides",
+          "position": [
+            670,
+            280
+          ],
+          "parameters": {
+            "download": true,
+            "resource": "page",
+            "operation": "getThumbnail",
+            "pageObjectId": "={{$json[\"objectId\"]}}",
+            "authentication": "oAuth2",
+            "presentationId": "={{$node[\"Google Slides\"].parameter[\"presentationId\"]}}"
+          },
+          "credentials": {
+            "googleSlidesOAuth2Api": "Google Slides Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Google Slides": {
+          "main": [
+            [
+              {
+                "node": "Google Slides1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Google Slides",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.googleSlides": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 478,
+        "icon": "file:googleslides.svg",
+        "name": "n8n-nodes-base.googleSlides",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleslides/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Slides"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii02MCAtNjAgNjMwIDYzMCI+PHBhdGggZmlsbD0iI2Y1YjkxMiIgZD0iTTQ0MC44IDE0MC4yVjQ3OWMwIDE4LjItMTQuOCAzMy0zMyAzM0gxMDIuOWMtMTguMiAwLTMzLTE0LjgtMzMtMzNWMzNjMC0xOC4yIDE0LjgtMzMgMzMtMzNoMTk3LjZ6Ii8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMyMy42IDIzMy41SDE4OS4xYy0xMi41IDAtMjIuNiAxMC4xLTIyLjYgMjIuNnYxMzQuNWMwIDEyLjUgMTAuMSAyMi42IDIyLjYgMjIuNmgxMzQuNWMxMi41IDAgMjIuNi0xMC4xIDIyLjYtMjIuNlYyNTZjMC0xMi40LTEwLjEtMjIuNS0yMi42LTIyLjVtLS43IDEzOS41aC0xMzN2LTkwLjVoMTMzeiIvPjxwYXRoIGQ9Im0zMTkuNiAxMzQuNCAxMjEuMSA5OC4xdi05Mi4yTDM3MiAxMDAuNXoiIG9wYWNpdHk9Ii4xOSIvPjxwYXRoIGZpbGw9IiNmYWRjODciIGQ9Ik00NDEuNCAxNDAuMkgzMzQuMmMtMTguMiAwLTMzLTE0LjgtMzMtMzNWMHoiLz48L3N2Zz4="
+        },
+        "displayName": "Google Slides",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 475,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/ec368c7efc87418791bb69aebbe086ef.png"
+      }
+    ]
+  }
+}

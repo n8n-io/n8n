@@ -1,0 +1,376 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/
+Scraped_At: 2025-05-20T18:55:32.860082
+
+Compare Datasets
+#
+The Compare Datasets node helps you compare data from two input streams.
+Node parameters
+#
+Decide which fields to compare. In
+Input A Field
+, enter the name of the field you want to use from input stream A. In
+Input B Field
+, enter the name of the field you want to use from input stream B.
+Optional
+: You can compare by multiple fields. Select
+Add Fields to Match
+to set up more comparisons.
+Choose how to handle differences between the datasets. In
+When There Are Differences
+, select one of the following:
+Use Input A Version
+to treat input stream A as the source of truth.
+Use Input B Version
+to treat input stream B as the source of truth.
+Use a Mix of Versions
+to use different inputs for different fields.
+Use
+Prefer
+to select either
+Input A Version
+or
+Input B Version
+as the main source of truth.
+Enter input fields that are exceptions to
+For Everything Except
+to pull from the other input source. To add multiple input fields, enter a comma-separated list.
+Include Both Versions
+to include both input streams in the output, which may make the structure more complex.
+Decide whether to use
+Fuzzy Compare
+. When turned on, the comparison will tolerate small type differences when comparing fields. For example, the number 3 and the string
+3
+are treated as the same with
+Fuzzy Compare
+turned on, but wouldn't be treated the same with it turned off.
+Understand item comparison
+#
+Item comparison is a two stage process:
+n8n checks if the values of the fields you selected to compare match across both inputs.
+If the fields to compare match, n8n then compares all fields within the items, to determine if the items are the same or different.
+Node options
+#
+Use the node
+Options
+to refine your comparison or tweak comparison behavior.
+Fields to Skip Comparing
+#
+Enter field names that you want to ignore in the comparison.
+For example, if you compare the two datasets below using
+person.language
+as the
+Fields to Match
+, n8n returns them as different. If you add
+person.name
+to
+Fields to Skip Comparing
+, n8n returns them as matching.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+// Input 1
+[
+{
+"person"
+:
+{
+"name"
+:
+"Stefan"
+,
+"language"
+:
+"de"
+}
+},
+{
+"person"
+:
+{
+"name"
+:
+"Jim"
+,
+"language"
+:
+"en"
+}
+},
+{
+"person"
+:
+{
+"name"
+:
+"Hans"
+,
+"language"
+:
+"de"
+}
+}
+]
+// Input 2
+[
+{
+"person"
+:
+{
+"name"
+:
+"Sara"
+,
+"language"
+:
+"de"
+}
+},
+{
+"person"
+:
+{
+"name"
+:
+"Jane"
+,
+"language"
+:
+"en"
+}
+},
+{
+"person"
+:
+{
+"name"
+:
+"Harriet"
+,
+"language"
+:
+"de"
+}
+}
+]
+Disable Dot Notation
+#
+Whether to disallow referencing child fields using
+parent.child
+in the field name (turned on) or allow it (turned off, default).
+Multiple Matches
+#
+Choose how to handle duplicate data. The default is
+Include All Matches
+. You can choose
+Include First Match Only
+.
+For example, given these two datasets:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+// Input 1
+[
+{
+"fruit"
+:
+{
+"type"
+:
+"apple"
+,
+"color"
+:
+"red"
+}
+},
+{
+"fruit"
+:
+{
+"type"
+:
+"apple"
+,
+"color"
+:
+"red"
+}
+},
+{
+"fruit"
+:
+{
+"type"
+:
+"banana"
+,
+"color"
+:
+"yellow"
+}
+}
+]
+// Input 2
+[
+{
+"fruit"
+:
+{
+"type"
+:
+"apple"
+,
+"color"
+:
+"red"
+}
+},
+{
+"fruit"
+:
+{
+"type"
+:
+"apple"
+,
+"color"
+:
+"red"
+}
+},
+{
+"fruit"
+:
+{
+"type"
+:
+"banana"
+,
+"color"
+:
+"yellow"
+}
+}
+]
+n8n returns three items in the
+Same Branch
+tab. The data is the same in both branches.
+If you select
+Include First Match Only
+, n8n returns two items, in the
+Same Branch
+tab. The data is the same in both branches, but n8n only returns the first occurrence of the matching "apple" items.
+Understand the output
+#
+There are four output options:
+In A only Branch
+: Contains data that occurs only in the first input.
+Same Branch
+: Contains data that's the same in both inputs.
+Different Branch
+: Contains data that's different between inputs.
+In B only Branch
+: Contains data that occurs only in the second output.
+Templates and examples
+#
+Two way sync Pipedrive and MySQL
+by n8n Team
+View template details
+Sync Google Sheets data with MySQL
+by n8n Team
+View template details
+Synchronize your Google Sheets with Postgres
+by Bela
+View template details
+Browse Compare Datasets integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

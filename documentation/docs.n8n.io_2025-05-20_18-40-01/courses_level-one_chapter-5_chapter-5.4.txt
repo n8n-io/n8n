@@ -1,0 +1,112 @@
+URL: https://docs.n8n.io/courses/level-one/chapter-5/chapter-5.4/
+Scraped_At: 2025-05-20T18:41:50.984400
+
+4. Setting Values for Processing Orders
+#
+In this step of the workflow, you will learn how to select and set data before transferring it to Airtable using the Edit Fields (Set) node. After this step, your workflow should look like this:
+View workflow file
+The next step in Nathan's workflow is to filter the data to only insert the
+employeeName
+and
+orderID
+of all
+processing
+orders into Airtable.
+For this, you need to use the
+Edit Fields (Set) node
+, which allows you to select and set the data you want to transfer from one node to another.
+Edit Fields node
+The Edit Fields node can set completely new data as well as overwrite data that already exists. This node is crucial in workflows which expect incoming data from previous nodes, such as when inserting values into spreadsheets or databases.
+Add another node before the Airtable node
+#
+In your workflow, add another node before the
+Airtable node
+from the
+If node
+in the same way we did it in the
+Filtering Orders
+lesson on the If node's
+true
+connector. Feel free to drag the Airtable node further away if your canvas feels crowded.
+Configure the Edit Fields node
+#
+Now search for the
+Edit Fields (Set) node
+after you've selected the
++
+sign coming off the If node's
+true
+connector.
+With the Edit Fields node window open, configure these parameters:
+Ensure
+Mode
+is set to
+Manual Mapping
+.
+While you can use the
+Expression editor
+we used in the
+Filtering Orders
+lesson, this time, let's drag the fields from the
+Input
+into the
+Fields to Set
+:
+Drag
+If
+>
+orderID
+as the first field.
+Drag
+If
+>
+employeeName
+as the second field.
+Ensure that
+Include Other Input Fields
+is set to false.
+Select
+Execute step
+. You should see the following results:
+Edit Fields (Set) node
+Add data to Airtable
+#
+Next, let's insert these values into Airtable:
+Go to your Airtable base.
+Add a new table called
+processingOrders
+.
+Replace the existing columns with two new columns:
+orderID
+(primary field): Number
+employeeName
+: Single line text
+Reminder
+If you get stuck, refer to the
+Inserting data into Airtable
+lesson.
+Delete the three empty rows in the new table.
+In n8n, connect the Edit Fields node
+connector to the
+Airtable node**.
+Update the Airtable node configuration to point to the new
+processingOrders
+table instead of the
+orders
+table.
+Test your Airtable node to be sure it inserts records into the new
+processingOrders
+table.
+At this stage, your workflow should now look like this:
+View workflow file
+What's next?
+#
+Nathan 🙋
+: You've already automated half of my work! Now I still need to calculate the booked orders for my colleagues. Can we automate that as well?
+You 👩‍🔧
+: Yes! In the next step, I'll use some JavaScript code in a node to calculate the booked orders.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

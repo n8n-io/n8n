@@ -1,0 +1,1160 @@
+{
+  "workflow": {
+    "id": 1974,
+    "name": "Monitor Security Advisories",
+    "views": 4687,
+    "recentViews": 0,
+    "totalViews": 4687,
+    "createdAt": "2023-11-13T08:45:18.395Z",
+    "description": "This n8n workflow automates the monitoring and notification of Palo Alto Networks security advisories. It is triggered manually from within the n8n UI or scheduled to run daily at midnight using the Schedule Trigger. The workflow begins by fetching the latest security advisories from Palo Alto Networks' RSS feed.\n\nEach advisory is then processed, and relevant information is extracted and categorized, including the advisory type, subject, and severity. The workflow checks the publication date of each advisory to ensure that it was posted within the last 24 hours, filtering out older advisories.\n\nThe workflow then splits into two paths based on the advisory type: GlobalProtect and Traps. In the GlobalProtect path, advisories related to GlobalProtect are identified and used to create Jira issues. The Jira issues include a summary with the advisory title and a description that provides details about the advisory, its severity, link, and publication date.\n\nIn the Traps path, advisories related to Traps are recognized, and dummy data (which should be replaced with logic to retrieve valid user emails) is generated for sample purposes. These email addresses are then used to send email notifications using the Gmail node. Each email's subject includes the type of advisory, while the body contains the advisory title and a link for more information.\n\nPotential issues when setting up this workflow for the first time might involve configuring the Schedule Trigger to match the desired time zone. Additionally, ensuring that the Jira and Gmail nodes are configured correctly with the required credentials and email addresses is crucial. The placeholder for generating dummy data for email recipients should be replaced with logic to retrieve valid user emails. Proper error handling and testing with real and sample advisories can help identify and resolve any potential issues during setup.",
+    "workflow": {
+      "id": "YSjQ7TVCNY9v1F2A",
+      "meta": {
+        "instanceId": "03e9d14e9196363fe7191ce21dc0bb17387a6e755dcc9acc4f5904752919dca8"
+      },
+      "name": "Monitor_security_advisories",
+      "tags": [
+        {
+          "id": "DlIeVDZxzko5ifNi",
+          "name": "createdBy:David",
+          "createdAt": "2023-10-31T02:21:50.700Z",
+          "updatedAt": "2023-10-31T02:21:50.700Z"
+        },
+        {
+          "id": "QPJKatvLSxxtrE8U",
+          "name": "Secops",
+          "createdAt": "2023-10-31T02:15:11.396Z",
+          "updatedAt": "2023-10-31T02:15:11.396Z"
+        },
+        {
+          "id": "oyHT7KfD0rdIizVw",
+          "name": "Pending",
+          "createdAt": "2023-11-10T23:19:06.319Z",
+          "updatedAt": "2023-11-10T23:19:06.319Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "62ef1311-a623-4a7d-b59a-6c0a0d7751d7",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            100,
+            200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "808c1b88-69e9-4e96-bcfd-b93810740fda",
+          "name": "Get Palo Alto security advisories",
+          "type": "n8n-nodes-base.rssFeedRead",
+          "position": [
+            400,
+            360
+          ],
+          "parameters": {
+            "url": "https://security.paloaltonetworks.com/rss.xml",
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "97f16fe1-c720-40e0-85ff-61fdbfb9a2c2",
+          "name": "GlobalProtect advisory?",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1240,
+            240
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.title }}",
+                  "value2": "GlobalProtect",
+                  "operation": "contains"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3602f7bb-87d3-49a2-9916-b9ab7d86f58b",
+          "name": "Traps advisory?",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1240,
+            380
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.title }}",
+                  "value2": "Traps",
+                  "operation": "contains"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "97c108f0-bdf1-4ed9-a545-d52acb7c9cec",
+          "name": "Create Jira issue",
+          "type": "n8n-nodes-base.jira",
+          "position": [
+            1520,
+            240
+          ],
+          "parameters": {
+            "project": {
+              "__rl": true,
+              "mode": "list",
+              "value": ""
+            },
+            "summary": "={{ $json.title.substring(14) }}",
+            "issueType": {
+              "__rl": true,
+              "mode": "list",
+              "value": ""
+            },
+            "additionalFields": {
+              "priority": {
+                "mode": "list",
+                "value": ""
+              },
+              "description": "=Severity: {{ $json.title.split('(Severity:')[1].replace(')', '').trim() }}\nLink: {{ $json.link }}\nPublished: {{ $json.pubDate }} "
+            }
+          },
+          "credentials": {
+            "jiraSoftwareCloudApi": {
+              "id": "4",
+              "name": "Jira Ricardo"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "acb89eb0-c9e5-4fbb-a750-3607ae280670",
+          "name": "Get customers",
+          "type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+          "position": [
+            1960,
+            380
+          ],
+          "parameters": {
+            "operation": "getAllPeople",
+            "returnAll": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "babf1ce4-6ed4-4bd9-a1df-429a15fa6849",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -13.168003380834136,
+            -396.06737036843754
+          ],
+          "parameters": {
+            "width": 332.0284684971131,
+            "height": 926.523360092614,
+            "content": "![Shodan](https://i.imgur.com/PcOuvAL.png)\n## Workflow Overview\nThis n8n workflow is designed to streamline security oversight by fetching advisories from Palo Alto's feed and filtering out alerts not pertinent to your products. \n\nBy utilizing a dynamic filter system, it excludes unrelated advisories, ensuring that your team receives only relevant security updates. \n\nCoupled with a sample database of emails, this workflow offers a customizable solution to align with any corporate email directory, providing a strong foundation for your security information management strategy. \n\n## Execution Schedule\n\nScheduled to run every 24 hours at 1 am. If you change this timer, ensure to update the `Deduplicate Advisories` section to match. \n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "820112fc-e635-4d51-b152-8a2ee4de8f56",
+          "name": "Email customers",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            2360,
+            380
+          ],
+          "parameters": {
+            "sendTo": "={{ $json.email }}",
+            "message": "=Dear {{ $json.name.split(' ')[0] }},\n\nWe wanted to let you know of a new security advisory:\n\n{{ $('GlobalProtect advisory?').item.json.title }}\n{{ $('GlobalProtect advisory?').item.json.link }}\n\nRegards,\n\nNathan",
+            "options": {},
+            "subject": "=New {{ $('Extract info').item.json.type }} security advisory "
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "198",
+              "name": "Gmail account (David)"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "06497e48-37ea-4c2a-a633-6b0f02d1da5f",
+          "name": "Extract info",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            600,
+            360
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "type",
+                  "value": "={{ $json.title.match(/[^ ]* ([^:]*):/)[1].trim() }}"
+                },
+                {
+                  "name": "subject",
+                  "value": "={{ $json.title.match(/[^ ]* [^:]*: (.*)(?=\\(Severity:)/)[1].trim() }}"
+                },
+                {
+                  "name": "severity",
+                  "value": "={{ $json.title.split('Severity:')[1].replaceAll(')', '').trim().toLowerCase().toTitleCase() }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "79a85d6e-2550-4351-9356-6f2f8c330693",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            340,
+            -54.852630774649356
+          ],
+          "parameters": {
+            "width": 419.37209302325573,
+            "height": 577.9223982165106,
+            "content": "![Shodan](https://i.imgur.com/weKPN2E.png)\n## Get Palo Alto security advisories\nAdaptable and efficient, this segment of the workflow retrieves Palo Alto security advisories directly through their RSS feed. \n\nYou can tailor the feed URL in the RSS node below to meet your needs and ensure the `Extract Info` node captures the correct information. \n\nThis flexibility allows the workflow to stay current with the latest advisories, making it a vital component in maintaining up-to-date security measures across your network infrastructure.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f2c5155d-28ab-4ae4-a402-5244ccac94e3",
+          "name": "Check if posted in last 24 hours",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            920,
+            360
+          ],
+          "parameters": {
+            "conditions": {
+              "dateTime": [
+                {
+                  "value1": "={{ $json.pubDate }}",
+                  "value2": "={{$today.minus({days: 1})}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3553ba4-3581-4844-abaf-e872cb6dc7ea",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1751,
+            -366.68188678732713
+          ],
+          "parameters": {
+            "width": 461.89918009735027,
+            "height": 893.2712326436663,
+            "content": "![n8n](https://i.imgur.com/lKnBNnH.png)\n## Query Company Email Directory\nThe workflow includes a sample node setup that queries a company email directory, allowing for dynamic distribution of advisories to relevant personnel. \n\nReplace the sample node with a connection to your corporate directory or a Google Sheet for an integrated approach. If you choose to go the google sheets route, create a column for `name` and a column for `email` and use the Google Sheets node to get the rows. \n\nThis ensures that every advisory reaches the appropriate individual, promoting a proactive security posture organization-wide.\n\nEnsure that the node you use outputs the json in this format:\n\n```\n[\n  {\n    \"name\": \"Jay Gatsby\",\n    \"email\": \"gatsby@west-egg.com\"\n  },\n  {\n    \"name\": \"José Arcadio Buendía\",\n    \"email\": \"jab@macondo.co\"\n  },\n  {\n    \"name\": \"Max Sendak\",\n    \"email\": \"info@in-and-out-of-weeks.org\"\n  }\n]\n```"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4c6a7aac-8aa3-480e-9691-bfa5472d3d91",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2240,
+            -113.74332300803701
+          ],
+          "parameters": {
+            "width": 324.2540832882642,
+            "height": 639.8357317519218,
+            "content": "![gmail](https://i.imgur.com/f6f6my0.png)\n## Email advisory information to your team\nOnce advisories are filtered and prepared, this final node uses Gmail to disseminate the information to your team, ensuring that those who need to be aware of security updates are informed in a timely manner. \n\nThis step is pivotal in the communication chain, turning advisories into actionable insights for your team, thereby promoting a culture of responsiveness and awareness regarding network security.\n\nYou can replace this with your preferred email provider by substituting the node and expressions in the Gmail node. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "75aae5d6-bcaf-4d69-9adf-f71075b16318",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1180,
+            -320
+          ],
+          "parameters": {
+            "width": 552.9069767441861,
+            "height": 844.9721583936011,
+            "content": "![Jira](https://i.imgur.com/Ko72Qxa.png)\n## Filter advisories based on Palo Alto Products used in your organization \nThis node enhances specificity by filtering advisories based on the Palo Alto products utilized within your organization. \n\nBy customizing the filter nodes to match your environment, you create a streamlined process that directs pertinent advisories to a Jira issue (or any incident management system that uses an API) for further investigation, ensuring your incident management process is both efficient and tailored to your specific security landscape.\n\n**Want to add a new filter?** Duplicate one of the `filter nodes` below and connect it to the `true output` of the date filter node, decide whether you wish to add an incident management node, and then connect to your email directory node.\n \n**Want to create a ticket for your team to investigate if an advisory is found for your filtered product/keyword?** Simply add the node for your favorite incident management platform if it exists, and an http request if it doesn't to integrate with any REST api.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4c34c8aa-3876-4248-9c5e-cd362ffb6833",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            780,
+            -176.24786257310654
+          ],
+          "parameters": {
+            "width": 382.81395348837174,
+            "height": 700.2899123297333,
+            "content": "![n8n](https://i.imgur.com/lKnBNnH.png)\n## Deduplicate Advisories\n### Filter advisories based on date \nTo maintain accuracy and avoid redundancy, this n8n node deduplicates advisories by date, ensuring that each security notice is unique and relevant. \n\nIt's programmed to sync with the scheduled trigger, preventing any overlap in data analysis. \n\nAdjustments can be made to alter the frequency and timing of the trigger, allowing for weekly or custom schedules, demonstrating n8n's versatile capability to adapt to your operational requirements.\n\nFor example if you preferred to change it to weekly, set the `Trigger Node` to run weekly, and adjust the expression in the `If` node below from `{{$today.minus({days: 1})}}` to `{{$today.minus({days: 7})}}`."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "518de294-2961-419b-b936-3519fc4bdcf8",
+          "name": "Ignore, stale advisory",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1220,
+            600
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "699ba4b3-ef02-4e7c-8894-c302566ac5e7",
+          "name": "Run workflow every 24 hours at 1am",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            100,
+            360
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 1
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "e64a6ec2-b231-4cb7-9d36-8933c844d482",
+      "connections": {
+        "Extract info": {
+          "main": [
+            [
+              {
+                "node": "Check if posted in last 24 hours",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get customers": {
+          "main": [
+            [
+              {
+                "node": "Email customers",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Traps advisory?": {
+          "main": [
+            [
+              {
+                "node": "Get customers",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Jira issue": {
+          "main": [
+            [
+              {
+                "node": "Get customers",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GlobalProtect advisory?": {
+          "main": [
+            [
+              {
+                "node": "Create Jira issue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if posted in last 24 hours": {
+          "main": [
+            [
+              {
+                "node": "GlobalProtect advisory?",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Traps advisory?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Ignore, stale advisory",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Get Palo Alto security advisories",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Palo Alto security advisories": {
+          "main": [
+            [
+              {
+                "node": "Extract info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Run workflow every 24 hours at 1am": {
+          "main": [
+            [
+              {
+                "node": "Get Palo Alto security advisories",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.jira": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.rssFeedRead": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.n8nTrainingCustomerDatastore": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 37,
+        "icon": "fa:rss",
+        "name": "n8n-nodes-base.rssFeedRead",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "RSS Read",
+          "color": "#b02020"
+        },
+        "iconData": {
+          "icon": "rss",
+          "type": "icon"
+        },
+        "displayName": "RSS Read",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 77,
+        "icon": "file:jira.svg",
+        "name": "n8n-nodes-base.jira",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jira/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/jira/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Jira Software"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjguMjUgNzEuMjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjMuMTI1IiB5PSIzLjEyNSIvPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkxLjklIiB4Mj0iMjguNDklIiB5MT0iNDAuMjIlIiB5Mj0iODEuNjMlIj48c3RvcCBvZmZzZXQ9IjE4JSIgc3RvcC1jb2xvcj0iIzAwNTJjYyIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzI2ODRmZiIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJjIiB4MT0iOC43JSIgeDI9IjcyLjI2JSIgeTE9IjU5LjE3JSIgeTI9IjE3Ljk5JSI+PHN0b3Agb2Zmc2V0PSIxOCUiIHN0b3AtY29sb3I9IiMwMDUyY2MiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyNjg0ZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PGcgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiPjxwYXRoIGZpbGw9IiMyNjg0ZmYiIGQ9Ik02MS4xNjEgMzAuMjExIDMwLjk1IDAgLjc0IDMwLjIxMWEyLjU0IDIuNTQgMCAwIDAgMCAzLjU4MWwzMC4yMTEgMzAuMjEgMzAuMjExLTMwLjIxYTIuNTQgMi41NCAwIDAgMCAwLTMuNTgxek0zMC45NSA0MS40NmwtOS40NjItOS40NjIgOS40NjItOS40NjIgOS40NjIgOS40NjJ6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTMwLjk1IDIyLjU5OUMyNC43NTUgMTYuNDA1IDI0LjcyNCA2LjM3IDMwLjg4MS4xMzhMMTAuMTE0IDIwLjc3NGwxMS4yNjggMTEuMjY4eiIvPjxwYXRoIGZpbGw9InVybCgjYykiIGQ9Ik00MC40MzcgMzEuOTczIDMwLjk1IDQxLjQ2YTE1LjkzIDE1LjkzIDAgMCAxIDAgMjIuNTM2bDIwLjc0OS0yMC43NDl6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Jira Software",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 496,
+        "icon": "file:n8nTrainingCustomerDatastore.svg",
+        "name": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+        "codex": {
+          "data": {
+            "categories": []
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Customer Datastore (n8n training)"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTcuODg3ODYgMjEuNDExQzcuNzE5ODYgMjEuMzA5IDcuNTA1ODYgMjEuNDI3IDcuNTA1ODYgMjEuNjIzVjI2LjkwM0M3LjUwNTg2IDI5LjE1MSAxMy4xMDM5IDMwLjk4NSAyMC4wMDU5IDMwLjk4NUMyNi45MDc5IDMwLjk4NSAzMi41MDU5IDI5LjE1MSAzMi41MDU5IDI2LjkwM1YyMS42MjNDMzIuNTA1OSAyMS40MjcgMzIuMjkxOSAyMS4zMDkgMzIuMTIzOSAyMS40MTFDMjkuMzcxOSAyMy4wOTEgMjQuNjgxOSAyMy44NzUgMjAuMDA1OSAyMy44NzVDMTUuMzI5OSAyMy44NzUgMTAuNjM5OSAyMy4wODkgNy44ODc4NiAyMS40MTFaIiBmaWxsPSIjNzE3MTcyIi8+CjxwYXRoIGQ9Ik03Ljg4NzkxIDMwLjMzOUM3LjcxOTkxIDMwLjIzNyA3LjUwNTkxIDMwLjM1NSA3LjUwNTkxIDMwLjU1MVYzNS44MzFDNy41MDU5MSAzOC4wNzkgMTMuMTAzOSAzOS45MTMgMjAuMDA1OSAzOS45MTNDMjYuOTA3OSAzOS45MTMgMzIuNTA1OSAzOC4wNzkgMzIuNTA1OSAzNS44MzFWMzAuNTUxQzMyLjUwNTkgMzAuMzU1IDMyLjI5MTkgMzAuMjM3IDMyLjEyMzkgMzAuMzM5QzI5LjM3MTkgMzIuMDE5IDI0LjY4MTkgMzIuODAzIDIwLjAwNTkgMzIuODAzQzE1LjMyOTkgMzIuODAzIDEwLjYzOTkgMzIuMDE5IDcuODg3OTEgMzAuMzM5Wk0yMS45MDE5IDE2Ljk2NUMyMS4yODU5IDE3LjE1NSAyMC42NDc5IDE3LjI1MSAyMC4wMDU5IDE3LjI1MUMxOS4zNTU5IDE3LjI1MSAxOC43MTM5IDE3LjE1NSAxOC4wOTc5IDE2Ljk2N0w3LjkyOTkxIDEzLjg0M0M3LjgwOTkxIDEzLjgwNyA3LjY3NzkxIDEzLjg2MyA3LjYyNzkxIDEzLjk3N0M3LjU0NTkxIDE0LjE2NSA3LjUwMzkxIDE0LjM1NSA3LjUwMzkxIDE0LjU0OVYxNy45NzVDNy41MDM5MSAyMC4yMjMgMTMuMTAxOSAyMi4wNTcgMjAuMDAzOSAyMi4wNTdDMjYuOTA1OSAyMi4wNTcgMzIuNTAzOSAyMC4yMjMgMzIuNTAzOSAxNy45NzVWMTQuNTQ5QzMyLjUwMzkgMTQuMzUzIDMyLjQ2MTkgMTQuMTYxIDMyLjM3OTkgMTMuOTczQzMyLjMyOTkgMTMuODU5IDMyLjE5NzkgMTMuODAzIDMyLjA3NzkgMTMuODM5TDIxLjkwMTkgMTYuOTY1WiIgZmlsbD0iIzcxNzE3MiIvPgo8cGF0aCBkPSJNMzguODk2IDYuNTc0OThMMjEuNDYyIDEuMjE4OThDMjAuNTA5MiAwLjkyNzAwOCAxOS40OTA4IDAuOTI3MDA4IDE4LjUzOCAxLjIxODk4TDEuMTA0IDYuNTc0OThDLTAuMzY4IDcuMDI2OTggLTAuMzY4IDguOTcyOTggMS4xMDQgOS40MjQ5OEw0LjE0NCAxMC4zNTlDMy40NzggMTEuMTgzIDMuMDY4IDEyLjE4OSAzLjAyNiAxMy4yOTFDMi40MjQgMTMuNjM1IDIgMTQuMjU3IDIgMTUuMDAxQzIgMTUuNjc1IDIuMzU2IDE2LjI0MSAyLjg2NiAxNi42MDVMMS4yNyAyMy43ODVDMS4xMzIgMjQuNDA5IDEuNjA2IDI1LjAwMSAyLjI0NiAyNS4wMDFINS43NTJDNi4zOTIgMjUuMDAxIDYuODY4IDI0LjQwOSA2LjcyOCAyMy43ODVMNS4xMzIgMTYuNjA1QzUuNjQ0IDE2LjI0MyA1Ljk5OCAxNS42NzUgNS45OTggMTUuMDAxQzUuOTk4IDE0LjI3NyA1LjU5NCAxMy42NzMgNS4wMiAxMy4zMjFDNS4wNjggMTIuMzgzIDUuNTQ4IDExLjU1MyA2LjMxNCAxMS4wMjVMMTguNTM4IDE0Ljc4MUMxOS4xMDQgMTQuOTU1IDIwLjE5IDE1LjE3MSAyMS40NjIgMTQuNzgxTDM4Ljg5NiA5LjQyNDk4QzQwLjM2OCA4Ljk3Mjk4IDQwLjM2OCA3LjAyODk4IDM4Ljg5NiA2LjU3NDk4WiIgZmlsbD0iI0ZGNkQ1QSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Customer Datastore (n8n training)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": null,
+            "name": null
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,161 @@
+URL: https://docs.n8n.io/code/cookbook/builtin/execution/
+Scraped_At: 2025-05-20T18:41:11.848275
+
+execution
+#
+execution.id
+#
+Contains the unique ID of the current workflow execution.
+JavaScript
+Python
+1
+let
+executionId
+=
+$execution
+.
+id
+;
+1
+executionId
+=
+_execution
+.
+id
+execution.resumeUrl
+#
+The webhook URL to call to resume a
+waiting
+workflow.
+See the
+Wait > On webhook call
+documentation to learn more.
+execution.customData
+#
+This is only available in the Code node.
+JavaScript
+Python
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+// Set a single piece of custom execution data
+$execution
+.
+customData
+.
+set
+(
+"key"
+,
+"value"
+);
+// Set the custom execution data object
+$execution
+.
+customData
+.
+setAll
+({
+"key1"
+:
+"value1"
+,
+"key2"
+:
+"value2"
+})
+// Access the current state of the object during the execution
+var
+customData
+=
+$execution
+.
+customData
+.
+getAll
+()
+// Access a specific value set during this execution
+var
+customData
+=
+$execution
+.
+customData
+.
+get
+(
+"key"
+)
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+# Set a single piece of custom execution data
+_execution
+.
+customData
+.
+set
+(
+"key"
+,
+"value"
+);
+# Set the custom execution data object
+_execution
+.
+customData
+.
+setAll
+({
+"key1"
+:
+"value1"
+,
+"key2"
+:
+"value2"
+})
+# Access the current state of the object during the execution
+customData
+=
+_execution
+.
+customData
+.
+getAll
+()
+# Access a specific value set during this execution
+customData
+=
+_execution
+.
+customData
+.
+get
+(
+"key"
+)
+Refer to
+Custom executions data
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

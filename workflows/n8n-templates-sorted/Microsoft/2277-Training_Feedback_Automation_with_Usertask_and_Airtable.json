@@ -1,0 +1,1326 @@
+{
+  "workflow": {
+    "id": 2277,
+    "name": "Training Feedback Automation with Usertask and Airtable",
+    "views": 1630,
+    "recentViews": 0,
+    "totalViews": 1630,
+    "createdAt": "2024-06-02T14:21:20.222Z",
+    "description": "### Who is this template for?\n\nThis workflow template is designed for teams involved in training management and feedback analysis. It is particularly useful for:\n\n- **HR Departments**: Automating the collection and response to training feedback.\n- **Training Managers**: Streamlining the process of handling feedback and ensuring timely follow-up.\n- **Corporate Trainers**: Receiving direct feedback and taking actions to improve training sessions.\n\n![image.png](fileId:802)\n\nThis workflow offers a comprehensive solution for automating feedback management, ensuring timely responses, and improving the quality of training programs.\n\n---\n\n### How it works\n\nThis workflow operates with an Airtable trigger but can be easily adapted to work with other triggers like webhooks from external applications.\n\nOnce feedback data is captured, the workflow evaluates the feedback and directs it to the appropriate channel for action. Tasks are created in Usertask based on the feedback rating, and notifications are sent to relevant parties.\n\nHere’s a brief overview of this n8n workflow template:\n\n- **Airtable Trigger**: Captures new or updated feedback entries from Airtable.\n- **Switch Node**: Evaluates the feedback rating and directs the workflow based on the rating.\n- **Webhook**: Retrieves the result of a Usertask task.\n- **Task Creation**:\n  - Creates tasks in Usertask for poor feedback.\n  - Creates follow-up tasks for fair to good feedback.\n  - Documents positive feedback and posts recognition on LinkedIn for very good to excellent ratings.\n- **Notifications**:\n  - Sends email notifications to responsible parties for urgent actions.\n  - Sends congratulatory emails and posts on LinkedIn for positive feedback.\n\n---\n\n### To summarize\n\n- **Flexible Integration**: This workflow can be triggered by various methods like Airtable updates or webhooks from other applications.\n- **Automated Task Management**: It creates tasks in Usertask based on feedback ratings to ensure timely follow-up.\n- **Multichannel Notifications**: Sends notifications via email and LinkedIn to keep stakeholders informed and recognize successes.\n- **Comprehensive Feedback Handling**: Automates the evaluation and response to training feedback, improving efficiency and response time.\n\n---\n\n### Instructions:\n\n1. **Set Up Airtable**: Create a table in Airtable to capture training feedback.\n2. **Configure n8n**: Set up the Airtable trigger in n8n to capture new or updated feedback entries.\n3. **Set Up Usertask**: Configure the Usertask nodes in n8n to create and manage tasks based on feedback ratings.\n4. **Configure Email and LinkedIn Nodes**: Set up the email and LinkedIn nodes to send notifications and post updates.\n5. **Test the Workflow**: Run tests to ensure the workflow captures feedback, creates tasks, and sends notifications correctly.\n\n---\n\nVideo : [https://youtu.be/U14MhTcpqeY](https://youtu.be/U14MhTcpqeY)\n\n\nRemember, this template was created in n8n v1.38.2.",
+    "workflow": {
+      "id": "pDLtBJkNSXXWSvB0",
+      "meta": {
+        "instanceId": "bc5ae5fe2056690823360ec27da902117e87ff22a0f9c9bb0448416fba4527f8"
+      },
+      "name": "Training Feedback Automation",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "6cdd7521-a16c-4e1a-9b18-c232660522c8",
+          "name": "Airtable Trigger",
+          "type": "n8n-nodes-base.airtableTrigger",
+          "position": [
+            160,
+            680
+          ],
+          "parameters": {
+            "baseId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "app216gZPY8ax1Qgd"
+            },
+            "tableId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "tblaKkOK6RZ4cgXGI"
+            },
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerField": "Created",
+            "authentication": "airtableOAuth2Api",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "airtableOAuth2Api": {
+              "id": "qYu4nditWNzeLITf",
+              "name": "Airtable account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "faeb9069-2f25-419c-8192-5ed69a49d192",
+          "name": "Webhook - Action Task Poor",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            180,
+            140
+          ],
+          "webhookId": "4ff46f8a-e1d0-4ad9-8dae-99de53838aaf",
+          "parameters": {
+            "path": "4ff46f8a-e1d0-4ad9-8dae-99de53838aaf",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "25f65aa6-9d0a-4a32-b2b9-49c2d6fb94cf",
+          "name": "Switch1",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            500,
+            140
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "Validated",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('Webhook - Action Task Poor').item.json.body.actionName }}",
+                        "rightValue": "Validate"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Other",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "94250338-cb2a-421c-813b-9d8d5d1e02ed",
+                        "operator": {
+                          "type": "string",
+                          "operation": "notEquals"
+                        },
+                        "leftValue": "={{ $('Webhook - Action Task Poor').item.json.body.actionName }}",
+                        "rightValue": "Validate"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "50909553-8bea-471f-9030-f3d8898abce5",
+          "name": "LinkedIn",
+          "type": "n8n-nodes-base.linkedIn",
+          "position": [
+            1020,
+            680
+          ],
+          "parameters": {
+            "text": "=🌟 Feedback on Our Recent Training Session! 🌟\n\nWe are excited to share the positive feedback from our participants regarding our latest training session. Here are some highlights:\n\nFacilitator: {{ $json[\"fields\"][\"Facilitator name\"][0][\"name\"] }}\nCourse: {{ $json[\"fields\"][\"Course name\"][0] }}\n\nFeedback Details:\n\nContent: {{ $json[\"fields\"][\"Content\"] }}/5\nRelevance: {{ $json[\"fields\"][\"Relevant\"] }}/5\nOverall Satisfaction: {{ $json[\"fields\"][\"Satisfaction\"] }}/5\nRecommendation: {{ $json[\"fields\"][\"Recommend\"] }}/5\n\nA big thank you to {{ $json[\"fields\"][\"Facilitator name\"][0][\"name\"] }} for his excellent work as a facilitator and to all our participants for their valuable feedback. We are committed to continuously improving our training sessions to meet your expectations and needs.\n\n#Training #Feedback #ContinuousLearning #CustomerSatisfaction",
+            "postAs": "organization",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "linkedInOAuth2Api": {
+              "id": "4sXxHri0PRgxO48n",
+              "name": "LinkedIn account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b441873f-187c-4777-ab27-d7adf8450d8b",
+          "name": "Poor  - Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            1580,
+            320
+          ],
+          "parameters": {
+            "html": "=Dear [Recipient Name],\n\nWe would like to inform you that a new task has been created to address the recent training feedback we received. Below are the details of the task:\n\nTask Title: {{ $json[\"title\"] }}\n\nTask Description:\n{{ $json[\"description\"] }}\n\nTask Status: {{ $json[\"statusName\"] }}\n\nInstructions:\n{{ $json[\"instruction\"] }}\n\nActions Required:\n\n- {{ $json[\"task\"][\"actions\"][0][\"name\"] }}\nDescription:\n{{ $json[\"task\"][\"actions\"][0][\"description\"] }}\n\n- {{ $json[\"task\"][\"actions\"][1][\"name\"] }}\nDescription:\n{{ $json[\"task\"][\"actions\"][1][\"description\"] }}\n\n\nPlease address this task at your earliest convenience to ensure we promptly respond to the feedback and improve our training program accordingly.\n\nIf you have any questions or require further information, please do not hesitate to contact us.\n\nLink : https://demo.usertask.io/app/task/instance/form/{{ $json[\"code\"] }}\n\nBest regards,",
+            "options": {},
+            "subject": "New Task Created - Urgent: Training Feedback Requires Immediate Attention",
+            "toEmail": "contact@usertask.io",
+            "fromEmail": "contact@usertask.io"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "CnHY3ZPBDwo5EnSH",
+              "name": "SMTP account 2"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "0e9c5ee5-416b-4cb3-9797-417003bc74cd",
+          "name": "Call Usertask - Create task",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1020,
+            60
+          ],
+          "parameters": {
+            "url": "http://demo.usertask.io/api/task/create-instance",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n  \"taskCode\": \"tltJf90mJVEnpUZvuQBi\",\n  \"callbackUrl\": \"https://n8n-hzd1.onrender.com/webhook/4ff46f8a-e1d0-4ad9-8dae-99de53838aaf\",\n  \"description\":\"We have received a training feedback rating of 1 star. It is crucial to address this issue promptly.We recommend scheduling a meeting to discuss the feedback in detail and develop an action plan to improve the training program.\",\n  \"instruction\":\"\",\n  \"title\":\"Urgent: Training Feedback Requires Immediate Attention\"\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-API-KEY",
+                  "value": "22d1ce6fa3ae7039fe42d3ddf1ba55d8f5ee9e2c2e6b04788144fca080d1e170"
+                },
+                {
+                  "name": "X-CLIENT-ID",
+                  "value": "f3604b6d2d33af2006ecb0d4910871fa"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "27ab7bd3-e3a8-4d87-b28f-767bff9ec0e1",
+          "name": "Call Usertask - Create Task - Pair and good",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1020,
+            420
+          ],
+          "parameters": {
+            "url": "http://demo.usertask.io/api/task/create-instance",
+            "method": "POST",
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": true,
+                  "responseFormat": "json"
+                }
+              }
+            },
+            "jsonBody": "{\n  \"taskCode\": \"tltJf90mJVEnpUZvuQBi\",\n  \"callbackUrl\": \"https://n8n-hzd1.onrender.com/webhook/4ff46f8a-e1d0-4ad9-8dae-99de53838aaf\",\n  \"description\":\"We have received a training feedback rating of 1 star. It is crucial to address this issue promptly.We recommend scheduling a meeting to discuss the feedback in detail and develop an action plan to improve the training program.\",\n  \"instruction\":\"\",\n  \"title\":\"Urgent: Training Feedback Requires Immediate Attention\"\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-API-KEY",
+                  "value": "22d1ce6fa3ae7039fe42d3ddf1ba55d8f5ee9e2c2e6b04788144fca080d1e170"
+                },
+                {
+                  "name": "X-CLIENT-ID",
+                  "value": "f3604b6d2d33af2006ecb0d4910871fa"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "ec55cbd8-e863-4dea-b2fc-1834f9d27f13",
+          "name": "Send Email after WebHook",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            760,
+            -180
+          ],
+          "parameters": {
+            "html": "=Dear Trainer's and HR Manager's,\n\nWe have received a training feedback rating of 1 star. It is crucial to address this issue promptly.\n\nResponse : {{ $json[\"body\"][\"results\"][0][\"actionName\"] }}\n\nWe recommend scheduling a meeting to discuss the feedback in detail and develop an action plan to improve the training program.\n\nBest regards,",
+            "options": {},
+            "subject": "Urgent: Training Feedback Requires Immediate Attention",
+            "toEmail": "contact@usertask.io",
+            "fromEmail": "contact@usertask.io"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "CnHY3ZPBDwo5EnSH",
+              "name": "SMTP account 2"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "bd83083f-e1df-41e8-b7b3-9065fa610ee5",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            730.6369999001746,
+            0
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 714.7562585267917,
+            "height": 593.70786516854,
+            "content": "## UserTask\n**Link** https://demo.usertask.io \n\n**Login**\ncontact@usertask.io\n**Password**\nQSDpo2x10?2020"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "27e89776-7258-44f5-ac8c-5926f38762b7",
+          "name": "Call Usertask - Detail Task",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1300,
+            320
+          ],
+          "parameters": {
+            "url": "=https://demo.usertask.io/api/task/instance/info/{{ $json[\"body\"][\"code\"] }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-API-KEY",
+                  "value": "22d1ce6fa3ae7039fe42d3ddf1ba55d8f5ee9e2c2e6b04788144fca080d1e170"
+                },
+                {
+                  "name": "X-CLIENT-ID",
+                  "value": "f3604b6d2d33af2006ecb0d4910871fa"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "5576aba7-9051-465f-a095-47a52e35b151",
+          "name": "Send Email - Information for marcketing",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            1280,
+            680
+          ],
+          "parameters": {
+            "options": {},
+            "subject": "Task Created",
+            "toEmail": "contact@usertask.io",
+            "fromEmail": "contact@usertask.io"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "CnHY3ZPBDwo5EnSH",
+              "name": "SMTP account 2"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "074b8d06-f78a-4209-9172-d8b1a57c97fb",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -20,
+            540
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 373.05722240092274,
+            "height": 320.67415730337063,
+            "content": "## AirTable \n**For exemple, use** Employee training management **template**. [Guide](https://www.airtable.com/templates/employee-training-management/expnOaGvlQDwuWKVk)\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b742a10e-71b2-4022-8c16-53b826512bbe",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -20,
+            0
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 374.83146067415737,
+            "height": 303.820224719101,
+            "content": "## WebHook \nThe webhook allows retrieving the result of a Usertask. Tasks can be completed either via the API or through the Usertask form."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "98cc7ca2-359a-4329-8910-14b6607daa87",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -11.470878578479415,
+            -460
+          ],
+          "parameters": {
+            "width": 709.4232592367164,
+            "height": 434.93437649014015,
+            "content": "## Training Feedback Automation with Usertask and Airtable\nThis n8n workflow is designed to automate the management of training feedback by integrating Airtable, Usertask, and various notification actions. \n\nHere is a detailed description of each step in the workflow:\n\n- **Airtable Trigger**: Captures new or updated feedback entries from Airtable.\n- **Switch Node**: Evaluates the feedback rating and directs the workflow based on the rating.\n- **Webhook**: Retrieves the result of a Usertask task.\n- **Task Creation**:\n  - Creates tasks in Usertask for poor feedback.\n  - Creates follow-up tasks for fair to good feedback.\n  - Documents positive feedback and posts recognition on LinkedIn for very good to excellent ratings.\n- **Notifications**:\n  - Sends email notifications to responsible parties for urgent actions.\n  - Sends congratulatory emails and posts on LinkedIn for positive feedback.\n\nVideo : [https://youtu.be/U14MhTcpqeY](https://youtu.be/U14MhTcpqeY)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f12d0516-43a2-4517-a633-60d809cd3413",
+          "name": "Switch",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            460,
+            420
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "Dissatisfaction",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "operator": {
+                          "type": "number",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.fields.Content }}",
+                        "rightValue": 1
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Fair",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "2d1c10b8-0418-4dcf-aa53-41f0b75ccc08",
+                        "operator": {
+                          "type": "number",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.fields.Content }}",
+                        "rightValue": 2
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Good",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "d2be2a3f-32ae-4578-a9aa-4a8f2b19f08f",
+                        "operator": {
+                          "type": "number",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.fields.Content }}",
+                        "rightValue": 3
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Very Good",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "4dd5b796-9180-47d8-9ebd-4164a5dfa0d7",
+                        "operator": {
+                          "type": "number",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.fields.Content }}",
+                        "rightValue": 4
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Excellent",
+                  "conditions": {
+                    "options": {
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "312f4f14-a341-4dea-881c-3c85a9cea13c",
+                        "operator": {
+                          "type": "number",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.fields.Content }}",
+                        "rightValue": 5
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "6eb8d928-c331-49d5-830a-9442a367254b",
+          "name": "Call Usertask - Create Task - Dissatisfaction",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1020,
+            240
+          ],
+          "parameters": {
+            "url": "http://demo.usertask.io/api/task/create-instance",
+            "method": "POST",
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": true,
+                  "responseFormat": "json"
+                }
+              }
+            },
+            "jsonBody": "{\n  \"taskCode\": \"tltJf90mJVEnpUZvuQBi\",\n  \"callbackUrl\": \"https://n8n-hzd1.onrender.com/webhook/4ff46f8a-e1d0-4ad9-8dae-99de53838aaf\",\n  \"description\":\"We have received a training feedback rating of 1 star. It is crucial to address this issue promptly.We recommend scheduling a meeting to discuss the feedback in detail and develop an action plan to improve the training program.\",\n  \"instruction\":\"\",\n  \"title\":\"Urgent: Training Feedback Requires Immediate Attention\"\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-API-KEY",
+                  "value": "22d1ce6fa3ae7039fe42d3ddf1ba55d8f5ee9e2c2e6b04788144fca080d1e170"
+                },
+                {
+                  "name": "X-CLIENT-ID",
+                  "value": "f3604b6d2d33af2006ecb0d4910871fa"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "955cc31e-3e7b-49b1-85c5-8f4604cbcc9a",
+      "connections": {
+        "Switch": {
+          "main": [
+            [
+              {
+                "node": "Call Usertask - Create Task - Dissatisfaction",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Call Usertask - Create Task - Pair and good",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Call Usertask - Create Task - Pair and good",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "LinkedIn",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "LinkedIn",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch1": {
+          "main": [
+            [
+              {
+                "node": "Send Email after WebHook",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Call Usertask - Create task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "LinkedIn": {
+          "main": [
+            [
+              {
+                "node": "Send Email - Information for marcketing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Trigger": {
+          "main": [
+            [
+              {
+                "node": "Switch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook - Action Task Poor": {
+          "main": [
+            [
+              {
+                "node": "Switch1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Usertask - Detail Task": {
+          "main": [
+            [
+              {
+                "node": "Poor  - Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Usertask - Create Task - Pair and good": {
+          "main": [
+            [
+              {
+                "node": "Call Usertask - Detail Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Usertask - Create Task - Dissatisfaction": {
+          "main": [
+            [
+              {
+                "node": "Call Usertask - Detail Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 23,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.switch": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.linkedIn": {
+          "count": 1
+        },
+        "n8n-nodes-base.emailSend": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 4
+        },
+        "n8n-nodes-base.airtableTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "NonoCode",
+      "username": "nonocode",
+      "bio": "I am an expert in business process automation, specializing in the use of Nintex and n8n. Passionate about these two platforms, I find them particularly complementary. What fascinates me most about n8n is its remarkable flexibility and the diversity of processes it can automate. I truly enjoy exploring and implementing innovative solutions that enhance operational efficiency and turn challenges into opportunities.",
+      "verified": false,
+      "links": [
+        "https://www.linkedin.com/in/nohamchoulant/"
+      ],
+      "avatar": "https://gravatar.com/avatar/1507b4567363cfca292aab84b1611f254bc4dc6b4c04e951128204415508bd30?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 11,
+        "icon": "fa:envelope",
+        "name": "n8n-nodes-base.emailSend",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMTP",
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Send Email",
+          "color": "#00bb88"
+        },
+        "iconData": {
+          "icon": "envelope",
+          "type": "icon"
+        },
+        "displayName": "Send Email",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 367,
+        "icon": "file:linkedin.svg",
+        "name": "n8n-nodes-base.linkedIn",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linkedin/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/linkedIn/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "LinkedIn"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjcgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjEiIHk9IjEiLz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PGcgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiPjxwYXRoIGZpbGw9IiMwMTc3YjUiIGQ9Ik01OS4yNiAwSDQuNzI0QzIuMTIgMCAwIDIuMDY2IDAgNC42MXY1NC43ODhjMCAyLjUzIDIuMTIgNC42IDQuNzI0IDQuNmg1NC41NGMyLjYxIDAgNC43MzYtMi4wNyA0LjczNi00LjZWNC42MUM2NCAyLjA2NiA2MS44NzQgMCA1OS4yNiAwIi8+PHBhdGggZD0iTTkuNDkgMjMuOTkySDE5djMwLjU0SDkuNDl6bTQuNzQ4LTE1LjJjMy4wMzQgMCA1LjUgMi40NjYgNS41IDUuNWE1LjUxIDUuNTEgMCAwIDEtNS40OTggNS41MDYgNS41MiA1LjUyIDAgMCAxLTUuNTA4LTUuNTA2IDUuNSA1LjUgMCAwIDEgNS41MDYtNS41bTEwLjcgMTUuMmg5LjEwNHY0LjE3NGguMTI2YzEuMjY4LTIuNCA0LjM2NC00LjkzMiA5LTQuOTMyIDkuNjEyIDAgMTEuMzg2IDYuMzI2IDExLjM4NiAxNC41NDh2MTYuNzUyaC05LjQ4NlYzOS42NzhjMC0zLjU0LS4wNjQtOC4xLTQuOTMyLTguMS00Ljk0IDAtNS43IDMuODYtNS43IDcuODR2MTUuMTA4aC05LjQ4NHYtMzAuNTR6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "LinkedIn",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 408,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtableTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.airtabletrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Airtable Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 17,
+        "name": "HR"
+      }
+    ],
+    "image": [
+      {
+        "id": 802,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_7eb64dc590.png"
+      }
+    ]
+  }
+}

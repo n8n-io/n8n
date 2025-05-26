@@ -1,0 +1,824 @@
+{
+  "workflow": {
+    "id": 2034,
+    "name": "Send DingTalk message on new Azure DevOps Pull Request",
+    "views": 1434,
+    "recentViews": 0,
+    "totalViews": 1434,
+    "createdAt": "2023-12-29T02:20:48.068Z",
+    "description": "This template automates sending a DingTalk message on new Azure Dev Ops Pull Request Created Events. It uses a MySQL database to store mappings between Azure users and DingTalk users; so the right users get notified. \n\n### Set up instructions\n\n1. Define the path value of ReceiveTfsPullRequestCreatedMessage Webhook node of your own, copy the webhook url to create a Azure DevOps ServiceHook that call webhook with Pull Request Created event.\n2. In order to configure the LoadDingTalkAccountMap node, you need to create a MySQL table as below:\n|Name|Type|Length|Key|\n|-|-|-|-|\n|TfsAccount|varchar|255|\n|UserName|varchar|255|\n|DingTalkMobile|varchar|255|\n3. You can customize the Ding Talk message content by editing the BuildDingTalkWebHookData node.\n4. Define the URL of SendDingTalkMessageViaWebHook Http Request node as your Ding Talk group chat robot webhook URL.\n5. Send test of production message from Azure DevOps to test.\n\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "dbd43d88d26a9e30d8aadc002c9e77f1400c683dd34efe3778d43d27250dde50"
+      },
+      "nodes": [
+        {
+          "id": "44eb446d-3775-4fe0-8f76-67f46913531e",
+          "name": "LoadDingTalkAccountMap",
+          "type": "n8n-nodes-base.mySql",
+          "position": [
+            -600,
+            720
+          ],
+          "parameters": {
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tfs_dingtalk_account_map",
+              "cachedResultName": "tfs_dingtalk_account_map"
+            },
+            "options": {},
+            "operation": "select",
+            "returnAll": true
+          },
+          "credentials": {
+            "mySql": {
+              "id": "235",
+              "name": "MySQL account"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "25d2a3aa-af18-4ff2-af6c-c2bf6618a511",
+          "name": "ReceiveTfsPullRequestCreatedMessage",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -860,
+            720
+          ],
+          "webhookId": "05a0f565-7a1e-44f2-956d-1c68982ce314",
+          "parameters": {
+            "path": "pr-notify-template",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "70d69753-9408-4a99-85a4-9dc4486fc460",
+          "name": "BuildDingTalkWebHookData",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -340,
+            720
+          ],
+          "parameters": {
+            "jsCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\n\nconsole.log(\"items:\");\nconsole.log(items);\n\nvar mapUserMobile = function (tfsAccount) {\n  for(var i = 0; i < items.length; i++) {\n    var map = items[i].json;\n    if(tfsAccount.lastIndexOf(map.TfsAccount) != -1) {\n      return map.DingTalkMobile;\n    }\n  }\n\n  return null;\n}\nvar mapUserName = function (tfsAccount) {\n  for(var i = 0; i < items.length; i++) {\n    var map = items[i].json;\n    if(tfsAccount.lastIndexOf(map.TfsAccount) != -1) {\n      return map.UserName;\n    }\n  }\n\n  return null;\n}\n\nvar tfsMessage = $node[\"ReceiveTfsPullRequestCreatedMessage\"].json.body;\nconsole.log(\"TFS Message:\");\nconsole.log(tfsMessage);\n\nvar output = {};\nvar atMobiles = [];\nvar isAtAll = false;\nvar atUsers = [];\nvar messageText = tfsMessage.message.markdown;\nvar prCreatorTfsDomainName = tfsMessage.resource.createdBy.uniqueName;\nvar prCreatorTfsDisplayName = tfsMessage.resource.createdBy.displayName;\nvar prCreatorDingTalkName = mapUserName(prCreatorTfsDomainName);\n\nif (prCreatorDingTalkName !== null) {\n  messageText = messageText.replace(prCreatorTfsDisplayName, prCreatorDingTalkName);\n}\n\nfor (reviewer of tfsMessage.resource.reviewers) {\n  console.log(reviewer.uniqueName);\n  if(reviewer.uniqueName.lastIndexOf(\"团队\") != -1) {\n    //当@所有人时，消息内容中的手机号就不会被转义成用户名了，暂时不启用该功能\n    isAtAll = true;\n    continue;\n  }\n\n  var mobile = mapUserMobile(reviewer.uniqueName);\n\n  if(mobile !== null) {\n    atMobiles.push(mobile);\n  }\n\n  var userName = mapUserName(reviewer.uniqueName);\n\n  if(userName !== null) {\n    atUsers.push(userName);\n  }\n}\n\nif(isAtAll) {\n  atUsers.unshift(\"所有人\");\n  atMobiles = [];\n} else {\n  atUsers = atMobiles;\n}\n\nif (atUsers.length > 0) {\n  messageText = messageText + \"<br />请 @\" + atUsers.join(\" @\") + \" 评审\";\n}\n\noutput.isAtAll = isAtAll;\noutput.text = messageText;\noutput.atMobiles = atMobiles.join(\", \");\n\nconsole.log('Done:');\nconsole.log(output);\n\nreturn [{json: output}];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "dc6c235b-c1ac-4195-a404-e79c8ad1c8ef",
+          "name": "SendDingTalkMessageViaWebHook",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -80,
+            720
+          ],
+          "parameters": {
+            "url": "https://oapi.dingtalk.com/robot/send?access_token=4d684f0389cd4c24997c815344890faafeb9d300c25edf5e31151662a87e77c7",
+            "options": {},
+            "requestMethod": "POST",
+            "jsonParameters": true,
+            "bodyParametersJson": "={\n\t\"at\":\n\t{\n\t\t\"atMobiles\": [{{$json[\"atMobiles\"]}}],\n\t\t\"isAtAll\": \"{{$json[\"isAtAll\"]}}\"\n\t},\n\t\"msgtype\": \"markdown\",\n\t\"markdown\":\n\t{\n\t\t\"title\": \"New PR Notify\",\n\t\t\"text\": \"{{$json[\"text\"]}}\"\n\t}\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3476a787-387b-43e2-8646-6a682656f231",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1449,
+            560
+          ],
+          "parameters": {
+            "width": 484,
+            "height": 540,
+            "content": "## Send DingTalk message on new Azure DevOps Pull Request\nThis template automates sending a DingTalk message on new Azure Dev Ops Pull Request Created Events. It uses a MySQL database to store mappings between Azure users and DingTalk users; so the right users get notified. \n\n### Set up instructions\n1. Define the path value of ReceiveTfsPullRequestCreatedMessage Webhook node of your own, copy the webhook url to create a Azure DevOps ServiceHook that call webhook with Pull Request Created event.\n2. In order to configure the LoadDingTalkAccountMap node, you need to create a MySQL table as below:\n|Name|Type|Length|Key|\n|-|-|-|-|\n|TfsAccount|varchar|255|\n|UserName|varchar|255|\n|DingTalkMobile|varchar|255|\n3. You can customize the Ding Talk message content by editing the BuildDingTalkWebHookData node.\n4. Define the URL of SendDingTalkMessageViaWebHook Http Request node as your Ding Talk group chat robot webhook URL.\n5. Send test of production message from Azure DevOps to test.\n\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "LoadDingTalkAccountMap": {
+          "main": [
+            [
+              {
+                "node": "BuildDingTalkWebHookData",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "BuildDingTalkWebHookData": {
+          "main": [
+            [
+              {
+                "node": "SendDingTalkMessageViaWebHook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ReceiveTfsPullRequestCreatedMessage": {
+          "main": [
+            [
+              {
+                "node": "LoadDingTalkAccountMap",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.mySql": {
+          "count": 1
+        },
+        "n8n-nodes-base.start": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.function": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "PretenderX",
+      "username": "wuliang",
+      "bio": null,
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/e25fa3642169129dbae8b76273eeaae904fc11c04b8a0d7729dfdfa5e4b7e65a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 14,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.function",
+        "codex": {
+          "data": {
+            "alias": [
+              "Code",
+              "Javascript",
+              "Custom Code",
+              "Script",
+              "cpde"
+            ],
+            "details": "The Function node allows you to execute JavaScript in your workflow. Unlike the Function Item node, this node does not operate on incoming node data per-item. Instead, you must iterate over multiple items of incoming data yourself. This can be useful if you're performing data transformation where you want to manipulate the number of items being outputted by the node (i.e. 1 item is inputted in with nested object, 10 items are outputted without any nested objects)",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function",
+          "color": "#FF9922"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "icon": "file:mysql.svg",
+        "name": "n8n-nodes-base.mySql",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mySql/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "MySQL"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg0NDUgMzAuMzY4NEMzNC42NjggMzAuMzEzOSAzMi45ODE1IDMwLjUzMTkgMzEuNTY2NSAzMS4xMzA0QzMxLjE1ODUgMzEuMjkzNCAzMC41MDU1IDMxLjI5MzkgMzAuNDUxIDMxLjgxMDRDMzAuNjY5IDMyLjAyODQgMzAuNjk2IDMyLjM4MTkgMzAuODg2NSAzMi42ODA5QzMxLjIxMyAzMy4yMjQ5IDMxLjc4NCAzMy45NTk0IDMyLjMwMSAzNC4zNDA0QzMyLjg3MiAzNC43NzU0IDMzLjQ0MzUgMzUuMjEwOSAzNC4wNDIgMzUuNTkxOUMzNS4xMDMgMzYuMjQ0OSAzNi4zIDM2LjYyNTkgMzcuMzM0IDM3LjI3ODRDMzcuOTMyNSAzNy42NTg5IDM4LjUzMSAzOC4xNDg5IDM5LjEyOTUgMzguNTU2OUMzOS40MjkgMzguNzc0NCAzOS42MTkgMzkuMTI3OSA0MCAzOS4yNjQ0VjM5LjE4MjlDMzkuODA5NSAzOC45Mzc5IDM5Ljc1NSAzOC41ODQ0IDM5LjU2NSAzOC4zMTI0QzM5LjI5MyAzOC4wNDA0IDM5LjAyMSAzNy43OTU0IDM4Ljc0OSAzNy41MjM0QzM3Ljk2IDM2LjQ2MjQgMzYuOTgwNSAzNS41Mzc0IDM1LjkxOTUgMzQuNzc1OUMzNS4wNDkgMzQuMTc3NCAzMy4xNDQ1IDMzLjM2MTQgMzIuNzkxIDMyLjM1NDRMMzIuNzM2NSAzMi4yOTk5QzMzLjMzNSAzMi4yNDU0IDM0LjA0MjUgMzIuMDI3OSAzNC42MTM1IDMxLjg2NDRDMzUuNTM4NSAzMS42MTk0IDM2LjM4MiAzMS42NzM5IDM3LjMzNCAzMS40Mjk0QzM3Ljc3MjggMzEuMzE0NyAzOC4yMDg0IDMxLjE4NzcgMzguNjQgMzEuMDQ4NFYzMC44MDM5QzM4LjE1MDUgMzAuMzEzOSAzNy43OTY1IDI5LjY2MTQgMzcuMjggMjkuMTk4OUMzNS44OTI1IDI4LjAwMTQgMzQuMzY5IDI2LjgzMTkgMzIuNzkxIDI1Ljg1MjlDMzEuOTQ3NSAyNS4zMDg5IDMwLjg1OTUgMjQuOTU0OSAyOS45NjE1IDI0LjQ5MjRDMjkuNjM1IDI0LjMyODkgMjkuMDkxIDI0LjI0NzQgMjguOTAwNSAyMy45NzU0QzI4LjQxMDUgMjMuMzc2OSAyOC4xMzg1IDIyLjU4NzkgMjcuNzg1IDIxLjg4MDRDMjYuOTk2NSAyMC4zODM5IDI2LjIzNDUgMTguNzI0OSAyNS41NTQgMTcuMTQ2OUMyNS4wNjQ1IDE2LjA4NTkgMjQuNzY1IDE1LjAyNDkgMjQuMTY2NSAxNC4wNDU0QzIxLjM2NDUgOS40MjA0MSAxOC4zMTc1IDYuNjE4NDIgMTMuNjM4MSAzLjg3MDQzQzEyLjYzMTYgMy4yOTk0MyAxMS40MzQ2IDMuMDU0NDMgMTAuMTU2MSAyLjc1NDkzTDguMTE1NTcgMi42NDU5M0M3LjY4MDU3IDIuNDU1NDMgNy4yNDUwNyAxLjkzODQzIDYuODY0MDcgMS42OTM5M0M1LjMxMzU3IDAuNzE0OTMyIDEuMzE0NTggLTEuNDA2NTYgMC4xNzE1ODIgMS4zOTU0M0MtMC41NjI5MTcgMy4xNjM0MyAxLjI2MDA4IDQuOTA0NDIgMS44ODU1OCA1LjgwMjQyQzIuMzQ4MDggNi40Mjc5MiAyLjk0NjU4IDcuMTM1NDIgMy4yNzMwOCA3Ljg0MjkyQzMuNDYzNTggOC4zMDQ5MiAzLjUxNzU3IDguNzk0OTIgMy43MDgwNyA5LjI4NDkxQzQuMTQzNTcgMTAuNDgxOSA0LjU1MTU3IDExLjgxNDkgNS4xMjI1NyAxMi45MzA0QzUuNDIyMDcgMTMuNTAxNCA1Ljc0ODA3IDE0LjEwMDQgNi4xMjkwNyAxNC42MTY5QzYuMzQ2NTcgMTQuOTE1OSA2LjcyNzU3IDE1LjA1MjQgNi44MDkwNyAxNS41NDE5QzYuNDI4MDcgMTYuMDg1OSA2LjQwMTA3IDE2LjkwMjQgNi4xODMwNyAxNy41ODI0QzUuMjAzNTcgMjAuNjU2NCA1LjU4NDU3IDI0LjQ2NTQgNi45NzIwNyAyNi43MjM0QzcuNDA3MDcgMjcuNDAzNCA4LjQ0MTA2IDI4Ljg5OTkgOS44Mjg1NiAyOC4zMjg0QzExLjA1MjYgMjcuODM4OSAxMC43ODA2IDI2LjI4NzkgMTEuMTM0NiAyNC45Mjc5QzExLjIxNjYgMjQuNjAxNCAxMS4xNjIxIDI0LjM4MzkgMTEuMzI1MSAyNC4xNjY0VjI0LjIyMDlMMTIuNDQwNiAyNi40Nzg5QzEzLjI4NDEgMjcuODExOSAxNC43NTMxIDI5LjE5OTQgMTUuOTc3IDMwLjEyNDRDMTYuNjMgMzAuNjEzOSAxNy4xNDcgMzEuNDU3NCAxNy45NjMgMzEuNzU2OVYzMS42NzQ5SDE3LjkwODVDMTcuNzQ1IDMxLjQyOTkgMTcuNTAwNSAzMS4zMjE0IDE3LjI4MyAzMS4xMzA5QzE2Ljc5MzUgMzAuNjQxNCAxNi4yNDkgMzAuMDQyOSAxNS44Njg1IDI5LjQ5ODRDMTQuNzI2MSAyNy45NzQ5IDEzLjcxOTEgMjYuMjg4NCAxMi44MjE2IDI0LjU0NjlDMTIuMzg2NiAyMy43MDM0IDEyLjAwNTYgMjIuNzc4NCAxMS42NTE2IDIxLjkzNTRDMTEuNDg4MSAyMS42MDg5IDExLjQ4ODEgMjEuMTE5NCAxMS4yMTYxIDIwLjk1NTlDMTAuODA4MSAyMS41NTQ0IDEwLjIwOTYgMjIuMDcxNCA5LjkxMDA2IDIyLjgwNTlDOS4zOTM1NiAyMy45NzU5IDkuMzM5MDYgMjUuNDE3NCA5LjE0ODU2IDI2LjkxMzlDOS4wNDAwNiAyNi45NDE0IDkuMDk0MDYgMjYuOTEzOSA5LjAzOTU2IDI2Ljk2ODRDOC4xNjkwNyAyNi43NTA0IDcuODY5NTcgMjUuODUyOSA3LjU0MzA3IDI1LjA5MTRDNi43MjcwNyAyMy4xNTk5IDYuNTkxMDcgMjAuMDU4NCA3LjI5ODU3IDE3LjgyNzlDNy40ODkwNyAxNy4yNTY0IDguMzA1MDcgMTUuNDYwOSA3Ljk3ODU3IDE0LjkxNjlDNy44MTU1NyAxNC4zOTk5IDcuMjcxMDcgMTQuMTAwOSA2Ljk3MjA3IDEzLjY5MjlDNi42MTg1NyAxMy4xNzU5IDYuMjM3NTcgMTIuNTIyOSA1Ljk5MjU3IDExLjk1MTlDNS4zMzk1NyAxMC40Mjg0IDUuMDEzMDcgOC43NDE5MiA0LjMwNjA3IDcuMjE3OTJDMy45Nzk1NyA2LjUxMDQyIDMuNDA4NTggNS43NzU5MiAyLjk0NTU4IDUuMTIzNDJDMi40MzAwOCA0LjM4NzkyIDEuODU4NTggMy44NzA5MyAxLjQ1MDU4IDMuMDAwNDNDMS4zMTQ1OCAyLjcwMTQzIDEuMTI0MDggMi4yMTE0MyAxLjM0MTU4IDEuODg0OTNDMS4zOTYwOCAxLjY2NzQzIDEuNTA0NTggMS41ODU5MyAxLjcyMjU4IDEuNTMxNDNDMi4wNzYwOCAxLjIzMTkzIDMuMDgzMDggMS42MTI5MyAzLjQzNjU4IDEuNzc1OTNDNC40NDMwNyAyLjE4MzkzIDUuMjg2NTcgMi41NjQ5MyA2LjEzMDA3IDMuMTM2NDNDNi41MTEwNyAzLjQwODQzIDYuOTE5MDcgMy45MjU0MyA3LjQwODU3IDQuMDYxNDNINy45ODAwN0M4Ljg1MDU2IDQuMjUxOTIgOS44MzAwNiA0LjExNTkyIDEwLjY0NjEgNC4zNjA0MkMxMi4wODgxIDQuODIyOTIgMTMuMzkzNiA1LjUwMjkyIDE0LjU2MzYgNi4yMzc0MkMxOC4xMjc1IDguNDk1NDIgMjEuMDY1NSAxMS43MDU5IDIzLjA1MTUgMTUuNTQxNEMyMy4zNzggMTYuMTY2OSAyMy41MTQgMTYuNzM4NCAyMy44MTMgMTcuMzkxNEMyNC4zODQ1IDE4LjcyNDQgMjUuMDkxNSAyMC4wODQ5IDI1LjY2MyAyMS4zOTA0QzI2LjIzNCAyMi42Njg5IDI2Ljc3ODUgMjMuOTc0OSAyNy41OTQ1IDI1LjAzNTlDMjguMDAyNSAyNS42MDY5IDI5LjYzNSAyNS45MDY0IDMwLjM2OTUgMjYuMjA1OUMzMC45MTM1IDI2LjQ1MDQgMzEuNzU3IDI2LjY2ODQgMzIuMjQ2NSAyNi45Njc0QzMzLjE3MTUgMjcuNTM4NCAzNC4wOTY1IDI4LjE5MTQgMzQuOTY3IDI4LjgxNzRDMzUuNDAyNSAyOS4xNDM5IDM2Ljc2MjUgMjkuODIzOSAzNi44NDQgMzAuMzY3OUwzNi44NDQ1IDMwLjM2ODRaTTkuMDk1MDYgNi43Mjc0MkM4LjcxODg4IDYuNzIzNzYgOC4zNDM4NSA2Ljc2OTQ4IDcuOTc5NTcgNi44NjM0MlY2LjkxNzkySDguMDM0MDdDOC4yNTIwNyA3LjM1MjkyIDguNjMyNTYgNy42NTI0MiA4LjkwNDU2IDguMDMzNDJMOS41MzA1NiA5LjMzOTQxTDkuNTg1MDYgOS4yODQ5MUM5Ljk2NjA2IDkuMDEyOTEgMTAuMTU2NiA4LjU3NzQyIDEwLjE1NjYgNy45MjQ0MkM5Ljk5MzA2IDcuNzMzOTIgOS45NjYwNiA3LjU0MzQyIDkuODMwMDYgNy4zNTI5MkM5LjY2NzA2IDcuMDgwOTIgOS4zMTMwNiA2Ljk0NDkyIDkuMDk1NTYgNi43MjY5Mkw5LjA5NTA2IDYuNzI3NDJaIiBmaWxsPSIjMDA1NDZCIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "MySQL",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

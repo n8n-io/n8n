@@ -1,0 +1,399 @@
+{
+  "workflow": {
+    "id": 2237,
+    "name": "Automated Customer Service Ticket Creation & Notifications with Asana & WhatsApp",
+    "views": 5842,
+    "recentViews": 0,
+    "totalViews": 5842,
+    "createdAt": "2024-04-18T15:06:46.754Z",
+    "description": "## How it works:\nThis workflow automates your customer service with built in notifications for your users & ticket creation with Asana.\n\nIf a user submits a form, he gets send a confirmation message via WhatsApp a task is opened in Asana with his request in it.\n\n## Setup:\n- You need to add your credentials to the **WhatsApp Business Cloud** node.\n- You need to add your credentials to the **Asana** node.\n- Replace the placeholders with the correct phone number, id, and so on.\n- Change the confirmation message to your liking.\n\n## Optional Changes:\n- You could extend this workflow to update your user on the progress of the ticket in Asana.\n- You can change the messaging from WhatsApp to E-Mail.\n- You can change the form submission service from n8n-native to Typeform or similar.\n- You can change the task management software from Asana to the one you use.\n\n\n[**Click here to find a blog post with additional information.**](https://n8n-automation.com/2024/04/24/optimizing-customer-service-a-guide-to-automating-ticket-creation-notifications-with-asana-whatsapp-business-cloud/)",
+    "workflow": {
+      "id": "lWfWe93aNGuNPLBz",
+      "meta": {
+        "instanceId": "9fd9ca4c1981198aec5412811736ddc08ea74ed6ff5bea7bfdaf584bc90b5d4c"
+      },
+      "name": "Automate Your Customer Service With WhatsApp Business Cloud & Asana",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "9d2a824a-6344-499e-a28a-454cf27b18e1",
+          "name": "n8n Form Trigger",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            40,
+            620
+          ],
+          "webhookId": "15e05cd5-c58d-4bf2-8358-f0cd1917334f",
+          "parameters": {
+            "path": "15e05cd5-c58d-4bf2-8358-f0cd1917334f",
+            "options": {},
+            "formTitle": "Contact Us!",
+            "formFields": {
+              "values": [
+                {
+                  "fieldLabel": "Whats is your Name?",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "number",
+                  "fieldLabel": "What is your Phone Number?",
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "What is your problem?",
+                  "requiredField": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ac7cca4a-e42b-4eaa-bd8b-121c27b4f976",
+          "name": "WhatsApp Business Cloud",
+          "type": "n8n-nodes-base.whatsApp",
+          "position": [
+            800,
+            480
+          ],
+          "parameters": {
+            "textBody": "=Hello {{ $json[\"Whats is your Name?\"] }},\n\nThank you for filling out the contact form.\nOur customer support team will get back to you as soon as possible.",
+            "operation": "send",
+            "phoneNumberId": "YOUR_PHONE_NUMBER",
+            "additionalFields": {},
+            "recipientPhoneNumber": "=+{{ $json['What is your Phone Number?'] }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "76a1a4d6-241d-4167-a7b6-3e8552752b2a",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            20
+          ],
+          "parameters": {
+            "width": 835.3263974964024,
+            "height": 399.17043043523586,
+            "content": "## Setup\n**Create and integrate your form**\n- You can use n8n native form or services like Typeform and integrate with them.\n- If you rename the phone number field, you also have to change this in the \"WhatsApp Business Cloud\" node \n- If you let people enter their phone number in another format (e.g. text) you may need to add in additional data transformation nodes\n\n**Add your WhatsApp Business Cloud credentials & your phone number**\n- Go into the \"WhatsApp Business Cloud\" node and add your credentials\n- Replace the placeholder by your WhatsApp Business Cloud phone number\n\n**Change the text body to your liking**\n- The text body right now is a confirmation of. contact form. You can change that to your liking & use-case.\n\n**Add your Asana credentials & add your workspace ID**\n- Go into the \"Asana\" node and add your credentials\n- Replace the placeholder by your Asana workspace ID"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3259ab56-8e5b-480a-b037-a23872bd9cbd",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -400,
+            580
+          ],
+          "parameters": {
+            "width": 393.38103690955325,
+            "height": 218.49276831296547,
+            "content": "## Data input\n**Form submissions**\n\nThe default way to get your data into this workflow is a n8n-native form submission. \n\nTechnically you could also change it in a way that you get your data out of another form submission service, if you already have one in place, like Typeform or similar.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "71310c11-bb13-4b97-a183-da9a5e0ee007",
+          "name": "Asana",
+          "type": "n8n-nodes-base.asana",
+          "position": [
+            800,
+            820
+          ],
+          "parameters": {
+            "name": "=Support Ticket -  {{ $json.submittedAt }}",
+            "workspace": "YOUR_WORKSPACE_ID",
+            "otherProperties": {
+              "notes": "={{ $json['What is your problem?'] }}"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3827e54a-bc87-4fa3-933f-0d1619d85697",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            420
+          ],
+          "parameters": {
+            "width": 472.6712339560175,
+            "height": 271.78617944255603,
+            "content": "## Confirmation Message\n**WhatsApp Business Cloud**\n\nThe default way to message your customer in this workflow is WhatsApp. \n\nIf your customers prefer e-mail, you can also add this capabilities to this workflow.\n\nYou would just need to change the form in a way to get the users mail, and integrate with a SMTP server or a mail-sending provider."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "299327d9-18e1-41e2-975a-4808d6b542bb",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            780
+          ],
+          "parameters": {
+            "width": 472.6712339560175,
+            "height": 206.79421465037234,
+            "content": "## Task Management\n**Asana**\n\nThe default way to to save the support tickets in this workflow is Asana. \n\nIf your teams work with another task management software, you can replace this node."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "1aedd3d7-f980-46dd-ac0b-af085e3dcf05",
+      "connections": {
+        "n8n Form Trigger": {
+          "main": [
+            [
+              {
+                "node": "WhatsApp Business Cloud",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Asana",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.asana": {
+          "count": 1
+        },
+        "n8n-nodes-base.whatsApp": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Bela",
+      "username": "bwiertz",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "https://n8n-automation.com/our-services/"
+      ],
+      "avatar": "https://gravatar.com/avatar/9ee80c295a2f128e898348c2b2349f369b065d504f5b214ced40800eb3b6a46d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 3,
+        "icon": "file:asana.svg",
+        "name": "n8n-nodes-base.asana",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.asana/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/asana/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Asana"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGRlZnM+PHJhZGlhbEdyYWRpZW50IGlkPSJhIiBjeD0iNTAlIiBjeT0iNTUlIiByPSI3Mi41MDclIiBmeD0iNTAlIiBmeT0iNTUlIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC45MjQwNCAwIDAgMSAuMDM4IDApIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjRkZCOTAwIi8+PHN0b3Agb2Zmc2V0PSI2MCUiIHN0b3AtY29sb3I9IiNGOTVEOEYiLz48c3RvcCBvZmZzZXQ9Ijk5LjkxJSIgc3RvcC1jb2xvcj0iI0Y5NTM1MyIvPjwvcmFkaWFsR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9InVybCgjYSkiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ1LjU5NCAyOC41Yy02Ljk5NC4wMDMtMTIuNjY0IDUuNjczLTEyLjY2NyAxMi42NjcuMDAzIDYuOTk1IDUuNjczIDEyLjY2NCAxMi42NjcgMTIuNjY4IDYuOTk1LS4wMDQgMTIuNjY0LTUuNjczIDEyLjY2Ny0xMi42NjgtLjAwMy02Ljk5NC01LjY3Mi0xMi42NjQtMTIuNjY3LTEyLjY2N20tMzIuOTI3LjAwMUM1LjY3MyAyOC41MDUuMDAzIDM0LjE3NCAwIDQxLjE3Yy4wMDMgNi45OTQgNS42NzMgMTIuNjY0IDEyLjY2NyAxMi42NjcgNi45OTUtLjAwMyAxMi42NjQtNS42NzMgMTIuNjY4LTEyLjY2Ny0uMDA0LTYuOTk1LTUuNjczLTEyLjY2NC0xMi42NjgtMTIuNjY4ek00MS43OSAxMi42NjdjLS4wMDIgNi45OTUtNS42NzEgMTIuNjY1LTEyLjY2NiAxMi42Ny02Ljk5NS0uMDA0LTEyLjY2NC01LjY3NC0xMi42NjctMTIuNjdDMTYuNDYgNS42NzMgMjIuMTMuMDAzIDI5LjEyMyAwYzYuOTk0LjAwNCAxMi42NjMgNS42NzMgMTIuNjY2IDEyLjY2N3oiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC43MzIgMi43MzIpIi8+PC9zdmc+"
+        },
+        "displayName": "Asana",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 827,
+        "icon": "file:whatsapp.svg",
+        "name": "n8n-nodes-base.whatsApp",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.whatsapp/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/whatsapp/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "WhatsApp Business Cloud"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIHZpZXdCb3g9IjAgMCA0OCA0OCI+PHBhdGggZmlsbD0iI2ZmZiIgZD0ibTQuODY4IDQzLjMwMyAyLjY5NC05LjgzNWExOC45NCAxOC45NCAwIDAgMS0yLjUzNS05LjQ4OUM1LjAzMiAxMy41MTQgMTMuNTQ4IDUgMjQuMDE0IDVhMTguODcgMTguODcgMCAwIDEgMTMuNDMgNS41NjZBMTguODcgMTguODcgMCAwIDEgNDMgMjMuOTk0Yy0uMDA0IDEwLjQ2NS04LjUyMiAxOC45OC0xOC45ODYgMTguOThoLS4wMDhhMTkgMTkgMCAwIDEtOS4wNzMtMi4zMTF6Ii8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTQuODY4IDQzLjgwM2EuNS41IDAgMCAxLS40ODItLjYzMWwyLjYzOS05LjYzNmExOS41IDE5LjUgMCAwIDEtMi40OTctOS41NTZDNC41MzIgMTMuMjM4IDEzLjI3MyA0LjUgMjQuMDE0IDQuNWExOS4zNyAxOS4zNyAwIDAgMSAxMy43ODQgNS43MTNBMTkuMzYgMTkuMzYgMCAwIDEgNDMuNSAyMy45OTRjLS4wMDQgMTAuNzQxLTguNzQ2IDE5LjQ4LTE5LjQ4NiAxOS40OGExOS41NCAxOS41NCAwIDAgMS05LjE0NC0yLjI3N2wtOS44NzUgMi41ODlhLjUuNSAwIDAgMS0uMTI3LjAxNyIvPjxwYXRoIGZpbGw9IiNjZmQ4ZGMiIGQ9Ik0yNC4wMTQgNWExOC44NyAxOC44NyAwIDAgMSAxMy40MyA1LjU2NkExOC44NyAxOC44NyAwIDAgMSA0MyAyMy45OTRjLS4wMDQgMTAuNDY1LTguNTIyIDE4Ljk4LTE4Ljk4NiAxOC45OGgtLjAwOGExOSAxOSAwIDAgMS05LjA3My0yLjMxMWwtMTAuMDY1IDIuNjQgMi42OTQtOS44MzVhMTguOTQgMTguOTQgMCAwIDEtMi41MzUtOS40ODlDNS4wMzIgMTMuNTE0IDEzLjU0OCA1IDI0LjAxNCA1bTAtMUMxMi45OTggNCA0LjAzMiAxMi45NjIgNC4wMjcgMjMuOTc5YTIwIDIwIDAgMCAwIDIuNDYxIDkuNjIyTDMuOTAzIDQzLjA0YS45OTguOTk4IDAgMCAwIDEuMjE5IDEuMjMxbDkuNjg3LTIuNTRhMjAgMjAgMCAwIDAgOS4xOTcgMi4yNDRjMTEuMDI0IDAgMTkuOTktOC45NjMgMTkuOTk1LTE5Ljk4QTE5Ljg2IDE5Ljg2IDAgMCAwIDM4LjE1MyA5Ljg2IDE5Ljg3IDE5Ljg3IDAgMCAwIDI0LjAxNCA0Ii8+PHBhdGggZmlsbD0iIzQwYzM1MSIgZD0iTTM1LjE3NiAxMi44MzJhMTUuNjcgMTUuNjcgMCAwIDAtMTEuMTU3LTQuNjI2Yy04LjcwNCAwLTE1Ljc4MyA3LjA3Ni0xNS43ODcgMTUuNzc0YTE1Ljc0IDE1Ljc0IDAgMCAwIDIuNDEzIDguMzk2bC4zNzYuNTk3LTEuNTk1IDUuODIxIDUuOTczLTEuNTY2LjU3Ny4zNDJhMTUuNzUgMTUuNzUgMCAwIDAgOC4wMzIgMi4xOTloLjAwNmM4LjY5OCAwIDE1Ljc3Ny03LjA3NyAxNS43OC0xNS43NzZhMTUuNjggMTUuNjggMCAwIDAtNC42MTgtMTEuMTYxIi8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTE5LjI2OCAxNi4wNDVjLS4zNTUtLjc5LS43MjktLjgwNi0xLjA2OC0uODItLjI3Ny0uMDEyLS41OTMtLjAxMS0uOTA5LS4wMTFzLS44My4xMTktMS4yNjUuNTk0LTEuNjYxIDEuNjIyLTEuNjYxIDMuOTU2IDEuNyA0LjU5IDEuOTM3IDQuOTA2IDMuMjgyIDUuMjU5IDguMTA0IDcuMTYxYzQuMDA3IDEuNTggNC44MjMgMS4yNjYgNS42OTMgMS4xODdzMi44MDctMS4xNDcgMy4yMDItMi4yNTUuMzk1LTIuMDU3LjI3Ny0yLjI1NWMtLjExOS0uMTk4LS40MzUtLjMxNi0uOTA5LS41NTRzLTIuODA3LTEuMzg1LTMuMjQyLTEuNTQzLS43NTEtLjIzNy0xLjA2OC4yMzhjLS4zMTYuNDc0LTEuMjI1IDEuNTQzLTEuNTAyIDEuODU5cy0uNTU0LjM1Ny0xLjAyOC4xMTktMi4wMDItLjczOC0zLjgxNS0yLjM1NGMtMS40MS0xLjI1Ny0yLjM2Mi0yLjgxLTIuNjM5LTMuMjg1LS4yNzctLjQ3NC0uMDMtLjczMS4yMDgtLjk2OC4yMTMtLjIxMy40NzQtLjU1NC43MTItLjgzMS4yMzctLjI3Ny4zMTYtLjQ3NS40NzQtLjc5MXMuMDc5LS41OTQtLjA0LS44MzFjLS4xMTctLjIzOC0xLjAzOS0yLjU4NC0xLjQ2MS0zLjUyMiIvPjwvc3ZnPg=="
+        },
+        "displayName": "WhatsApp Business Cloud",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 13,
+        "name": "Support"
+      }
+    ],
+    "image": []
+  }
+}

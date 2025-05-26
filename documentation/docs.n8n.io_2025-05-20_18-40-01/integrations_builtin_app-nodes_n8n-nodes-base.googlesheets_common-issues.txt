@@ -1,0 +1,35 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/common-issues/
+Scraped_At: 2025-05-20T18:48:13.136281
+
+Google Sheets node common issues
+#
+Here are some common errors and issues with the
+Google Sheets node
+and steps to resolve or troubleshoot them.
+Append an array
+#
+To insert an array of data into Google Sheets, you must convert the array into a valid JSON (key, value) format.
+To do so, consider using:
+The
+Split Out
+node.
+The
+AI Transform
+node. For example, try entering something like:
+1
+Convert 'languages' array to JSON (key, value) pairs.
+The
+Code node
+.
+Column names were updated after the node's setup
+#
+You'll receive this error if the Google Sheet's column names have changed since you set up the node.
+To refresh the column names, re-select
+Mapping Column Mode
+. This should prompt the node to fetch the column names again.
+Once the column names refresh, update the node parameters.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

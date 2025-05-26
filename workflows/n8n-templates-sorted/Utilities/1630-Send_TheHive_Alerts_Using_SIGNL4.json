@@ -1,0 +1,658 @@
+{
+  "workflow": {
+    "id": 1630,
+    "name": "Send TheHive Alerts Using SIGNL4",
+    "views": 718,
+    "recentViews": 0,
+    "totalViews": 718,
+    "createdAt": "2022-05-11T15:33:21.004Z",
+    "description": "This sample workflow allows you to forward alerts from TheHive 5 to SIGNL4 in order to send reliable alerts to your team.\n\nThere are two nodes for testing the TheHive connection (\"TheHive Read Alerts\" and \"TheHive Create Alert\").\n\nThe node \"TheHive Webhook Request\" will receive requests for new alerts from TheHive. You need to configure the webhook and the notifications in TheHive accordingly.\n\nThe node \"SIGNL4 Send Alert\" sends the alert to SIGNL4 and the node \"SIGNL4 Resolve Alert\" will close the alert in SIGNL4 in case it has been closed in TheHive.\n",
+    "workflow": {
+      "id": 3,
+      "name": "TheHive",
+      "nodes": [
+        {
+          "name": "TheHive Create Alert",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            500,
+            360
+          ],
+          "parameters": {
+            "date": "2022-04-25T08:53:18.000Z",
+            "tags": "tlp:pwhite",
+            "type": "misp",
+            "title": "TheHive Alert",
+            "source": "1311",
+            "sourceRef": "1330",
+            "description": "Security issue detected on server A2. Please check and take care.",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "TheHive Read Alerts",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            500,
+            200
+          ],
+          "parameters": {
+            "filters": {},
+            "options": {},
+            "operation": "getAll"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "IF",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            280,
+            540
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{$node[\"TheHive Webhook Request\"].json[\"body\"][\"object\"][\"stage\"]}}",
+                  "value2": "=Closed",
+                  "operation": "notEqual"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SIGNL4 Send Alert",
+          "type": "n8n-nodes-base.signl4",
+          "position": [
+            500,
+            520
+          ],
+          "parameters": {
+            "message": "={{$node[\"TheHive Webhook Request\"].json[\"body\"][\"details\"][\"description\"]}}",
+            "additionalFields": {
+              "title": "={{$node[\"TheHive Webhook Request\"].json[\"body\"][\"details\"][\"title\"]}}",
+              "externalId": "={{$node[\"TheHive Webhook Request\"].json[\"body\"][\"objectId\"]}}"
+            }
+          },
+          "credentials": {
+            "signl4Api": {
+              "id": "2",
+              "name": "SIGNL4 Webhook account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "TheHive Webhook Request",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            80,
+            540
+          ],
+          "webhookId": "22c76955-3f52-469e-a8ae-3f62e8e87ebe",
+          "parameters": {
+            "path": "22c76955-3f52-469e-a8ae-3f62e8e87ebe",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Start (Testing)",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            80,
+            200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "SIGNL4 Resolve Alert",
+          "type": "n8n-nodes-base.signl4",
+          "position": [
+            500,
+            720
+          ],
+          "parameters": {
+            "operation": "resolve",
+            "externalId": "={{$node[\"TheHive Webhook Request\"].json[\"body\"][\"objectId\"]}}"
+          },
+          "credentials": {
+            "signl4Api": {
+              "id": "2",
+              "name": "SIGNL4 Webhook account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "IF": {
+          "main": [
+            [
+              {
+                "node": "SIGNL4 Send Alert",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "SIGNL4 Resolve Alert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Start (Testing)": {
+          "main": [
+            [
+              {
+                "node": "TheHive Create Alert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "TheHive Webhook Request": {
+          "main": [
+            [
+              {
+                "node": "IF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.signl4": {
+          "count": 2
+        },
+        "n8n-nodes-base.theHive": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Ron",
+      "username": "rons4",
+      "bio": "Co-founder at Derdack, Exploration at SIGNL4. Passionate about technology, SaaS, IoT, mobile, alerting, learning and more.",
+      "verified": true,
+      "links": [
+        "https://www.signl4.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/1af910dd96a18543fb15bf2097e28a14a72401781ec1ac4ffce7a07ad11dac7f?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 334,
+        "icon": "file:signl4.png",
+        "name": "n8n-nodes-base.signl4",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.signl4/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/signl4/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "SIGNL4"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "SIGNL4",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 417,
+        "icon": "file:thehive.svg",
+        "name": "n8n-nodes-base.theHive",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/thehive/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "TheHive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48ZGVmcz48c3R5bGU+LmNscy0ye2ZpbGw6I2ZmZn08L3N0eWxlPjwvZGVmcz48cGF0aCBmaWxsPSIjZjNkMDJmIiBkPSJNMjkwIDE1MEExNDAgMTQwIDAgMSAxIDE1MCAxMGExNDAgMTQwIDAgMCAxIDE0MCAxNDAiLz48cGF0aCBkPSJNMjA0LjYyIDIxMC42YTE1LjEgMTUuMSAwIDAgMS02LjY4IDEuMzggMTcuNDkgMTcuNDkgMCAwIDEtMTYuMTEtMTAuOTNsLTQuODMtMTEuNi03LjMxLTE4LjI4YTUuMDUgNS4wNSAwIDAgMC0uNy0yLjEybC0xMC4xLTI1LjMxYzE2LjE1IDIuODYgNDUuOTMgMjAuMTYgNTUuNjggNDMuNzIgMy40OCA5LjQ5LS43NiAxOS42Ni05LjkgMjMuMTRtLTU0Ljg3IDI3LjIxYy0xMS41OCAwLTIxLTguNS0yNC44NS0yMS41bDQ5Ljg1LjE2Yy0zLjkgMTMuMzMtMTMuNDEgMjEuMzgtMjUgMjEuMzRtLTQ4LTI2LjE0YTE0LjMgMTQuMyAwIDAgMS02LjY3LTEuNDNjLTguNzYtMy44OS0xMy4yOS0xNC4wOS05LjQtMjIuODUgOS45MS0yMy44NSAzOS44MS00MC45NSA1Ni00My4zNkwxMzEgMTcwbC03Ljc5IDE5LjI5LTUgMTEuNTdhMTguMzQgMTguMzQgMCAwIDEtMTYuNTMgMTAuODNtNDIuNjMtNDUuMTYgNS42OS0xMy42OSA1LjU3IDEzLjcxem0tNy43OSAxOS4yOSAzLjE5LTguMDYgMjAuMzcuMDcgMy4xMyA4LjA4em0tNSAxMS41NyAzNi4xNy4xMiAzLjEzIDguMDktNDIuNDgtLjE1em0xOC41Ni05MC44N2M5LjQ4IDAgMTcuNTMgOS4xOCAxNy41IDE2LjU2IDAgOC43Ny0xNC40MyA5LjQzLTE3LjIzIDkuNDEtMy4xNiAwLTE3LjIxLS40LTE3LjE4LTkuNTMtLjY3LTcuMzggNy40My0xNi40OCAxNi45MS0xNi40NG0tMTMuMi0uNDJhMy43NSAzLjc1IDAgMCAxLTMuMzktMi4xNWwtNS44MS0xMi4zNGEzLjc0IDMuNzQgMCAxIDEgNi43Ny0zLjE5bDUuODEgMTIuMzRhMy43NCAzLjc0IDAgMCAxLTEuNzkgNSAzLjggMy44IDAgMCAxLTEuNTkuMzZtMjYuMjQtLjAyYTMuOCAzLjggMCAwIDEtMS41OS0uMzYgMy43NCAzLjc0IDAgMCAxLTEuNzktNWw1LjgyLTEyLjM1YTMuNzQgMy43NCAwIDEgMSA2Ljc3IDMuMkwxNjYuNTEgMTA0YTMuNzUgMy43NSAwIDAgMS0zLjM5IDIuMTUiIGNsYXNzPSJjbHMtMiIvPjxwYXRoIGQ9Ik0yMDQuMzYgMTU3LjgxYTMuNzQgMy43NCAwIDAgMS0zLjI2LTUuNTZsMTQuNDEtMjUuODctMzIuODctNTYuN2gtNjUuMjhMODQuNTQgMTI2LjNsMTUuNjYgMjUuODNhMy43NCAzLjc0IDAgMCAxLTYuNCAzLjg3TDc3IDEyOC4yOGEzLjcyIDMuNzIgMCAwIDEgMC0zLjgxbDM1LTYwLjQxYTMuNzcgMy43NyAwIDAgMSAzLjI0LTEuODdoNjkuNmEzLjc1IDMuNzUgMCAwIDEgMy4xNiAxLjg3bDM1IDYwLjQxYTMuNzMgMy43MyAwIDAgMSAwIDMuN2wtMTUuNDQgMjcuNzJhMy43NSAzLjc1IDAgMCAxLTMuMjggMS45MiIgY2xhc3M9ImNscy0yIi8+PC9zdmc+"
+        },
+        "displayName": "TheHive",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

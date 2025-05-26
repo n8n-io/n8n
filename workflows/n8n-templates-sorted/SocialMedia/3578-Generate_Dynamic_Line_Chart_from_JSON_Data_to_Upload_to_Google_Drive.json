@@ -1,0 +1,551 @@
+{
+  "workflow": {
+    "id": 3578,
+    "name": "Generate Dynamic Line Chart from JSON Data to Upload to Google Drive",
+    "views": 283,
+    "recentViews": 17,
+    "totalViews": 283,
+    "createdAt": "2025-04-16T16:57:21.009Z",
+    "description": "## What Does This Flow Do?\n\nThis workflow demonstrates how to dynamically generate a line chart using the QuickChart node based on data provided in a JSON object and then upload the resulting chart image to Google Drive. \n\n![chart.jpg](fileId:1121)\n\n## Use Cases\n\n* You can use it in presentations or requesting for chart generation from a software with HTTP requests.\n* Automated report generation (e.g., daily sales charts).\n* Visualizing data fetched from APIs or databases.\n* Simple monitoring dashboards.\n* Adding charts to internal tools or notifications.\n\n## How it Works\n\n1.  **Trigger:** The workflow starts manually when you click 'Test workflow'.\n2.  **Set Sample Data:** A Set node (`Edit Fields: Set JSON data to test`) defines a sample JSON object named `jsonData`. This object contains:\n    * `reportTitle`: A title (not used in the chart generation in this example, but useful for context).\n    * `labels`: An array of strings representing the labels for the chart's X-axis (e.g., [\"Q1\", \"Q2\", \"Q3\", \"Q4\"]).\n    * `salesData`: An array of numbers representing the data points for the chart's Y-axis (e.g., [1250, 1800, 1550, 2100]).\n3.  **Generate Chart:** The QuickChart node is configured to:\n    * Create a `line` chart.\n    * Dynamically read labels from the `jsonData.labels` array (`Labels Mode: From Array`).\n    * Use the `jsonData.salesData` array as the input data (Note: This configuration places data in the top-level 'Data' field. For more complex charts with multiple datasets or specific dataset options, configure datasets under 'Dataset Options' instead).\n    * The node outputs the generated chart image as binary data in a field named `data`.\n4.  **Upload to Google Drive:** The Google Drive node (`Google Drive: Upload File`):\n    * Takes the binary data (`data`) from the QuickChart node.\n    * Uploads the image to your specified Google Drive folder.\n    * Dynamically names the file based on its extension (e.g., `chart.png`).\n\n## Setup Steps\n\n1.  **Import:** Import this template into your n8n instance.\n2.  **Configure Google Drive Credentials:**\n    * Select the `Google Drive: Upload File` node.\n    * You **MUST** configure your own Google Drive credentials. Click on the 'Credentials' dropdown and either select existing credentials or create new ones by following the authentication prompts.\n3.  **(Optional) Customize Google Drive Folder:** In the `Google Drive: Upload File` node, you can change the `Drive ID` and `Folder ID` to specify exactly where the chart should be uploaded.\n4.  **Activate:** Activate the workflow if you want it to run automatically based on a different trigger.\n\n## How to Use & Customize\n\n* **Change Input Data:** Modify the `labels` and `salesData` arrays within the `Edit Fields: Set JSON data to test` node to use your own data. Ensure the number of labels matches the number of data points.\n* **Use Real Data Sources:** Replace the `Edit Fields: Set JSON data to test` node with nodes that fetch data from real sources like:\n    * HTTP Request (APIs)\n    * Postgres / MongoDB nodes (Databases)\n    * Google Sheets node\n    * Ensure the output data from your source node is formatted similarly (providing `labels` and `salesData` arrays). You might need another Set node to structure the data correctly before the QuickChart node.\n* **Change Chart Type:** In the QuickChart node, modify the `Chart Type` parameter (e.g., change from `line` to `bar`, `pie`, `doughnut`, etc.).\n* **Customize Chart Appearance:** Explore the `Chart Options` parameter within the QuickChart node to add titles, change colors, modify axes, etc., using QuickChart's standard JSON configuration options.\n* **Use Datasets (Recommended for Complex Charts):** For multiple lines/bars or more control, configure datasets explicitly in the QuickChart node:\n    * Remove the expression from the top-level `Data` field.\n    * Go to `Dataset Options` -&gt; `Add option` -&gt; `Add dataset`.\n    * Set the `Data` field within the dataset using an expression like `{{ $json.jsonData.salesData }}`.\n    * You can add multiple datasets this way.\n* **Change Output Destination:** Replace the `Google Drive: Upload File` node with other nodes to handle the chart image differently:\n    * `Write Binary File`: Save the chart to the local filesystem where n8n is running.\n    * `Slack` / `Discord` / `Telegram`: Send the chart to messaging platforms.\n    * `Move Binary Data`: Convert the image to Base64 to embed in HTML or return via webhook response.\n\n## Nodes Used\n\n* Manual Trigger\n* Set\n* QuickChart\n* Google Drive\n\n\n\n---\n\n**Tags:** (Suggestions for tags field)\n\n`QuickChart`, `Chart`, `Visualization`, `Line Chart`, `Google Drive`, `Reporting`, `Automation`\n\n---\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "c6511943b220d4ab672ac957465b13db475def5fbbd0b0e41240952f5fd0c300"
+      },
+      "nodes": [
+        {
+          "id": "e0721f8a-d157-4ec4-91b3-94060a841dc8",
+          "name": "QuickChart",
+          "type": "n8n-nodes-base.quickChart",
+          "position": [
+            240,
+            -40
+          ],
+          "parameters": {
+            "data": "={{ $json.jsonData.salesData }}",
+            "chartType": "line",
+            "labelsMode": "array",
+            "labelsArray": "={{ $json.jsonData.labels }}",
+            "chartOptions": {},
+            "datasetOptions": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b178ca51-357f-4731-8953-75e2370edc2d",
+          "name": "Edit Fields: Set JSON data to test",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -80,
+            -40
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "1b3ae0ac-7fa5-406c-8e61-d6a9a6c27f07",
+                  "name": "jsonData",
+                  "type": "object",
+                  "value": "={ \"reportTitle\": \"Quarterly Sales\", \"labels\": [\"Q1\", \"Q2\", \"Q3\", \"Q4\"], \"salesData\": [1250, 1800, 1550, 2100] }"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "393665db-f6a6-4294-afd8-3a9f32192c64",
+          "name": "Google Drive: Upload File",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            520,
+            -40
+          ],
+          "parameters": {
+            "name": "=chart.{{ $binary.data.fileExtension }}",
+            "driveId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "My Drive"
+            },
+            "options": {},
+            "folderId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "root",
+              "cachedResultName": "/ (Root folder)"
+            }
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "Vt3z79hk8lh9TUQq",
+              "name": "Google Drive account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "c4f2df73-50dc-4b9f-bcb8-43644c0cbed9",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -600,
+            -740
+          ],
+          "parameters": {
+            "width": 1460,
+            "height": 1060,
+            "content": "## Chart Generator\n**Generate Dynamic Line Chart from JSON Data to Upload to Google Drive\n### How to Use & Customize\n\n* **Change Input Data:** Modify the `labels` and `salesData` arrays within the `Edit Fields: Set JSON data to test` node to use your own data. Ensure the number of labels matches the number of data points.\n* **Use Real Data Sources:** Replace the `Edit Fields: Set JSON data to test` node with nodes that fetch data from real sources like:\n    * HTTP Request (APIs)\n    * Postgres / MongoDB nodes (Databases)\n    * Google Sheets node\n    * Ensure the output data from your source node is formatted similarly (providing `labels` and `salesData` arrays). You might need another Set node to structure the data correctly before the QuickChart node.\n* **Change Chart Type:** In the QuickChart node, modify the `Chart Type` parameter (e.g., change from `line` to `bar`, `pie`, `doughnut`, etc.).\n* **Customize Chart Appearance:** Explore the `Chart Options` parameter within the QuickChart node to add titles, change colors, modify axes, etc., using QuickChart's standard JSON configuration options.\n* **Use Datasets (Recommended for Complex Charts):** For multiple lines/bars or more control, configure datasets explicitly in the QuickChart node:\n    * Remove the expression from the top-level `Data` field.\n    * Go to `Dataset Options` -&gt; `Add option` -&gt; `Add dataset`.\n    * Set the `Data` field within the dataset using an expression like `{{ $json.jsonData.salesData }}`.\n    * You can add multiple datasets this way.\n* **Change Output Destination:** Replace the `Google Drive: Upload File` node with other nodes to handle the chart image differently:\n    * `Write Binary File`: Save the chart to the local filesystem where n8n is running.\n    * `Slack` / `Discord` / `Telegram`: Send the chart to messaging platforms.\n    * `Move Binary Data`: Convert the image to Base64 to embed in HTML or return via webhook response."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1af3cfc6-f690-4af2-a812-4a4da118a55c",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -400,
+            -40
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "QuickChart": {
+          "main": [
+            [
+              {
+                "node": "Google Drive: Upload File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields: Set JSON data to test",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields: Set JSON data to test": {
+          "main": [
+            [
+              {
+                "node": "QuickChart",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.quickChart": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Lucas Correia",
+      "username": "lucascorrei4",
+      "bio": "Brazilian Software Engineer passionate about productivity AI tools. Looking to connect with others on building and integrating AI agents into web apps.",
+      "verified": false,
+      "links": [
+        "https://focusorganize.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/d13a2afd18bdf50c5c9c5d345c7ec2254ee33b3af21c8560c9a2cf116a3a6d77?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 843,
+        "icon": "file:quickChart.svg",
+        "name": "n8n-nodes-base.quickChart",
+        "codex": {
+          "data": {
+            "alias": [
+              "image",
+              "graph",
+              "report",
+              "chart",
+              "diagram",
+              "data",
+              "visualize"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickchart/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/quickchart/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "QuickChart"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI0NDUiIGhlaWdodD0iNDQ1Ij48ZyBzdHlsZT0ic3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwO2ZpbGw6bm9uZTtmaWxsLXJ1bGU6bm9uemVybztvcGFjaXR5OjEiPjxwYXRoIGQ9Ik00MC4xMzUgOTBoLTguNzgyYTIuNzUgMi43NSAwIDAgMS0yLjc1LTIuNzVWNDUuMzgxYTIuNzUgMi43NSAwIDAgMSAyLjc1LTIuNzVoOC43ODJhMi43NSAyLjc1IDAgMCAxIDIuNzUgMi43NVY4Ny4yNWEyLjc1IDIuNzUgMCAwIDEtMi43NSAyLjc1IiBzdHlsZT0ic3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwO2ZpbGw6I2ZmYzM2ZTtmaWxsLXJ1bGU6bm9uemVybztvcGFjaXR5OjEiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yLjQ3MiAtMi40NzIpc2NhbGUoNC45NCkiLz48cGF0aCBkPSJNNTguNjQ3IDkwaC04Ljc4MmEyLjc1IDIuNzUgMCAwIDEtMi43NS0yLjc1VjMxLjQ0OWEyLjc1IDIuNzUgMCAwIDEgMi43NS0yLjc1aDguNzgyYTIuNzUgMi43NSAwIDAgMSAyLjc1IDIuNzVWODcuMjVhMi43NSAyLjc1IDAgMCAxLTIuNzUgMi43NSIgc3R5bGU9InN0cm9rZTpub25lO3N0cm9rZS13aWR0aDoxO3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDtmaWxsOiNhNWQ3NmU7ZmlsbC1ydWxlOm5vbnplcm87b3BhY2l0eToxIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMi40NzIgLTIuNDcyKXNjYWxlKDQuOTQpIi8+PHBhdGggZD0iTTIxLjYyNCA5MGgtOC43ODJhMi43NSAyLjc1IDAgMCAxLTIuNzUtMi43NVY1OS4zMTNhMi43NSAyLjc1IDAgMCAxIDIuNzUtMi43NWg4Ljc4MmEyLjc1IDIuNzUgMCAwIDEgMi43NSAyLjc1Vjg3LjI1YTIuNzUgMi43NSAwIDAgMS0yLjc1IDIuNzUiIHN0eWxlPSJzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MTtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLWxpbmVjYXA6YnV0dDtzdHJva2UtbGluZWpvaW46bWl0ZXI7c3Ryb2tlLW1pdGVybGltaXQ6MTA7ZmlsbDojZDI1NTVhO2ZpbGwtcnVsZTpub256ZXJvO29wYWNpdHk6MSIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTIuNDcyIC0yLjQ3MilzY2FsZSg0Ljk0KSIvPjxwYXRoIGQ9Ik03Ny4xNTggOTBoLTguNzgyYTIuNzUgMi43NSAwIDAgMS0yLjc1LTIuNzVWMTcuNTE3YTIuNzUgMi43NSAwIDAgMSAyLjc1LTIuNzVoOC43ODJhMi43NSAyLjc1IDAgMCAxIDIuNzUgMi43NVY4Ny4yNWEyLjc1IDIuNzUgMCAwIDEtMi43NSAyLjc1IiBzdHlsZT0ic3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwO2ZpbGw6Izc4ZDJiZTtmaWxsLXJ1bGU6bm9uemVybztvcGFjaXR5OjEiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yLjQ3MiAtMi40NzIpc2NhbGUoNC45NCkiLz48cGF0aCBkPSJNNjcuNzczIDE3Ljk3N2gxOC4xODNjMS43ODcgMCAyLjY4Mi0yLjI1OCAxLjQxOC0zLjU3OEw3NC4xODUuNjE0YTEuOTQ0IDEuOTQ0IDAgMCAwLTIuODM2IDBMNTguMTYgMTQuMzk4Yy0xLjI2NCAxLjMyMS0uMzY5IDMuNTc4IDEuNDE4IDMuNTc4eiIgc3R5bGU9InN0cm9rZTpub25lO3N0cm9rZS13aWR0aDoxO3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDtmaWxsOiM3OGQyYmU7ZmlsbC1ydWxlOm5vbnplcm87b3BhY2l0eToxIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMi40NzIgLTIuNDcyKXNjYWxlKDQuOTQpIi8+PC9nPjwvc3ZnPg=="
+        },
+        "displayName": "QuickChart",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 1121,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/chart_c6e9377bda.jpg"
+      }
+    ]
+  }
+}

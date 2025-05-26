@@ -1,0 +1,950 @@
+{
+  "workflow": {
+    "id": 2896,
+    "name": "N8N for Beginners: Looping over Items",
+    "views": 7744,
+    "recentViews": 24,
+    "totalViews": 7744,
+    "createdAt": "2025-02-13T00:40:12.140Z",
+    "description": "# N8N for Beginners: Looping Over Items\n\n## Description\n\nThis workflow is designed for **n8n beginners** to understand how n8n handles **looping (iteration)** over multiple items. It highlights two key behaviors:\n\n- **Built-In Looping:** By default, most n8n nodes iterate over each item in an input array.\n- **Explicit Looping:** The **Loop Over Items** node allows controlled iteration, enabling **custom batch processing** and multi-step workflows.\n\nThis workflow demonstrates the difference between processing an **unsplit array of strings (single item)** vs. **a split array (multiple items)**.\n\n---\n\n## Setup\n\n### 1. Input Data\n\nTo begin, **paste the following JSON** into the **Manual Trigger** node:\n\n```json\n{\n  \"urls\": [\n    \"https://www.reddit.com\",\n    \"https://www.n8n.io/\",\n    \"https://n8n.io/\",\n    \"https://supabase.com/\",\n    \"https://duckduckgo.com/\"\n  ]\n}\n```\n\n📌 **Steps to Paste Data:**\n- **Double-click** the \"Manual Trigger\" node.\n- Click **\"Edit Output\"** (top-right corner).\n- Paste the JSON and **Save**.\n- The node **turns purple**, indicating that test data is pinned.\n\n### 1. Click \"Test Workflow\" button at the bottom of the canvas\n\n\n---\n\n## Explanation of the n8n Nodes in the Workflow\n\n| Node Name | Purpose | Documentation Link |\n|-----------|---------|--------------------|\n| **[Manual Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualtrigger/)** | Starts the workflow manually and sends test data | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualtrigger/) |\n| **[Split Out](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/)** | Converts an array of strings into separate JSON objects | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/) |\n| **[Loop Over Items (Loop Over Items 1)](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/)** | Demonstrates how an **unsplit** array is treated as one item | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/) |\n| **[Loop Over Items (Loop Over Items 2)](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/)** | Iterates over **each item separately** | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/) |\n| **[Wait](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/)** | Introduces a delay per iteration (set to 1 second) | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/) |\n| **[Code](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/)** | Adds a constant parameter (`param1`) to each item | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/) |\n| **[NoOp (Result Nodes)](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/)** | Displays output for inspection | [Docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/) |\n\n---\n\n## Execution Details\n\n### 1. How the Workflow Runs\n\n- **Manual Trigger starts execution** with the pasted JSON data.\n- The workflow follows **two paths**:\n  1. **Unsplit Array Path** → **Loop Over Items 1**  \n     - Processes the entire array as **a single item**.\n     - **Result1 & Result5:** Show that the array was **not split**.\n  \n  2. **Split Array Path** → **Split Out → Loop Over Items 2**\n     - **Splits** the array into **separate objects**.\n     - **Result2, Result3, Result4:** Show that each item is processed **individually**.\n     - A **Wait node (1 sec delay)** demonstrates **controlled execution**.\n     - Code nodes modify the JSON, adding a parameter (`param1`).\n\n### 2. What You Will See\n\n| Node | Expected Output |\n|------|---------------|\n| **Result1 & Result5** | The entire array is processed **as one item**. |\n| **Result2, Result3, Result4** | The array is **split and processed** as **individual items**. |\n| **Wait Node** | Adds a **1-second delay per item** in **Loop Over Items 2**. |\n\n---\n\n## Use Cases\n\nThis workflow is useful for:\n\n✅ **API Data Processing:** Loop through **API responses** containing arrays.  \n✅ **Web Scraping:** Process **multiple URLs** individually.  \n✅ **Task Automation:** Execute **a sequence of actions per item**.  \n✅ **Workflow Optimization:** Control execution order, delays, and dependencies.\n\n---\n\n## Notes\n\n- Sticky notes are included in the workflow **for easy reference**.\n- The **Wait node** is **optional**—remove it for faster execution.\n- This template is structured for **beginners** but serves as a **building block** for more advanced automations.\n\n---\n\n",
+    "workflow": {
+      "id": "CDVBZRDH5gNUzIml",
+      "meta": {
+        "instanceId": "ab60b809a7fa5daa22fa7edffc14e989a6e59d4063ec838ad62f2655caafd963",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "N8N for Beginners: Looping over Items",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "500304a1-5164-4907-b0a7-e514e455e3dc",
+          "name": "Result1",
+          "type": "n8n-nodes-base.noOp",
+          "notes": "Look Here to see resulting output",
+          "position": [
+            880,
+            -280
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "32808ad1-1a35-497f-b1d3-c935a924c541",
+          "name": "Result2",
+          "type": "n8n-nodes-base.noOp",
+          "notes": "Look here to see resulting output",
+          "position": [
+            880,
+            40
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "f3c9fa5d-a4c7-4cf0-beb5-774d8483974f",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            -340
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 320,
+            "height": 240,
+            "content": "\n### Result1 shows that the array of strings is seen as one item by Loop1"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0bb96765-60ce-4618-9b39-7cd203a3cb48",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            -60
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 320,
+            "height": 260,
+            "content": "### Result2 shows that the Loop2 sees 5 items after the array of strings is split into separate objects"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b71fcc86-b0cd-4241-b0d6-21abe4c6b68d",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1680,
+            -1100
+          ],
+          "parameters": {
+            "width": 1200,
+            "height": 2480,
+            "content": "# N8N for Beginners: Looping Over Items\n\n## Description\n\nThis workflow is designed for **n8n beginners** to understand how n8n handles **looping (iteration)** over multiple items. It highlights two key behaviors:\n\n- **Built-In Looping:** By default, most n8n nodes iterate over each item in an input array.\n- **Explicit Looping:** The **Loop Over Items** node allows controlled iteration, enabling **custom batch processing** and multi-step workflows.\n\nThis workflow demonstrates the difference between processing an **unsplit array of strings (single item)** vs. **a split array (multiple items)**.\n\n---\n\n## Setup\n\n### 1. Input Data\n\nTo begin, **paste the following JSON** into the **Manual Trigger** node:\n\n```json\n{\n  \"urls\": [\n    \"https://www.reddit.com\",\n    \"https://www.n8n.io/\",\n    \"https://n8n.io/\",\n    \"https://supabase.com/\",\n    \"https://duckduckgo.com/\"\n  ]\n}\n```\n\nðŸ“Œ **Steps to Paste Data:**\n- **Double-click** the \"Manual Trigger\" node.\n- Click **\"Edit Output\"** (top-right corner).\n- Paste the JSON and **Save**.\n- The node **turns purple**, indicating that test data is pinned. \n\n---\n\n## Explanation of the n8n Nodes in the Workflow\n\n### Manual Trigger  \nThis node starts the workflow manually and sends test data.  \n**Documentation:** [Manual Trigger Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualtrigger/)\n\n### Split Out (Split Array of Strings into Array of Objects)  \nExtracts the `urls` array and splits it so that each URL becomes a separate JSON object.  \n**Documentation:** [Split Out Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/)\n\n### Loop Over Items (Loop Over Items 1)  \nDemonstrates how an **unsplit** array is treated as one item, processing it as a single unit.  \n**Documentation:** [Loop Over Items Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/)\n\n### Loop Over Items (Loop Over Items 2)  \nProcesses the **split array** one item at a time. This demonstrates individual iteration and controlled looping.  \n**Documentation:** [Loop Over Items Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/)\n\n### Wait Node  \nIntroduces a **1-second delay** per iteration to demonstrate sequential execution. This can be removed for faster performance.  \n**Documentation:** [Wait Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/)\n\n### Code Nodes (Add param1 to outputX)  \nEach Code node adds a constant field (`param1`) to the data, ensuring that every item gets enriched with the same parameter.  \n**Documentation:** [Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/)\n\n### NoOp Nodes (Result1, Result2, Result3, Result4, Result5)\nThese nodes display the output at different stages of the workflow for inspection.\n**Documentation:** [NoOp Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/)\n\n\n\n---\n\n## Execution Details\n\n### 1. How the Workflow Runs\n\n- **Manual Trigger starts execution** with the pasted JSON data.\n- The workflow follows **two paths**:\n\n#### Unsplit Array Path â†’ Loop Over Items 1  \n- The original JSON is processed **as a single item**.  \n- **Result1 & Result5:** Show that the array was **not split** before processing.\n\n#### Split Array Path â†’ Split Out â†’ Loop Over Items 2  \n- The **Split Out** node converts the `urls` array into separate objects.\n- The **Loop Over Items 2** node processes each URL **one by one**.\n- A **Wait node** (1-second delay) demonstrates **controlled execution**.\n- **Code nodes** modify the JSON, adding the field (`param1`).\n- **Result2, Result3, Result4:** Display the final processed output.\n\n### 2. What You Will See\n\n- **Result1 & Result5:** The entire array is processed **as one item** before splitting.\n- **Result2, Result3, Result4:** Each URL is processed **individually** after being split.\n- **Wait Node:** Adds a **1-second delay per item** in **Loop Over Items 2**.\n\n---\n\n## Notes\n\n- Sticky notes are included in the workflow **for easy reference**.\n- The **Wait node** is **optional**â€”remove it for faster execution.\n- This template is structured for **beginners** but serves as a **building block** for more advanced automations.\n\n---\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "53e7d23a-2a4f-4ada-aeb5-de128acf8625",
+          "name": "Split Array of Strings into Array of Objects",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -20,
+            380
+          ],
+          "parameters": {
+            "options": {
+              "destinationFieldName": "url"
+            },
+            "fieldToSplitOut": "urls"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4910fec6-d600-43be-97b2-5050039db416",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            700
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 320,
+            "height": 260,
+            "content": "### Result4 shows that we can turn off the looping feature by setting the looping behavior to \"Run Once For All Items\""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f0e68b30-5341-4672-8d8e-7a24d894eb03",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            420
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 320,
+            "height": 240,
+            "content": "### Result3 shows that looping over items is built in to n8n nodes"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "70a987b9-6a4a-49c3-a87c-0dd9cc1879ed",
+          "name": "Result3",
+          "type": "n8n-nodes-base.noOp",
+          "notes": "Look here to see resulting output",
+          "position": [
+            900,
+            500
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "9de5fac9-e987-4fb1-8f7f-b59af2985e5c",
+          "name": "Result4",
+          "type": "n8n-nodes-base.noOp",
+          "notes": "Look here to see resulting output",
+          "position": [
+            900,
+            780
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "d5fee847-7758-44ac-a270-6334dd81bb97",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            -640
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 320,
+            "height": 260,
+            "content": "### Result5 shows that the array of strings is seen as one item by Code5. So the behavior is the same as Loop1"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9a134620-4067-4c7a-8b0f-30e19c93a66c",
+          "name": "Result5",
+          "type": "n8n-nodes-base.noOp",
+          "notes": "Look here to see resulting output",
+          "position": [
+            880,
+            -540
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "c273cd55-708d-4f86-81f2-3bbe991f59f8",
+          "name": "Paste JSON into this node",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -400,
+            -540
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "8f64b987-05c5-43a9-89c0-201499df0aa6",
+          "name": "Add param1 to output5",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            320,
+            -540
+          ],
+          "parameters": {
+            "jsCode": "\n  $json.param1 =  'add_me_to_all_items_and_name_me_param1';\n\n\nreturn $json"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "4920b4e4-b511-4059-b38a-623d14b6df25",
+          "name": "Add param1 to output1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            500,
+            -180
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "\n  $json.param1 = \"add_me_to_all_items_and_name_me_param1\"\n\nreturn $json"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "28ce5239-6437-4b7a-9395-3beb162fded6",
+          "name": "Loop over Items 2",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            320,
+            60
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "628edc5e-1b7f-4f50-9c29-8990bd4a5cc0",
+          "name": "Loop over Items 1",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            320,
+            -260
+          ],
+          "parameters": {
+            "options": {
+              "reset": false
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "ffccda97-066d-4c13-b4eb-a13ff849b90a",
+          "name": "Add param1 to output2",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            680,
+            220
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "\n  $json.param1 =   \"add_me_to_all_items_and_name_me_param1\"\n\n\nreturn $json"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "6fb44840-6365-46db-9c50-eecd420f274f",
+          "name": "Add param1 to output3",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            320,
+            500
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "\n  $json.param1 =   \"add_me_to_all_items_and_name_me_param1\"\n\n\nreturn $json"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "51b8d766-25ed-407f-a956-693b93bda95f",
+          "name": "Add param1 to output4",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            320,
+            780
+          ],
+          "parameters": {
+            "jsCode": "\n  $json.param1 =   \"add_me_to_all_items_and_name_me_param1\"\n\n\nreturn $json"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "f8edde34-cf47-42e2-bbd3-552df2509451",
+          "name": "Wait one second(just for show)",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            480,
+            180
+          ],
+          "webhookId": "61aef80b-4e9d-43ae-a083-cd87b4fdec11",
+          "parameters": {
+            "amount": 1
+          },
+          "typeVersion": 1.1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "e1eff37a-1ffd-4691-9560-eada5baab88d",
+      "connections": {
+        "Result1": {
+          "main": [
+            []
+          ]
+        },
+        "Result2": {
+          "main": [
+            []
+          ]
+        },
+        "Loop over Items 1": {
+          "main": [
+            [
+              {
+                "node": "Result1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Add param1 to output1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop over Items 2": {
+          "main": [
+            [
+              {
+                "node": "Result2",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait one second(just for show)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add param1 to output1": {
+          "main": [
+            [
+              {
+                "node": "Loop over Items 1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add param1 to output2": {
+          "main": [
+            [
+              {
+                "node": "Loop over Items 2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add param1 to output3": {
+          "main": [
+            [
+              {
+                "node": "Result3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add param1 to output4": {
+          "main": [
+            [
+              {
+                "node": "Result4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add param1 to output5": {
+          "main": [
+            [
+              {
+                "node": "Result5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Paste JSON into this node": {
+          "main": [
+            [
+              {
+                "node": "Split Array of Strings into Array of Objects",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Add param1 to output5",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Loop over Items 1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait one second(just for show)": {
+          "main": [
+            [
+              {
+                "node": "Add param1 to output2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Array of Strings into Array of Objects": {
+          "main": [
+            [
+              {
+                "node": "Loop over Items 2",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Add param1 to output4",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Add param1 to output3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 21,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 5
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 5
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Dominik Baranowski",
+      "username": "dom",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/412926a58d669d9ba17342ac8c447255b43d50797cfe53353a41dacabd98de17?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

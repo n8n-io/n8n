@@ -1,0 +1,88 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/common-issues/
+Scraped_At: 2025-05-20T18:52:01.618113
+
+Telegram node common issues
+#
+Here are some common errors and issues with the
+Telegram node
+and steps to resolve or troubleshoot them.
+Add a bot to a Telegram channel
+#
+For a bot to send a message to a channel, you must add the bot to the channel. If you haven't added the bot to the channel, you'll see an error with a description like:
+Error: Forbidden: bot is not a participant of the channel
+.
+To add a bot to a channel:
+In the Telegram app, access the target channel and select the channel name.
+Label the channel name as
+public channel
+.
+Select
+Administrators
+>
+Add Admin
+.
+Search for the bot's username and select it.
+Select the checkmark on the top-right corner to add the bot to the channel.
+Get the Chat ID
+#
+You can only use
+@channelusername
+on public channels. To interact with a Telegram group, you need that group's Chat ID.
+There are three ways to get that ID:
+From the Telegram Trigger: Use the
+Telegram Trigger
+node in your workflow to get a Chat ID. This node can trigger on different events and returns a Chat ID on successful execution.
+From your web browser: Open Telegram in a web browser and open the group chat. The group's Chat ID is the series of digits behind the letter "g." Prefix your group Chat ID with a
+-
+when you enter it in n8n.
+Invite Telegram's
+@RawDataBot
+to the group: Once you add it, the bot outputs a JSON file that includes a
+chat
+object. The
+id
+for that object is the group Chat ID. Then remove the RawDataBot from your group.
+Send more than 30 messages per second
+#
+The Telegram API has a
+limitation
+of sending only 30 messages per second. Follow these steps to send more than 30 messages:
+Loop Over Items node
+: Use the
+Loop Over Items
+node to get at most 30 chat IDs from your database.
+Telegram node
+: Connect the Telegram node with the Loop Over Items node. Use the
+Expression Editor
+to select the Chat IDs from the Loop Over Items node.
+Code node
+: Connect the
+Code
+node with the Telegram node. Use the Code node to wait for a few seconds before fetching the next batch of chat IDs. Connect this node with the Loop Over Items node.
+You can also use this
+workflow
+.
+Remove the n8n attribution from sent messages
+#
+If you're using the node to
+send Telegram messages
+, the message automatically gets an n8n attribution appended to the end:
+This message was sent automatically with n8n
+To remove this attribution:
+In the node's
+Additional Fields
+section, select
+Add Field
+.
+Select
+Append n8n attribution
+.
+Turn the toggle off.
+Refer to
+Send Message additional fields
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

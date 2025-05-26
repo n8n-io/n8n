@@ -1,0 +1,103 @@
+URL: https://docs.n8n.io/integrations/community-nodes/installation/gui-install/
+Scraped_At: 2025-05-20T19:08:17.842103
+
+Install community nodes from npm in the n8n app
+#
+Only for instance owners of self-hosted n8n instances
+Only the n8n instance owner of a self-hosted n8n instance can install and manage community nodes from npm. The instance owner is the person who sets up and manages user management.
+Admin accounts can also uninstall any community node, verified or unverified. This helps them remove problematic nodes that may affect the instance's health and functionality.
+Install a community node
+#
+To install a community node from npm:
+Go to
+Settings
+>
+Community Nodes
+.
+Select
+Install
+.
+Find the node you want to install:
+Select
+Browse
+. n8n takes you to an npm search results page, showing all npm packages tagged with the keyword
+n8n-community-node-package
+.
+Browse the list of results. You can filter the results or add more keywords.
+Once you find the package you want, make a note of the package name. If you want to install a specific version, make a note of the version number as well.
+Return to n8n.
+Enter the npm package name, and version number if required. For example, consider a community node designed to access a weather API called "Storms." The package name is n8n-node-storms, and it has three major versions.
+To install the latest version of a package called n8n-node-weather: enter
+n8n-nodes-storms
+in
+Enter npm package name
+.
+To install version 2.3: enter
+n8n-node-storms@2.3
+in
+Enter npm package name
+.
+Agree to the
+risks
+of using community nodes: select
+I understand the risks of installing unverified code from a public source.
+Select
+Install
+. n8n installs the node, and returns to the
+Community Nodes
+list in
+Settings
+.
+Nodes on the blocklist
+n8n maintains a blocklist of community nodes that it prevents you from installing. Refer to
+n8n community node blocklist
+for more information.
+Uninstall a community node
+#
+To uninstall a community node:
+Go to
+Settings
+>
+Community nodes
+.
+On the node you want to install, select
+Options
+.
+Select
+Uninstall package
+.
+Select
+Uninstall Package
+in the confirmation modal.
+Upgrade a community node
+#
+Breaking changes in versions
+Node developers may introduce breaking changes in new versions of their nodes. A breaking change is an update that breaks previous functionality. Depending on the node versioning approach that a node developer chooses, upgrading to a version with a breaking change could cause all workflows using the node to break. Be careful when upgrading your nodes. If you find that an upgrade causes issues, you can
+downgrade
+.
+Upgrade to the latest version
+#
+You can upgrade community nodes to the latest version from the node list in
+Settings
+>
+community nodes
+.
+When a new version of a community node is available, n8n displays an
+Update
+button on the node. Click the button to upgrade to the latest version.
+Upgrade to a specific version
+#
+To upgrade to a specific version (a version other than the latest), uninstall the node, then reinstall it, making sure to specify the target version. Follow the
+Installation
+instructions for more guidance.
+Downgrade a community node
+#
+If there is a problem with a particular version of a community node, you may want to roll back to a previous version.
+To do this, uninstall the community node, then reinstall it, targeting a specific node version. Follow the
+Installation
+instructions for more guidance.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

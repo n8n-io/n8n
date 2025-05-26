@@ -1,0 +1,1890 @@
+{
+  "workflow": {
+    "id": 2293,
+    "name": "Sync blog posts from Notion to Webflow",
+    "views": 2197,
+    "recentViews": 0,
+    "totalViews": 2197,
+    "createdAt": "2024-06-15T14:19:34.317Z",
+    "description": "## Who is this for?\nThis template is for everyone who manages their blog entries in Notion and want to have an easy way to transform them to Webflow.\n\n## What this workflow does\nThis workflow syncs your blog posts saved in a Notion Database once a day to Webflow.\n- Sync Notion properties, rich text and cover image with your collection.\n- Works with most elements: H1, H2, H3, normal text, bold text, italic text, links, quotes, bulleted lists, numbered lists, and images (under 4MB).\n\n## Set up steps\n- Connect your accounts.\n- Add a \"slug\" field in Notion.\n- Add a \"Sync to Webflow?\" checkbox in Notion.\n- Run a test and map your collection data.\n\nWhenever the workflow runs, all the checked posts will be updated in the Webflow collection, whether it's a new post or an existing one.\n\n\n",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "adb2d3bc-c6ab-4bb6-b954-61956ca2836d",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1528.3572519550153,
+            3540
+          ],
+          "parameters": {
+            "width": 830.4857444594224,
+            "height": 495.4835100729081,
+            "content": "## Workflow installation\n* Add a \"slug\" text property to each blog post (this parameter will be synced with Webflow and will be used to determine if a post is new or already present in your Webflow collection)\n* Add a \"Sync to Webflow?\" checkbox to each blog post\n* Connect your accounts and run a test to fill Webflow nodes with the right fields\n\n[![image.png](https://i.postimg.cc/xCymVp7w/image.png)](https://postimg.cc/BLbbxpJp)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a5a79fd3-7adb-4e56-8aa7-2fd0cfc22927",
+          "name": "Get simple page data",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -80,
+            4520
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "resource": "databasePage",
+            "operation": "get"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "rxtaEXgFPg96muhy",
+              "name": "My Notion account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "dbb56719-e091-4475-94fb-430cd58ce8bb",
+          "name": "Get all page data",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -120,
+            4840
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "simple": false,
+            "resource": "databasePage",
+            "operation": "get"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "rxtaEXgFPg96muhy",
+              "name": "My Notion account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "af3fd27a-642e-4ec6-bc07-5d02076830e2",
+          "name": "Take cover url",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            100,
+            4840
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7f9960fb-9898-4d1a-b4d9-29c95fb7c144",
+                  "name": "cover_url",
+                  "type": "string",
+                  "value": "={{ $json.cover.external.url }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "5910292c-2548-4ca2-b7e4-304f99712e8d",
+          "name": "Merge1",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            320,
+            4640
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combinationMode": "mergeByPosition"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "65c81d79-770c-48d4-97b9-f22328c22465",
+          "name": "Data transporter1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            3220,
+            4900
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1bc81efb-d293-4c97-bcb8-e114de0e482c",
+          "name": "Get all blog posts1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -1220,
+            4640
+          ],
+          "parameters": {
+            "options": {},
+            "resource": "databasePage",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "4587b66c-d670-45b5-93f0-69ba1b0f3924",
+              "cachedResultUrl": "https://www.notion.so/4587b66cd67045b593f069ba1b0f3924",
+              "cachedResultName": "My blog"
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "rxtaEXgFPg96muhy",
+              "name": "My Notion account"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "56392232-05c7-477f-911f-7713d6cfa25f",
+          "name": "Is sync checked?1",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -940,
+            4640
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "461a5a59-f894-4dda-9233-175a1e228d23",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.property_sync_to_webflow }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "2a9fab27-612e-4eb9-935c-fd802f39c96e",
+          "name": "For each blog post1",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            -360,
+            4640
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "8f6d8e51-b92b-4780-b782-3f72203f40aa",
+          "name": "Sticky Note17",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            540,
+            4720
+          ],
+          "parameters": {
+            "width": 777.880012347261,
+            "height": 287.94399632670337,
+            "content": "### ⚙️ Turn blocks into rich text\nThis is where the magic happens — Notion blocks are mapped and turned into their respective html version. Works with all the major rich text elements: headings 1, headings 2, headings 3, normal, bold and italic text, quotes, bulleted lists, numbered lists and images with captions."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9592c56d-9bb2-433e-b49c-ec634e3d1db2",
+          "name": "Sticky Note18",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1980,
+            4420
+          ],
+          "parameters": {
+            "width": 218.00983675699544,
+            "height": 394.8629861599825,
+            "content": "### ✅ Create a new post or update an existing one?\nThis node compares (by slug) your Notion post with all your Webflow posts and chooses whether to create a new one (in \"A only\" branch) or update an existing one (in \"different\" branch)."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3ffb06d2-c1f1-4ce1-961f-8ece894d6cca",
+          "name": "Create post1",
+          "type": "n8n-nodes-base.webflow",
+          "position": [
+            2400,
+            4460
+          ],
+          "parameters": {
+            "siteId": "65a40576635069142ed11d7c",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldId": "name",
+                  "fieldValue": "={{ $json[\"name\"] }}"
+                },
+                {
+                  "fieldId": "slug",
+                  "fieldValue": "={{ $json.property_slug }}"
+                },
+                {
+                  "fieldId": "blog-post-richt-text",
+                  "fieldValue": "={{ $json.newRichText }}"
+                },
+                {
+                  "fieldId": "_archived",
+                  "fieldValue": "false"
+                },
+                {
+                  "fieldId": "_draft",
+                  "fieldValue": "true"
+                },
+                {
+                  "fieldId": "blog-post-featured-image-photo",
+                  "fieldValue": "={{ $json.cover_url }}"
+                },
+                {
+                  "fieldId": "blog-post-thumbnail-image-photo",
+                  "fieldValue": "={{ $json.cover_url }}"
+                }
+              ]
+            },
+            "operation": "create",
+            "collectionId": "65a40577635069142ed11dd8",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "webflowOAuth2Api": {
+              "id": "cGhEXKKL99szTUa1",
+              "name": "Webflow account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "e6490f39-b420-488c-b407-948425615764",
+          "name": "Sticky Note19",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -140,
+            3960
+          ],
+          "parameters": {
+            "width": 233.87813121439967,
+            "height": 389.3234455133497,
+            "content": "### 🎉 Success\nSend a success message where you want.\n\nYou can remove this node.\n\nNote: If you're on it, you may need to refresh the Webflow page."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "13568b0a-9665-4149-b848-2dc355b91126",
+          "name": "Update slug on posts1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2920,
+            4760
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Compare by slug1').item.json.different.id.inputA }}"
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "slug|rich_text",
+                  "textContent": "={{ $json.slug }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "rxtaEXgFPg96muhy",
+              "name": "My Notion account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "8574c1d2-491d-4bbb-bcc1-0bef64b321a2",
+          "name": "Slug uniqueness checker and differentiator1",
+          "type": "n8n-nodes-base.code",
+          "notes": "Add a number to the slug if it's not unique",
+          "position": [
+            -660,
+            4640
+          ],
+          "parameters": {
+            "jsCode": "const data = $input.all().map(item => item.json)\nconst slugCount = {};\n\nreturn data.map(item => {\n  let slug = item.property_slug;\n  \n  if (slugCount[slug]) {\n    slugCount[slug] += 1;\n    slug = `${slug}-${slugCount[slug]}`;\n  } else {\n    slugCount[slug] = 1;\n  }\n  \n  item.property_slug = slug;\n  return item;\n});"
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "21755856-9123-4acd-b343-3af878d665ad",
+          "name": "Success message1",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            -80,
+            4175
+          ],
+          "parameters": {
+            "text": "=[Notion to Webflow] — \"{{ $json.name }}\" successfully synced 🎉",
+            "select": "channel",
+            "channelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "C07719A0GF5",
+              "cachedResultName": "general"
+            },
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "slackOAuth2Api": {
+              "id": "qY28oJXU3BH6OrP3",
+              "name": "Desengineers Account"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6c232d4a-464b-4d5a-992b-f649d955eb1e",
+          "name": "Merge2",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2660,
+            4540
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combinationMode": "mergeByPosition"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "6af0cab5-8f70-435f-a341-c22d157d9200",
+          "name": "Compare by slug1",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            2040,
+            4640
+          ],
+          "parameters": {
+            "options": {},
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "property_slug",
+                  "field2": "slug"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "54a7dcf6-188e-4ca5-bc1e-3e76d5536236",
+          "name": "Add slug to posts1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2900,
+            4540
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "slug|rich_text",
+                  "textContent": "={{ $json.slug }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "rxtaEXgFPg96muhy",
+              "name": "My Notion account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "f9a66b20-ce82-4f36-b145-283dadf97d34",
+          "name": "Get all collection posts1",
+          "type": "n8n-nodes-base.webflow",
+          "position": [
+            1720,
+            4780
+          ],
+          "parameters": {
+            "siteId": "65a40576635069142ed11d7c",
+            "operation": "getAll",
+            "returnAll": true,
+            "collectionId": "65a40577635069142ed11dd8",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "webflowOAuth2Api": {
+              "id": "cGhEXKKL99szTUa1",
+              "name": "Webflow account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c09f3782-12a1-4a91-945d-cd1ed14bfeb3",
+          "name": "Data transporter, Notion posts to sync1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1720,
+            4480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9dc3ee15-4b4c-463c-a3b5-17b1dcb275da",
+          "name": "Craft the rich text element1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1160,
+            4836
+          ],
+          "parameters": {
+            "jsCode": "const blocks = $input.all().map(item => item.json);\n\nlet newRichText = '';\nlet bulletedListItems = [];\nlet numberedListItems = [];\n\nblocks.forEach(block => {\n  if (block.type === 'bulleted_list_item') {\n    bulletedListItems.push(block.html);\n  } else if (block.type === 'numbered_list_item') {\n    numberedListItems.push(block.html);\n  } else {\n    if (bulletedListItems.length > 0) {\n      newRichText += `<ul>${bulletedListItems.join('')}</ul>`;\n      bulletedListItems = [];\n    }\n    if (numberedListItems.length > 0) {\n      newRichText += `<ol>${numberedListItems.join('')}</ol>`;\n      numberedListItems = [];\n    }\n    newRichText += block.html;\n  }\n});\n\nif (bulletedListItems.length > 0) {\n  newRichText += `<ul>${bulletedListItems.join('')}</ul>`;\n}\nif (numberedListItems.length > 0) {\n  newRichText += `<ol>${numberedListItems.join('')}</ol>`;\n}\n\nconst output = [{ newRichText }];\nreturn output;\n\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e4ca0e5a-21bb-4d38-8448-8195b8994c12",
+          "name": "Turn blocks into HTML1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            860,
+            4840
+          ],
+          "parameters": {
+            "jsCode": "const blocks = $input.all().map(item => item.json);\nconst output = [];\n\nblocks.forEach(block => {\n  let html = '';\n  \n  switch (block.type) {\n    case 'heading_1':\n      html = block.heading_1.text.map(item => item.text.content).join(' ');\n      html = `<h1>${html}</h1>`;\n      break;\n    case 'heading_2':\n      html = block.heading_2.text.map(item => item.text.content).join(' ');\n      html = `<h2>${html}</h2>`;\n      break;\n    case 'heading_3':\n      html = block.heading_3.text.map(item => item.text.content).join(' ');\n      html = `<h3>${html}</h3>`;\n      break;\n    case 'paragraph':\n      html = `<p>${block.paragraph.text.map(item => {\n        let content = item.text.content.trim();\n        if (item.annotations.bold) content = `<b>${content}</b>`;\n        if (item.annotations.italic) content = `<i>${content}</i>`;\n        if (item.text.link) content = `<a href=\"${item.text.link.url}\">${content}</a>`;\n        return content;\n      }).join(' ') || '   '}</p>`; // the space inside the apostrophes is on purpose, otherwise Webflow will automatically delete the empty blocks\n      break;\n    case 'quote':\n      html = block.quote.text.map(item => item.text.content).join(' ');\n      html = `<blockquote>${html}</blockquote>`;\n      break;\n    case 'bulleted_list_item':\n      html = block.bulleted_list_item.text.map(item => item.text.content).join(' ');\n      html = `<li>${html}</li>`;\n      break;\n    case 'numbered_list_item':\n      html = block.numbered_list_item.text.map(item => item.text.content).join(' ');\n      html = `<li>${html}</li>`;\n      break;\n    case 'image':\n      const caption = block.image.caption.map(item => item.text.content).join(' ');\n      html = `<figure><img src=\"${block.image.file.url}\" alt=\"${caption}\" /><figcaption>${caption}</figcaption></figure>`;\n      break;\n    case 'code':\n      const codeContent = block.code.text.map(item => item.text.content).join('\\n')\n      html = `<pre><code>${codeContent}</code></pre>`\n      break\n    default:\n      html = block.content ? `<div>${block.content}</div>` : '';\n  }\n\n  if (html) {\n    output.push({\n      block_id: block.id,\n      type: block.type,\n      html\n    });\n  }\n});\n\nreturn output;\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "719f5116-5e60-488c-81c2-d55cea2e2646",
+          "name": "Get blocks1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            580,
+            4837
+          ],
+          "parameters": {
+            "blockId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "resource": "block",
+            "operation": "getAll",
+            "returnAll": true,
+            "simplifyOutput": false
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "rxtaEXgFPg96muhy",
+              "name": "My Notion account"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "23f88f9c-ef4a-4158-bff5-728e2cf0383a",
+          "name": "Update in \"Blog Posts\"",
+          "type": "n8n-nodes-base.webflow",
+          "maxTries": 3,
+          "position": [
+            2660,
+            4780
+          ],
+          "parameters": {
+            "itemId": "={{ $json.webflow_item_id }}",
+            "siteId": "65a40576635069142ed11d7c",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldId": "_draft",
+                  "fieldValue": "true"
+                },
+                {
+                  "fieldId": "_archived",
+                  "fieldValue": "false"
+                },
+                {
+                  "fieldId": "name",
+                  "fieldValue": "={{ $json.name }}"
+                },
+                {
+                  "fieldId": "slug",
+                  "fieldValue": "={{ $json.property_slug }}"
+                },
+                {
+                  "fieldId": "blog-post-richt-text",
+                  "fieldValue": "={{ $json.newRichText }}"
+                },
+                {
+                  "fieldId": "blog-post-featured-image-photo",
+                  "fieldValue": "={{ $json.cover_url }}"
+                },
+                {
+                  "fieldId": "blog-post-thumbnail-image-photo",
+                  "fieldValue": "={{ $json.cover_url }}"
+                }
+              ]
+            },
+            "operation": "update",
+            "collectionId": "65a40577635069142ed11dd8",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "webflowOAuth2Api": {
+              "id": "cGhEXKKL99szTUa1",
+              "name": "Webflow account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "6db40a4d-4acd-40f3-8830-f17e00678e39",
+          "name": "Add Webflow item id to Notion data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            2400,
+            4760
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "const compareResult = $json\nconst notionData = $('Final Notion post data').item.json\n\nconst output = {\n  ...notionData, // spread notion data\n  webflow_item_id: compareResult.different._id.inputB // add the webflow item id\n}\n\nreturn output"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "49e3d52c-a95a-4ac0-ae6a-69e4a722a628",
+          "name": "Final Notion post data",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1380,
+            4640
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combinationMode": "mergeByPosition"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "23755e8c-0012-4a72-ad9e-f450ceca1de4",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -146,
+            4720
+          ],
+          "parameters": {
+            "width": 366.7438380520149,
+            "height": 282.04364735085795,
+            "content": "### No wastes\nThese nodes extract the cover image url of the Notion page to make it easy for you to use it in the collection fields."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb16a61b-73bc-491b-b4ce-b4dc5a5f21fc",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -1480,
+            4640
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {}
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        }
+      ],
+      "connections": {
+        "Merge1": {
+          "main": [
+            [
+              {
+                "node": "Final Notion post data",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get blocks1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge2": {
+          "main": [
+            [
+              {
+                "node": "Add slug to posts1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get blocks1": {
+          "main": [
+            [
+              {
+                "node": "Turn blocks into HTML1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create post1": {
+          "main": [
+            [
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Take cover url": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Compare by slug1": {
+          "main": [
+            [
+              {
+                "node": "Create post1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 1
+              }
+            ],
+            null,
+            [
+              {
+                "node": "Add Webflow item id to Notion data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Get all blog posts1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Data transporter1": {
+          "main": [
+            [
+              {
+                "node": "For each blog post1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all page data": {
+          "main": [
+            [
+              {
+                "node": "Take cover url",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is sync checked?1": {
+          "main": [
+            [
+              {
+                "node": "Slug uniqueness checker and differentiator1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add slug to posts1": {
+          "main": [
+            [
+              {
+                "node": "Data transporter1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "For each blog post1": {
+          "main": [
+            [
+              {
+                "node": "Success message1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get simple page data",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get all page data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all blog posts1": {
+          "main": [
+            [
+              {
+                "node": "Is sync checked?1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get simple page data": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update slug on posts1": {
+          "main": [
+            [
+              {
+                "node": "Data transporter1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final Notion post data": {
+          "main": [
+            [
+              {
+                "node": "Data transporter, Notion posts to sync1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get all collection posts1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Turn blocks into HTML1": {
+          "main": [
+            [
+              {
+                "node": "Craft the rich text element1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update in \"Blog Posts\"": {
+          "main": [
+            [
+              {
+                "node": "Update slug on posts1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all collection posts1": {
+          "main": [
+            [
+              {
+                "node": "Compare by slug1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Craft the rich text element1": {
+          "main": [
+            [
+              {
+                "node": "Final Notion post data",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Add Webflow item id to Notion data": {
+          "main": [
+            [
+              {
+                "node": "Update in \"Blog Posts\"",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Data transporter, Notion posts to sync1": {
+          "main": [
+            [
+              {
+                "node": "Compare by slug1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Slug uniqueness checker and differentiator1": {
+          "main": [
+            [
+              {
+                "node": "For each blog post1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 29,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 4
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 3
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.notion": {
+          "count": 6
+        },
+        "n8n-nodes-base.webflow": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "n8n-nodes-base.compareDatasets": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Giovanni Ruggieri",
+      "username": "gioru",
+      "bio": "Figma. Nextjs. Convex. N8N automations. AI engineering.\n",
+      "verified": false,
+      "links": [
+        "https://x.com/desengineers"
+      ],
+      "avatar": "https://gravatar.com/avatar/a9b17599ed37ef27fe4c67d02b0720de97c13b41674593cb0d959e1894839bdf?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 480,
+        "icon": "file:webflow.svg",
+        "name": "n8n-nodes-base.webflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.webflow/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/webflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Webflow"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjcgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjEiIHk9IjEiLz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PGcgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiPjxwYXRoIGZpbGw9IiM0MzUzZmYiIGQ9Ik0wIDMyQzAgMTQuMjcyIDE0LjI3MiAwIDMyIDBzMzIgMTQuMjcyIDMyIDMyLTE0LjI3MiAzMi0zMiAzMlMwIDQ5LjcyOCAwIDMyIi8+PHBhdGggZD0ibTQxLjQgMjguMi0yLjkgOS4xNGMwLS43LTItMTUuODYtMi0xNS44Ni00LjYgMC03LjA0IDMuMjYtOC4zMiA2LjcybC0zLjU0IDkuMTZjMC0uNjYtLjUtOS4wOC0uNS05LjA4YTcuNDggNy40OCAwIDAgMC03LjI2LTYuNzhsMy43NiAyMi45NmM0LjggMCA3LjQtMy4yNiA4Ljc0LTYuNzJsMy03LjhjMCAuMzIgMiAxNC41MiAyIDE0LjUyYTkuMjQgOS4yNCAwIDAgMCA4LjgtNi40Nmw2LjgtMTYuNTJjLTQuOCAwLTcuMzIgMy4yNi04LjYgNi43MnoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Webflow",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 836,
+        "icon": "file:compare.svg",
+        "name": "n8n-nodes-base.compareDatasets",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Compare",
+              "Dataset",
+              "Split",
+              "Sync",
+              "Syncing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Compare Datasets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzODQiIGhlaWdodD0iNTEyIj48cGF0aCBmaWxsPSIjZWQyMzBkIiBkPSJNMzUyIDQ0OEgzMmMtMTcuNjkgMC0zMiAxNC4zMS0zMiAzMnMxNC4zMSAzMS4xIDMyIDMxLjFoMzIwYzE3LjY5IDAgMzItMTQuMzEgMzItMzEuMXMtMTQuMy0zMi0zMi0zMiIvPjxwYXRoIGZpbGw9IiM2MmY3MzAiIGQ9Ik00OCAyMDhoMTEydjExMS4xYzAgMTcuNjkgMTQuMzEgMzEuMSAzMiAzMS4xczMyLTE0LjMxIDMyLTMxLjFWMjA4aDExMmMxNy42OSAwIDMyLTE0LjMyIDMyLTMyLjAxUzM1My42OSAxNDQgMzM2IDE0NEgyMjRWMzJjMC0xNy42OS0xNC4zMS0zMi4wMS0zMi0zMi4wMXMtMzIgMTQuMzQtMzIgMzIuMDJ2MTEySDQ4Yy0xNy42OSAwLTMyIDE0LjMxLTMyIDMxLjk5czE0LjMxIDMyIDMyIDMyIi8+PC9zdmc+"
+        },
+        "displayName": "Compare Datasets",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

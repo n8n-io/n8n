@@ -1,0 +1,532 @@
+{
+  "workflow": {
+    "id": 1765,
+    "name": "Get Slack notifications when new product published on WooCommerce",
+    "views": 1061,
+    "recentViews": 0,
+    "totalViews": 1061,
+    "createdAt": "2022-08-12T12:36:53.409Z",
+    "description": "This workflow let's a bot in Slack notify a specific channel when a new product in WooCommerce is published and live on the site. \n\n## Prerequisites\n\n[WooCommerce](https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.woocommercetrigger/) account\n[Slack](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/) and a [Slack bot](https://slack.com/help/articles/115005265703-Create-a-bot-for-your-workspace)\n\n## How it works\n\n1. Listen for WooCommerce product creation\n2. If permalink starts with https://[your-url-here].com/product/\n3. Slack bot notifies channel that a new product has been added. \n\nPlease note, you must update the URL in the IF node to match your url. If your WooCommerce doesn't use the slug /product/, that will need to be updated too. \n",
+    "workflow": {
+      "id": 1016,
+      "name": "Woocommerce to slack: notify new product created",
+      "tags": [
+        {
+          "id": "5",
+          "name": "FVF",
+          "createdAt": "2022-07-30T07:43:44.795Z",
+          "updatedAt": "2022-07-30T07:43:44.795Z"
+        }
+      ],
+      "nodes": [
+        {
+          "name": "If URL has /product/",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            640,
+            300
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{$json[\"permalink\"]}}",
+                  "value2": "https://[add-your-url-here]/product/",
+                  "operation": "startsWith"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Send message to slack",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            920,
+            260
+          ],
+          "parameters": {
+            "text": ":new: A new product has been added! :new:",
+            "channel": "newproducts",
+            "blocksUi": {
+              "blocksValues": []
+            },
+            "attachments": [
+              {
+                "color": "#66FF00",
+                "fields": {
+                  "item": [
+                    {
+                      "short": false,
+                      "title": "Name",
+                      "value": "={{$json[\"name\"]}}"
+                    },
+                    {
+                      "short": true,
+                      "title": "Price",
+                      "value": "={{$json[\"regular_price\"]}}"
+                    },
+                    {
+                      "short": true,
+                      "title": "Sale Price",
+                      "value": "={{$json[\"sale_price\"]}}"
+                    },
+                    {
+                      "short": false,
+                      "title": "Link",
+                      "value": "={{$json[\"permalink\"]}}"
+                    }
+                  ]
+                },
+                "footer": "=Added: {{$json[\"date_created\"]}}"
+              }
+            ],
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "21",
+              "name": "FVF bot"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "On product creation",
+          "type": "n8n-nodes-base.wooCommerceTrigger",
+          "position": [
+            460,
+            300
+          ],
+          "webhookId": "267c4855-6227-4d33-867e-74600097473e",
+          "parameters": {
+            "event": "product.created"
+          },
+          "credentials": {
+            "wooCommerceApi": {
+              "id": "20",
+              "name": "WooCommerce account FVF"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "settings": {},
+      "connections": {
+        "On product creation": {
+          "main": [
+            [
+              {
+                "node": "If URL has /product/",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If URL has /product/": {
+          "main": [
+            [
+              {
+                "node": "Send message to slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.wooCommerceTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 235,
+        "icon": "file:wooCommerce.svg",
+        "name": "n8n-nodes-base.wooCommerceTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.woocommercetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wooCommerce/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "WooCommerce Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIj48cGF0aCBmaWxsPSIjN2Y1NGIzIiBkPSJNMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4SDIzLjg2NWMtMTMuMTg3IDAtMjMuODYzLTEwLjY3NS0yMy44NjMtMjMuODYzVjIzLjg2M0MtLjEwMyAxMC43OCAxMC41NzMgMCAyMy43NiAweiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xNC41NzggMjEuNzVjMS40NTctMS45NzcgMy42NDItMy4wMTggNi41NTYtMy4yMjZxNy45Ni0uNjI1IDkuMDU0IDcuNDkzYzMuMjI2IDIxLjc1IDYuNzY0IDQwLjE2OSAxMC41MSA1NS4yNTlsMjIuNzktNDMuMzk1cTMuMTIzLTUuOTMyIDcuODA2LTYuMjQ0YzQuNTc5LS4zMTIgNy4zODggMi42MDEgOC41MzMgOC43NDEgMi42MDIgMTMuODQxIDUuOTMyIDI1LjYgOS44ODYgMzUuNTkgMi43MDYtMjYuNDMzIDcuMjg1LTQ1LjQ3NiAxMy43MzctNTcuMjM2IDEuNTYxLTIuOTEzIDMuODUtNC4zNyA2Ljg2OC00LjU3OSAyLjM5NC0uMjA4IDQuNTguNTIgNi41NTcgMi4wODIgMS45NzcgMS41NiAzLjAxOCAzLjUzOCAzLjIyNiA1LjkzMS4xMDQgMS44NzQtLjIwOSAzLjQzNC0xLjA0MSA0Ljk5NS00LjA1OSA3LjQ5My03LjM4OSAyMC4wODYtMTAuMDk0IDM3LjU2Ny0yLjYwMiAxNi45NjQtMy41MzggMzAuMTgtMi45MTQgMzkuNjVxLjMxMiAzLjkwMS0xLjI0OSA2Ljg2OGMtMS4yNDggMi4yOS0zLjEyMiAzLjUzOC01LjUxNSAzLjc0Ni0yLjcwNi4yMDgtNS41MTUtMS4wNC04LjIyMS0zLjg1LTkuNjc4LTkuODg2LTE3LjM4LTI0LjY2My0yMi45OTgtNDQuMzMyUTU3LjkyMiA4Ni43OSA1My4wODQgOTYuNzhjLTYuMTQgMTEuNzYtMTEuMzQzIDE3Ljc5Ni0xNS43MTQgMTguMTA4LTIuODEuMjA4LTUuMjAzLTIuMTg2LTcuMjg1LTcuMThxLTcuOTYtMjAuNDUtMTcuMTctNzguOTg2Yy0uNDE3LTIuNzA1LjIwNy01LjA5OSAxLjY2NC02Ljk3MnptMjIzLjY0IDE2LjMzOGMtMy43NDYtNi41NTYtOS4yNjItMTAuNTExLTE2LjY1LTEyLjA3MnEtMi45NjUtLjYyNC01LjYyLS42MjRjLTkuOTkgMC0xOC4xMDcgNS4yMDMtMjQuNDU1IDE1LjYxcS04LjExNiAxMy4yNjgtOC4xMTcgMjkuMzQ2IDAgMTIuMDE4IDQuOTk1IDIwLjYwNWMzLjc0NyA2LjU1NiA5LjI2MiAxMC41MSAxNi42NSAxMi4wNzJxMi45NjYuNjI0IDUuNjIuNjI0YzEwLjA5NCAwIDE4LjIxMS01LjIwMyAyNC40NTUtMTUuNjEgNS40MTEtOC45NSA4LjExNy0xOC43MzIgOC4xMTctMjkuNDUuMTA0LTguMTE3LTEuNjY1LTE0Ljg4MS00Ljk5NS0yMC41MDFtLTEzLjExMiAyOC44MjZjLTEuNDU3IDYuODY4LTQuMDU5IDExLjk2Ny03LjkwOSAxNS40MDItMy4wMTggMi43MDYtNS44MjcgMy44NS04LjQzIDMuMzMtMi40OTctLjUyLTQuNTc4LTIuNzA2LTYuMTM5LTYuNzY0LTEuMjQ5LTMuMjI2LTEuODczLTYuNDUyLTEuODczLTkuNDcgMC0yLjYwMi4yMDgtNS4yMDMuNzI4LTcuNTk3LjkzNy00LjI2NiAyLjcwNi04LjQyOSA1LjUxNi0xMi4zODQgMy40MzQtNS4wOTkgNy4wNzYtNy4xOCAxMC44MjMtNi40NTIgMi40OTcuNTIgNC41NzkgMi43MDYgNi4xNCA2Ljc2NSAxLjI0OCAzLjIyNiAxLjg3MyA2LjQ1MiAxLjg3MyA5LjQ3IDAgMi43MDUtLjIwOCA1LjMwNy0uNzI5IDcuN3ptLTUyLjAzMy0yOC44MjZjLTMuNzQ2LTYuNTU2LTkuMzY2LTEwLjUxMS0xNi42NS0xMi4wNzJxLTIuOTY1LS42MjQtNS42Mi0uNjI0Yy05Ljk5IDAtMTguMTA3IDUuMjAzLTI0LjQ1NSAxNS42MXEtOC4xMTYgMTMuMjY4LTguMTE3IDI5LjM0NiAwIDEyLjAxOCA0Ljk5NSAyMC42MDVjMy43NDcgNi41NTYgOS4yNjIgMTAuNTEgMTYuNjUgMTIuMDcycTIuOTY2LjYyNCA1LjYyLjYyNGMxMC4wOTQgMCAxOC4yMTEtNS4yMDMgMjQuNDU1LTE1LjYxIDUuNDExLTguOTUgOC4xMTctMTguNzMyIDguMTE3LTI5LjQ1IDAtOC4xMTctMS42NjUtMTQuODgxLTQuOTk1LTIwLjUwMW0tMTMuMjE2IDI4LjgyNmMtMS40NTcgNi44NjgtNC4wNTkgMTEuOTY3LTcuOTA5IDE1LjQwMi0zLjAxOCAyLjcwNi01LjgyOCAzLjg1LTguNDMgMy4zMy0yLjQ5Ny0uNTItNC41NzgtMi43MDYtNi4xMzktNi43NjQtMS4yNDktMy4yMjYtMS44NzMtNi40NTItMS44NzMtOS40NyAwLTIuNjAyLjIwOC01LjIwMy43MjgtNy41OTcuOTM3LTQuMjY2IDIuNzA2LTguNDI5IDUuNTE2LTEyLjM4NCAzLjQzNC01LjA5OSA3LjA3Ni03LjE4IDEwLjgyMy02LjQ1MiAyLjQ5Ny41MiA0LjU3OSAyLjcwNiA2LjE0IDYuNzY1IDEuMjQ4IDMuMjI2IDEuODczIDYuNDUyIDEuODczIDkuNDcuMTA0IDIuNzA1LS4yMDggNS4zMDctLjcyOSA3Ljd6Ii8+PC9zdmc+"
+        },
+        "displayName": "WooCommerce Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

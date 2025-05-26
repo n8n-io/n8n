@@ -1,0 +1,756 @@
+{
+  "workflow": {
+    "id": 3676,
+    "name": "Capture Gumroad sales, add buyer to MailerLite group, log to Google Sheets CRM",
+    "views": 74,
+    "recentViews": 15,
+    "totalViews": 74,
+    "createdAt": "2025-04-23T18:03:02.278Z",
+    "description": "# Turn Gumroad buyers into loyal email subscribers and keep your CRM up‑to‑date.\n\nWhen someone makes a purchase on your Gumroad store, this n8n workflow instantly adds that customer to the right [MailerLite](https://www.mailerlite.com/a/Kr9Yplim6ZhV) group (so your nurture sequence starts on time) and writes the sale details into your Google Sheets CRM. You’ll never copy‑and‑paste orders again, and every buyer begins receiving your follow‑up emails the moment they purchase.\n\n## Requirements\n1. A [Gumroad](https://gumroad.com) account with a product listed\n2. A [MailerLite](https://www.mailerlite.com/a/Kr9Yplim6ZhV) account. \n3. A MailerLite group of subscribers created\n4. Enabled APIs and credentials for Google Sheets, MailerLite and Gumroad\n\n\n## How it works\n- **Listen for a new sale on Gumroad**\nThe Gumroad trigger watches your account 24/7 and fires as soon as a sale is completed.\n\n- **Create (or update) the subscriber in MailerLite**\nTheir name and email are added to MailerLite. If they already exist, the workflow simply updates their profile.\n\n- **Assign the subscriber to your Gumroad group**\nGrouping lets your MailerLite automation send the right onboarding or upsell sequence without manual tagging.\n\n- **Log the purchase in Google Sheets**\nThe buyer’s contact details, product, price, and date are appended as a new row in your CRM sheet.\n\n## Set‑up steps\n- Create an application in Gumroad. Copy the access token, you’ll paste it into the Gumroad trigger node.\n\n- Grab your MailerLite API key\nMailerLite dashboard → Integrations → API. Paste it into the two MailerLite nodes.\n\n- Prepare a Google Sheets spreadsheet\nAdd column headers like Name, Email, Product, Price, Date.\n\nOpen the template in n8n Cloud or Desktop\n\nIn the Gumroad node, paste your token.\n\nIn the MailerLite nodes, paste your API keys and replace the group id.\n\nIn the Google Sheets node, replace the credentials, pick your spreadsheet and worksheet.\n\n## Need help?\n- Our team hangs out on [Discord](https://discord.gg/eBZH4WHCqd). Pop in anytime.\n- [Read our blog article about it](https://1node.ai/automate-gumroad-sales-mailerlite-google-sheets-n8n-workflow)\n\n\n\n\n\n\n\n\n",
+    "workflow": {
+      "id": "06v55r6E13Wfvo66",
+      "meta": {
+        "instanceId": "dfec462482c1b16c8ef1928d51584c7f0ae64b3bfaa72e08675b15754b903bd2",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Gumroad sale trigger",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "789f1dec-d2d2-4e09-9530-719d354d259c",
+          "name": "Assign to group",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            140,
+            -280
+          ],
+          "parameters": {
+            "url": "=https://connect.mailerlite.com/api/subscribers/{{ $json.id }}/groups/152489030254069581",
+            "method": "POST",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "mailerLiteApi"
+          },
+          "credentials": {
+            "mailerLiteApi": {
+              "id": "i9V49FSxbwJhAGfI",
+              "name": "Mailer Lite account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "53c0df02-5571-485c-91ce-6be2f62fd6d6",
+          "name": "Gumroad Sale Trigger",
+          "type": "n8n-nodes-base.gumroadTrigger",
+          "position": [
+            -520,
+            -280
+          ],
+          "webhookId": "06a01b99-cbf1-4694-8502-94ac51670ba4",
+          "parameters": {
+            "resource": "sale"
+          },
+          "credentials": {
+            "gumroadApi": {
+              "id": "wgjGSvLjsRBJImsQ",
+              "name": "Gumroad account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ee782134-e2d4-4f8b-a9d9-a09a919577ab",
+          "name": "append row in CRM",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            480,
+            -280
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "date": "={{ $('Gumroad Sale Trigger').item.json.sale_timestamp }}",
+                "email": "={{ $('Gumroad Sale Trigger').item.json.email }}",
+                "country": "={{ $('Gumroad Sale Trigger').item.json.ip_country }}",
+                "product name": "={{ $('Gumroad Sale Trigger').item.json.product_name }}"
+              },
+              "schema": [
+                {
+                  "id": "date",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "date",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "product name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "product name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "email",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "email",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "country",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "country",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XYMstoZ4j3O5T-UYz21ky7P5bkUtzYXQGYCQTRVWCI4/edit#gid=0",
+              "cachedResultName": "Sheet1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1XYMstoZ4j3O5T-UYz21ky7P5bkUtzYXQGYCQTRVWCI4",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1XYMstoZ4j3O5T-UYz21ky7P5bkUtzYXQGYCQTRVWCI4/edit?usp=drivesdk",
+              "cachedResultName": "Gumroad sales CRM"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "Ou2SgvNZctBeYWT5",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "98ff519b-3065-4c6b-bdeb-2d9095e3f52a",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            -540
+          ],
+          "parameters": {
+            "width": 460,
+            "height": 460,
+            "content": "## Trigger on a new Gumroad sale\n### Requirements\n- A [Gumroad]() account\n- A product listed. We used ours [here](https://1node.gumroad.com/l/topaitools)\n- Head to Settings > Advanced, and create a new application\n\n### Set up\n- Paste your access token on this Gumroad sale trigger"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f5ccfe9f-c56c-4394-bebf-1f7438a0dcdf",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -140,
+            -660
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 480,
+            "height": 580,
+            "content": "## Connection to [MailerLite](https://www.mailerlite.com/a/Kr9Yplim6ZhV) newsletter \n### Requirements\n- A [Mailerlite](https://www.mailerlite.com/a/Kr9Yplim6ZhV) account\n- A subscriber group created\n- Generate a new API from the Integrations menu\n\n### Set up\n- You will first need to create the subscriber with a simple Mailer lite node\n- In the second node call the endpoint to [assign that same subscriber to the group](https://developers.mailerlite.com/docs/groups.html#assign-subscriber-to-a-group) you created manually on Mailerlite. For example, we named the group \"Gumroad\"\n- To get the group id, we ran a node that calls the [\"list groups\" endpoint](https://developers.mailerlite.com/docs/groups.html#list-all-groups) and we appended it to the url.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e4cea86a-494f-4c3c-9743-3e8eca461a04",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            -460
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 480,
+            "height": 380,
+            "content": "## Load into CRM\n### Requirements\n- Set up your api and credentials for Google Sheets. You can find the n8n docs [here](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.googleSheets)\n- Append the row to your table with your desired data collected previously"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e81b7ae0-510e-454e-82ff-6d42bde9e81a",
+          "name": "add subscriber to MailerLite",
+          "type": "n8n-nodes-base.mailerLite",
+          "position": [
+            -60,
+            -280
+          ],
+          "parameters": {
+            "email": "={{ $json.email }}",
+            "additionalFields": {
+              "customFieldsUi": {
+                "customFieldsValues": [
+                  {
+                    "value": "={{ $json.ip_country }}",
+                    "fieldId": "country"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "mailerLiteApi": {
+              "id": "i9V49FSxbwJhAGfI",
+              "name": "Mailer Lite account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9cc00d13-81d9-4584-9066-4b00b2ff7a47",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -160,
+            -60
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 520,
+            "height": 180,
+            "content": "## Why assign the subscriber to a group? \nIn [MailerLite](https://www.mailerlite.com/a/Kr9Yplim6ZhV) you can set up an automation that when a new subscriber is added into a group, a new email sequence begins, which allows you to send multiple emails to this user at a specific frequency.\n\nThis is a very powerful feature to funnel users to engage with your products or services."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "3b94b27b-05cc-4996-9f1f-33ba7c3632ae",
+      "connections": {
+        "Assign to group": {
+          "main": [
+            [
+              {
+                "node": "append row in CRM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gumroad Sale Trigger": {
+          "main": [
+            [
+              {
+                "node": "add subscriber to MailerLite",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "add subscriber to MailerLite": {
+          "main": [
+            [
+              {
+                "node": "Assign to group",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 8,
+      "nodeTypes": {
+        "n8n-nodes-base.mailerLite": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 1
+        },
+        "n8n-nodes-base.gumroadTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Aitor | 1node.ai",
+      "username": "aitoralonso",
+      "bio": "Hi, I’m Aitor, cofounder of 1node.ai. We help businesses integrate full-scale AI solutions and automations to save time and scale faster. Need help building smarter workflows? Visit 1node.ai to get started. Have questions? Join our free Discord community for expert tips, templates, and automation support.",
+      "verified": false,
+      "links": [
+        "https://1node.ai"
+      ],
+      "avatar": "https://gravatar.com/avatar/2f850f7b4c218087a3e7d9775daf6bd8dad05b5eb5ea82242d4bfd1a97465455?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 125,
+        "icon": "file:gumroad.png",
+        "name": "n8n-nodes-base.gumroadTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gumroadtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/gumroad/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Gumroad Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Gumroad Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 393,
+        "icon": "file:MailerLite.svg",
+        "name": "n8n-nodes-base.mailerLite",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailerlite/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mailerLite/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "MailerLite"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB2ZXJzaW9uPSIxLjEiIGlkPSJMYXllcl8xIiB4bWxuczp4PSJuc19leHRlbmQ7IiB4bWxuczppPSJuc19haTsiIHhtbG5zOmdyYXBoPSJuc19ncmFwaHM7IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgdmlld0JveD0iMCAwIDYyLjggNTAuMiIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgNjIuOCA1MC4yOyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CiA8c3R5bGUgdHlwZT0idGV4dC9jc3MiPgogIC5zdDB7ZmlsbDojMDlDMjY5O30KCS5zdDF7ZmlsbDojRkZGRkZGO30KIDwvc3R5bGU+CiA8bWV0YWRhdGE+CiAgPHNmdyB4bWxucz0ibnNfc2Z3OyI+CiAgIDxzbGljZXM+CiAgIDwvc2xpY2VzPgogICA8c2xpY2VTb3VyY2VCb3VuZHMgYm90dG9tTGVmdE9yaWdpbj0idHJ1ZSIgaGVpZ2h0PSI1MC4yIiB3aWR0aD0iNjIuOCIgeD0iMjM2LjkiIHk9Ii0yMjUuMyI+CiAgIDwvc2xpY2VTb3VyY2VCb3VuZHM+CiAgPC9zZnc+CiA8L21ldGFkYXRhPgogPGcgaWQ9Im1haWxlcmxpdGUtbGlnaHQiPgogIDxnPgogICA8ZyBpZD0ibGl0ZSIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoMTM3LjAwMDAwMCwgMC4wMDAwMDApIj4KICAgIDxwYXRoIGlkPSJTaGFwZS1wYXRoIiBjbGFzcz0ic3QwIiBkPSJNLTgxLjIsMGgtNDguOWMtMy44LDAtNi45LDMuMS02LjksNi44djIyLjh2NC41djE2LjJsOS41LTkuM2g0Ni40YzMuOCwwLDYuOS0zLjEsNi45LTYuOAoJCQkJVjYuOEMtNzQuMywzLjEtNzcuNCwwLTgxLjIsMHoiPgogICAgPC9wYXRoPgogICAgPHBhdGggaWQ9IlNoYXBlLXBhdGgtMyIgY2xhc3M9InN0MSIgZD0iTS05MC4yLDE1LjhjNS4yLDAsNy42LDQuMSw3LjYsOGMwLDEtMC44LDEuOC0xLjgsMS44SC05NGMwLjUsMi4zLDIuMSwzLjYsNC43LDMuNgoJCQkJYzEuOSwwLDIuOS0wLjQsMy45LTAuOWMwLjItMC4xLDAuNS0wLjIsMC43LTAuMmMwLjksMCwxLjcsMC43LDEuNywxLjZjMCwwLjYtMC40LDEuMS0xLDEuNWMtMS4zLDAuNy0yLjcsMS40LTUuNSwxLjQKCQkJCWMtNS4yLDAtOC4zLTMuMS04LjMtOC40Qy05Ny45LDE4LjEtOTMuNywxNS44LTkwLjIsMTUuOHogTS0xMDUuNSwxMy4yYzAuNiwwLDEsMC41LDEsMXYxLjloMi45YzAuOSwwLDEuNywwLjcsMS43LDEuNgoJCQkJYzAsMC45LTAuNywxLjYtMS43LDEuNmgtMi45VjI4YzAsMS4yLDAuNiwxLjMsMS41LDEuM2MwLjUsMCwwLjgtMC4xLDEuMS0wLjFjMC4yLDAsMC41LTAuMSwwLjctMC4xYzAuNywwLDEuNiwwLjYsMS42LDEuNQoJCQkJYzAsMC42LTAuNCwxLjEtMSwxLjRjLTAuOSwwLjQtMS43LDAuNi0yLjcsMC42Yy0zLjIsMC00LjktMS41LTQuOS00LjR2LTguOGgtMS43Yy0wLjYsMC0xLTAuNS0xLTFjMC0wLjMsMC4xLTAuNiwwLjQtMC45bDQtNAoJCQkJQy0xMDYuMywxMy41LTEwNiwxMy4yLTEwNS41LDEzLjJ6IE0tMTI0LjIsOS40YzEsMCwxLjgsMC44LDEuOCwxLjh2MTkuNGMwLDEtMC44LDEuOC0xLjgsMS44cy0xLjgtMC44LTEuOC0xLjhWMTEuMgoJCQkJQy0xMjYsMTAuMi0xMjUuMiw5LjQtMTI0LjIsOS40eiBNLTExNS42LDE2YzEsMCwxLjgsMC44LDEuOCwxLjh2MTIuOGMwLDEtMC44LDEuOC0xLjgsMS44Yy0xLDAtMS44LTAuOC0xLjgtMS44VjE3LjgKCQkJCUMtMTE3LjQsMTYuOC0xMTYuNiwxNi0xMTUuNiwxNnogTS05MC4xLDE5LjFjLTEuNywwLTMuNiwxLTMuOSwzLjVoNy45Qy04Ni42LDIwLjEtODguNCwxOS4xLTkwLjEsMTkuMXogTS0xMTUuNSw5LjkKCQkJCWMxLjEsMCwyLDAuOSwyLDJWMTJjMCwxLjEtMC45LDItMiwyaC0wLjJjLTEuMSwwLTItMC45LTItMnYtMC4xYzAtMS4xLDAuOS0yLDItMkgtMTE1LjV6Ij4KICAgIDwvcGF0aD4KICAgPC9nPgogIDwvZz4KIDwvZz4KPC9zdmc+"
+        },
+        "displayName": "MailerLite",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

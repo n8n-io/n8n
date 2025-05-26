@@ -1,0 +1,31 @@
+URL: https://docs.n8n.io/advanced-ai/examples/understand-memory/
+Scraped_At: 2025-05-20T18:40:17.470658
+
+What's memory in AI?
+#
+Memory is a key part of AI chat services. The
+memory
+keeps a history of previous messages, allowing for an ongoing conversation with the AI, rather than every interaction starting fresh.
+AI memory in n8n
+#
+To add memory to your AI workflow you can use either:
+Simple Memory
+: stores a customizable length of chat history for the current session. This is the easiest to get started with.
+One of the memory services that n8n provides nodes for. These include:
+Motorhead
+Redis Chat Memory
+Postgres Chat Memory
+Xata
+Zep
+If you need to do advanced AI memory management in your workflows, use the
+Chat Memory Manager
+node.
+This node is useful when you:
+Can't add a memory node directly.
+Need to do more complex memory management, beyond what the memory nodes offer. For example, you can add this node to check the memory size of the Agent node's response, and reduce it if needed.
+Want to inject messages to the AI that look like user messages, to give the AI more context.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,780 @@
+{
+  "workflow": {
+    "id": 3621,
+    "name": "Send Hourly Crypto Market Analysis from Binance to Telegram",
+    "views": 670,
+    "recentViews": 103,
+    "totalViews": 670,
+    "createdAt": "2025-04-20T14:40:50.131Z",
+    "description": "# 📈 Daily Crypto Market Summary Bot (Binance to Telegram)\n\nThis workflow fetches 24h price change data from Binance for selected crypto pairs (BTC/USDC, ETH/USDC, SOL/USDC) every hour using a cron schedule.  \nIt performs in-depth analysis—including volatility, volume, bid-ask spread, momentum, and market comparison—then formats a detailed market summary.  \nThe final report is sent to a Telegram chat using HTML formatting, highlighting top gainers, losers, and key metrics in a clean, readable layout.\n\n---\n\n## 🔑 Key Features\n- ⏱ Runs every hour (`cron: 5 * * * *`)\n- 🔍 Filters and analyzes major coins: BTC, ETH, SOL\n- 📊 Calculates market metrics:\n  - Volatility\n  - Bid-ask spread\n  - Momentum\n  - Estimated market cap\n  - Market average comparison\n- 📈 Highlights gainers, losers, and top coins by volume\n- ✂️ Splits messages to fit Telegram’s 4096 character limit\n- 💬 Sends output in rich HTML format to a Telegram group or chat\n\n---\n\n## 🎯 Use Cases\n- ✅ Crypto traders wanting hourly performance insights\n- ✅ Telegram groups needing automated market updates\n- ✅ Analysts monitoring key coin metrics in real-time\n- ✅ Bot developers creating crypto dashboards or alerts\n\n---\n\n## 🛠 Technical Details\n- **Data Source:** Binance 24hr ticker API (`/api/v3/ticker/24hr`)\n- **Coins Monitored:** `BTCUSDC`, `ETHUSDC`, `SOLUSDC` (can be expanded)\n- **Metrics Calculated:**\n  - Price change percentage\n  - Volatility (high vs low price)\n  - Bid-ask spread %\n  - Momentum (vs weighted average)\n  - Estimated market cap\n  - Number of trades\n  - Market average movement\n- **Message Format:**\n  - HTML with emojis, bold styling, and section headings\n  - Auto-split messages when exceeding Telegram's 4096-char limit\n- **Error Handling:**\n  - Retry on HTTP failure (up to 5 times with 5s delay)\n  - Message length checked and split for Telegram compatibility\n\n---\n\n## ⚙️ Setup Requirements\n1. **Telegram Bot Token** — Create a bot via [@BotFather](https://t.me/BotFather) on Telegram\n2. **Chat ID** — Use a personal ID or group chat ID (add the bot to the group)\n3. **n8n Instance** — Either cloud or self-hosted\n4. *(Optional)* Modify `relevantSymbols` in the Function node to track different coins\n\n---\n\n## 🧠 Notes\n- This workflow is highly customizable—feel free to modify the analytics, tracked pairs, or formatting.\n- Great base for alerting systems or crypto dashboards.\n\n---\n\n## 📷 Example Output (Telegram)\n```html\n📊 Crypto Market Summary — 2025-04-20 14:05:05 UTC\n\n🌐 Market Overview (BTC, ETH, SOL)\nAverage Change: -1.54%\n24h Volume: $850,358,765.46\nMost Volatile: SOLUSDC (4.53%)\nMost Liquid: BTCUSDC (0.0000% spread)\n\n💹 Top by Volume\nETHUSDC: $403,860,356.75 | -1.640%\nSOLUSDC: $279,241,338.60 | -1.706%\nBTCUSDC: $167,257,070.12 | -1.261%\n\n📉 Losers\n\nSOLUSDC\n🔻 Change: -1.71% (24h)\n💰 Current: $137.10\n📊 Range: $135.82 - $141.97\n📈 Volatility: 4.53%\n🔄 Volume: 2.01M | $279,241,338.60\n⚖️ Bid-Ask Spread: 0.0073%\n⬇️ vs Market Avg: -0.17%\n🔽 Momentum: -1.42%\n🔢 Trades: 366,119\n\nETHUSDC\n🔻 Change: -1.64% (24h)\n💰 Current: $1,577.42\n📊 Range: $1,565.60 - $1,631.98\n📈 Volatility: 4.24%\n🔄 Volume: 252.11K | $403,860,356.75\n⚖️ Bid-Ask Spread: 0.0044%\n⬇️ vs Market Avg: -0.10%\n🔽 Momentum: -1.53%\n🔢 Trades: 596,801\n\nBTCUSDC\n🔻 Change: -1.26% (24h)\n💰 Current: $84,336.65\n📊 Range: $83,963.35 - $85,634.50\n📈 Volatility: 1.99%\n🔄 Volume: 1.97K | $167,257,070.12\n⚖️ Bid-Ask Spread: 0.0000%\n⭐ vs Market Avg: 0.27%\n🔽 Momentum: -0.68%\n🔢 Trades: 124,202",
+    "workflow": {
+      "meta": {
+        "instanceId": "411a4eea57cf88d4a82c27728a11bad4fe2fdcbc1ab5eae589890a37e4b909ca",
+        "templateId": "2043"
+      },
+      "nodes": [
+        {
+          "id": "9fd007e4-9d21-4fef-8a28-3be3e92af6f7",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            260,
+            600
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "expression": "5 * * * *"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "cd23c427-56f1-4924-8adf-4b38417ba652",
+          "name": "Binance 24h Price Change",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Get data of changed price coins in last 24h",
+          "maxTries": 5,
+          "position": [
+            600,
+            600
+          ],
+          "parameters": {
+            "url": "https://api.binance.com/api/v3/ticker/24hr",
+            "options": {}
+          },
+          "notesInFlow": true,
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "40e4f7bd-ac47-4617-9177-5a84ada3a92f",
+          "name": "Send Telegram Message",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            1560,
+            600
+          ],
+          "webhookId": "75a4f97f-1a11-47fd-9f90-cbecd75ad2df",
+          "parameters": {
+            "text": "={{ $json.data }}\n\n",
+            "chatId": "-4685771678",
+            "additionalFields": {
+              "parse_mode": "HTML"
+            }
+          },
+          "credentials": {
+            "telegramApi": {
+              "id": "d6O4BUmt3I6XZJ1D",
+              "name": "Telegram account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "424bbed3-f134-418c-9961-e966c8dc2592",
+          "name": "Analyze & Format Market Data",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            900,
+            600
+          ],
+          "parameters": {
+            "functionCode": "function escapeHTML(text) {\n  return String(text)\n    .replace(/&/g, \"&amp;\")\n    .replace(/</g, \"&lt;\")\n    .replace(/>/g, \"&gt;\");\n}\n\nfunction formatVolume(volume) {\n  const vol = parseFloat(volume);\n  if (vol >= 1_000_000_000) return (vol / 1_000_000_000).toFixed(2) + 'B';\n  if (vol >= 1_000_000) return (vol / 1_000_000).toFixed(2) + 'M';\n  if (vol >= 1_000) return (vol / 1_000).toFixed(2) + 'K';\n  return vol.toString();\n}\n\nfunction formatMoney(amount) {\n  return parseFloat(amount).toLocaleString('en-US', {\n    minimumFractionDigits: 2,\n    maximumFractionDigits: 2\n  });\n}\n\nfunction calculateVolatility(coin) {\n  const high = parseFloat(coin.highPrice);\n  const low = parseFloat(coin.lowPrice);\n  const volatility = ((high - low) / low) * 100;\n  return volatility.toFixed(2);\n}\n\nfunction calculateSpread(coin) {\n  const ask = parseFloat(coin.askPrice);\n  const bid = parseFloat(coin.bidPrice);\n  const spread = ((ask - bid) / bid) * 100;\n  return spread.toFixed(4);\n}\n\nfunction calculateMarketComparison(coin, avgMarketChange) {\n  const coinChange = parseFloat(coin.priceChangePercent);\n  const comparison = coinChange - avgMarketChange;\n  return comparison.toFixed(2);\n}\n\nfunction formatActivity(count) {\n  return count.toLocaleString('en-US');\n}\n\nfunction calculateMomentum(coin) {\n  const current = parseFloat(coin.lastPrice);\n  const weighted = parseFloat(coin.weightedAvgPrice);\n  return ((current - weighted) / weighted * 100).toFixed(2);\n}\n\nfunction estimateMarketCap(coin) {\n  return parseFloat(coin.lastPrice) * parseFloat(coin.quoteVolume);\n}\n\nfunction formatCoinWithAnalytics(coin, avgMarketChange) {\n  const change = parseFloat(coin.priceChangePercent);\n  const arrow = change > 0 ? '🔺' : '🔻';\n  const volatility = calculateVolatility(coin);\n  const spread = calculateSpread(coin);\n  const marketComparison = calculateMarketComparison(coin, avgMarketChange);\n  const momentum = calculateMomentum(coin);\n  \n  const comparisonEmoji = marketComparison > 0 ? '⭐' : '⬇️';\n  const momentumEmoji = parseFloat(momentum) > 0 ? '🔼' : '🔽';\n  \n  const timeFrameHours = (coin.closeTime - coin.openTime) / (1000 * 60 * 60);\n  \n  return `<b>${escapeHTML(coin.symbol)}</b>\\n` +\n         `${arrow} Change: ${escapeHTML(change.toFixed(2))}% (${timeFrameHours.toFixed(0)}h)\\n` +\n         `💰 Current: $${formatMoney(coin.lastPrice)}\\n` +\n         `📊 Range: $${formatMoney(coin.lowPrice)} - $${formatMoney(coin.highPrice)}\\n` +\n         `📈 Volatility: ${volatility}%\\n` +\n         `🔄 Volume: ${escapeHTML(formatVolume(coin.volume))} | $${formatMoney(coin.quoteVolume)}\\n` +\n         `⚖️ Bid-Ask Spread: ${spread}%\\n` +\n         `${comparisonEmoji} vs Market Avg: ${marketComparison}%\\n` +\n         `${momentumEmoji} Momentum: ${momentum}%\\n` +\n         `🔢 Trades: ${formatActivity(coin.count)}\\n\\n`;\n}\n\nfunction calculateMarketStats(coins) {\n  const totalVolume = coins.reduce((sum, coin) => sum + parseFloat(coin.quoteVolume), 0);\n  const averageChange = coins.reduce((sum, coin) => sum + parseFloat(coin.priceChangePercent), 0) / coins.length;\n  const mostVolatile = [...coins].sort((a, b) => calculateVolatility(b) - calculateVolatility(a))[0];\n  const mostTraded = [...coins].sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))[0];\n  const leastSpread = [...coins].sort((a, b) => calculateSpread(a) - calculateSpread(b))[0];\n  \n  const topByVolume = [...coins]\n    .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))\n    .slice(0, 3);\n  \n  return {\n    totalVolume,\n    averageChange,\n    mostVolatile,\n    mostTraded,\n    leastSpread,\n    topByVolume\n  };\n}\n\nconst now = new Date();\nconst dateString = now.toISOString().replace('T', ' ').split('.')[0] + ' UTC';\nconst rawData = items[0].json;\n\nconst binanceData = Array.isArray(rawData) ? rawData : [];\nconst usdcPairs = binanceData.filter(coin => coin.symbol.endsWith('USDC'));\n\n// Filter only for Solana, Bitcoin, Ethereum\nconst relevantSymbols = ['SOLUSDC', 'BTCUSDC', 'ETHUSDC'];\nconst filteredCoins = usdcPairs.filter(coin => relevantSymbols.includes(coin.symbol));\n\n// Calculate market cap for each coin\nfilteredCoins.forEach(coin => {\n  coin.estimatedMarketCap = estimateMarketCap(coin);\n});\n\nconst marketStats = calculateMarketStats(filteredCoins);\nconst avgMarketChange = marketStats.averageChange;\n\nconst gainers = filteredCoins\n  .filter(c => parseFloat(c.priceChangePercent) > 0)\n  .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent));\n\nconst losers = filteredCoins\n  .filter(c => parseFloat(c.priceChangePercent) < 0)\n  .sort((a, b) => parseFloat(a.priceChangePercent) - parseFloat(b.priceChangePercent));\n\n// Build message\nlet summary = `<b>📊 Crypto Market Summary — ${escapeHTML(dateString)}</b>\\n\\n`;\n\nsummary += `<b>🌐 Market Overview (BTC, ETH, SOL)</b>\\n` +\n           `Average Change: ${avgMarketChange.toFixed(2)}%\\n` +\n           `24h Volume: $${formatMoney(marketStats.totalVolume)}\\n` +\n           `Most Volatile: ${marketStats.mostVolatile.symbol} (${calculateVolatility(marketStats.mostVolatile)}%)\\n` +\n           `Most Liquid: ${marketStats.leastSpread.symbol} (${calculateSpread(marketStats.leastSpread)}% spread)\\n\\n`;\n\nsummary += `<b>💹 Top by Volume</b>\\n`;\nmarketStats.topByVolume.forEach(coin => {\n  summary += `${coin.symbol}: $${formatMoney(coin.quoteVolume)} | ${coin.priceChangePercent}%\\n`;\n});\nsummary += `\\n`;\n\nif (gainers.length) {\n  summary += `<b>📈 Gainers</b>\\n\\n`;\n  summary += gainers.map(coin => formatCoinWithAnalytics(coin, avgMarketChange)).join('');\n}\n\nif (losers.length) {\n  summary += `<b>📉 Losers</b>\\n\\n`;\n  summary += losers.map(coin => formatCoinWithAnalytics(coin, avgMarketChange)).join('');\n}\n\nconst chunks = [];\nlet current = \"\";\nsummary.split(/\\n/g).forEach(line => {\n  const lineWithBreak = line + \"\\n\";\n  if ((current + lineWithBreak).length > 4000) {\n    chunks.push({ json: { data: current.trim() } });\n    current = lineWithBreak;\n  } else {\n    current += lineWithBreak;\n  }\n});\n\nif (current.trim()) {\n  chunks.push({ json: { data: current.trim() } });\n}\n\nreturn chunks;"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "1c43afdc-b15a-4380-9c6f-2056e28a37f7",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            220,
+            -100
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 940,
+            "height": 620,
+            "content": "## 📌 Daily Crypto Market Summary Bot\n\n### 📈 What It Does\nFetches hourly 24h price data from Binance for **BTC**, **ETH**, and **SOL** (USDC pairs), analyzes key market trends, and sends a well-formatted HTML summary to a Telegram chat.\n\n---\n### 📊 Metrics Analyzed\n- 🔺 Gainers / 📉 Losers\n- 💰 Price change %\n- 📈 Volatility (High vs Low)\n- ⚖️ Bid-Ask Spread %\n- 🔼 Momentum (vs Weighted Avg)\n- ⭐ vs Market Average\n - 🔢 Number of Trades\n\n---\n### ⚠️ Notes\n- Message output is automatically **split into chunks** to stay under Telegram’s **4096 character limit**.\n- Output is sent in **rich HTML format** for better readability.\n\n---\n\n✅ This note is for internal guidance. Feel free to delete or update it after setup.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5bbd9227-2a52-4130-abf1-f6745327dbd4",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1540,
+            780
+          ],
+          "parameters": {
+            "width": 340,
+            "height": 240,
+            "content": "### 🛠️ Setup Instructions\n\n4. **Telegram**\n   - Create a bot via [@BotFather](https://t.me/BotFather)\n   - Add the bot to a Telegram group or use a personal chat\n   - In the **Send Telegram Message** node:\n     - Add your bot token under credentials\n     - Replace the default `chatId` with your group/user chat ID\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ffa51aa0-181a-415b-933c-44fd01ca27da",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            800
+          ],
+          "parameters": {
+            "height": 180,
+            "content": "**Binance**\n   - No Binance API key required (uses public endpoint)\n   - Ensure internet access to call Binance API"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ba902bcb-f24c-491a-bcaa-ab7bf16e5bb1",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            220,
+            800
+          ],
+          "parameters": {
+            "height": 180,
+            "content": "\n### ⏱ Schedule\n- Runs **every hour**\n- Cron expression: `5 * * * *`  \n  _(At minute 5 of every hour)_"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ae8b4d48-90ab-4b28-bbc7-07ed5d333815",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            900,
+            820
+          ],
+          "parameters": {
+            "width": 560,
+            "content": "\n3. **Optional: Add More Coins**\n   - In the **Function node**, find the line:\n     ```js\n     const relevantSymbols = ['SOLUSDC', 'BTCUSDC', 'ETHUSDC'];\n     ```\n   - Add your preferred trading pairs (must end in `USDC`)"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Binance 24h Price Change",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Binance 24h Price Change": {
+          "main": [
+            [
+              {
+                "node": "Analyze & Format Market Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analyze & Format Market Data": {
+          "main": [
+            [
+              {
+                "node": "Send Telegram Message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 9,
+      "nodeTypes": {
+        "n8n-nodes-base.function": {
+          "count": 1
+        },
+        "n8n-nodes-base.telegram": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Aurélien P.",
+      "username": "aurelienpp",
+      "bio": "",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/809d3bb18956c4506707a8d185188cb5c921a1ba39c596058f581cb7048d327b?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 14,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.function",
+        "codex": {
+          "data": {
+            "alias": [
+              "Code",
+              "Javascript",
+              "Custom Code",
+              "Script",
+              "cpde"
+            ],
+            "details": "The Function node allows you to execute JavaScript in your workflow. Unlike the Function Item node, this node does not operate on incoming node data per-item. Instead, you must iterate over multiple items of incoming data yourself. This can be useful if you're performing data transformation where you want to manipulate the number of items being outputted by the node (i.e. 1 item is inputted in with nested object, 10 items are outputted without any nested objects)",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function",
+          "color": "#FF9922"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 49,
+        "icon": "file:telegram.svg",
+        "name": "n8n-nodes-base.telegram",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Telegram"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzM3YWVlMiIgZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiLz48cGF0aCBmaWxsPSIjYzhkYWVhIiBkPSJtMjEuNjYxIDM0LjMzOCAzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIvPjxwYXRoIGZpbGw9IiNhOWM2ZDgiIGQ9Im0yNi42OTUgMzcuMDM0LS43MjkgNy43NDZzLS4zMDUgMi4zNzMgMi4wNjggMGw0LjY0NC00LjIwMyIvPjxwYXRoIGQ9Im0yMS43MyAzNC43MTItNy44MDktMi41NDVzLS45MzItLjM3OC0uNjMzLTEuMjM3Yy4wNjItLjE3Ny4xODYtLjMyOC41NTktLjU4OCAxLjczMS0xLjIwNiAzMi4wMjgtMTIuMDk2IDMyLjAyOC0xMi4wOTZzLjg1Ni0uMjg4IDEuMzYxLS4wOTdjLjIzMS4wODguMzc4LjE4Ny41MDMuNTQ4LjA0NS4xMzIuMDcxLjQxMS4wNjguNjg5LS4wMDMuMjAxLS4wMjcuMzg2LS4wNDUuNjc4LS4xODQgMi45NzgtNS43MDYgMjUuMTk4LTUuNzA2IDI1LjE5OHMtLjMzIDEuMy0xLjUxNCAxLjM0NWMtLjQzMi4wMTYtLjk1Ni0uMDcxLTEuNTgyLS42MS0yLjMyMy0xLjk5OC0xMC4zNTItNy4zOTQtMTIuMTI2LTguNThhLjM0LjM0IDAgMCAxLS4xNDYtLjIzOWMtLjAyNS0uMTI1LjEwOC0uMjguMTA4LS4yOHMxMy45OC0xMi40MjcgMTQuMzUyLTEzLjczMWMuMDI5LS4xMDEtLjA3OS0uMTUxLS4yMjYtLjEwNy0uOTI5LjM0Mi0xNy4wMjUgMTAuNTA2LTE4LjgwMSAxMS42MjktLjEwNC4wNjYtLjM5NS4wMjMtLjM5NS4wMjMiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Telegram",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": []
+  }
+}

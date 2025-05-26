@@ -1,0 +1,2162 @@
+{
+  "workflow": {
+    "id": 2978,
+    "name": "Analyze Reddit Posts with AI to Identify Business Opportunities",
+    "views": 12561,
+    "recentViews": 30,
+    "totalViews": 12561,
+    "createdAt": "2025-02-22T17:43:37.472Z",
+    "description": "**Use case**\nManually monitoring Reddit for viable business ideas is time-consuming and inconsistent. This workflow automatically analyzes trending Reddit discussions using AI to surface high-potential opportunities, filter irrelevant content, and generate actionable insights - saving entrepreneurs 10+ hours weekly in market research.\n\n**What this workflow does**\nThis AI-powered workflow automatically collects trending Reddit discussions, analyzes posts for viable business opportunities using GPT-4, applies smart filters to exclude low-value content, and generates scored opportunity reports with market insights. It identifies unmet customer needs through sentiment analysis, prioritizes high-potential ideas using custom criteria, and outputs structured data to Google Sheets for actionable decision-making.\n\n**Setup**\n- Add Reddit,Google and OpenAI credentials\n- Configure target subreddits in **Subreddit** node\n- Test workflow by testing workflow\n- Review generated opportunity report in Google Sheets\n\n\n**How to adjust this template**\n- **Change data sources**: Replace Reddit trigger with Twitter/X or Hacker News API\n- **Modify criteria**: Adjust scoring thresholds in Opportunity Calculator node\n- **Add integrations**:\n   - Create automatic Slack alerts for urgent opportunities\n   - Generate draft business plans using AI Document Writer\n\n\n\n",
+    "workflow": {
+      "id": "Xx4zOjRFLI8W9PiC",
+      "meta": {
+        "instanceId": "481a48d2941aac0cf9462ce6b93b63097e0c030779c473519ff7c167c8bed8f7",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Analyze Reddit Posts with AI to Identify Business Opportunities",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "52bdf7eb-ee1a-43c5-a0ad-199283003892",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -1400,
+            -640
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e9a000b6-2f35-4928-a8d8-aa2d8cc27513",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -360,
+            -760
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "SOgg2BJ10kvhpBbS",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "cd38a8b6-1369-4209-a80e-9e9949df49c0",
+          "name": "OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            680,
+            -1080
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "SOgg2BJ10kvhpBbS",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "4749ca62-6061-4dc0-8f1a-b0e995bb3d0f",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            640,
+            -220
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "SOgg2BJ10kvhpBbS",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "ed68c267-9716-4930-b210-d1f1ae89d8c8",
+          "name": "Post Sentiment Analysis",
+          "type": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+          "position": [
+            740,
+            -400
+          ],
+          "parameters": {
+            "options": {},
+            "inputText": "={{ $json.postcontent }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2e651e62-00dd-4f0d-a8bc-ce4d8b9fa1d7",
+          "name": "Positive Posts Draft",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1260,
+            -560
+          ],
+          "webhookId": "f9dabe4c-9c74-4486-932a-606ea4bb830f",
+          "parameters": {
+            "message": "={{ $json.postcontent }}",
+            "options": {},
+            "subject": "Positive Post",
+            "resource": "draft"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "jUQtZvR5i5glEufn",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "29d478d2-43d4-467a-89c2-8c97ea6e245c",
+          "name": "Neutral  Posts Draft",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1280,
+            -380
+          ],
+          "webhookId": "f9dabe4c-9c74-4486-932a-606ea4bb830f",
+          "parameters": {
+            "message": "={{ $json.postcontent }}",
+            "options": {},
+            "subject": "Neutral Post",
+            "resource": "draft"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "jUQtZvR5i5glEufn",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "c289805f-5246-4f3a-9052-48c426da8ce0",
+          "name": "Negative  Posts Draft",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1280,
+            -160
+          ],
+          "webhookId": "f9dabe4c-9c74-4486-932a-606ea4bb830f",
+          "parameters": {
+            "message": "={{ $json.postcontent }}",
+            "options": {},
+            "subject": "Negative Post",
+            "resource": "draft"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "jUQtZvR5i5glEufn",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "00d17970-3195-4290-bb02-9956f31ecc8f",
+          "name": "Find Proper Solutions",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            840,
+            -1040
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "GPT-4O-MINI"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Based on the following Reddit post, suggest a business idea or service that I could create to help this problem for this business and other with similar needs.\n\nReddit post:  \"{{ $json.postcontent }}\"\n\nProvide a concise description of a business idea or service that would adress this issue effectively for mutiple businesses facing similar challenges.\n"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "SOgg2BJ10kvhpBbS",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "9bcbd874-5eed-47ce-9714-1aec71537fe2",
+          "name": "Post Summarization",
+          "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+          "position": [
+            760,
+            -1280
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "60991de9-ad29-484c-9233-966cc1980a03",
+          "name": "Merge Input",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            -80,
+            -700
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "f78fbea9-5f7f-4a88-bde1-7c3f01613892",
+          "name": "Output The Results",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1520,
+            -1260
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "Upvotes": "={{ $json.upvotes }}",
+                "Post_url": "={{ $json.url }}",
+                "Post_date": "={{ $json.date }}",
+                "Post_summary": "={{ $json.response.text }}",
+                "Post_solution": "={{ $json.message.content }}",
+                "Subreddit_size": "={{ $json.subreddit_subscribers }}"
+              },
+              "schema": [
+                {
+                  "id": "Subreddit",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Subreddit",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Subreddit_size",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Subreddit_size",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Post_date",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Post_date",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Upvotes",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Upvotes",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Post_url",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Post_url",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Post_summary",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Post_summary",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Post_solution",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Post_solution",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "test"
+              ],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1C8grVByPo3osYiV5X1pWhEUR9NhBXJGXBE75wC5o6rE/edit#gid=0",
+              "cachedResultName": "sheet1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "1C8grVByPo3osYiV5X1pWhEUR9NhBXJGXBE75wC5o6rE"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "WMi7PlGTPumH5bHV",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "a0259ed2-0615-4e92-9e7e-cbff8c5bc0ce",
+          "name": "Merge 3 Inputs",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1340,
+            -1040
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition",
+            "numberInputs": 3
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "b7326fd0-5379-42ac-b355-ef6c3c1790f9",
+          "name": "Filter Posts By Features",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -980,
+            -640
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0823d10a-ad54-4d82-bcea-9dd236e97857",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $json.ups }}",
+                  "rightValue": 2
+                },
+                {
+                  "id": "bb8187aa-f0f1-4999-8d4b-bdc9abba0618",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.selftext }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "539f0f5c-025a-4f82-9b3a-2ef1ad3a2d96",
+                  "operator": {
+                    "type": "dateTime",
+                    "operation": "after"
+                  },
+                  "leftValue": "={{ DateTime.fromSeconds($json.created).toISO() }}",
+                  "rightValue": "={{ $today.minus(180,'days').toISO() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "11c45f28-97c0-4087-975c-651f27438956",
+          "name": "Filter Posts By Content",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            180,
+            -680
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "d5d38c01-3a88-4767-b488-d9c04145bb8f",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.output }}",
+                  "rightValue": "yes"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "efede239-eff5-4e38-b40d-3cefea040644",
+          "name": "Select Key Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -740,
+            -660
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "e5082ecc-3add-474e-bdb5-b8ad64729930",
+                  "name": "upvotes",
+                  "type": "string",
+                  "value": "={{ $json.ups }}"
+                },
+                {
+                  "id": "a92b5859-fbcc-40c2-95e0-452b12530d98",
+                  "name": "subreddit_subscribers",
+                  "type": "number",
+                  "value": "={{ $json.subreddit_subscribers }}"
+                },
+                {
+                  "id": "a846e21c-6cff-4521-9e0c-a32fa1305376",
+                  "name": "postcontent",
+                  "type": "string",
+                  "value": "={{ $json.selftext }}"
+                },
+                {
+                  "id": "b8045389-684d-4872-9e32-9a6b5511eb2b",
+                  "name": "url",
+                  "type": "string",
+                  "value": "={{ $json.url }}"
+                },
+                {
+                  "id": "f182fedc-1b09-40fe-aeb5-2473263da442",
+                  "name": "date",
+                  "type": "string",
+                  "value": "={{ DateTime.fromSeconds($json.created).toISO() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1a99fdaa-6857-4210-a695-71ce531c1fa0",
+          "name": "Analysis Content  By AI",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -460,
+            -940
+          ],
+          "parameters": {
+            "text": "Decide whether this reddit post is describing a business-related problem or a need for a solution. The post  should mention a specific challenge \n or requirement that a business is trying to address.\nReddit post:  {{ $json.postcontent }}\nIs this post about a business problem or need for a solution ? Output only yes or no",
+            "agent": "conversationalAgent",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "72b30080-e1f2-48b4-b816-ff43542cc6f1",
+          "name": "Get Posts",
+          "type": "n8n-nodes-base.reddit",
+          "position": [
+            -1180,
+            -640
+          ],
+          "parameters": {
+            "limit": 20,
+            "keyword": "looking for a solution",
+            "operation": "search",
+            "subreddit": "=smallbusiness",
+            "additionalFields": {
+              "sort": "hot"
+            }
+          },
+          "credentials": {
+            "redditOAuth2Api": {
+              "id": "iX4P4iMPDji7tHjP",
+              "name": "Reddit account "
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c4ecb9ec-4895-4b41-ba7e-185e3769ce41",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1500,
+            -880
+          ],
+          "parameters": {
+            "width": 880,
+            "height": 440,
+            "content": "# Data Collection\n## Retrieves recent popular posts from specified Reddit communities\n## Filters content by engagement metrics and keywords"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "49735ff9-7f15-4050-9c46-6c13666479bd",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            -620
+          ],
+          "parameters": {
+            "width": 1020,
+            "height": 660,
+            "content": "# Post Sentiment Analysis\n## "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "17048a9e-6080-406e-a4e7-5d57406576e1",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -500,
+            -1160
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 820,
+            "height": 680,
+            "content": "# Analysis Content\n## Emerging market needs\n## Underserved customer demands"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5a412abc-3866-44ba-9ab0-8cc0a3e012f2",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            520,
+            -1480
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 1220,
+            "height": 640,
+            "content": "# Insight Generation And Output \n## Generates executive summaries of key opportunities\n## Consolidates findings in Google Sheets"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Merge Input": [
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1iqletb/need_help_and_advice_for_a_business_name_idea/",
+              "date": "2025-02-16T13:42:12.000+08:00",
+              "output": "yes",
+              "upvotes": "4",
+              "postcontent": "Hello guys,\n\nMy partner and I are planning to open an accounting business that will focus on tax services such as filling taxes and tax advisor and we have plan for future to add wealth management and capital advising. Initially, we were thinking of using the name \"Global Solutions,\" but we found out that another company already has it, so we can’t use it.\n\nWe’re looking for a professional name that’s easy to pronounce and somewhat similar to \"Global Solutions.\" Also, unique enough that we won’t want to change it in the future. Any ideas or suggestions would be greatly appreciated! We would love to list all name suggestions to share with my partner so we can pick the best one.\n\nThanks in advance for your help! Appreciate it! ",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1iob5ez/business_acquisition_loan_what_are_my_odds_what/",
+              "date": "2025-02-13T12:34:29.000+08:00",
+              "output": "yes",
+              "upvotes": "3",
+              "postcontent": "Hello!  \nLongtime friends have offered to sell my their local biz.    \n12 years running, last year did 950k gross, 325K SDE.  \nYOY growth has been good.  \n650k price.  \nThey have offered to seller finance up to 61.5% of the purchase price so far.  \nThey might go even higher on the seller financing if I ask.\n\n**The good (about me):**  \n  \n\\- I have good credit, probably 720+.  \n\\- I do have \\~200k equity in my home, I'm willing to collateralize.  \n  \n**The ugly (about me):**  \n  \n\\- I have only 5% down possible for equity injection, but would prefer 0%  \nI read that with a SBA 7(a) loan the seller can do 5% of my equity injection with a standby note (deferred payment until SBA loan is paid off).  I'm not sure if that could be done in tandem with another (much larger) note that would be payable (in payments) at closing.  \n  \n\\- I've had no / negative income the last couple of years.  I took some time off from my 20+ year profession, lived off of savings and some credit while I explored other career paths because I needed a change.  I did learn a couple of high value trades, and did incur some expenses in that process.\n\n\\- No direct industry experience.  I do have much professional experience I bring to the table, but not in this industry.  I have managed people on my team... but not employees.  \n\n**The rest:**  \n  \nThey are willing to hire me as store manager now, if that helps.    \nThey will be providing complete training and ongoing support.  \nIt is a simple business, really.  \nThey obviously believe in their business, given the willingness to seller finance so much of it.  \n  \nWhat are the odds I could get a SBA 7(a) loan with 5% down?  \nAre there any loans with 0% down?  \n  \nI would like to get an extra 50k or so for startup costs - it is an acquisition however I'm going to have startup expenses like first and last months lease payments, jurisdictional inspections, electricity deposit, liability insurance / workman's comp, that sort of stuff.\n\nI realize the scenario is not ideal, however it seems to me there should be SOME option out there given that all I have to do is not mess up the business!  It's a great business, well loved in the community.  \nThere is good room in the revenue for me to make accelerated loan repayments, establish business savings, grow the business, and even pay myself enough to cover my living expenses.  That is one heck of a deal, I have to find some way to pull this off!\n\nI'm willing to look at less fantastic loan offers with higher rates.    \nIt really seems to me that some entity would be willing to lend based on the cashflow / success / stability of the existing business.\n\nOne idea I had - if sellers would be willing to carry 100% for 12-24 months, would I then likely have an easier time qualifying for a SBA 7(a) loan to pay off their note, or part of it (depending on what they want)?\n\nAnother idea - store manager -&gt; partner -&gt; partner buyout  \nI do need to find out their maximum timeline for getting out.  \n  \nHad I known a couple of years ago this was going to come up, I would have made different decisions!  \nI really don't want to sell my house and rent something in order to do this, but I'm considering that as a last resort.  \nIf these weren't my longtime friends whom I trust with my life, I wouldn't consider this.  I'd be too chicken.  This is like winning the lottery to me, frankly... I'm not the perfect buyer on paper but they really want me to have it.  They know it will be my baby, as it has been theirs.\n\nGrateful for any solutions / ideas, thank you in advance!  =D\n\n",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1ikcdi5/seeking_a_reliable_alternative_to_stripe_for/",
+              "date": "2025-02-08T10:09:44.000+08:00",
+              "output": "yes",
+              "upvotes": "3",
+              "postcontent": "Hi everyone,\n\nI'm looking for advice on the **best alternative to Stripe** for my service-based business. Here’s the situation:\n\n* I handle **monthly recurring payments** from customers who prefer paying by **credit card**.\n* My customers provide me with their credit card information, and I need a solution to **send invoices** or **auto-charge their cards monthly** without issues.\n\n# Problems I’ve Faced:\n\n1. **Stripe**: I’ve lost countless disputes despite providing proof of service, and I’m fed up with their **chargeback process**.\n2. **Square**: I processed just **two paid invoices totaling $180**, and they **deactivated my account**, holding my money for **90 days**!\n\nI’m desperate to find a platform that:\n\n* Allows **invoicing** and **recurring auto-charges**.\n* Has **minimal chargebacks or disputes**, or at least a fair dispute resolution process. or **BEST: no disputes at all**\n* Doesn’t hold funds unnecessarily or shut down accounts without notice.\n\nI’m open to hearing about **any reliable options**, whether they are traditional payment processors, blockchain-based platforms, or other innovative solutions.\n\n**Please help!** Any advice would mean the world to me right now.\n\nThank you in advance for your suggestions!",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1ibkmzd/business_number_being_used_to_spam_call_people/",
+              "date": "2025-01-28T05:28:30.000+08:00",
+              "output": "yes",
+              "upvotes": "7",
+              "postcontent": "So I just got off the phone with the umpteenth person who has gotten a spam call from someone spoofing with our business number, and I’m just waiting for the day that we start getting negative reviews based on this.\n\nWe’ve gotten angry calls from people for a number of scams, and apparently it’s repeated calls to them.\n\nI feel bad, cos those calls make me mad too, but I get tired of getting cussed out several times a week, and having to explain what spam calls are. I haven’t found any solutions online that look like they’d actually solve the problem.\n\nDoes anyone else get this with their business numbers?",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1i43orw/im_a_small_business_owner_which_software_should_i/",
+              "date": "2025-01-18T17:06:49.000+08:00",
+              "output": "yes",
+              "upvotes": "38",
+              "postcontent": "I generate about $100k in annual revenue and don’t have payroll. What software would you recommend, and why? Currently, I create invoices using Excel, but I’m looking for a more efficient solution to send invoices and receive payments seamlessly.\n\nAlso, is there a fee every time I receive a payment? For example, if I receive $20k, $10k, $30k, or $40k?",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1i1euah/small_business_automation_can_someone_help_me/",
+              "date": "2025-01-15T03:54:19.000+08:00",
+              "output": "yes",
+              "upvotes": "3",
+              "postcontent": "So I am looking for ways to bring some automations to my business by leveraging the technology available and I started with programing a smart chat bot for my website that literally is an agent who knows everything about my company which is nice when I am not around.  Then I took it further and thought that I could make automated virtual receptionist for my company which I did which makes life better because when I am on a job I miss probably a few calls a day and then when I try to reach them back, they usually have already started to talk to other competitors and then it gets challenging from there.  So this has been my solution and now I never miss a call and started building automations to even sell for me on my products and services that I offer and now even can send a booking link to them by text and email and this has allowed me to convert better and not miss an opportunity that comes my way.  I say all this because I created another on that is used strictly to role play with and I need testers to help me refine and debug it.  Essentially I just need other business owners to role play with my agent and provide any feedback that would make it better or enhance it.  \n\nIf you're willing to help me test it just call 1-855-449-7005.  Thanks in advance to anyone who tries it out!            ",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1hzlhcg/customer_emailcommunication_tracker/",
+              "date": "2025-01-12T20:17:33.000+08:00",
+              "output": "yes",
+              "upvotes": "3",
+              "postcontent": "What system do you use for customer communication?\n\nLooking for recommendations on CSR communication. I have a retail store with one full time retail manager and a handful of seasonal and part time associates. \n\nWebsite inquiries for retail are routed to a generic email of which all associates can respond. The goal was that with a generic email (accessed from one terminal plus an iPad) customers would get responded to quickly but Mozilla Thunderbird’s interface is clunky and associates never remember to “file” completed conversations. \n\nI am frugal (hence one email address) but am willing to invest in a solution that can better track inquiries (only a handful a week) to provide a better experience. Just curious what you might use that works well. ",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1hyzgts/had_a_customer_fire_themselves_and_it_felt_good/",
+              "date": "2025-01-12T00:24:35.000+08:00",
+              "output": "yes",
+              "upvotes": "57",
+              "postcontent": "My work had a newer customer that we were happy to have because we knew they were working with our competition. We did some work for them and they would blame us for their problems. We would offer solutions and never hear back and to top it off they paid late. I also met the owner at a trade show and he treated me like I wasn't even there when I went to say thank you. He just looked at me blankly and ignored me. So we stopped calling.\n\nThen a half year later they send some work in. I quoted it extremely high. They asked for a price discount so they could get the job for their customer. I went down 10% knowing it was still high. Then the owner emailed back about his 25 year relationship with our competitor and how they would do it at half the price. \n\nI felt happy wasting their time and money. Also, if our competitor is so great, why did they start sending us work? \n\nI'm glad we won't hear from them. I have many other customers that are fantastic to work with and pay on time. ",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1hnqv0q/attention_business_owners_using_benchco/",
+              "date": "2024-12-28T06:31:18.000+08:00",
+              "output": "yes",
+              "upvotes": "8",
+              "postcontent": "You may have seen in your email that [Bench.co](http://Bench.co) is closing its doors for bookkeeping services. They are giving business owners until **March 7th, 2025**, at **5 PM** ET to download their financial data.\n\nDon't wait until the last minute! This is absolutely critical - your financial data is too important to risk losing. The timing couldn't be worse in the middle of the holidays and so close to year-end... and the lack of advance warning is frustrating.\n\nI know this situation will leave many business owners scrambling for a new bookkeeping solution. But don’t stress—there are excellent alternatives out there that can serve you even better!\n\nI primarily wanted to make this post to alert people of the closure (in case you missed the email) and encourage everyone to secure their data ASAP. If you're looking for a reliable path forward, I'd recommend exploring smaller firms or individual remote bookkeepers. Many offer highly personalized services at a wide range of prices - with services often far better quality than Bench.\n\nI'm not here to promote my business, but if you're feeling overwhelmed or don't know where to start, I'm happy to chat and share advice based on my experience running a remote bookkeeping and accounting firm. At the end of the day, I hope all Bench clients find a bookkeeping service that's a better fit: personalized, reliable, and capable of supporting your business long-term.\n\n  \nTo add a question and make sure I'm following the sub rules: \n\nWhat are you currently doing for your bookkeeping and accounting? How did you find that solution and what do you wish was different about it?",
+              "subreddit_subscribers": 1944498
+            }
+          }
+        ],
+        "Merge 3 Inputs": [
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1iqletb/need_help_and_advice_for_a_business_name_idea/",
+              "date": "2025-02-16T13:42:12.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Name Generation and Branding Consulting Service**\n\n**Description:**\n\nCreate a consulting service specializing in business name generation and branding strategies for startups and small businesses, particularly in regulated industries like accounting, finance, and legal services. The service would utilize a combination of creative brainstorming sessions, market research, and trademark checks to ensure potential business names are not only unique and relevant but also resonate with target audiences.\n\nThe service can offer tiered packages, including:\n\n1. **Name Generation**: A dedicated session where clients brainstorm multiple name ideas, with a focus on industry relevance and ease of pronunciation.\n   \n2. **Market Research**: Analyze competitors and market trends to help clients select names that stand out.\n\n3. **Trademark and Domain Availability Check**: A comprehensive report on the availability of suggested names for trademarks and associated domain names to ensure legal compliance and digital presence.\n\n4. **Brand Strategy Development**: Optional services where you assist clients in developing a full branding strategy, including logo design, color palettes, and marketing messaging based on their selected name.\n\nBy offering this service, you can address the common challenge of finding a suitable and unique business name, while also providing valuable insights into branding that will grow as the client's business evolves, ensuring they don't face the same issue in the future.",
+                "refusal": null
+              },
+              "upvotes": "4",
+              "logprobs": null,
+              "response": {
+                "text": "A couple is starting an accounting business focused on tax services and plans to expand into wealth management and capital advising. They initially considered the name \"Global Solutions,\" but it's already taken. They seek unique, professional, and easy-to-pronounce name suggestions that are similar to \"Global Solutions\" to avoid future name changes. They appreciate any help and plan to discuss the suggestions together."
+              },
+              "postcontent": "Hello guys,\n\nMy partner and I are planning to open an accounting business that will focus on tax services such as filling taxes and tax advisor and we have plan for future to add wealth management and capital advising. Initially, we were thinking of using the name \"Global Solutions,\" but we found out that another company already has it, so we can’t use it.\n\nWe’re looking for a professional name that’s easy to pronounce and somewhat similar to \"Global Solutions.\" Also, unique enough that we won’t want to change it in the future. Any ideas or suggestions would be greatly appreciated! We would love to list all name suggestions to share with my partner so we can pick the best one.\n\nThanks in advance for your help! Appreciate it! ",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1iob5ez/business_acquisition_loan_what_are_my_odds_what/",
+              "date": "2025-02-13T12:34:29.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Financial Advisory and Structuring Service for Business Acquisitions**\n\n**Description:**\n\nCreate a financial advisory firm specializing in helping aspiring entrepreneurs and prospective buyers navigate the complexities of purchasing existing businesses, particularly those with seller financing options. This service would focus on individuals who may not have traditional funding routes available due to factors like low equity or limited industry experience.\n\n**Key Offerings:**\n\n1. **Loan Application Assistance:**\n   - Guide clients through the SBA 7(a) loan application process, including the nuances of seller financing and the potential for using standby notes.\n   - Help develop customized financing strategies tailored to each client’s unique situation.\n\n2. **Financial Structuring:**\n   - Assist in structuring financing deals that maximize seller financing and minimize upfront equity injections.\n   - Provide creative solutions for negotiating terms with sellers to facilitate smoother transactions.\n\n3. **Business Valuation and Due Diligence Support:**\n   - Offer expertise in conducting business valuations to ensure clients understand the worth of the business they are purchasing.\n   - Help perform due diligence to uncover any potential risks or hidden costs in the acquisition.\n\n4. **Training and Support for Transitioning Owners:**\n   - Provide training resources and integration plans for new owners into the business to ensure smooth day-to-day operations post-acquisition.\n   - Connect clients with mentorship programs or industry networks for ongoing support.\n\n5. **Additional Funding Solutions:**\n   - Explore non-traditional funding sources, including microloans, community funding initiatives, or partnership arrangements that suit clients' needs for startup costs.\n\n6. **Community and Networking Events:**\n   - Organize workshops and networking events that connect buyers, sellers, and financing institutions to foster community support and share experiences.\n\nBy addressing these specific needs, your service could significantly reduce the barriers to business acquisition for aspiring entrepreneurs, allowing more people to realize their dreams of ownership, as well as helping existing business owners find trustworthy successors. This not only benefits the buyers but also strengthens local economies by ensuring businesses remain operational and thriving.",
+                "refusal": null
+              },
+              "upvotes": "3",
+              "logprobs": null,
+              "response": {
+                "text": "A long-time friend is offering to sell their local business, which has been profitable for 12 years (grossing $950k last year with a $325k Seller's Discretionary Earnings). The business is priced at $650k, and the seller is open to financing up to 61.5% of the purchase price. The buyer has good credit and equity in their home but limited cash for a down payment (only 5% available, preferring 0%). They lack direct industry experience but have management experience and training will be provided by the seller. They are exploring loan options, including the potential for an SBA 7(a) loan and the possibility of seller financing for a portion of the purchase. The buyer is open to various financing solutions due to their trust in the sellers and the appealing nature of the business opportunity."
+              },
+              "postcontent": "Hello!  \nLongtime friends have offered to sell my their local biz.    \n12 years running, last year did 950k gross, 325K SDE.  \nYOY growth has been good.  \n650k price.  \nThey have offered to seller finance up to 61.5% of the purchase price so far.  \nThey might go even higher on the seller financing if I ask.\n\n**The good (about me):**  \n  \n\\- I have good credit, probably 720+.  \n\\- I do have \\~200k equity in my home, I'm willing to collateralize.  \n  \n**The ugly (about me):**  \n  \n\\- I have only 5% down possible for equity injection, but would prefer 0%  \nI read that with a SBA 7(a) loan the seller can do 5% of my equity injection with a standby note (deferred payment until SBA loan is paid off).  I'm not sure if that could be done in tandem with another (much larger) note that would be payable (in payments) at closing.  \n  \n\\- I've had no / negative income the last couple of years.  I took some time off from my 20+ year profession, lived off of savings and some credit while I explored other career paths because I needed a change.  I did learn a couple of high value trades, and did incur some expenses in that process.\n\n\\- No direct industry experience.  I do have much professional experience I bring to the table, but not in this industry.  I have managed people on my team... but not employees.  \n\n**The rest:**  \n  \nThey are willing to hire me as store manager now, if that helps.    \nThey will be providing complete training and ongoing support.  \nIt is a simple business, really.  \nThey obviously believe in their business, given the willingness to seller finance so much of it.  \n  \nWhat are the odds I could get a SBA 7(a) loan with 5% down?  \nAre there any loans with 0% down?  \n  \nI would like to get an extra 50k or so for startup costs - it is an acquisition however I'm going to have startup expenses like first and last months lease payments, jurisdictional inspections, electricity deposit, liability insurance / workman's comp, that sort of stuff.\n\nI realize the scenario is not ideal, however it seems to me there should be SOME option out there given that all I have to do is not mess up the business!  It's a great business, well loved in the community.  \nThere is good room in the revenue for me to make accelerated loan repayments, establish business savings, grow the business, and even pay myself enough to cover my living expenses.  That is one heck of a deal, I have to find some way to pull this off!\n\nI'm willing to look at less fantastic loan offers with higher rates.    \nIt really seems to me that some entity would be willing to lend based on the cashflow / success / stability of the existing business.\n\nOne idea I had - if sellers would be willing to carry 100% for 12-24 months, would I then likely have an easier time qualifying for a SBA 7(a) loan to pay off their note, or part of it (depending on what they want)?\n\nAnother idea - store manager -&gt; partner -&gt; partner buyout  \nI do need to find out their maximum timeline for getting out.  \n  \nHad I known a couple of years ago this was going to come up, I would have made different decisions!  \nI really don't want to sell my house and rent something in order to do this, but I'm considering that as a last resort.  \nIf these weren't my longtime friends whom I trust with my life, I wouldn't consider this.  I'd be too chicken.  This is like winning the lottery to me, frankly... I'm not the perfect buyer on paper but they really want me to have it.  They know it will be my baby, as it has been theirs.\n\nGrateful for any solutions / ideas, thank you in advance!  =D\n\n",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1ikcdi5/seeking_a_reliable_alternative_to_stripe_for/",
+              "date": "2025-02-08T10:09:44.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Payment Assurance & Dispute Resolution Service**\n\n**Description:**\n\nCreate a specialized payment processing platform designed specifically for service-based businesses that suffer from frequent disputes and account deactivations with traditional processors like Stripe and Square. The platform would focus on three key areas:\n\n1. **Dedicated Payment Processing**: Offer a secure and user-friendly interface for handling monthly recurring payments and invoicing. This could include features like automated invoicing, direct card entry, and easy integration with existing business systems.\n\n2. **Dispute Management Module**: Implement an innovative dispute resolution system that leverages AI and machine learning to analyze and document service delivery. This system would guide businesses in gathering comprehensive proof of service and recommend best practices to minimize chargebacks. Additionally, the platform could offer access to a team of dispute resolution specialists who can intervene on behalf of the businesses in case of disputes.\n\n3. **Client Risk Assessment and Education**: Incorporate a risk assessment feature that evaluates customer profiles for potential chargeback risks before onboarding them. This could involve verifying the legitimacy of the customer's payment method and prior transaction history. Moreover, provide educational resources on managing customer relationships, expectations, and payment disputes effectively.\n\nBy addressing the common pain points in payment processing and dispute resolution, this service would not only provide a reliable payment alternative but also empower service-based businesses to manage their payments and disputes with confidence, ultimately improving their cash flow and reducing anxiety related to chargebacks and fund holds.",
+                "refusal": null
+              },
+              "upvotes": "3",
+              "logprobs": null,
+              "response": {
+                "text": "A service-based business owner is seeking reliable alternatives to Stripe for handling monthly recurring credit card payments. They've faced issues with Stripe's chargeback process and had their Square account deactivated after processing only two invoices. The ideal solution should allow for invoicing and auto-charges, minimize disputes, and avoid unnecessary fund holds or account shutdowns. They are open to various payment processing options, including traditional and innovative solutions."
+              },
+              "postcontent": "Hi everyone,\n\nI'm looking for advice on the **best alternative to Stripe** for my service-based business. Here’s the situation:\n\n* I handle **monthly recurring payments** from customers who prefer paying by **credit card**.\n* My customers provide me with their credit card information, and I need a solution to **send invoices** or **auto-charge their cards monthly** without issues.\n\n# Problems I’ve Faced:\n\n1. **Stripe**: I’ve lost countless disputes despite providing proof of service, and I’m fed up with their **chargeback process**.\n2. **Square**: I processed just **two paid invoices totaling $180**, and they **deactivated my account**, holding my money for **90 days**!\n\nI’m desperate to find a platform that:\n\n* Allows **invoicing** and **recurring auto-charges**.\n* Has **minimal chargebacks or disputes**, or at least a fair dispute resolution process. or **BEST: no disputes at all**\n* Doesn’t hold funds unnecessarily or shut down accounts without notice.\n\nI’m open to hearing about **any reliable options**, whether they are traditional payment processors, blockchain-based platforms, or other innovative solutions.\n\n**Please help!** Any advice would mean the world to me right now.\n\nThank you in advance for your suggestions!",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1ibkmzd/business_number_being_used_to_spam_call_people/",
+              "date": "2025-01-28T05:28:30.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Caller ID Protection and Reputation Management Service**\n\n**Description:** Create a comprehensive service that helps businesses protect their caller ID and manage their reputation against spoofing and spam calls. This service would offer the following features:\n\n1. **Caller ID Verification Tool:** Implement a system that allows businesses to register their numbers with a trusted network, improving their chances of being recognized as legitimate by consumers' phone carriers and reducing the chance of spoofing.\n\n2. **Monitoring and Alerts:** Offer real-time monitoring of calls made from the business’s number. Whenever a spoofed call is detected, the business is notified immediately, allowing them to take preventive action (like notifying clients or issuing public statements).\n\n3. **Reputation Management:** Provide a platform that allows businesses to respond to negative reviews or comments regarding spam calls. This can include automated responses to FAQs about spam calls, educating callers on what to do if they receive a call from a spoofed number.\n\n4. **Customer Education Campaigns:** Develop educational materials and campaigns that businesses can share with their customers. This includes tips on identifying spoofed calls and reassurances that their actual business numbers are legitimate and safe to call.\n\n5. **Legal Support:** Offer guidance or access to legal support for businesses that are facing significant issues due to spoofing, helping them take action against malicious actors.\n\nThis service would not only alleviate the stress faced by businesses dealing with spoofing but also help improve their brand reputation and customer trust.",
+                "refusal": null
+              },
+              "upvotes": "7",
+              "logprobs": null,
+              "response": {
+                "text": "The author expresses frustration over receiving multiple angry calls from people who are being spammed by scammers using their business phone number. They worry about potential negative reviews and have not found effective solutions to the issue. The author seeks input from others who may experience similar problems with their business numbers."
+              },
+              "postcontent": "So I just got off the phone with the umpteenth person who has gotten a spam call from someone spoofing with our business number, and I’m just waiting for the day that we start getting negative reviews based on this.\n\nWe’ve gotten angry calls from people for a number of scams, and apparently it’s repeated calls to them.\n\nI feel bad, cos those calls make me mad too, but I get tired of getting cussed out several times a week, and having to explain what spam calls are. I haven’t found any solutions online that look like they’d actually solve the problem.\n\nDoes anyone else get this with their business numbers?",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1i43orw/im_a_small_business_owner_which_software_should_i/",
+              "date": "2025-01-18T17:06:49.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Simplified Invoicing and Payment Management SaaS**\n\n**Description**: Develop a cloud-based invoicing and payment management software tailored for small businesses generating modest annual revenues (e.g., under $500k). The platform would enable users to create, send, and manage invoices seamlessly, integrating payment processing to facilitate immediate payments. Key features would include:\n\n1. **Template-Based Invoicing**: User-friendly templates to create professional invoices without the complexity of spreadsheets.\n  \n2. **Integrated Payment Solutions**: Collaboration with payment processing providers to offer various payment methods (credit/debit cards, bank transfers) with transparent fee structures, ensuring users understand costs per transaction.\n\n3. **Automated Reminders**: Send automatic reminders for overdue invoices, reducing the need for follow-up communication.\n\n4. **Reporting Dashboard**: Real-time analytics to track income, outstanding invoices, and payment histories, helping users manage cash flow effectively.\n\n5. **Affordable Pricing Model**: A tiered subscription model with a low monthly fee, avoiding a pay-per-transaction fee structure, which would make managing costs easier for users.\n\nBy focusing on small businesses that currently rely on Excel or less efficient methods for invoicing, this service would cater to their need for efficiency, clarity in payment processing, and ultimately help improve their cash flow management.",
+                "refusal": null
+              },
+              "upvotes": "38",
+              "logprobs": null,
+              "response": {
+                "text": "The user generates approximately $100,000 in annual revenue without payroll and currently uses Excel for invoicing. They seek recommendations for more efficient invoicing and payment solutions and inquire about potential fees associated with receiving payments of varying amounts."
+              },
+              "postcontent": "I generate about $100k in annual revenue and don’t have payroll. What software would you recommend, and why? Currently, I create invoices using Excel, but I’m looking for a more efficient solution to send invoices and receive payments seamlessly.\n\nAlso, is there a fee every time I receive a payment? For example, if I receive $20k, $10k, $30k, or $40k?",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1i1euah/small_business_automation_can_someone_help_me/",
+              "date": "2025-01-15T03:54:19.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Comprehensive Virtual Receptionist and Automation Service**\n\n**Description:**\n\nCreate a subscription-based service that offers businesses a fully customizable virtual receptionist and automations platform tailored to their specific needs. This service would integrate an intelligent chatbot capable of handling customer inquiries, booking appointments, and providing information about products and services. \n\n**Key Features:**\n\n1. **Custom Chatbots:** Develop AI-driven chatbots that can be tailored to individual business needs, trained on specific FAQs, and able to engage with clients when human agents are unavailable.\n\n2. **Call Handling Automation:** Implement an automated call routing system that ensures every incoming call is answered or redirected efficiently, minimizing missed opportunities.\n\n3. **Booking and Scheduling Integration:** Provide integrated booking calendars that allow customers to book appointments directly through chat or voice interactions, synchronizing with the business owner's calendar to prevent double bookings.\n\n4. **Lead Capture and Follow-Up:** Automate lead capture through various channels and set up follow-up sequences, ensuring that potential customers are nurtured and converting effectively.\n\n5. **Testing and Feedback Loop:** Offer a beta version for a limited number of businesses to test the service and provide feedback, continuously refining and enhancing the platform based on user experiences.\n\n6. **Analytics Dashboard:** Provide users with insights into customer interactions, response rates, and booking conversions to help them optimize their communication strategies.\n\nThis service would not only help businesses avoid missed opportunities but also streamline their operations, allowing owners to focus on delivering services rather than managing communication.",
+                "refusal": null
+              },
+              "upvotes": "3",
+              "logprobs": null,
+              "response": {
+                "text": "The author is seeking to enhance their business through automation by developing a smart chatbot and a virtual receptionist for their website, which helps manage missed calls and improve customer conversion. They mention that these tools allow for better communication and efficiency while they are busy. Additionally, they are looking for business owners to test and provide feedback on a new role-playing chatbot designed to further refine its capabilities. Interested testers can reach out at the provided phone number."
+              },
+              "postcontent": "So I am looking for ways to bring some automations to my business by leveraging the technology available and I started with programing a smart chat bot for my website that literally is an agent who knows everything about my company which is nice when I am not around.  Then I took it further and thought that I could make automated virtual receptionist for my company which I did which makes life better because when I am on a job I miss probably a few calls a day and then when I try to reach them back, they usually have already started to talk to other competitors and then it gets challenging from there.  So this has been my solution and now I never miss a call and started building automations to even sell for me on my products and services that I offer and now even can send a booking link to them by text and email and this has allowed me to convert better and not miss an opportunity that comes my way.  I say all this because I created another on that is used strictly to role play with and I need testers to help me refine and debug it.  Essentially I just need other business owners to role play with my agent and provide any feedback that would make it better or enhance it.  \n\nIf you're willing to help me test it just call 1-855-449-7005.  Thanks in advance to anyone who tries it out!            ",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1hzlhcg/customer_emailcommunication_tracker/",
+              "date": "2025-01-12T20:17:33.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Unified Customer Communication Dashboard**\n\n**Description:**\nCreate a cloud-based customer communication platform specifically designed for small to medium retail businesses. The Unified Customer Communication Dashboard would streamline all inquiries from various channels (email, social media, website chat, etc.) into a single, user-friendly interface. Key features would include:\n\n1. **Centralized Inboxes**: Consolidate all customer messages into one inbox for associates to manage, reducing the need for a generic email.\n\n2. **Conversation Tracking**: Automatically log all customer interactions and categorize them based on status (new, in-progress, completed) to ensure no inquiry goes unanswered.\n\n3. **Task Management**: Include a simple task assignment feature where messages can be assigned to specific associates, allowing for better accountability and follow-up.\n\n4. **Response Templates**: Provide customizable templates for common inquiries, making response times faster while ensuring consistency in communication.\n\n5. **Analytics Dashboard**: Offer insights and reporting tools on response times, common inquiries, and associate performance to help businesses improve their customer service strategies.\n\n6. **Affordable Subscription Model**: Implement a tiered subscription pricing model to suit different budgets, allowing businesses to pay only for what they need.\n\nThis service would not only address the current issues faced by the Reddit user but also attract other similar businesses looking for a more efficient way to manage customer communications.",
+                "refusal": null
+              },
+              "upvotes": "3",
+              "logprobs": null,
+              "response": {
+                "text": "A retail store owner seeks recommendations for a more effective customer communication system, currently using a generic email for inquiries. The existing method via Mozilla Thunderbird is inefficient, with associates struggling to organize completed conversations. Although the owner is frugal, they are open to investing in a solution to better track inquiries and enhance customer experience."
+              },
+              "postcontent": "What system do you use for customer communication?\n\nLooking for recommendations on CSR communication. I have a retail store with one full time retail manager and a handful of seasonal and part time associates. \n\nWebsite inquiries for retail are routed to a generic email of which all associates can respond. The goal was that with a generic email (accessed from one terminal plus an iPad) customers would get responded to quickly but Mozilla Thunderbird’s interface is clunky and associates never remember to “file” completed conversations. \n\nI am frugal (hence one email address) but am willing to invest in a solution that can better track inquiries (only a handful a week) to provide a better experience. Just curious what you might use that works well. ",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1hyzgts/had_a_customer_fire_themselves_and_it_felt_good/",
+              "date": "2025-01-12T00:24:35.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: Client Relationship Management Consultancy**\n\n**Description:** Launch a consultancy that specializes in helping businesses improve their client relationship management and communication strategies. The focus would be on educating companies about the importance of establishing clear expectations, setting boundaries, and understanding when it's time to disengage from unproductive client relationships.\n\n**Services Offered:**\n\n1. **Workshops and Training:** Conduct workshops on effective communication, negotiation skills, and identifying red flags in client relationships. Provide role-playing scenarios to help businesses practice handling difficult situations.\n\n2. **Client Assessment Tools:** Develop a proprietary assessment tool that helps companies evaluate potential clients before entering into contracts. This tool would analyze factors like payment history, communication style, and past reviews.\n\n3. **Consulting Services:** Offer one-on-one consulting to help businesses create client engagement strategies tailored to their specific needs. This would include establishing protocols for responding to problematic clients and deciding when to walk away.\n\n4. **Client Relationship Coaching:** Provide coaching sessions for business owners and their teams to build their confidence in managing difficult clients and to share strategies for fostering better client relationships.\n\n5. **Networking Systems:** Create a network for businesses to share experiences and insights about their clients, enabling collective intelligence on which clients may pose challenges.\n\nThis service would empower businesses to recognize the value of their time and resources and encourage them to focus on building relationships with clients that respect and appreciate their work.",
+                "refusal": null
+              },
+              "upvotes": "57",
+              "logprobs": null,
+              "response": {
+                "text": "The author had a negative experience with a new customer who previously worked with a competitor. Despite providing solutions, the customer blamed the author for their problems and consistently paid late. After a lackluster interaction at a trade show, the author stopped pursuing the customer. Later, the customer sought a price discount for new work but cited their long-term relationship with the competitor, who offered lower prices. The author felt satisfaction in the customer's frustration and is content to focus on better-paying clients."
+              },
+              "postcontent": "My work had a newer customer that we were happy to have because we knew they were working with our competition. We did some work for them and they would blame us for their problems. We would offer solutions and never hear back and to top it off they paid late. I also met the owner at a trade show and he treated me like I wasn't even there when I went to say thank you. He just looked at me blankly and ignored me. So we stopped calling.\n\nThen a half year later they send some work in. I quoted it extremely high. They asked for a price discount so they could get the job for their customer. I went down 10% knowing it was still high. Then the owner emailed back about his 25 year relationship with our competitor and how they would do it at half the price. \n\nI felt happy wasting their time and money. Also, if our competitor is so great, why did they start sending us work? \n\nI'm glad we won't hear from them. I have many other customers that are fantastic to work with and pay on time. ",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          },
+          {
+            "json": {
+              "url": "https://www.reddit.com/r/smallbusiness/comments/1hnqv0q/attention_business_owners_using_benchco/",
+              "date": "2024-12-28T06:31:18.000+08:00",
+              "index": 0,
+              "output": "yes",
+              "message": {
+                "role": "assistant",
+                "content": "**Business Idea: \"BookKeeper Connect\" - A Personalized Bookkeeping Transition Service**\n\n**Description:**\n\nBookKeeper Connect is a service designed to assist businesses, particularly those affected by the closure of Bench.co, in seamlessly transitioning to new bookkeeping services. This platform would serve as a one-stop-shop for businesses in need of alternative bookkeeping solutions while addressing their specific needs.\n\n**Key Features:**\n\n1. **Transition Consultation**: Personalized consultations to assess client needs, preferences, and pain points. This will help businesses understand what they should look for in a new bookkeeping service.\n\n2. **Curated Provider Directory**: A vetted list of smaller firms and individual remote bookkeepers that offer personalized services. Businesses can browse profiles, rates, and client reviews to find the best fit for them.\n\n3. **Data Migration Support**: Assistance with securely exporting and migrating financial data from Bench.co to the new provider, ensuring that no vital information is lost in the transition.\n\n4. **Training and Onboarding**: Educational resources and onboarding support for business owners and new bookkeepers, helping them to establish effective workflows and communication channels.\n\n5. **Ongoing Support**: A subscription service for ongoing support, where businesses can get expert advice or a second opinion on their new bookkeeping practices.\n\n6. **Sustainability Focus**: Promote smaller bookkeeping firms that prioritize eco-friendly practices, catering to businesses interested in sustainability.\n\n**Target Market:**\n\n- Small to medium-sized businesses, startups, and freelancers looking for reliable and personalized bookkeeping solutions after the Bench.co closure.\n\nBy addressing the immediate pain points of transitioning to new bookkeeping services, BookKeeper Connect would not only solve the frustration and uncertainty faced by these businesses but also foster long-term relationships with quality bookkeeping providers.",
+                "refusal": null
+              },
+              "upvotes": "8",
+              "logprobs": null,
+              "response": {
+                "text": "Bench.co is closing its bookkeeping services, giving clients until March 7, 2025, to download their financial data. Business owners are encouraged to act quickly to secure their data and explore alternative bookkeeping solutions, such as smaller firms or individual remote bookkeepers that may offer more personalized services. The author is willing to provide advice to those feeling overwhelmed by the transition. Additionally, a discussion is prompted about current bookkeeping solutions and desired improvements."
+              },
+              "postcontent": "You may have seen in your email that [Bench.co](http://Bench.co) is closing its doors for bookkeeping services. They are giving business owners until **March 7th, 2025**, at **5 PM** ET to download their financial data.\n\nDon't wait until the last minute! This is absolutely critical - your financial data is too important to risk losing. The timing couldn't be worse in the middle of the holidays and so close to year-end... and the lack of advance warning is frustrating.\n\nI know this situation will leave many business owners scrambling for a new bookkeeping solution. But don’t stress—there are excellent alternatives out there that can serve you even better!\n\nI primarily wanted to make this post to alert people of the closure (in case you missed the email) and encourage everyone to secure their data ASAP. If you're looking for a reliable path forward, I'd recommend exploring smaller firms or individual remote bookkeepers. Many offer highly personalized services at a wide range of prices - with services often far better quality than Bench.\n\nI'm not here to promote my business, but if you're feeling overwhelmed or don't know where to start, I'm happy to chat and share advice based on my experience running a remote bookkeeping and accounting firm. At the end of the day, I hope all Bench clients find a bookkeeping service that's a better fit: personalized, reliable, and capable of supporting your business long-term.\n\n  \nTo add a question and make sure I'm following the sub rules: \n\nWhat are you currently doing for your bookkeeping and accounting? How did you find that solution and what do you wish was different about it?",
+              "finish_reason": "stop",
+              "subreddit_subscribers": 1944498
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "c78fd7b7-d3e4-48f2-9f82-81ff71ef49a7",
+      "connections": {
+        "Get Posts": {
+          "main": [
+            [
+              {
+                "node": "Filter Posts By Features",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Input": {
+          "main": [
+            [
+              {
+                "node": "Filter Posts By Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge 3 Inputs": {
+          "main": [
+            [
+              {
+                "node": "Output The Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Analysis Content  By AI",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Select Key Fields": {
+          "main": [
+            [
+              {
+                "node": "Merge Input",
+                "type": "main",
+                "index": 1
+              },
+              {
+                "node": "Analysis Content  By AI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Post Summarization",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Post Sentiment Analysis",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Output The Results": {
+          "main": [
+            []
+          ]
+        },
+        "Post Summarization": {
+          "main": [
+            [
+              {
+                "node": "Merge 3 Inputs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find Proper Solutions": {
+          "main": [
+            [
+              {
+                "node": "Merge 3 Inputs",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Analysis Content  By AI": {
+          "main": [
+            [
+              {
+                "node": "Merge Input",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Posts By Content": {
+          "main": [
+            [
+              {
+                "node": "Post Summarization",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Find Proper Solutions",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge 3 Inputs",
+                "type": "main",
+                "index": 2
+              },
+              {
+                "node": "Post Sentiment Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Post Sentiment Analysis": {
+          "main": [
+            [
+              {
+                "node": "Positive Posts Draft",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Neutral  Posts Draft",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Negative  Posts Draft",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Posts By Features": {
+          "main": [
+            [
+              {
+                "node": "Select Key Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Get Posts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 22,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 3
+        },
+        "n8n-nodes-base.merge": {
+          "count": 2
+        },
+        "n8n-nodes-base.reddit": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.openAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.sentimentAnalysis": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainSummarization": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Alex Huang",
+      "username": "tao",
+      "bio": "",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/1bb3c83a65cdcfd680342b7fe09a36fb6a199bf107ecd91ad357d3d81da3d033?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 445,
+        "icon": "file:reddit.svg",
+        "name": "n8n-nodes-base.reddit",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.reddit/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/reddit/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Reddit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNTEzIDUxNCI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iLjUiIHk9Ii41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIGZpbGwtcnVsZT0ibm9uemVybyIgc3Ryb2tlPSJub25lIj48cGF0aCBmaWxsPSIjZmY0NTAwIiBkPSJNMCA3Ni44QzAgMzQuMjUzIDM0LjI1MyAwIDc2LjggMGgzNTguNEM0NzcuNzQ3IDAgNTEyIDM0LjI1MyA1MTIgNzYuOHYzNTguNGMwIDQyLjU0Ny0zNC4yNTMgNzYuOC03Ni44IDc2LjhINzYuOEMzNC4yNTMgNTEyIDAgNDc3Ljc0NyAwIDQzNS4yeiIvPjxwYXRoIGQ9Ik03OSAzMDVjMC02OC4xNDIgNzguOTQyLTEyMyAxNzctMTIzczE3NyA1NC44NTggMTc3IDEyMy03OC45NDIgMTIzLTE3NyAxMjNTNzkgMzczLjE0MiA3OSAzMDUiLz48ZyBmaWxsPSIjZmY0NTAwIj48cGF0aCBkPSJNMTk5IDM0N2MzNSAyOSA3OSAyOSAxMTQgMGwxMiAxMWMtNDIgMzUtOTYgMzUtMTM4IDB6Ii8+PHVzZSB4bGluazpocmVmPSIjYiIvPjx1c2UgeGxpbms6aHJlZj0iI2IiIHg9Ii0xMTgiLz48L2c+PC9nPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiI+PHVzZSB4bGluazpocmVmPSIjYiIgeD0iNzUiIHk9Ii0xNjAiIHN0cm9rZS13aWR0aD0iMjUiLz48cGF0aCBzdHJva2Utd2lkdGg9IjIyIiBkPSJNODcgMjgyYy00NS0yMi01LTkyIDQwLTUwbTI5OCA1MGM0NS0yMiA1LTkyLTQwLTUwbS0xMjctNDUgMjQtODMgODAgMTYiLz48L2c+PC9zeW1ib2w+PGRlZnM+PHBhdGggaWQ9ImIiIGQ9Ik0yODcgMjg1YTI3Ljk0IDI3Ljk0IDAgMSAxIDU2IDAgMjcuOTQgMjcuOTQgMCAxIDEtNTYgMCIvPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Reddit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1121,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainSummarization",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainsummarization/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Summarization Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Summarization Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1250,
+        "icon": "file:openAi.svg",
+        "name": "@n8n/n8n-nodes-langchain.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "ChatGPT",
+              "DallE",
+              "whisper",
+              "audio",
+              "transcribe",
+              "tts",
+              "assistant"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg1IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NiAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MSA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1272,
+        "icon": "fa:balance-scale-left",
+        "name": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.sentimentanalysis/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Sentiment Analysis"
+        },
+        "iconData": {
+          "icon": "balance-scale-left",
+          "type": "icon"
+        },
+        "displayName": "Sentiment Analysis",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

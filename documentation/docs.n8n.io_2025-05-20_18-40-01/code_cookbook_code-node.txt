@@ -1,0 +1,18 @@
+URL: https://docs.n8n.io/code/cookbook/code-node/
+Scraped_At: 2025-05-20T18:41:19.369971
+
+Code node cookbook
+#
+This section contains examples and recipes for tasks you can do with the Code node.
+Get number of items returned by last node
+Get the binary data buffer
+Output to the browser console
+Related resources
+#
+Built-in methods and variables reference
+Code node
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

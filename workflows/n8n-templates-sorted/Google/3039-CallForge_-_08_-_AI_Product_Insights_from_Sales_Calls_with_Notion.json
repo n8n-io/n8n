@@ -1,0 +1,1318 @@
+{
+  "workflow": {
+    "id": 3039,
+    "name": "CallForge - 08 - AI Product Insights from Sales Calls with Notion",
+    "views": 668,
+    "recentViews": 3,
+    "totalViews": 668,
+    "createdAt": "2025-02-28T06:49:16.260Z",
+    "description": "![callforgecompressed.png](fileId:1010)\n\n---\n\n# **CallForge - AI-Powered Product Insights Processor from Sales Calls**  \nAutomate **product feedback extraction** from AI-analyzed **sales calls** and store structured insights in **Notion** for data-driven product decisions.  \n\n---\n\n## **🎯 Who is This For?**  \nThis workflow is designed for:  \n✅ **Product managers** tracking customer feedback and feature requests.  \n✅ **Engineering teams** identifying usability issues and AI/ML-related mentions.  \n✅ **Customer success teams** monitoring product pain points from real sales conversations.  \n\nIt streamlines **product intelligence gathering**, ensuring customer insights **are structured, categorized, and easily accessible** in **Notion** for better decision-making.  \n\n---\n\n## **🔍 What Problem Does This Workflow Solve?**  \nProduct teams often struggle to **capture, categorize, and act on** valuable feedback from sales calls.  \n\nWith **CallForge**, you can:  \n✔ **Automatically extract and categorize product feedback** from AI-analyzed sales calls.  \n✔ **Track AI/ML-related mentions** to gauge customer demand for AI-driven features.  \n✔ **Identify feature requests and pain points** for product development prioritization.  \n✔ **Store structured feedback in Notion**, reducing manual tracking and increasing visibility across teams.  \n\nThis workflow **eliminates manual feedback tracking**, allowing product teams to focus on **innovation and customer needs**.  \n\n---\n\n## **📌 Key Features & Workflow Steps**  \n\n### **🎙️ AI-Powered Product Feedback Processing**  \nThis workflow **processes AI-generated sales call insights** and organizes them in **Notion databases**:  \n1. **Triggers when AI sales call data is received.**  \n2. **Detects product-related feedback** (feature requests, bug reports, usability issues).  \n3. **Extracts key product insights**, categorizing feedback based on customer needs.  \n4. **Identifies AI/ML-related mentions**, tracking customer interest in AI-driven solutions.  \n5. **Aggregates feedback and categorizes it by sentiment** (positive, neutral, negative).  \n6. **Logs insights in Notion**, making them accessible for product planning discussions.  \n\n### **📊 Notion Database Integration**  \n- **Product Feedback** → Logs feature requests, usability issues, and bug reports.  \n- **AI Use Cases** → Tracks AI-related discussions and customer interest in machine learning solutions.  \n\n---\n\n## **🛠 How to Set Up This Workflow**  \n\n### **1. Prepare Your AI Call Analysis Data**  \n- Ensure **AI-generated sales call insights** are available.  \n- Compatible with **Gong, Fireflies.ai, Otter.ai, and other AI transcription tools**.  \n\n### **2. Connect Your Notion Database**  \n- Set up Notion databases for:  \n  🔹 **Product Feedback** (logs feature requests and bug reports).  \n  🔹 **AI Use Cases** (tracks AI/ML mentions and customer demand).  \n\n### **3. Configure n8n API Integrations**  \n- **Connect your Notion API key** in n8n under “Notion API Credentials.”  \n- **Set up webhook triggers** to receive AI-generated sales insights.  \n- **Test the workflow** using a sample AI sales call analysis.  \n\n---\n\n## **🔧 How to Customize This Workflow**  \n💡 **Modify Notion Data Structure** – Adjust fields to align with your product team's workflow.  \n💡 **Refine AI Data Processing Rules** – Customize how feature requests and pain points are categorized.  \n💡 **Integrate with Slack or Email** – Notify teams when recurring product issues emerge.  \n💡 **Expand with Project Management Tools** – Sync insights with **Jira, Trello, or Asana** to create product tickets automatically.  \n\n---\n\n## **⚙️ Key Nodes Used in This Workflow**  \n\n🔹 **If Nodes** – Detect if product feedback, AI mentions, or feature requests exist in AI data.  \n🔹 **Notion Nodes** – Create and update structured feedback entries in Notion.  \n🔹 **Split Out & Aggregate Nodes** – Process multiple insights and consolidate AI-generated data.  \n🔹 **Wait Nodes** – Ensure smooth sequencing of API calls and database updates.  \n\n---\n\n## **🚀 Why Use This Workflow?**  \n✔ **Eliminates manual sales call review** for product teams.  \n✔ **Provides structured, AI-driven insights** for feature planning and prioritization.  \n✔ **Tracks AI/ML mentions** to assess demand for AI-powered solutions.  \n✔ **Improves product development strategies** by leveraging real customer insights.  \n✔ **Scalable for teams using n8n Cloud or self-hosted deployments**.  \n\nThis workflow **empowers product teams** by transforming **sales call data into actionable intelligence**, optimizing **feature planning, bug tracking, and AI/ML strategy**. 🚀",
+    "workflow": {
+      "meta": {
+        "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "a2061232-329f-4288-9b01-ba832463c31e",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            2280,
+            -400
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "42df9296-82ac-44cd-8370-50e4507fb91d",
+          "name": "Check if Product Data Found",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2800,
+            -340
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1a67895e-3ab7-4c93-8e16-202b3882ded5",
+                  "operator": {
+                    "type": "array",
+                    "operation": "lengthGte",
+                    "rightType": "number"
+                  },
+                  "leftValue": "={{ $json.AIoutput.ProductFeedback }}",
+                  "rightValue": 1
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "84e93120-92d8-45fd-bb63-8626743e7fe0",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2720,
+            -580
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1340,
+            "height": 440,
+            "content": "## Product Data Processing"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5cb1df66-abba-4d82-8fe5-c2313c8f7b44",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2140,
+            -760
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 560,
+            "height": 620,
+            "content": "## Receives AI Data from other workflow\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7c046627-f418-4b7e-aa5b-7cff69f98f59",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1780,
+            -960
+          ],
+          "parameters": {
+            "width": 340,
+            "height": 820,
+            "content": "![Callforge](https://uploads.n8n.io/templates/callforgeshadow.png)\n## CallForge - The AI Gong Sales Call Processor\nCallForge allows you to extract important information for different departments from your Sales Gong Calls. \n\n### AI Output Processor\nOnce the AI data is generated, it is then added (or not!) to the Notion Database here. This is also where the Pipedrive or Salesforce integration will be added once that portion is complete. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a04dac9d-5477-41a3-8696-1871c1cccf53",
+          "name": "Create Product Data Object1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            3280,
+            -940
+          ],
+          "parameters": {
+            "title": "={{ $('Execute Workflow Trigger').item.json.metaData.title }}",
+            "options": {
+              "icon": "💬"
+            },
+            "resource": "databasePage",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1775b6e0-c94f-80ac-9885-d9695af5bc89",
+              "cachedResultUrl": "https://www.notion.so/1775b6e0c94f80ac9885d9695af5bc89",
+              "cachedResultName": "AI use-case database"
+            },
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Company|title",
+                  "title": "={{ $json.metaData.CompanyName }}"
+                },
+                {
+                  "key": "Department|multi_select",
+                  "multiSelectValue": "={{ $json.AIoutput.AI_ML_References.Details.Department }}"
+                },
+                {
+                  "key": "Dev status|select",
+                  "selectValue": "={{ $json.AIoutput.AI_ML_References.Details.DevelopmentStatus }}"
+                },
+                {
+                  "key": "Employees|select",
+                  "selectValue": "={{ $json.sfOpp[0].Employees }}"
+                },
+                {
+                  "key": "Engagement with n8n|select",
+                  "selectValue": "Prospect"
+                },
+                {
+                  "key": "Requires agents|checkbox",
+                  "checkboxValue": "={{ $json.AIoutput.AI_ML_References.Details.RequiresAgents }}"
+                },
+                {
+                  "key": "More info|url",
+                  "urlValue": "={{ $json.metaData.url }}"
+                },
+                {
+                  "key": "Requires RAG|checkbox",
+                  "checkboxValue": "={{ $json.AIoutput.AI_ML_References.Details.RequiresRAG }}"
+                },
+                {
+                  "key": "Requires chat|select",
+                  "selectValue": "={{ $json.AIoutput.AI_ML_References.Details.RequiresChat }}"
+                },
+                {
+                  "key": "Use case|rich_text",
+                  "textContent": "={{ $json.AIoutput.AI_ML_References.Context }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "2B3YIiD4FMsF9Rjn",
+              "name": "Angelbot Notion"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 3000
+        },
+        {
+          "id": "66c252a9-e330-4742-84d1-d17042585f79",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2720,
+            -1040
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1340,
+            "height": 440,
+            "content": "## AI use Case "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "caded10f-8662-4a2b-ab47-b1a825c39c4b",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2720,
+            -120
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1340,
+            "height": 360,
+            "content": "## AI Mentioned on call"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "750c2853-3653-4557-b636-354fd91f846b",
+          "name": "Create Product Feedback Data Object",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            3440,
+            -480
+          ],
+          "parameters": {
+            "title": "={{ $('Execute Workflow Trigger').item.json.metaData.title }}",
+            "options": {
+              "icon": "💬"
+            },
+            "resource": "databasePage",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1375b6e0-c94f-80a8-93c9-c623b76dd14a",
+              "cachedResultUrl": "https://www.notion.so/1375b6e0c94f80a893c9c623b76dd14a",
+              "cachedResultName": "Product Feedback"
+            },
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Sentiment|multi_select",
+                  "multiSelectValue": "={{ $json.Sentiment }}"
+                },
+                {
+                  "key": "Feedback|title",
+                  "title": "={{ $json.Feedback }}"
+                },
+                {
+                  "key": "Feedback Date|date",
+                  "date": "={{ $('Execute Workflow Trigger').item.json.metaData.started }}"
+                },
+                {
+                  "key": "Sales Call Summaries|relation",
+                  "relationValue": [
+                    "={{ $('Execute Workflow Trigger').item.json.notionData[0].id }}"
+                  ]
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "80",
+              "name": "Notion david-internal"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 3000
+        },
+        {
+          "id": "343f536f-2aa3-4fc9-9c75-e288a5019b84",
+          "name": "Check if AI Use Case Data Found",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2800,
+            -800
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1a67895e-3ab7-4c93-8e16-202b3882ded5",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.AIoutput.AI_ML_References.Exist }}",
+                  "rightValue": 1
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "3d261de2-61fe-40e8-806b-f311b72081f0",
+          "name": "Check if AI Mentioned On Call",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2860,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1a67895e-3ab7-4c93-8e16-202b3882ded5",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.AIoutput.AI_ML_References.Exist }}",
+                  "rightValue": 1
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "e422c25b-05c0-4549-a12b-50b727cbcb83",
+          "name": "Wait for rate limiting - AI Use Case",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            3020,
+            -940
+          ],
+          "webhookId": "a26d4c04-4092-45fb-9ba3-d6c70ac0934c",
+          "parameters": {
+            "amount": 3
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "9ceb4ac2-6539-4c19-b207-883d61670c07",
+          "name": "Wait for rate limiting - Product Data",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            3020,
+            -480
+          ],
+          "webhookId": "04bed240-5bae-4524-bb6f-011d8a6e1431",
+          "parameters": {
+            "amount": 3
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "61d6864c-a7fa-488e-a252-f60b497de675",
+          "name": "Split Out Product Data",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            3220,
+            -480
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "AIoutput.ProductFeedback"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "49bd2056-4eeb-43d7-a210-e4b777fd8535",
+          "name": "Bundle AI Use Case Data to 1 object",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            3540,
+            -940
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "tagdata"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ce6e127d-9ff0-493c-bb47-02c30594f0e2",
+          "name": "Bundle Product Feedback Data to 1 object",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            3660,
+            -480
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "tagdata"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ce06a39c-8066-4a3a-9ef4-b8bf6d14273a",
+          "name": "Merge AI Use Case Thread",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3860,
+            -780
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d8fc65ad-2b05-40c1-84c7-7bda819f0f1f",
+                  "name": "aiResponse",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.aiResponse }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1d64eff6-442a-4f71-a497-d6261bf4753f",
+          "name": "Merge Product Feedback Thread",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3880,
+            -320
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d8fc65ad-2b05-40c1-84c7-7bda819f0f1f",
+                  "name": "aiResponse",
+                  "type": "object",
+                  "value": "={{ $('Execute Workflow Trigger').item.json.aiResponse }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "50116044-d468-4f07-a711-8373c1b26e94",
+          "name": "Update Call with AI Data Summary",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            3180,
+            -40
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Execute Workflow Trigger').item.json.notionData[0].id }}"
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "AI Related|checkbox",
+                  "checkboxValue": "={{ $json.AIoutput.AI_ML_References.Exist }}"
+                },
+                {
+                  "key": "AI Summary|rich_text",
+                  "textContent": "={{ $json.AIoutput.AI_ML_References.Context }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "80",
+              "name": "Notion david-internal"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 3000
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Split Out Product Data": {
+          "main": [
+            [
+              {
+                "node": "Create Product Feedback Data Object",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Check if Product Data Found",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Check if AI Use Case Data Found",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Check if AI Mentioned On Call",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Product Data Found": {
+          "main": [
+            [
+              {
+                "node": "Wait for rate limiting - Product Data",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Merge Product Feedback Thread",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Product Data Object1": {
+          "main": [
+            [
+              {
+                "node": "Bundle AI Use Case Data to 1 object",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if AI Mentioned On Call": {
+          "main": [
+            [
+              {
+                "node": "Update Call with AI Data Summary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Product Feedback Thread": {
+          "main": [
+            []
+          ]
+        },
+        "Check if AI Use Case Data Found": {
+          "main": [
+            [
+              {
+                "node": "Wait for rate limiting - AI Use Case",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Merge AI Use Case Thread",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bundle AI Use Case Data to 1 object": {
+          "main": [
+            [
+              {
+                "node": "Merge AI Use Case Thread",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Product Feedback Data Object": {
+          "main": [
+            [
+              {
+                "node": "Bundle Product Feedback Data to 1 object",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for rate limiting - AI Use Case": {
+          "main": [
+            [
+              {
+                "node": "Create Product Data Object1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for rate limiting - Product Data": {
+          "main": [
+            [
+              {
+                "node": "Split Out Product Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bundle Product Feedback Data to 1 object": {
+          "main": [
+            [
+              {
+                "node": "Merge Product Feedback Thread",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 19,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.wait": {
+          "count": 2
+        },
+        "n8n-nodes-base.notion": {
+          "count": 3
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Angel Menendez",
+      "username": "djangelic",
+      "bio": "Angel Menendez is a Staff Developer Advocate at n8n.io, specializing in low-code tools for cybersecurity workflows. From Puerto Rico, Angel's tech journey began by helping his father translate technical books. He later started a web development business and transitioned from a career as a flight attendant to cybersecurity engineering. His workflows have saved companies significant time. Outside work, Angel enjoys time with his two sons, riding electric bikes, reading, and exploring new places.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/fdbe38425d21378d8c9ba8916e1eb0b320add299f12cc23fcd4961d4e6e00bec?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1010,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/callforgecompressed_43b41eaf5d.png"
+      }
+    ]
+  }
+}

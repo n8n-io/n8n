@@ -1,0 +1,245 @@
+{
+  "workflow": {
+    "id": 1525,
+    "name": "Send a Whatsapp message via Twilio when a certain Onfleet event happens",
+    "views": 1823,
+    "recentViews": 0,
+    "totalViews": 1823,
+    "createdAt": "2022-03-16T00:47:45.588Z",
+    "description": "**Summary**\n\nOnfleet is a last-mile delivery software that provides end-to-end route planning, dispatch, communication, and analytics to handle the heavy lifting while you can focus on your customers.\n\nThis workflow template listens to an Onfleet event and communicates via a **Whatsapp** message. You can easily streamline this with the recipient of the delivery or your customer support numbers.\n\n**Configurations**\n\n- Update the Onfleet trigger node with your own Onfleet credentials, to register for an **Onfleet API key**, please visit https://onfleet.com/signup to get started\n- You can easily change which Onfleet event to listen to. Learn more about Onfleet webhooks with [Onfleet Support](https://support.onfleet.com/hc/en-us/articles/360045763852-Webhooks)\n- Update the Twilio node with your own Twilio credentials, add your own expressions to the `to` number or simply source the **recipient's phone number** from the Onfleet event\n- Toggle `To Whatsapp` to `OFF` if you want to simply use Twilio's SMS API",
+    "workflow": {
+      "id": 7,
+      "name": "Onfleet Trigger --> Twilio Whatsapp",
+      "nodes": [
+        {
+          "name": "Twilio",
+          "type": "n8n-nodes-base.twilio",
+          "position": [
+            680,
+            300
+          ],
+          "parameters": {
+            "message": "=Your delivery is on the way, please visit {{$json[\"body\"][\"data\"][\"task\"][\"trackingURL\"]}} to track your driver's location.",
+            "options": {},
+            "toWhatsapp": true
+          },
+          "credentials": {
+            "twilioApi": {
+              "id": "5",
+              "name": "Twilio account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Onfleet Trigger",
+          "type": "n8n-nodes-base.onfleetTrigger",
+          "position": [
+            460,
+            300
+          ],
+          "webhookId": "db02ef2c-fda1-43f0-84d5-ba4ad7d5dea3",
+          "parameters": {
+            "triggerOn": "taskCreated",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "onfleetApi": {
+              "id": "2",
+              "name": "Onfleet API Key"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Onfleet Trigger": {
+          "main": [
+            [
+              {
+                "node": "Twilio",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 12,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.twilio": {
+          "count": 1
+        },
+        "n8n-nodes-base.onfleetTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "James Li",
+      "username": "ilsemaj",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f2676b8a1c6bf7a2b2c9c4df054571d29662ea0dab6f11e7a423c01af7259574?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 45,
+        "icon": "file:twilio.svg",
+        "name": "n8n-nodes-base.twilio",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMS",
+              "Phone",
+              "Voice"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/twilio/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Twilio"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjUgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsPSIjZTMxZTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTMxLjk1MyAwQzE0LjMzNyAwIDAgMTQuMzM3IDAgMzEuOTUzczE0LjMzNyAzMS45NTMgMzEuOTUzIDMxLjk1M0M0OS42NjMgNjQgNjQgNDkuNjYzIDY0IDMxLjk1M1M0OS42NjMgMCAzMS45NTMgMG0wIDU1LjU2N2MtMTIuOTMxIDAtMjMuNTItMTAuNTg5LTIzLjUyLTIzLjYxNCAwLTEyLjkzMSAxMC41ODktMjMuNTIgMjMuNTItMjMuNTIgMTMuMDI1IDAgMjMuNjE0IDEwLjU4OSAyMy42MTQgMjMuNTIgMCAxMy4wMjUtMTAuNTg5IDIzLjYxNC0yMy42MTQgMjMuNjE0Ii8+PHVzZSB4bGluazpocmVmPSIjYiIvPjx1c2UgeGxpbms6aHJlZj0iI2IiIHk9IjE1LjkzIi8+PHBhdGggZD0iTTE3LjMzNSAzOS45MThhNi42NCA2LjY0IDAgMCAxIDYuNjUzLTYuNjUzIDYuNjUzIDYuNjUzIDAgMSAxIDAgMTMuMzA2IDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1M20wLTE1LjkzYTYuNjQgNi42NCAwIDAgMSA2LjY1My02LjY1MyA2LjY0IDYuNjQgMCAwIDEgNi42NTMgNi42NTMgNi42NCA2LjY0IDAgMCAxLTYuNjUzIDYuNjUzIDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1MyIvPjwvZz48L3N5bWJvbD48ZGVmcz48cGF0aCBpZD0iYiIgZD0iTTMzLjI2NSAyMy45ODhhNi42NCA2LjY0IDAgMSAxIDEzLjMwNiAwIDYuNjQgNi42NCAwIDEgMS0xMy4zMDYgMCIvPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Twilio",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 556,
+        "icon": "file:Onfleet.svg",
+        "name": "n8n-nodes-base.onfleetTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.onfleettrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/onfleet/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Onfleet Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSIjQUE4MUYzIiBkPSJNMCAwaDYwdjYwSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMyLjU1IDMyLjA2NmMuNDgyLjQ1NCAxLjIwNyAxLjA2NiAyLjE0NSAxLjgxMS45MzguNzIxIDIuMTY5IDEuNTQ1IDMuNjQzIDIuMTg4Ljc1LjI5IDEuNTUzLjUzMyAyLjQxMi41NTcuNDI3IDAgLjg2IDAgMS4yNjEtLjEzMy4yMTMtLjAyNC40MDItLjEzMy41OTEtLjIxMi4xODktLjExLjM3OC0uMTg4LjU2LS4zMjEuMzQ4LS4yNDMuNjk1LS41MzQuOTYzLS45MDMuMjY4LS4zNy41MTItLjc3LjcyNS0xLjIyNC4zNzgtLjkwMy42MTUtMS45Mi42Ny0yLjk4MWE4LjcgOC43IDAgMCAwLS40MjYtMy4yYy0uMzQ4LTEuMDExLS45MDgtMS45NDUtMS43MTItMi41MzItLjc3NC0uNTU4LTEuNzY3LS43Ny0yLjgzOS0uNjEyLS41MzYuMTA5LTEuMDk2LjI0Mi0xLjYzMi40NzgtLjI2OS4xMS0uNTM3LjI0My0uODI5LjM3Ni0uMjY4LjE1OC0uNTM2LjI5LS44MDQuNDU0LTEuMDcyLjY0My0yLjExNCAxLjQzNi0zLjEwNyAyLjI5LS40ODEuNDU1LS45OTMuODgtMS40NDQgMS4zNTgtLjI0My4yNDItLjQ4LjQ1NS0uNjk0LjcyMWwtLjcyNS43NDVhNDAgNDAgMCAwIDEtMy4wODMgMi45MzNjLTEuMDk2LjkzMy0yLjI0NyAxLjc4OC0zLjUzMyAyLjUzMy0xLjI2LjcyMS0yLjY4IDEuMzMzLTQuMjU4IDEuNTQ1YTYuNyA2LjcgMCAwIDEtMi40MzctLjEwOSA1LjcgNS43IDAgMCAxLTIuMjIzLTEuMDY2IDYuNCA2LjQgMCAwIDEtMS41My0xLjc1OCA4IDggMCAwIDEtLjg1OC0yIDEwLjcgMTAuNyAwIDAgMS0uMzQ4LTIuMDIzIDkuNyA5LjcgMCAwIDEgLjAyNS0xLjk3IDkuOSA5LjkgMCAwIDEgMS4wNi0zLjYzNSA3IDcgMCAwIDEgMS4wNzItMS41MiA1LjMgNS4zIDAgMCAxIDEuNDItMS4xNDZjLjUzNS0uMjkgMS4wOTYtLjUwOSAxLjY2Mi0uNTg4LjU2LS4xMDMgMS4xMjEtLjA3MiAxLjY1Ny0uMDI0IDEuMDQyLjEzMyAxLjk1Ni41MSAyLjczLjkwMyAxLjU1My44NTQgMi42OCAxLjgzNiAzLjU2MyAyLjY5Ljg2Ljg1NSAxLjQ3NSAxLjYgMS45MDEgMi4xMDNsLjYxNS43Ny0uNzI1LS42NjdjLS40OC0uNDU1LTEuMjA2LTEuMDY3LTIuMTQ0LTEuNzg4LS45MzgtLjcyLTIuMTY5LTEuNTQ1LTMuNjQzLTIuMTg3LS43NS0uMjktMS41NTMtLjUzMy0yLjQxMi0uNTU3LS44MjktLjAyNS0xLjY4OC4xNTctMi4zODIuNjY2LS4zNDcuMjQyLS42OTUuNTMzLS45NjMuOTAzcy0uNTM2Ljc3LS43MjUgMS4yMjRhNy45IDcuOSAwIDAgMC0uNjcgMy4wMTEgOC43IDguNyAwIDAgMCAuNDI3IDMuMmMuMzQ3IDEuMDExLjkwNyAxLjk0NSAxLjcxMSAyLjUwMi43NzQuNTU3IDEuNzY3Ljc3IDIuODQuNTg4LjEzMyAwIC4yNjctLjA1NS40MDEtLjA3OXMuMjY4LS4wNTUuNDAyLS4xMDlsLjQwMi0uMTMzLjQwMy0uMTU4Yy4xMzQtLjA1NC4yNjgtLjEwOS40MDItLjE4OGwuNDAyLS4xODhjLjI2OC0uMTU3LjUzNi0uMjkuODA0LS40NTQgMS4wNzItLjY0MiAyLjExNC0xLjQzNiAzLjEwNy0yLjI5Ljk5My0uODc5IDEuOS0xLjc1OCAyLjg5My0yLjhsLjcyNS0uNzQ1Yy4yNDQtLjI2Ny41MTItLjUxLjc1LS43NDVhMjUgMjUgMCAwIDEgMS41NzctMS40MzZjMS4wOTctLjkzNCAyLjI0OC0xLjc4OCAzLjUzNC0yLjUzMyAxLjI2LS43MjEgMi42OC0xLjMzMyA0LjI1OC0xLjU0NWE2LjggNi44IDAgMCAxIDIuNDM2LjEzMyA1LjYgNS42IDAgMCAxIDIuMiAxLjA5Yy42NDUuNTEgMS4xMjcgMS4xMjIgMS41MjkgMS43NThhOCA4IDAgMCAxIC44NTkgMmMuMTg4LjY2Ni4yOTIgMS4zNTcuMzQ3IDIuMDIzYTkuNyA5LjcgMCAwIDEtLjAyNSAxLjk3Yy0uMTM0IDEuMjc4LS40OCAyLjUzMi0xLjA0MSAzLjYyM2E3IDcgMCAwIDEtMS4wNzIgMS41MiA1IDUgMCAwIDEtMS40NDQgMS4xNDYgNSA1IDAgMCAxLS44MjkuMzc2Yy0uMjkyLjA3OC0uNTYuMTg3LS44NTkuMjEyLS41Ni4xMDktMS4xMjcuMDc5LTEuNjYzLjAyNC0xLjA0MS0uMTU4LTEuOTU1LS41MzMtMi43MjktLjkzMy0xLjU1My0uODU1LTIuNjgtMS44NjYtMy41NjQtMi43MTUtLjg1OS0uODU0LTEuNDc0LTEuNi0xLjktMi4xMDJsLS42MTUtLjc3Yy4wNzktLjAxMi44MDQuNjU1LjgwNC42NTUiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Onfleet Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 13,
+        "name": "Support"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

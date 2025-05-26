@@ -1,0 +1,1981 @@
+{
+  "workflow": {
+    "id": 3514,
+    "name": "Build an MCP Server with Google Calendar and Custom Functions",
+    "views": 25914,
+    "recentViews": 646,
+    "totalViews": 25914,
+    "createdAt": "2025-04-10T16:33:11.142Z",
+    "description": "Learn how to build an MCP Server and Client in n8n with official nodes.\n\n&gt; ⚠ Requires n8n version 1.88.0 or higher.\n\nIn this example, we use Google Calendar and custom functions as two separate MCP Servers, demonstrating how to integrate both native and custom tools.\n\n### How it works\n\nThe AI Agent connects to two MCP Servers. Each MCP Trigger (Server) generates a URL exposing its tools. This URL is used by an MCP Client linked to the AI Agent.\n\nWhenever you make changes to the tools, there’s no need to modify the MCP Client. It automatically keeps the AI Agent informed on how to use each tool, even if you change them over time.\n\nThat’s the power of MCP 🙌\n\n### Who is this template for\n\nAnyone looking to use MCP with their AI Agents.\n\n### How to set up\n\nInstructions are included within the workflow itself.\n\n### Check out my other templates\n\n👉 [**https://n8n.io/creators/solomon/**](https://n8n.io/creators/solomon/)",
+    "workflow": {
+      "id": "8n0VYmvJgISwezyz",
+      "meta": {
+        "instanceId": "cf0c5836fa3beacaef0de12624775e6f153c527586d6a910f5e2be3bb2e519a3",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Build your first AI MCP Server",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "f734e72b-1954-44e8-8633-47b6fa69bfc7",
+          "name": "AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -440,
+            -160
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=You are a helpful assistant.\nCurrent datetime is {{ $now.toString() }}"
+            }
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "02c66e36-63e6-48f5-a26a-2c7b1eaf2400",
+          "name": "SearchEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            1180,
+            200
+          ],
+          "parameters": {
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+            "options": {},
+            "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+            "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gmsalomao2@gmail.com",
+              "cachedResultName": "gmsalomao2@gmail.com"
+            },
+            "operation": "getAll"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "imp2lyvMg9IpuCwC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "5956abba-4458-480c-997f-416126dc8c10",
+          "name": "CreateEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            1300,
+            200
+          ],
+          "parameters": {
+            "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+            "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gmsalomao2@gmail.com",
+              "cachedResultName": "gmsalomao2@gmail.com"
+            },
+            "additionalFields": {
+              "summary": "={{ $fromAI(\"event_title\", \"The event title\", \"string\") }}",
+              "description": "={{ $fromAI(\"event_description\", \"The event description\", \"string\") }}"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "imp2lyvMg9IpuCwC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "f12fd8d6-1600-4516-bbb0-a0a893e2ff25",
+          "name": "UpdateEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            1420,
+            200
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gmsalomao2@gmail.com",
+              "cachedResultName": "gmsalomao2@gmail.com"
+            },
+            "operation": "update",
+            "updateFields": {
+              "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+              "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+              "summary": "={{ $fromAI(\"event_title\", \"The event title\", \"string\") }}",
+              "description": "={{ $fromAI(\"event_description\", \"The event description\", \"string\") }}"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "imp2lyvMg9IpuCwC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "b9c6d019-cf0a-4192-b063-e94322f12dae",
+          "name": "DeleteEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            1540,
+            200
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "options": {},
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gmsalomao2@gmail.com",
+              "cachedResultName": "gmsalomao2@gmail.com"
+            },
+            "operation": "delete"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "imp2lyvMg9IpuCwC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "48e028c3-392f-429c-9e71-a3cbdb342a99",
+          "name": "Google Calendar MCP",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            1180,
+            0
+          ],
+          "webhookId": "f9d9d5ea-6f83-42c8-ae50-ee6c71789bca",
+          "parameters": {
+            "path": "my-calendar"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fede10f5-e75b-4851-834f-f248f07a5559",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            560,
+            900
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "function_name"
+                },
+                {
+                  "name": "payload",
+                  "type": "object"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "bc77345e-e6e0-4529-97f0-872eb96d1631",
+          "name": "Switch",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            780,
+            880
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "UPPERCASE",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "ab18304c-4f73-430f-b9fa-2ce4d098e1fa",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.function_name }}",
+                        "rightValue": "uppercase"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "LOWERCASE",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "606bda79-f401-4de2-be9d-51368c794479",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.function_name }}",
+                        "rightValue": "lowercase"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "RANDOM DATA",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "4b22e689-e652-47d2-b737-7be00da9f185",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.function_name }}",
+                        "rightValue": "random_user_data"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "JOKE",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "27a75a2c-8058-4a7c-85c1-898cabeac4a1",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.function_name }}",
+                        "rightValue": "joke"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "abc580fa-3293-443d-a3a3-5d12c0655be2",
+          "name": "Convert Text to Upper Case",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1120,
+            540
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "42333f26-8e14-438a-9965-eec31bf4b6a3",
+                  "name": "converted_text",
+                  "type": "string",
+                  "value": "={{ $json.payload.text.toUpperCase() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "37d2337c-3ccf-4c34-8284-5acc6cbb89fe",
+          "name": "Convert Text to Lower Case",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1120,
+            740
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "42333f26-8e14-438a-9965-eec31bf4b6a3",
+                  "name": "converted_text",
+                  "type": "string",
+                  "value": "={{ $json.payload.text.toLowerCase() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "138d2f10-deca-41c7-bec0-8a7727993d44",
+          "name": "Convert Text",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            560,
+            200
+          ],
+          "parameters": {
+            "name": "convert_text_case",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to convert text to lower case or upper case.",
+            "workflowInputs": {
+              "value": {
+                "payload": "={\n  \"text\": \"{{ $fromAI(\"text_to_convert\", \"The text to convert\", \"string\") }}\"\n}\n",
+                "function_name": "={{ $fromAI(\"function_name\", \"Either lowercase or uppercase\", \"string\") }}"
+              },
+              "schema": [
+                {
+                  "id": "function_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "function_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "payload",
+                  "type": "object",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "payload",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "bf198087-b571-4de3-a174-c53b769c1326",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -640,
+            -160
+          ],
+          "webhookId": "7b02318f-1c6b-4f2a-9a4f-b17fa69ea680",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "df4435ad-0512-4a50-9eaf-2aef566c5fdb",
+          "name": "Simple Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -340,
+            60
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "60745d31-1892-45c1-82b2-bb67386f4384",
+          "name": "Calendar MCP",
+          "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+          "position": [
+            200,
+            80
+          ],
+          "parameters": {
+            "sseEndpoint": "https://n8n.yourdomain/mcp/my-calendar/sse"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "17bef416-fd54-47da-87c7-afd7e6fa5345",
+          "name": "My Functions",
+          "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+          "position": [
+            40,
+            80
+          ],
+          "parameters": {
+            "sseEndpoint": "https://n8n.yourdomain/mcp/my-functions/sse"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d883db20-c3d9-47bf-b19b-85098067054a",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            440,
+            -160
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 620,
+            "height": 520,
+            "content": "## Activate the workflow to make the MCP Trigger work\nIn order to make the MCP server available, you need to activate the workflow.\n\nThen copy the Production URL of the MCP Trigger and paste it in the corresponding MCP Client tool."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "83b21003-eced-444c-ae5c-2fe77ed31fa9",
+          "name": "My Functions Server",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            560,
+            0
+          ],
+          "webhookId": "83f72547-18b7-4f02-846b-27bf39d1efff",
+          "parameters": {
+            "path": "my-functions"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4bc297bc-8ded-4e6e-aa2d-de2f41659864",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -60,
+            -160
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 440,
+            "height": 520,
+            "content": "## MCP Clients\nFor every tool here you need to obtain he corresponding Production URL from the MCP Triggers on the right 👉"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2ad20ab6-b8a6-4427-af03-fbc512f0aa3c",
+          "name": "Random user data",
+          "type": "n8n-nodes-base.debugHelper",
+          "position": [
+            1120,
+            1040
+          ],
+          "parameters": {
+            "category": "randomData",
+            "randomDataCount": "={{ $json.payload.number }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "84435164-94c8-4093-8578-81d5a870bef5",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1360,
+            -160
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 620,
+            "height": 640,
+            "content": "# Try these example requests with the AI Agent\n\n### My Functions MCP\n1. Use your tools to convert this text to lower case: `EXAMPLE TeXt`\n\n2. Use your tools to convert this text to upper case: `example TeXt`\n\n3. Generate 5 random user data, please.\n\n4. Please obtain 3 jokes.\n\n\n\n\n### Calendar MCP\n5. What is my schedule for next week?\n\n6. I have a meeting with John tomorrow at 2pm. Please add it to my Calendar.\n\n7. Adjust the time of my meeting with John tomorrow from 2pm to 4pm, please.\n\n8. Cancel my meeting with John, tomorrow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d678dc07-1c44-4bdb-9707-dc544cd813b2",
+          "name": "Generate random user data",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            720,
+            200
+          ],
+          "parameters": {
+            "name": "random_user_data",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "Generate random user data",
+            "workflowInputs": {
+              "value": {
+                "payload": "={\n  \"number\": {{ $fromAI(\"amount\", \"The amount of user data to generate in integer format\", \"number\") }}\n}",
+                "function_name": "random_user_data"
+              },
+              "schema": [
+                {
+                  "id": "function_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "function_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "payload",
+                  "type": "object",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "payload",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "38f22f69-c6e0-49d8-837c-64e72743ffbf",
+          "name": "Return only some fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1340,
+            1040
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b4548cbe-f3fc-4911-901a-d73182d710a9",
+                  "name": "First name",
+                  "type": "string",
+                  "value": "={{ $json.firstname }}"
+                },
+                {
+                  "id": "6e573a27-ef03-4254-8f9b-2c471e1540c2",
+                  "name": "Last name",
+                  "type": "string",
+                  "value": "={{ $json.lastname }}"
+                },
+                {
+                  "id": "ac5b5806-bf8e-4e1a-a47d-e7180d31e98a",
+                  "name": "Email",
+                  "type": "string",
+                  "value": "={{ $json.email }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a66e8f27-ebf5-460b-898f-b91017d37883",
+          "name": "Joke Request",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1120,
+            1240
+          ],
+          "parameters": {
+            "url": "=https://official-joke-api.appspot.com/jokes/random/{{ $json.payload.number }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "98205665-4b35-4850-9f37-df1688edde85",
+          "name": "Random Jokes",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            880,
+            200
+          ],
+          "parameters": {
+            "name": "obtain_jokes",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to obtain random jokes",
+            "workflowInputs": {
+              "value": {
+                "payload": "={\n  \"number\": {{ $fromAI(\"amount\", \"The amount of jokes to request\", \"number\") }}\n}",
+                "function_name": "joke"
+              },
+              "schema": [
+                {
+                  "id": "function_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "function_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "payload",
+                  "type": "object",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "payload",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "643221de-4ec5-45c2-818d-e754e2b76377",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            440,
+            380
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1260,
+            "height": 1060,
+            "content": "## The My Functions MCP calls this sub-workflow every time.\nA subworkflow is a separate workflow that can be called by other workflows and is able to receive parameters.\nLearn more about sub-workflows **[here](https://docs.n8n.io/flow-logic/subworkflows/)**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ff5dafdc-02f2-4a40-a803-044e18f6d680",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1080,
+            -160
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 620,
+            "height": 520,
+            "content": "## Google Calendar tools require credentials\nIf you don't have your Google Credentials set up in n8n yet, watch [this](https://www.youtube.com/watch?v=3Ai1EPznlAc) video to learn how to do it.\n\nIf you are using n8n Cloud plans, it's very intuitive to setup and you may not even need the tutorial."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb113628-48c3-4be7-8306-c60e92bbd295",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1360,
+            500
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 620,
+            "height": 580,
+            "content": "# Author\n![Solomon](https://gravatar.com/avatar/79aa147f090807fe0f618fb47a1de932669e385bb0c84bf3a7f891ae7d174256?r=pg&d=retro&size=200)\n### Solomon\nFreelance consultant from Brazil, specializing in automations and data analysis. I work with select clients, addressing their toughest projects.\n\nCurrently running the [Scrapes community](https://www.skool.com/scrapes/about?ref=21f10ad99f4d46ba9b8aaea8c9f58c34) with Simon 💪\n\nFor business inquiries, email me at automations.solomon@gmail.com\nOr message me on [Telegram](https://t.me/salomaoguilherme) for a faster response.\n\n## Check out my other templates\n### 👉 https://n8n.io/creators/solomon/\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "83f39d92-73a8-480f-bf66-0996a54c39b9",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1360,
+            1100
+          ],
+          "parameters": {
+            "width": 620,
+            "height": 180,
+            "content": "# Need help?\nFor getting help with this workflow, please create a topic on the community forums here:\nhttps://community.n8n.io/c/questions/"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d6dfab2b-3c55-40b1-ac84-2a30650089f2",
+          "name": "OpenAI 4o",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -480,
+            60
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o",
+              "cachedResultName": "gpt-4o"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "1OcDEFHmAarBeW0G",
+              "name": "n8n-testing2"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "7452095e-d893-40c0-a099-302572dcc513",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -640,
+            180
+          ],
+          "parameters": {
+            "color": 7,
+            "height": 240,
+            "content": "## Why model 4o? 👆\nAfter testing 4o-mini it had some difficulties handling the calendar requests, while the 4o model handled it with ease.\n\nDepending on your prompt and tools, 4o-mini might be able to work well too, but it requires further testing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "33687586-79d7-4a59-bec0-09fd09bc0a7d",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1360,
+            -320
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 3060,
+            "height": 140,
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "02d2a399-36ca-4580-8442-59a7752e3808",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            -280
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 800,
+            "height": 80,
+            "content": "# Learn How to Build an MCP Server and Client"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "When Executed by Another Workflow": [
+          {
+            "json": {
+              "payload": {
+                "number": 5
+              },
+              "function_name": "joke"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "1da3b8d6-0a3e-472d-84f3-06771229901f",
+      "connections": {
+        "Switch": {
+          "main": [
+            [
+              {
+                "node": "Convert Text to Upper Case",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Convert Text to Lower Case",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Random user data",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Joke Request",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI 4o": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CreateEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DeleteEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SearchEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UpdateEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calendar MCP": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert Text": {
+          "ai_tool": [
+            [
+              {
+                "node": "My Functions Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "My Functions": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Random Jokes": {
+          "ai_tool": [
+            [
+              {
+                "node": "My Functions Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Random user data": {
+          "main": [
+            [
+              {
+                "node": "Return only some fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate random user data": {
+          "ai_tool": [
+            [
+              {
+                "node": "My Functions Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "Switch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 32,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 10
+        },
+        "n8n-nodes-base.debugHelper": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleCalendarTool": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 3
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.mcpClientTool": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Solomon",
+      "username": "solomon",
+      "bio": "Freelance consultant from Brazil, specializing in automations and data analysis. I work with select clients, addressing their toughest projects.\n\nFor business inquiries, email me at automations.solomon@gmail.com or message me on Telegram for a faster response.\n\n",
+      "verified": true,
+      "links": [
+        "https://t.me/salomaoguilherme"
+      ],
+      "avatar": "https://gravatar.com/avatar/79aa147f090807fe0f618fb47a1de932669e385bb0c84bf3a7f891ae7d174256?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 855,
+        "icon": "file:DebugHelper.svg",
+        "name": "n8n-nodes-base.debugHelper",
+        "codex": {
+          "data": {
+            "alias": [
+              "Mock",
+              "Sample",
+              "Demo",
+              "Test",
+              "Throw error",
+              "OOM",
+              "Out of Memory",
+              "placeholder"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.debughelper/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "DebugHelper"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI2Ljk1MzEgMTMuMTk3OEMyOS41Mjc2IDEzLjE5NzggMzAuNTcyOSAxNi4zMjY0IDMwLjU3MjkgMTguOTAwOVYyNi43Mzk0QzMwLjU3MjkgMzIuNTQ5OSAyNS44NjI2IDM3LjI2MDMgMjAuMDUyIDM3LjI2MDNDMTQuMjQxNiAzNy4yNjAzIDkuNTMxMjUgMzIuNTQ5OSA5LjUzMTI1IDI2LjczOTRWMTguOTAwOUM5LjUzMTI1IDE2LjMyNjQgMTAuNTc2NiAxMy4xOTc4IDEzLjE1MSAxMy4xOTc4SDI2Ljk1MzFaIiBmaWxsPSIjRjRBMDI2Ii8+CjxwYXRoIGQ9Ik0yNC4xNDA2IDE1LjgwMkgxNS45NjM1QzE0LjQ4MjIgMTUuODAyIDEzLjI4MTIgMTQuNjAxMSAxMy4yODEyIDEzLjExOThDMTMuMjgxMiA5Ljk5ODgzIDE1LjgxMTMgNy40Njg3NSAxOC45MzIzIDcuNDY4NzVIMjEuMTcxOUMyNC4yOTI4IDcuNDY4NzUgMjYuODIyOSA5Ljk5ODgzIDI2LjgyMjkgMTMuMTE5OEMyNi44MjI5IDE0LjYwMTEgMjUuNjIyIDE1LjgwMiAyNC4xNDA2IDE1LjgwMloiIGZpbGw9IiNDQTQ2M0QiLz4KPHBhdGggZD0iTTM4Ljk1ODQgMjIuODU5NEgzMS41NjI1VjE4LjkwMUMzMS41NjI1IDE4LjgyMTYgMzEuNTg3IDE4Ljc0MiAzMS41ODUyIDE4LjY2MjNDMzUuMzQzNyAxOC4yNzAzIDM3LjUgMTUuNzk3MyAzNy41IDExLjczOTVWMTAuODAyQzM3LjUgMTAuMjI2NyAzNy4wMzM1IDkuNzYwMzkgMzYuNDU4NCA5Ljc2MDM5QzM1Ljg4MzIgOS43NjAzOSAzNS40MTY3IDEwLjIyNjcgMzUuNDE2NyAxMC44MDJWMTEuNzM5NUMzNS40MTY3IDE0LjczOTUgMzQuMDg4MiAxNi4zMzQ5IDMxLjM2MzIgMTYuNTk2M0MzMC44ODkxIDE0LjQ4NSAyOS43MzIzIDEyLjY2MDMgMjcuODA1NiAxMi4yNDQ4QzI3LjUxMyAxMC4wMTUxIDI2LjEzMjcgOC4xMjg0NCAyNC4yMDI5IDcuMTQ4OTFDMjUuMDA5MiA2LjMyODUyIDI1LjUyMDkgNS4yMDQ2MSAyNS41MjA5IDMuOTY2MDlWMy4wNDE2NEMyNS41MjA5IDIuNDY2MzMgMjUuMDU0NSAyIDI0LjQ3OTMgMkMyMy45MDQxIDIgMjMuNDM3NSAyLjQ2NjMzIDIzLjQzNzUgMy4wNDE2NFYzLjk2NjA5QzIzLjQzNzUgNS4zMjMxMyAyMi4zMDc1IDYuNDAxMDIgMjAuOTUwNSA2LjQwMTAySDE5LjE1MzdDMTcuNzk2NyA2LjQwMTAyIDE2LjY2NjcgNS4zMjMxMyAxNi42NjY3IDMuOTY2MDlWMy4wNDE2NEMxNi42NjY3IDIuNDY2MzMgMTYuMjAwMiAyIDE1LjYyNTEgMkMxNS4wNDk5IDIgMTQuNTgzNCAyLjQ2NjMzIDE0LjU4MzQgMy4wNDE2NFYzLjk2NjA5QzE0LjU4MzQgNS4yMDQ2MSAxNS4wOTUgNi4zMjg1MiAxNS45MDE0IDcuMTQ4OThDMTMuOTcxNiA4LjEyODQ0IDEyLjU4NDggMTAuMDE1MiAxMi4yOTIxIDEyLjI0NDhDMTAuMzYyOCAxMi42NjA4IDkuMjA4OTEgMTQuNDg5OCA4LjczNTk0IDE2LjYwNDhDNS45NDIyNyAxNi4zNzM2IDQuNTgzMzYgMTQuNzc2NSA0LjU4MzM2IDExLjczOTVWMTAuODAyQzQuNTgzMzYgMTAuMjI2NyA0LjExNjg3IDkuNzYwMzkgMy41NDE3MiA5Ljc2MDM5QzIuOTY2NTYgOS43NjAzOSAyLjUgMTAuMjI2NyAyLjUgMTAuODAyVjExLjczOTVDMi41IDE1LjgzNDUgNC42NDM2NyAxOC4zMTUyIDguNDY2OCAxOC42NzIzQzguNDY1MDggMTguNzQ4NSA4LjQzNzUgMTguODI0OCA4LjQzNzUgMTguOTAxVjIyLjg1OTRIMS4wNDE2NEMwLjQ2NjQ4NCAyMi44NTk0IDAgMjMuMzI1NyAwIDIzLjkwMUMwIDI0LjQ3NjMgMC40NjY0ODQgMjQuOTQyNyAxLjA0MTY0IDI0Ljk0MjdIOC40Mzc1VjI2LjczOTVDOC40Mzc1IDI3LjU2OTggOC41NTIyNyAyOC4zNzk2IDguNzE5MzcgMjkuMTYwOEM0LjczODk4IDI5LjQzMDUgMi41IDMxLjkzMDIgMi41IDM2LjExNDVWMzcuMDUyQzIuNSAzNy42MjczIDIuOTY2NDggMzguMDkzNyAzLjU0MTY0IDM4LjA5MzdDNC4xMTY4IDM4LjA5MzcgNC41ODMyOCAzNy42MjczIDQuNTgzMjggMzcuMDUyVjM2LjExNDVDNC41ODMyOCAzMi44NDkzIDYuMTU3NTggMzEuMjQ4IDkuMzkzMDUgMzEuMjIwMUMxMS4xNDcgMzUuMzc3IDE1LjI2NDIgMzguMzAyIDIwLjA1MiAzOC4zMDJDMjQuODM5MiAzOC4zMDIgMjguOTU2IDM1LjM3NzcgMzAuNzEwMiAzMS4yMjE2QzMzLjg3NTggMzEuMjgyOSAzNS40MTY2IDMyLjg4NDQgMzUuNDE2NiAzNi4xMTQ1VjM3LjA1MkMzNS40MTY2IDM3LjYyNzMgMzUuODgzIDM4LjA5MzcgMzYuNDU4MiAzOC4wOTM3QzM3LjAzMzQgMzguMDkzNyAzNy41IDM3LjYyNzMgMzcuNSAzNy4wNTJWMzYuMTE0NUMzNy41IDMxLjk2NjEgMzUuMjQ4MiAyOS40NzI5IDMxLjMzMTMgMjkuMTY3NkMzMS40OTkzIDI4LjM4NDQgMzEuNTYyNSAyNy41NzIyIDMxLjU2MjUgMjYuNzM5NVYyNC45NDI3SDM4Ljk1ODRDMzkuNTMzNiAyNC45NDI3IDQwIDI0LjQ3NjMgNDAgMjMuOTAxQzQwIDIzLjMyNTcgMzkuNTMzNSAyMi44NTk0IDM4Ljk1ODQgMjIuODU5NFpNMTguOTMyMyA4LjQ4NDM4SDIxLjE3MTlDMjMuNzEzNCA4LjQ4NDM4IDI1Ljc4MTMgMTAuNTUyMiAyNS43ODEzIDEzLjA5MzhDMjUuNzgxMyAxMy45OTg0IDI1LjA0NTMgMTQuNzM0NCAyNC4xNDA2IDE0LjczNDRIMTUuOTYzNUMxNS4wNTg4IDE0LjczNDQgMTQuMzIyOSAxMy45OTg0IDE0LjMyMjkgMTMuMDkzOEMxNC4zMjI5IDEwLjU1MjIgMTYuMzkwNyA4LjQ4NDM4IDE4LjkzMjMgOC40ODQzOFpNMTAuNTIwOSAyNi43Mzk1VjE4LjkwMUMxMC41MjA5IDE3LjI3NjYgMTEuMDYzNyAxNC45NTMzIDEyLjQzMzYgMTQuMzY3QzEyLjk1MTMgMTUuODAyIDE0LjM1MjMgMTYuODE3NyAxNS45NjM2IDE2LjgxNzdIMTguOTU4NFYzNi4xNTUyQzE0LjI0NDggMzUuNjExMyAxMC41MjA5IDMxLjU5NjQgMTAuNTIwOSAyNi43Mzk1Wk0yMS4wNDE2IDM2LjE2NzJWMTYuODE3N0gyNC4xNDA2QzI1Ljc1MTkgMTYuODE3NyAyNy4xMDA5IDE1LjgwMiAyNy42MTg1IDE0LjM2N0MyOC45ODg0IDE0Ljk1MzMgMjkuNDc5MSAxNy4yNzY1IDI5LjQ3OTEgMTguOTAxVjI2LjczOTVDMjkuNDc5MSAzMS42MzIzIDI1LjgwNTIgMzUuNjcwOCAyMS4wNDE2IDM2LjE2NzJaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "DebugHelper",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1292,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpClientTool",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Client"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Model Context Protocol",
+                "Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "MCP Client"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Client Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

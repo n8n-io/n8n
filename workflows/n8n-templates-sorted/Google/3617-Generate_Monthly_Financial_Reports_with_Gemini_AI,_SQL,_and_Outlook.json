@@ -1,0 +1,1887 @@
+{
+  "workflow": {
+    "id": 3617,
+    "name": "Generate Monthly Financial Reports with Gemini AI, SQL, and Outlook",
+    "views": 2798,
+    "recentViews": 430,
+    "totalViews": 2798,
+    "createdAt": "2025-04-19T20:25:03.594Z",
+    "description": "# 🚀 AI-Powered Business Performance Reporting Automation\n\n**Unlock executive-level insights with ZERO manual work!**  \nThis n8n template empowers you to automate your entire monthly business performance reporting using dynamic SQL queries, AI-driven analysis, and beautiful HTML dashboards — all delivered directly to your inbox.\n\n---\n\n## 🎯 What This Automation Does\n\n- 📆 **Triggers automatically every month** (5th of each month)\n- 🧮 **Fetches financial data** from SQL (ERPNext or any database)\n- 🔁 **Loops over cost centers** to analyze each business unit individually\n- 📊 **Generates Profit & Loss reports**, WIP, Employee stats, and vertical breakdowns\n- 🤖 **Uses Google Gemini 2.5 AI** to perform advanced financial analysis\n- 💌 **Delivers a polished HTML report** to your email inbox\n- 🔧 **Fully modular** – replace data source with Excel, Google Sheets, or APIs\n\n![Sample Report](https://syncbricks.com/wp-content/uploads/2025/04/report.png)  \n\n---\n\n## 🧑‍🏫 Step-by-Step Video Tutorial\n\n🎥 **Watch the full tutorial on YouTube:**  \n[![Watch Tutorial](https://img.youtube.com/vi/yatQpQZLqg4/0.jpg)](https://youtu.be/yatQpQZLqg4)  \n📌 *Learn how each node works and see the AI-generated report in action.*\n\n---\n\n## 🌐 Useful Links\n\n- 🔗 **Sign up for n8n Cloud** (recommended for non-tech users):  \n  👉 [https://n8n.syncbricks.com](https://n8n.syncbricks.com)\n\n- 📘 **Download the step-by-step Guidebook (Free)**:  \n  👉 [https://lms.syncbricks.com/books/n8n](https://lms.syncbricks.com/books/n8n)\n\n- 📚 **Explore the full course on n8n** (includes templates, workflows, and AI integrations):  \n  👉 [https://lms.syncbricks.com/courses/n8n](https://lms.syncbricks.com/courses/n8n)\n\n---\n\n## 🛠 Requirements\n\n- ✅ n8n (Self-hosted or Cloud)\n- ✅ SQL Database (MySQL / PostgreSQL / ERPNext)\n- ✅ Microsoft Outlook or Gmail (to send the report)\n- ✅ Gemini API Key (for AI analysis)\n- ✅ Basic understanding of your data schema\n\n---\n\n## 💡 Why Use This Template?\n\n- ⏱ **Saves 2-3 days of manual work every month**\n- 📈 **Improves financial visibility across business units**\n- 🤝 **Great for CFOs, COOs, Finance Analysts, and BI teams**\n- 🔄 **Scales across multiple divisions and companies**\n- 🧠 **Leverages AI for actionable insights and recommendations**\n\n---\n\n## 🧩 Customize It Your Way\n\n- Replace the SQL nodes with:\n  - Excel / Google Sheets\n  - Airtable / APIs\n  - Custom Applications\n\n- Swap the AI model:\n  - OpenAI GPT\n  - Claude\n  - DeepSeek\n\n- Adjust the report structure or HTML style\n\n---\n\n## 🙌 Get Started Now\n\n🎯 Import the JSON template → Connect your data → Receive business insights via email.  \nDon’t let manual reporting slow down your decision-making.\n\n👉 [Sign up for n8n Cloud](https://n8n.syncbricks.com)  \n👉 [Learn n8n with Amjid](https://www.udemy.com/course/mastering-n8n-ai-agents-api-automation-webhooks-no-code/?referralCode=0309FD70BE2D72630C09)  \n👉 [Download Guide](https://lms.syncbricks.com/books/n8n)\n\n---\n\n**Created by [Amjid Ali](https://amjidali.com) | SyncBricks™ – Automation for Everyone**\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "32d80f55a35a7b57f8e47a2ac19558d9f5bcec983a5519d9c29ba713ff4f12c7"
+      },
+      "nodes": [
+        {
+          "id": "fdd55253-5cb6-4b1f-9c93-6915f254f700",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -60,
+            -240
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "months",
+                  "triggerAtDayOfMonth": 5
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "c8d6064a-3fd7-478d-891c-6ade336daa1f",
+          "name": "YTD vs Prevoius Month1",
+          "type": "n8n-nodes-base.mySql",
+          "onError": "continueRegularOutput",
+          "position": [
+            640,
+            0
+          ],
+          "parameters": {
+            "query": "SELECT\n  --  budget_data.fiscal_year AS `Year`,\n  --  budget_data.cost_center AS `Cost Center`,\n    budget_data.budget_group AS `Budget Group`,\n--    budget_data.sort_order AS `Sort Order`,\n\n    -- YTD Totals up to previous month (up to dynamic month)\n    SUM(budget_data.budget_amount) AS `Budget YTD`,\n    SUM(COALESCE(actual_data.actual_amount, 0)) AS `Actual YTD`,\n    SUM(COALESCE(actual_data.actual_amount, 0)) - SUM(budget_data.budget_amount) AS `Variance YTD`,\n\n    -- Previous Month Totals Only\n    SUM(CASE WHEN budget_data.budget_month = {{ $('PreviousMonth').item.json.previousMonth }} THEN budget_data.budget_amount ELSE 0 END) AS `Budget PM`,\n    SUM(CASE WHEN budget_data.budget_month = {{ $('PreviousMonth').item.json.previousMonth }} THEN COALESCE(actual_data.actual_amount, 0) ELSE 0 END) AS `Actual PM`,\n    SUM(CASE WHEN budget_data.budget_month = {{ $('PreviousMonth').item.json.previousMonth }} THEN COALESCE(actual_data.actual_amount, 0) ELSE 0 END) -\n    SUM(CASE WHEN budget_data.budget_month = {{ $('PreviousMonth').item.json.previousMonth }} THEN budget_data.budget_amount ELSE 0 END) AS `Variance PM`\n\nFROM\n    (\n        SELECT\n            bg.budget_group_name AS budget_group,\n            bg.sort_order,\n            bgd.fiscal_year,\n            bgd.budget_month,\n            bgd.cost_center,\n            CAST(bgd.budget_amount AS DECIMAL(18,6)) AS budget_amount\n        FROM\n            `tabBudget Group Detail` bgd\n        JOIN\n            `tabBudget Group` bg ON bg.name = bgd.parent\n        WHERE\n            bgd.fiscal_year = {{ $('PreviousMonth').item.json.year }}\n            AND bgd.budget_month <= {{ $('PreviousMonth').item.json.previousMonth }}\n            AND bgd.cost_center = '{{ $json.CostCenter }}'\n    ) AS budget_data\n\nLEFT JOIN (\n    SELECT\n        acc.budget_group AS budget_group,\n        YEAR(gl.posting_date) AS fiscal_year,\n        MONTH(gl.posting_date) AS budget_month,\n        gl.cost_center,\n        SUM(\n            CASE \n                WHEN acc.root_type = 'Income' THEN gl.credit - gl.debit\n                WHEN acc.root_type = 'Expense' THEN gl.debit - gl.credit\n                ELSE 0\n            END\n        ) AS actual_amount\n    FROM\n        `tabGL Entry` gl\n    JOIN\n        `tabAccount` acc ON gl.account = acc.name\n    WHERE\n        acc.budget_group IS NOT NULL\n        AND acc.root_type IN ('Income', 'Expense')\n        AND gl.docstatus = 1\n        AND YEAR(gl.posting_date) = {{ $('PreviousMonth').item.json.year }}\n        AND MONTH(gl.posting_date) <= {{ $('PreviousMonth').item.json.previousMonth }}\n        AND gl.cost_center = '{{ $('Filter').item.json['Cost Center'] }}'\n    GROUP BY\n        acc.budget_group,\n        YEAR(gl.posting_date),\n        MONTH(gl.posting_date),\n        gl.cost_center\n) AS actual_data\nON\n    budget_data.budget_group = actual_data.budget_group AND\n    budget_data.fiscal_year = actual_data.fiscal_year AND\n    budget_data.budget_month = actual_data.budget_month AND\n    budget_data.cost_center = actual_data.cost_center\n\nGROUP BY\n    budget_data.fiscal_year,\n    budget_data.cost_center,\n    budget_data.budget_group,\n    budget_data.sort_order\n\nORDER BY\n    budget_data.cost_center,\n    budget_data.sort_order,\n    budget_data.budget_group;\n",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "retryOnFail": false,
+          "typeVersion": 2.4
+        },
+        {
+          "id": "13102b1c-8a06-4a23-8174-75254bf783ac",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            -40,
+            200
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "da2a0b30-3df4-430c-8cac-cd9d735ce759",
+          "name": "CostCentrs",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1100,
+            -240
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "ac6bcf14-13e3-464d-b9cd-4adee56018d7",
+                  "name": "Cost Center",
+                  "type": "string",
+                  "value": "={{ $json['Cost Center'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7891d71c-18f8-4e07-aa30-f50bec10cef6",
+          "name": "Date & Time",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            260,
+            -240
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "3e69dc27-0850-4978-bf10-e81ff575ec60",
+          "name": "PreviousMonth",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            520,
+            -240
+          ],
+          "parameters": {
+            "jsCode": "// Get the input date from the previous node\nconst inputDateStr = $input.first().json.currentDate;\nconst inputDate = new Date(inputDateStr);\n\n// Move to the first day of the current month\ninputDate.setDate(1);\n\n// Step back one day to land in the previous month\ninputDate.setDate(0);\n\n// Extract previous month and year\nconst previousMonth = inputDate.getMonth() + 1; // Months are 0-based\nconst year = inputDate.getFullYear(); // This will reflect the correct year, even in January\n\nreturn [\n  {\n    json: {\n      previousMonth: previousMonth.toString().padStart(2, '0'), // e.g., \"01\", \"12\"\n      year: year.toString()                                     // e.g., \"2024\"\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f6776225-39d2-4746-a90f-b4d1b12a66ee",
+          "name": "Selected Cost Center",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            260,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "c4a6c71a-0df4-49df-9068-f039ddf7d507",
+                  "name": "CostCenter",
+                  "type": "string",
+                  "value": "={{ $json['Cost Center'] }}"
+                },
+                {
+                  "id": "ade95f85-baa2-4f5d-a125-7360b17cf99b",
+                  "name": "previousMonth",
+                  "type": "string",
+                  "value": "={{ $('PreviousMonth').item.json.previousMonth }}"
+                },
+                {
+                  "id": "36c1d772-5bb7-47a6-81f9-1b70208e558b",
+                  "name": "year",
+                  "type": "string",
+                  "value": "={{ $('PreviousMonth').item.json.year }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1e23d876-21be-4d90-b5e4-38f3543a0c3b",
+          "name": "Get Cost Centers with Budgets",
+          "type": "n8n-nodes-base.mySql",
+          "position": [
+            800,
+            -240
+          ],
+          "parameters": {
+            "query": "SELECT DISTINCT\n    budget_data.cost_center AS `Cost Center`\nFROM\n(\n    SELECT\n        bgd.cost_center,\n        bgd.fiscal_year,\n        bgd.budget_month\n    FROM\n        `tabBudget Group Detail` bgd\n    JOIN\n        `tabBudget Group` bg ON bg.name = bgd.parent\n    WHERE\n        bgd.fiscal_year = {{ $json.year }}\n        AND bgd.budget_month <= {{ $json.previousMonth }}\n) AS budget_data\n\nINNER JOIN\n(\n    SELECT DISTINCT\n        gl.cost_center,\n        YEAR(gl.posting_date) AS fiscal_year,\n        MONTH(gl.posting_date) AS budget_month\n    FROM\n        `tabGL Entry` gl\n    JOIN\n        `tabAccount` acc ON gl.account = acc.name\n    WHERE\n        acc.budget_group IS NOT NULL\n        AND acc.root_type IN ('Income', 'Expense')\n        AND gl.docstatus = 1\n        AND YEAR(gl.posting_date) = {{ $json.year }}\n        AND MONTH(gl.posting_date) <= {{ $json.previousMonth }}\n        AND gl.cost_center IS NOT NULL\n) AS gl_data\nON\n    budget_data.cost_center = gl_data.cost_center\n    AND budget_data.fiscal_year = gl_data.fiscal_year\n    AND budget_data.budget_month = gl_data.budget_month\n\nORDER BY\n    budget_data.cost_center;\n",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "typeVersion": 2.4
+        },
+        {
+          "id": "d4429595-b1b9-4121-a612-24be11e6a36a",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1380,
+            -240
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "d7a13ce7-24d3-406a-934b-97f9a47b206c",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json['Cost Center'] }}",
+                  "rightValue": "AI DEPARTMENT"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "67bbe834-ae40-4aad-b468-6fa73c9dc6c6",
+          "name": "HTML",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            40,
+            920
+          ],
+          "parameters": {
+            "html": "{{ $json.html }}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "58d1dc63-9ba7-41b8-af39-b7c134ab3cea",
+          "name": "verticalPL",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            900,
+            220
+          ],
+          "parameters": {
+            "jsCode": "const rows = items;\n\n// Get column names from the first row\nconst headers = Object.keys(rows[0].json);\n\n// Build header HTML\nlet headerHtml = headers.map(col => `<th>${col}</th>`).join('');\n\n// Build rows\nlet bodyHtml = rows.map(row => {\n  return `<tr>${headers.map(col => `<td>${row.json[col]}</td>`).join('')}</tr>`;\n}).join('');\n\n// Combine into one table\nconst tableHtml = `\n<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse: collapse;\">\n  <thead><tr>${headerHtml}</tr></thead>\n  <tbody>${bodyHtml}</tbody>\n</table>\n`;\n\nreturn [{ json: { table: tableHtml } }];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9a8bdb09-f9d4-4c4b-b1d5-dadb3c6ee567",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1380,
+            220
+          ],
+          "parameters": {
+            "numberInputs": 4
+          },
+          "typeVersion": 3.1
+        },
+        {
+          "id": "d310db4d-183d-4f99-9bd0-863320d2db73",
+          "name": "Code",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1420,
+            580
+          ],
+          "parameters": {
+            "jsCode": "const table1 = $input.first().json.table; // From the first input node\nconst table2 = $items(\"verticalPL\")[0].json.table; // From the node named 'verticalPL'\nconst table3 = $items(\"WIP1\")[0].json.table; // From the node named 'WIP1'\nconst table4 = $items(\"Employees1\")[0].json.table; // From the node named 'Employees1'\n\nconst htmlOutput = `\n<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body { font-family: Arial, sans-serif; font-size: 14px; color: #333; }\n    h2 { margin-top: 30px; }\n    table { border-collapse: collapse; width: 100%; margin-top: 10px; }\n    th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }\n    th:first-child, td:first-child { text-align: left; }\n    thead { background-color: #f0f0f0; }\n  </style>\n</head>\n<body>\n  <h2>📊 Financial Overview – YTD & PM Summary</h2>\n  ${table1}\n\n  <h2>📊 Financial Overview – Vertical Profit & Loss</h2>\n  ${table2}\n\n  <h2>📊 Financial Overview – WIP Summary</h2>\n  ${table3}\n\n  <h2>👥 Employees in the Business Unit</h2>\n  ${table4}\n</body>\n</html>\n`;\n\nreturn [{ json: { html: htmlOutput } }];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ba5e60fb-d5cc-4a5f-9cb6-07808f7c7021",
+          "name": "Microsoft Outlook2",
+          "type": "n8n-nodes-base.microsoftOutlook",
+          "position": [
+            1240,
+            920
+          ],
+          "webhookId": "0cdef86a-9910-49aa-bdd3-1beecb260035",
+          "parameters": {
+            "subject": "=Business Performance Syncbricks",
+            "bodyContent": "={{ $json['Email Output'] }}",
+            "toRecipients": "amjid@amjidali.com",
+            "additionalFields": {
+              "bodyContentType": "html"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c3cdf21d-417f-420b-98f9-dfca33119c5a",
+          "name": "CostCenter",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            920,
+            0
+          ],
+          "parameters": {
+            "jsCode": "const rows = items;\n\n// Get column names from the first row\nconst headers = Object.keys(rows[0].json);\n\n// Build header HTML\nlet headerHtml = headers.map(col => `<th>${col}</th>`).join('');\n\n// Build rows\nlet bodyHtml = rows.map(row => {\n  return `<tr>${headers.map(col => `<td>${row.json[col]}</td>`).join('')}</tr>`;\n}).join('');\n\n// Combine into one table\nconst tableHtml = `\n<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse: collapse;\">\n  <thead><tr>${headerHtml}</tr></thead>\n  <tbody>${bodyHtml}</tbody>\n</table>\n`;\n\nreturn [{ json: { table: tableHtml } }];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9d9fb099-5fca-4777-a753-f6791f37fd37",
+          "name": "WIP1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            900,
+            400
+          ],
+          "parameters": {
+            "jsCode": "const rows = items;\n\n// Get column names from the first row\nconst headers = Object.keys(rows[0].json);\n\n// Build header HTML\nlet headerHtml = headers.map(col => `<th>${col}</th>`).join('');\n\n// Build rows\nlet bodyHtml = rows.map(row => {\n  return `<tr>${headers.map(col => `<td>${row.json[col]}</td>`).join('')}</tr>`;\n}).join('');\n\n// Combine into one table\nconst tableHtml = `\n<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse: collapse;\">\n  <thead><tr>${headerHtml}</tr></thead>\n  <tbody>${bodyHtml}</tbody>\n</table>\n`;\n\nreturn [{ json: { table: tableHtml } }];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5a6626ed-c841-4fd7-9111-f686fcacaa37",
+          "name": "Employees",
+          "type": "n8n-nodes-base.mySql",
+          "onError": "continueRegularOutput",
+          "position": [
+            640,
+            600
+          ],
+          "parameters": {
+            "query": "SELECT\n   -- e.payroll_cost_center AS `Payroll Cost Center`,\n    COUNT(*) AS `Total Employees`,\n    COUNT(CASE WHEN YEAR(e.date_of_joining) = YEAR(CURDATE()) THEN 1 END) AS `Joined This Year`,\n    COUNT(CASE WHEN YEAR(e.date_of_joining) = YEAR(CURDATE()) AND MONTH(e.date_of_joining) = MONTH(CURDATE()) THEN 1 END) AS `Joined This Month`\nFROM\n    `tabEmployee` e\nWHERE\n    e.status = 'Active'\n    AND e.payroll_cost_center = '{{ $json.CostCenter }}'\nGROUP BY\n    e.payroll_cost_center;\n",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "retryOnFail": false,
+          "typeVersion": 2.4
+        },
+        {
+          "id": "bbfd2c19-9538-4106-8931-f65f0261d43c",
+          "name": "Employees1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            900,
+            600
+          ],
+          "parameters": {
+            "jsCode": "const rows = items;\n\n// Get column names from the first row\nconst headers = Object.keys(rows[0].json);\n\n// Build header HTML\nlet headerHtml = headers.map(col => `<th>${col}</th>`).join('');\n\n// Build rows\nlet bodyHtml = rows.map(row => {\n  return `<tr>${headers.map(col => `<td>${row.json[col]}</td>`).join('')}</tr>`;\n}).join('');\n\n// Combine into one table\nconst tableHtml = `\n<table border=\"1\" cellpadding=\"6\" cellspacing=\"0\" style=\"border-collapse: collapse;\">\n  <thead><tr>${headerHtml}</tr></thead>\n  <tbody>${bodyHtml}</tbody>\n</table>\n`;\n\nreturn [{ json: { table: tableHtml } }];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "b425da91-2faa-4063-93dd-4d997f7cd7eb",
+          "name": "Wait",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1480,
+            1180
+          ],
+          "webhookId": "83d7ae9a-e309-4bac-a0b4-5ff651e3afe3",
+          "parameters": {
+            "unit": "minutes"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5deead0c-d386-4b51-9b96-bd58e85244c0",
+          "name": "Financial Performance",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            700,
+            920
+          ],
+          "parameters": {
+            "jsCode": "let html = $input.first().json.output || '';\n\n// Remove ```html at the start and ``` at the end (if present)\nhtml = html.trim().replace(/^```html\\s*/i, '').replace(/```$/i, '');\n\nreturn [{\n  json: {\n    cleaned_html: html\n  }\n}];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a472032f-42ba-4cb2-9bf7-55314083833e",
+          "name": "Email Data",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            940,
+            920
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b227e25f-99ce-4147-b22d-c2a6cabfcafa",
+                  "name": "CostCenter",
+                  "type": "string",
+                  "value": "={{ $('Selected Cost Center').first().json.CostCenter }}\n"
+                },
+                {
+                  "id": "94e5a360-cbff-4498-bd75-98cafe08557b",
+                  "name": "Email Output",
+                  "type": "string",
+                  "value": "={{ $json.cleaned_html }}"
+                },
+                {
+                  "id": "20cd6408-ab44-4632-8f0a-967604f16a1c",
+                  "name": "For the Month",
+                  "type": "string",
+                  "value": "=Month : {{ $('PreviousMonth').first().json.previousMonth }} - {{ $('PreviousMonth').first().json.year }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b7c1ae4d-cbe3-47fb-84fa-f34295f8dfee",
+          "name": "Calculator",
+          "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+          "position": [
+            620,
+            1220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2e59b7b8-d8f6-4433-98c5-f637f6b5eaf4",
+          "name": "Business Performance AI Agent (Analyst)",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "onError": "continueRegularOutput",
+          "position": [
+            300,
+            920
+          ],
+          "parameters": {
+            "text": "=You are a Business Performance Analyst Expert in Financial Management of Syncbricks LLC,  you willbe given an input to Analyze the Financial Performance of syncbricks which is an AI and Automation Company.\nThe sections Given to you will be below\n\n1. Financial Overview – YTD & PM Summary (whis is income and expense of the Company, this data doesn't include the calculation of Gross Profit and Net Profit that you must do. This should be used together in one section only don't seperate them)\n2. Financial Overview – Vertical Profit & Loss (This containers the Verticials within the Cost Center, these are in fact the Sub Business Unit, you don't need to calculate anything but the information is for analysis to see how the Verticals within the Business Unit Perfored )\n3. Financial Overview – WIP Summary (This is the Projects Summary about how many projects are currently open and work is the WIP - Work in Process of the Project, the WIP figure should be added for Profit and Loss Statement Under Proejct Reveneu as expected WIP)\n4. Employees in the Business Unit (These will be the number of Employees who are directly working in this BU, which means these employees are only serving the Company, other staff which are in back office support are not included in this. )\n*** Your Role ***\n\nYour Role is to Prepare a comprehensive Report : \n1. Executive Summary : Tell how was the overall performance of the Business Unit.\n2. Analayze the Financial Overview - YTD together with PM Summary (Which is Previous Month) which is previous month Income and Expenses you must use Proper Strcuture of Financial Statement with Budget Vs Actuals (follow same input already given). \n\nYou must use the Section that will be shared with you in detail that says \"Financial Overview – YTD & PM Summary \" and from there you must ensure to create sections based on best Practices of Performance Analysis that should include;\n\nSection: Revenue\n-Projects - Revenue\n-Trading - Revenue\n-Service - Revenue\nNet Sales (Total)\nSection: Project Work in Process\nWIP (Revenue to Book)\nTotal: Gross Sale\nSection: Cost of Sale\nProjects - COGS\nTrading - COGS\nService - COGS\nTotal Cost of Sales\nGross Profit\nOther Income\nGross Income\n\nSection: Indirect Cost (here you must all the detail of expenses from \"Financial Overview – YTD & PM Summary\"\nThen you must calculate\nProfit / (Loss) before tax\nNP % to Revenue\n\nUse the calculator tool to ensure precise calculations.\n\n\n- Don't add decimals give format in currency but don't add symbol.\nUse the standard P&L Format where you should first use Sale, then Cost of Sale and GP, then use Indirect Expenses and then Net Profile. Ensure to calculate the Perentages as well.\n3. Provide the Summary of the Verticials Performance with their Profit and Loss and Percetage and Total of all Verticlals\n4. Current Project Progress.\n5. Employees Summary, Number of Employees, How many joined in this Year and what is per Eployee Revenue and Gross Profit \n\nAnalyze Overall Performance of the Company and provide the Business Managers an Overview of what should be done next. Calculate per employee profit as well and suggest what is the performance overall\n\n**Tools**\nUse calculator tool to do all calculations for accurate calculations\n\n** Formatting and Output **\n\nGive output in html format fully responsive in with beauty added using CSS,  ready to be shared with all possible tables, in hightly attracrtive format, headings, add colors green for good, red for bad, organge for acceptable and so on, also add remarks to show how the performance was, enusre to response as if you were as an Expert in Analyzing the Bususiness Performance. Don't add any other infomration or symbols which are not part of html. Don't give additional message saying ok, I will do and so on.\nAlign Text in table on left and numbers on right\nNumber formatting : ##,###\n\n\nHere is the data\n\nMonth : {{ $('PreviousMonth').first().json.previousMonth }}\nYear  : {{ $('PreviousMonth').first().json.year }}\n\n{{ $json.html }}\n\n",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "3ac7b91e-ee61-4b40-9d2d-76d7916479ee",
+          "name": "Think",
+          "type": "@n8n/n8n-nodes-langchain.toolThink",
+          "position": [
+            460,
+            1220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "97bac1cb-8271-4169-98cf-6ea5b06ef5db",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            220,
+            1220
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.5-pro-exp-03-25"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "27f40dc7-61b9-4e09-9b6d-6bb9d16c38c3",
+          "name": "Departments ",
+          "type": "n8n-nodes-base.mySql",
+          "onError": "continueRegularOutput",
+          "position": [
+            640,
+            200
+          ],
+          "parameters": {
+            "query": "SELECT\n   -- gl.vertical AS `Vertical`,\n\n    -- Total Income (based on root_type)\n    ROUND(SUM(CASE WHEN acc.root_type = 'Income' THEN gl.credit - gl.debit ELSE 0 END), 0) AS `Total Income`,\n\n    -- Total Expenses (based on root_type)\n    ROUND(SUM(CASE WHEN acc.root_type = 'Expense' THEN gl.debit - gl.credit ELSE 0 END), 0) AS `Total Expenses`,\n\n    -- Profit or Loss = Income - Expenses\n    ROUND(SUM(\n        CASE \n            WHEN acc.root_type = 'Income' THEN gl.credit - gl.debit\n            WHEN acc.root_type = 'Expense' THEN -1 * (gl.debit - gl.credit)\n            ELSE 0\n        END\n    ), 0) AS `Profit or Loss`\n\nFROM\n    `tabGL Entry` gl\nJOIN\n    `tabAccount` acc ON gl.account = acc.name\n\nWHERE\n    acc.root_type IN ('Income', 'Expense')\n    AND gl.docstatus = 1\n    AND gl.cost_center = '{{ $(\"Selected Cost Center\").item.json.CostCenter }}'\n    AND MONTH(gl.posting_date) = {{ $(\"Selected Cost Center\").item.json.previousMonth }}\n    AND YEAR(gl.posting_date) = {{ $(\"Selected Cost Center\").item.json.year }}\n\nGROUP BY\n    gl.vertical\n",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "retryOnFail": false,
+          "typeVersion": 2.4
+        },
+        {
+          "id": "b2a3ec7d-d400-4d1c-877d-f49f67ad742f",
+          "name": "Projects",
+          "type": "n8n-nodes-base.mySql",
+          "onError": "continueRegularOutput",
+          "position": [
+            620,
+            380
+          ],
+          "parameters": {
+            "query": "SELECT\n   -- p.cost_center AS `Cost Center`,\n    COUNT(DISTINCT p.name) AS `Projects`,\n\n    FORMAT(SUM(p.contract_value), 0) AS `Contract Value`,\n    FORMAT(SUM(p.total_opening_revenue), 0) AS `Opening Revenue`,\n    FORMAT(SUM(p.total_opening_cost), 0) AS `Opening Cost`,\n\n    -- New Revenue (GL)\n    IFNULL((\n        SELECT SUM(gl.credit - gl.debit)\n        FROM `tabGL Entry` gl\n        JOIN `tabAccount` acc ON acc.name = gl.account\n        WHERE gl.docstatus = 1 AND acc.root_type = 'Income' AND acc.is_group = 0\n          AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n          AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n    ), 0) AS `New Revenue`,\n\n    -- New Cost (GL)\n    IFNULL((\n        SELECT SUM(gl.debit - gl.credit)\n        FROM `tabGL Entry` gl\n        JOIN `tabAccount` acc ON acc.name = gl.account\n        WHERE gl.docstatus = 1 AND acc.root_type = 'Expense' AND acc.is_group = 0\n          AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n          AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n    ), 0) AS `New Cost`,\n\n    -- Actual Revenue\n    FORMAT(\n        SUM(p.total_opening_revenue) +\n        IFNULL((\n            SELECT SUM(gl.credit - gl.debit)\n            FROM `tabGL Entry` gl\n            JOIN `tabAccount` acc ON acc.name = gl.account\n            WHERE gl.docstatus = 1 AND acc.root_type = 'Income' AND acc.is_group = 0\n              AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n              AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n        ), 0), 0\n    ) AS `Actual Revenue`,\n\n    -- Actual Cost\n    FORMAT(\n        SUM(p.total_opening_cost) +\n        IFNULL((\n            SELECT SUM(gl.debit - gl.credit)\n            FROM `tabGL Entry` gl\n            JOIN `tabAccount` acc ON acc.name = gl.account\n            WHERE gl.docstatus = 1 AND acc.root_type = 'Expense' AND acc.is_group = 0\n              AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n              AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n        ), 0), 0\n    ) AS `Actual Cost`,\n\n    -- Invoice %\n    CONCAT(ROUND((\n        (\n            SUM(p.total_opening_revenue) +\n            IFNULL((\n                SELECT SUM(gl.credit - gl.debit)\n                FROM `tabGL Entry` gl\n                JOIN `tabAccount` acc ON acc.name = gl.account\n                WHERE gl.docstatus = 1 AND acc.root_type = 'Income' AND acc.is_group = 0\n                  AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n                  AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n            ), 0)\n        ) / NULLIF(SUM(p.contract_value), 0) * 100\n    ), 0), '%') AS `Invoice %`,\n\n    -- Cost %\n    CONCAT(ROUND((\n        (\n            SUM(p.total_opening_cost) +\n            IFNULL((\n                SELECT SUM(gl.debit - gl.credit)\n                FROM `tabGL Entry` gl\n                JOIN `tabAccount` acc ON acc.name = gl.account\n                WHERE gl.docstatus = 1 AND acc.root_type = 'Expense' AND acc.is_group = 0\n                  AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n                  AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n            ), 0)\n        ) / NULLIF(SUM(p.budgeted_project_cost), 0) * 100\n    ), 0), '%') AS `Cost %`,\n\n    -- WIP Calculation\n    FORMAT(\n        CASE\n            WHEN SUM(p.budgeted_project_cost) = 0 THEN 0\n            WHEN (\n                SUM(p.total_opening_cost) +\n                IFNULL((\n                    SELECT SUM(gl.debit - gl.credit)\n                    FROM `tabGL Entry` gl\n                    JOIN `tabAccount` acc ON acc.name = gl.account\n                    WHERE gl.docstatus = 1 AND acc.root_type = 'Expense' AND acc.is_group = 0\n                      AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n                      AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n                ), 0)\n            ) > SUM(p.budgeted_project_cost)\n            THEN\n                SUM(p.contract_value) -\n                (SUM(p.total_opening_revenue) +\n                IFNULL((\n                    SELECT SUM(gl.credit - gl.debit)\n                    FROM `tabGL Entry` gl\n                    JOIN `tabAccount` acc ON acc.name = gl.account\n                    WHERE gl.docstatus = 1 AND acc.root_type = 'Income' AND acc.is_group = 0\n                      AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n                      AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n                ), 0))\n            ELSE\n                (SUM(p.contract_value) * (\n                    (SUM(p.total_opening_cost) +\n                    IFNULL((\n                        SELECT SUM(gl.debit - gl.credit)\n                        FROM `tabGL Entry` gl\n                        JOIN `tabAccount` acc ON acc.name = gl.account\n                        WHERE gl.docstatus = 1 AND acc.root_type = 'Expense' AND acc.is_group = 0\n                          AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n                          AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n                    ), 0)) / NULLIF(SUM(p.budgeted_project_cost), 0)\n                )) -\n                (SUM(p.total_opening_revenue) +\n                IFNULL((\n                    SELECT SUM(gl.credit - gl.debit)\n                    FROM `tabGL Entry` gl\n                    JOIN `tabAccount` acc ON acc.name = gl.account\n                    WHERE gl.docstatus = 1 AND acc.root_type = 'Income' AND acc.is_group = 0\n                      AND gl.project IN (SELECT name FROM `tabProject` WHERE cost_center = p.cost_center AND status = 'Open')\n                      AND gl.posting_date <= LAST_DAY(CURDATE() - INTERVAL 1 MONTH)\n                ), 0))\n        END,\n    0) AS `WIP`\n\nFROM\n    `tabProject` p\nWHERE\n    p.cost_center = '{{ $json.CostCenter }}'\n    AND p.status = 'Open'\nGROUP BY\n    p.cost_center;\n",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "retryOnFail": false,
+          "typeVersion": 2.4
+        },
+        {
+          "id": "a1c5f474-dc92-47e7-bf59-9cca756245cf",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1260,
+            -20
+          ],
+          "parameters": {
+            "width": 1120,
+            "height": 1200,
+            "content": "## Key Sections of n8n Workflow\n\n**🟢 Schedule Trigger**\n- Triggers the automation on the 5th of every month.\n- Sets the cadence for monthly reporting.\n\n**📅 Date & Time + 🧮 PreviousMonth**\n- Captures the current date and derives the previous month/year for dynamic filtering.\n- Used throughout all SQL queries for monthly slicing.\n\n**📊 Get Cost Centers with Budgets**\n- Dynamically fetches all cost centers that have relevant budget and GL data for the selected period.\n- Ensures only active, relevant divisions are processed.\n\n**🔍 Filter**\n- Narrows the analysis to a specific Cost Center (e.g., \"AI DEPARTMENT\") during testing or preview.\n\n**🔁 Loop Over Items**\n- Iterates over all fetched Cost Centers to individually generate reports for each business unit.\n- Powers multi-division reporting automation.\n\n**🧾 YTD vs Previous Month1**\n- Performs detailed financial comparison between Year-To-Date and Previous Month.\n- Outputs revenue, expenses, and variance figures.\n\n**🏢 Departments + 🧱 verticalPL**\n- Analyzes financial performance by sub-divisions (Verticals) within the cost center.\n- Data is transformed into an HTML table for final report.\n\n**🧱 Projects + 🧮 WIP1**\n- Gathers project status and WIP metrics.\n- Calculates % invoiced, cost % used, and revenue recognition stats.\n\n**👥 Employees + 📊 Employees1**\n- Counts total employees, joined this month/year for the selected cost center.\n- Used to calculate per-employee KPIs.\n\n**🔗 Merge + 🧾 Code**\n- Combines all HTML tables into a single responsive report with visual formatting.\n- Clean, structured layout for email and review.\n\n**💡 Business Performance AI Agent (Analyst)**\n- Uses Google Gemini 2.5 Pro to analyze financial HTML output.\n- Executes structured analysis and generates business insights, executive summary, profitability, and recommendations.\n\n**📩 Email Data + Microsoft Outlook**\n- Sends the final HTML report via email.\n- Ready for business manager distribution with personalized message.\n\n**⏳ Wait**\n- Enables looping and batch control across multiple cost centers.\n- Prevents overloading or email spamming.\n\n**🧠 Think + Calculator**\n- Used by the AI Agent to \"reason\" and perform precise financial computations.\n- Ensures accuracy in gross/net profit, percentages, and insights."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "59500949-a8b9-4287-b6f7-be49e58e1842",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1960,
+            580
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 680,
+            "height": 560,
+            "content": "## SQL Query Nodes \n(e.g., YTD vs Previous Month, Projects, Employees, Departments)\nThese nodes fetch structured financial data (like revenue, expenses, WIP, employee count) directly from your database (e.g., ERPNext on MySQL).\n\nYou can use any database (MySQL, PostgreSQL, MSSQL, etc.) as long as the schema is mapped accordingly.\n\nTo generate these queries faster, use ChatGPT or any AI chat tool:\n👉 Just describe what you want (e.g., “monthly budget vs actual grouped by cost center”), and it will write SQL for you.\n\nYou can also replace these SQL nodes with any other data source:\n\nExcel/CSV File (via Google Drive or n8n Read Binary File)\n\nGoogle Sheets\n\nAirtable\n\nREST APIs\n\nInternal apps\n\n✅ The key is to produce the same structured data format expected by the next steps in the workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "02f76680-0bbf-408f-826e-daef5e6e9b09",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1960,
+            0
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 675,
+            "height": 536,
+            "content": "## Developed by Amjid Ali\n\nThank you for using this workflow template. It has taken me countless hours of hard work, research, and dedication to develop, and I sincerely hope it adds value to your work.\n\nIf you find this template helpful, I kindly ask you to consider supporting my efforts. Your support will help me continue improving and creating more valuable resources.\n\nYou can contribute via PayPal here:\n\nhttp://paypal.me/pmptraining\n\nFor Full Course about ERPNext or Automation using AI follow below link\n\nhttp://lms.syncbricks.com\n\nAdditionally, when sharing this template, I would greatly appreciate it if you include my original information to ensure proper credit is given.\n\nThank you for your generosity and support!\nEmail : amjid@amjidali.com\nhttps://linkedin.com/in/amjidali\nhttps://syncbricks.com\nhttps://youtube.com/@syncbricks"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Code": {
+          "main": [
+            [
+              {
+                "node": "HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HTML": {
+          "main": [
+            [
+              {
+                "node": "Business Performance AI Agent (Analyst)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "WIP1": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 2
+              }
+            ]
+          ]
+        },
+        "Wait": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Code",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Think": {
+          "ai_tool": [
+            [
+              {
+                "node": "Business Performance AI Agent (Analyst)",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Projects": {
+          "main": [
+            [
+              {
+                "node": "WIP1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Employees": {
+          "main": [
+            [
+              {
+                "node": "Employees1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculator": {
+          "ai_tool": [
+            [
+              {
+                "node": "Business Performance AI Agent (Analyst)",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CostCenter": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CostCentrs": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email Data": {
+          "main": [
+            [
+              {
+                "node": "Microsoft Outlook2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Employees1": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 3
+              }
+            ]
+          ]
+        },
+        "verticalPL": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Date & Time": {
+          "main": [
+            [
+              {
+                "node": "PreviousMonth",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Departments ": {
+          "main": [
+            [
+              {
+                "node": "verticalPL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "PreviousMonth": {
+          "main": [
+            [
+              {
+                "node": "Get Cost Centers with Budgets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Selected Cost Center",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Date & Time",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Microsoft Outlook2": {
+          "main": [
+            [
+              {
+                "node": "Wait",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Selected Cost Center": {
+          "main": [
+            [
+              {
+                "node": "YTD vs Prevoius Month1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Departments ",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Projects",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Employees",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Financial Performance": {
+          "main": [
+            [
+              {
+                "node": "Email Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "YTD vs Prevoius Month1": {
+          "main": [
+            [
+              {
+                "node": "CostCenter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Business Performance AI Agent (Analyst)",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Cost Centers with Budgets": {
+          "main": [
+            [
+              {
+                "node": "CostCentrs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Business Performance AI Agent (Analyst)": {
+          "main": [
+            [
+              {
+                "node": "Financial Performance",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 30,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.code": {
+          "count": 7
+        },
+        "n8n-nodes-base.html": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.mySql": {
+          "count": 5
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.dateTime": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftOutlook": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolThink": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolCalculator": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Amjid Ali",
+      "username": "amjid",
+      "bio": "**Amjid Ali** is an automation expert and AI enthusiast specializing in creating intelligent workflows using low-code platforms like **n8n**. With a passion for simplifying complex processes, he designs solutions that enhance productivity and streamline operations. As an active contributor to the **n8n Creator Hub**, Amjid shares innovative use cases, practical templates, and best practices, empowering the community to unlock the full potential of workflow automation.",
+      "verified": true,
+      "links": [
+        "https://amjidali.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/8760ed64a38ed65da42983737659c7e295e4a7f14b59ed5ce1b0b1077435f573?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "icon": "file:mysql.svg",
+        "name": "n8n-nodes-base.mySql",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mySql/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "MySQL"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg0NDUgMzAuMzY4NEMzNC42NjggMzAuMzEzOSAzMi45ODE1IDMwLjUzMTkgMzEuNTY2NSAzMS4xMzA0QzMxLjE1ODUgMzEuMjkzNCAzMC41MDU1IDMxLjI5MzkgMzAuNDUxIDMxLjgxMDRDMzAuNjY5IDMyLjAyODQgMzAuNjk2IDMyLjM4MTkgMzAuODg2NSAzMi42ODA5QzMxLjIxMyAzMy4yMjQ5IDMxLjc4NCAzMy45NTk0IDMyLjMwMSAzNC4zNDA0QzMyLjg3MiAzNC43NzU0IDMzLjQ0MzUgMzUuMjEwOSAzNC4wNDIgMzUuNTkxOUMzNS4xMDMgMzYuMjQ0OSAzNi4zIDM2LjYyNTkgMzcuMzM0IDM3LjI3ODRDMzcuOTMyNSAzNy42NTg5IDM4LjUzMSAzOC4xNDg5IDM5LjEyOTUgMzguNTU2OUMzOS40MjkgMzguNzc0NCAzOS42MTkgMzkuMTI3OSA0MCAzOS4yNjQ0VjM5LjE4MjlDMzkuODA5NSAzOC45Mzc5IDM5Ljc1NSAzOC41ODQ0IDM5LjU2NSAzOC4zMTI0QzM5LjI5MyAzOC4wNDA0IDM5LjAyMSAzNy43OTU0IDM4Ljc0OSAzNy41MjM0QzM3Ljk2IDM2LjQ2MjQgMzYuOTgwNSAzNS41Mzc0IDM1LjkxOTUgMzQuNzc1OUMzNS4wNDkgMzQuMTc3NCAzMy4xNDQ1IDMzLjM2MTQgMzIuNzkxIDMyLjM1NDRMMzIuNzM2NSAzMi4yOTk5QzMzLjMzNSAzMi4yNDU0IDM0LjA0MjUgMzIuMDI3OSAzNC42MTM1IDMxLjg2NDRDMzUuNTM4NSAzMS42MTk0IDM2LjM4MiAzMS42NzM5IDM3LjMzNCAzMS40Mjk0QzM3Ljc3MjggMzEuMzE0NyAzOC4yMDg0IDMxLjE4NzcgMzguNjQgMzEuMDQ4NFYzMC44MDM5QzM4LjE1MDUgMzAuMzEzOSAzNy43OTY1IDI5LjY2MTQgMzcuMjggMjkuMTk4OUMzNS44OTI1IDI4LjAwMTQgMzQuMzY5IDI2LjgzMTkgMzIuNzkxIDI1Ljg1MjlDMzEuOTQ3NSAyNS4zMDg5IDMwLjg1OTUgMjQuOTU0OSAyOS45NjE1IDI0LjQ5MjRDMjkuNjM1IDI0LjMyODkgMjkuMDkxIDI0LjI0NzQgMjguOTAwNSAyMy45NzU0QzI4LjQxMDUgMjMuMzc2OSAyOC4xMzg1IDIyLjU4NzkgMjcuNzg1IDIxLjg4MDRDMjYuOTk2NSAyMC4zODM5IDI2LjIzNDUgMTguNzI0OSAyNS41NTQgMTcuMTQ2OUMyNS4wNjQ1IDE2LjA4NTkgMjQuNzY1IDE1LjAyNDkgMjQuMTY2NSAxNC4wNDU0QzIxLjM2NDUgOS40MjA0MSAxOC4zMTc1IDYuNjE4NDIgMTMuNjM4MSAzLjg3MDQzQzEyLjYzMTYgMy4yOTk0MyAxMS40MzQ2IDMuMDU0NDMgMTAuMTU2MSAyLjc1NDkzTDguMTE1NTcgMi42NDU5M0M3LjY4MDU3IDIuNDU1NDMgNy4yNDUwNyAxLjkzODQzIDYuODY0MDcgMS42OTM5M0M1LjMxMzU3IDAuNzE0OTMyIDEuMzE0NTggLTEuNDA2NTYgMC4xNzE1ODIgMS4zOTU0M0MtMC41NjI5MTcgMy4xNjM0MyAxLjI2MDA4IDQuOTA0NDIgMS44ODU1OCA1LjgwMjQyQzIuMzQ4MDggNi40Mjc5MiAyLjk0NjU4IDcuMTM1NDIgMy4yNzMwOCA3Ljg0MjkyQzMuNDYzNTggOC4zMDQ5MiAzLjUxNzU3IDguNzk0OTIgMy43MDgwNyA5LjI4NDkxQzQuMTQzNTcgMTAuNDgxOSA0LjU1MTU3IDExLjgxNDkgNS4xMjI1NyAxMi45MzA0QzUuNDIyMDcgMTMuNTAxNCA1Ljc0ODA3IDE0LjEwMDQgNi4xMjkwNyAxNC42MTY5QzYuMzQ2NTcgMTQuOTE1OSA2LjcyNzU3IDE1LjA1MjQgNi44MDkwNyAxNS41NDE5QzYuNDI4MDcgMTYuMDg1OSA2LjQwMTA3IDE2LjkwMjQgNi4xODMwNyAxNy41ODI0QzUuMjAzNTcgMjAuNjU2NCA1LjU4NDU3IDI0LjQ2NTQgNi45NzIwNyAyNi43MjM0QzcuNDA3MDcgMjcuNDAzNCA4LjQ0MTA2IDI4Ljg5OTkgOS44Mjg1NiAyOC4zMjg0QzExLjA1MjYgMjcuODM4OSAxMC43ODA2IDI2LjI4NzkgMTEuMTM0NiAyNC45Mjc5QzExLjIxNjYgMjQuNjAxNCAxMS4xNjIxIDI0LjM4MzkgMTEuMzI1MSAyNC4xNjY0VjI0LjIyMDlMMTIuNDQwNiAyNi40Nzg5QzEzLjI4NDEgMjcuODExOSAxNC43NTMxIDI5LjE5OTQgMTUuOTc3IDMwLjEyNDRDMTYuNjMgMzAuNjEzOSAxNy4xNDcgMzEuNDU3NCAxNy45NjMgMzEuNzU2OVYzMS42NzQ5SDE3LjkwODVDMTcuNzQ1IDMxLjQyOTkgMTcuNTAwNSAzMS4zMjE0IDE3LjI4MyAzMS4xMzA5QzE2Ljc5MzUgMzAuNjQxNCAxNi4yNDkgMzAuMDQyOSAxNS44Njg1IDI5LjQ5ODRDMTQuNzI2MSAyNy45NzQ5IDEzLjcxOTEgMjYuMjg4NCAxMi44MjE2IDI0LjU0NjlDMTIuMzg2NiAyMy43MDM0IDEyLjAwNTYgMjIuNzc4NCAxMS42NTE2IDIxLjkzNTRDMTEuNDg4MSAyMS42MDg5IDExLjQ4ODEgMjEuMTE5NCAxMS4yMTYxIDIwLjk1NTlDMTAuODA4MSAyMS41NTQ0IDEwLjIwOTYgMjIuMDcxNCA5LjkxMDA2IDIyLjgwNTlDOS4zOTM1NiAyMy45NzU5IDkuMzM5MDYgMjUuNDE3NCA5LjE0ODU2IDI2LjkxMzlDOS4wNDAwNiAyNi45NDE0IDkuMDk0MDYgMjYuOTEzOSA5LjAzOTU2IDI2Ljk2ODRDOC4xNjkwNyAyNi43NTA0IDcuODY5NTcgMjUuODUyOSA3LjU0MzA3IDI1LjA5MTRDNi43MjcwNyAyMy4xNTk5IDYuNTkxMDcgMjAuMDU4NCA3LjI5ODU3IDE3LjgyNzlDNy40ODkwNyAxNy4yNTY0IDguMzA1MDcgMTUuNDYwOSA3Ljk3ODU3IDE0LjkxNjlDNy44MTU1NyAxNC4zOTk5IDcuMjcxMDcgMTQuMTAwOSA2Ljk3MjA3IDEzLjY5MjlDNi42MTg1NyAxMy4xNzU5IDYuMjM3NTcgMTIuNTIyOSA1Ljk5MjU3IDExLjk1MTlDNS4zMzk1NyAxMC40Mjg0IDUuMDEzMDcgOC43NDE5MiA0LjMwNjA3IDcuMjE3OTJDMy45Nzk1NyA2LjUxMDQyIDMuNDA4NTggNS43NzU5MiAyLjk0NTU4IDUuMTIzNDJDMi40MzAwOCA0LjM4NzkyIDEuODU4NTggMy44NzA5MyAxLjQ1MDU4IDMuMDAwNDNDMS4zMTQ1OCAyLjcwMTQzIDEuMTI0MDggMi4yMTE0MyAxLjM0MTU4IDEuODg0OTNDMS4zOTYwOCAxLjY2NzQzIDEuNTA0NTggMS41ODU5MyAxLjcyMjU4IDEuNTMxNDNDMi4wNzYwOCAxLjIzMTkzIDMuMDgzMDggMS42MTI5MyAzLjQzNjU4IDEuNzc1OTNDNC40NDMwNyAyLjE4MzkzIDUuMjg2NTcgMi41NjQ5MyA2LjEzMDA3IDMuMTM2NDNDNi41MTEwNyAzLjQwODQzIDYuOTE5MDcgMy45MjU0MyA3LjQwODU3IDQuMDYxNDNINy45ODAwN0M4Ljg1MDU2IDQuMjUxOTIgOS44MzAwNiA0LjExNTkyIDEwLjY0NjEgNC4zNjA0MkMxMi4wODgxIDQuODIyOTIgMTMuMzkzNiA1LjUwMjkyIDE0LjU2MzYgNi4yMzc0MkMxOC4xMjc1IDguNDk1NDIgMjEuMDY1NSAxMS43MDU5IDIzLjA1MTUgMTUuNTQxNEMyMy4zNzggMTYuMTY2OSAyMy41MTQgMTYuNzM4NCAyMy44MTMgMTcuMzkxNEMyNC4zODQ1IDE4LjcyNDQgMjUuMDkxNSAyMC4wODQ5IDI1LjY2MyAyMS4zOTA0QzI2LjIzNCAyMi42Njg5IDI2Ljc3ODUgMjMuOTc0OSAyNy41OTQ1IDI1LjAzNTlDMjguMDAyNSAyNS42MDY5IDI5LjYzNSAyNS45MDY0IDMwLjM2OTUgMjYuMjA1OUMzMC45MTM1IDI2LjQ1MDQgMzEuNzU3IDI2LjY2ODQgMzIuMjQ2NSAyNi45Njc0QzMzLjE3MTUgMjcuNTM4NCAzNC4wOTY1IDI4LjE5MTQgMzQuOTY3IDI4LjgxNzRDMzUuNDAyNSAyOS4xNDM5IDM2Ljc2MjUgMjkuODIzOSAzNi44NDQgMzAuMzY3OUwzNi44NDQ1IDMwLjM2ODRaTTkuMDk1MDYgNi43Mjc0MkM4LjcxODg4IDYuNzIzNzYgOC4zNDM4NSA2Ljc2OTQ4IDcuOTc5NTcgNi44NjM0MlY2LjkxNzkySDguMDM0MDdDOC4yNTIwNyA3LjM1MjkyIDguNjMyNTYgNy42NTI0MiA4LjkwNDU2IDguMDMzNDJMOS41MzA1NiA5LjMzOTQxTDkuNTg1MDYgOS4yODQ5MUM5Ljk2NjA2IDkuMDEyOTEgMTAuMTU2NiA4LjU3NzQyIDEwLjE1NjYgNy45MjQ0MkM5Ljk5MzA2IDcuNzMzOTIgOS45NjYwNiA3LjU0MzQyIDkuODMwMDYgNy4zNTI5MkM5LjY2NzA2IDcuMDgwOTIgOS4zMTMwNiA2Ljk0NDkyIDkuMDk1NTYgNi43MjY5Mkw5LjA5NTA2IDYuNzI3NDJaIiBmaWxsPSIjMDA1NDZCIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "MySQL",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 221,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.dateTime",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Date & Time",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Date & Time",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 433,
+        "icon": "file:outlook.svg",
+        "name": "n8n-nodes-base.microsoftOutlook",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftoutlook/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Microsoft Outlook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODEiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMjM3MmJhIiBzdHJva2U9Im5vbmUiIGQ9Ik03Ny45IDE5LjJINDYuODZWMEwwIDguMjMyVjcxLjk4TDQ2Ljg2IDgwVjYxLjg0N0g3Ny45YzEuMjY2IDAgMi4xLTEuMDU1IDIuMS0yLjFWMjEuMzJjMC0xLjI2Ni0uODQ0LTIuMS0yLjEtMi4xek0yMS45NTIgNTQuNDZjLTE1LjQtMS4wNTUtMTQuNzc2LTI5LjEzLjQyMi0yOS45NzQgMTYuNjc1LS44NDQgMTYuMjUzIDMxLjAzLS40MjIgMjkuOTc0bTU1LjUxNSA0LjY0NEg0Ni44NlYzNS4wNGw5LjUgOS4wNzdjLjQyMi40MjIuODQ0LjYzMyAxLjQ3Ny42MzNzMS4wNTUtLjIgMS40NzgtLjYzM0w3Ny40NjcgMjcuMjN6bTAtMzUuNDYyLTE5LjYzIDE4LjE1M0w0Ni44NiAzMS40NXYtOS43aDMwLjM5NnYxLjloLjJ6bS01NS4wOTIgNi41NDNjLTguMjMyLjQyMi04LjQ0MyAxOC4zNjQtLjIgMTguNTc1IDguNjU0LjQyMiA4LjY1NC0xOC45OTcuMi0xOC41NzUiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Microsoft Outlook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1195,
+        "icon": "fa:calculator",
+        "name": "@n8n/n8n-nodes-langchain.toolCalculator",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolcalculator/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Calculator"
+        },
+        "iconData": {
+          "icon": "calculator",
+          "type": "icon"
+        },
+        "displayName": "Calculator",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1289,
+        "icon": "fa:brain",
+        "name": "@n8n/n8n-nodes-langchain.toolThink",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolthink/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Think"
+        },
+        "iconData": {
+          "icon": "brain",
+          "type": "icon"
+        },
+        "displayName": "Think Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

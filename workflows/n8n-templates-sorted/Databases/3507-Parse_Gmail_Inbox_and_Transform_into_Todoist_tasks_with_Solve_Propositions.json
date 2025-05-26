@@ -1,0 +1,1677 @@
+{
+  "workflow": {
+    "id": 3507,
+    "name": "Parse Gmail Inbox and Transform into Todoist tasks with Solve Propositions",
+    "views": 1949,
+    "recentViews": 49,
+    "totalViews": 1949,
+    "createdAt": "2025-04-10T11:11:44.593Z",
+    "description": "# Who is it for? #\n\nIf you are getting a lot of emails into your Gmail inbox, then probably some of those can be solved easly by replying or by doing specific short tasks. But analyzing whole email thread content just to catch up with multiple threads can be very wasteful. So by using AI you can actually get simple propositions of what should be done before closing this specific email and actual proposed answer to that email. \n\nThis is especially useful if you need to do some actions before replying to email. In that case you can simply assign task to specific person, await until it's done, copy-paste AI answer when it's done, and close.\n\nAnother good use would be if on one inbox there are working multiple people. It can make the process much more streamlined.\n\n# How It Works? #\n\n1. Script runs on your selected trigger. If you are using section \"Read and Star\", then you may use \"Email Trigger\".\n2. Automation is looking for exiting open Todoist tasks, that have the same title as email\n3. If task does not exist, then we are asking AI to analyze thread and give output that is Todoist-API-ready:\n\t1. having summary of email content\n\t2. having proposed actions to be taken\n\t3. having proposed answer to this email\n4. If email was unstarred for some reason but task was not closed, then task is being closed automatically.\n5. Script **FOR PURPOSE** is not trying to unstar messagess which have closed tasks, because this could lead to some inconsistencies.\n\n# How to set up? #\n\n1. Select and setup your triggers, depending on your needs\n2. Setup connections using N8N instructions. You will need:\n\t1. Gmail\n\t2. Todoist\n\t3. AI (in this workflow OpenAI is used)\n3. (Optional) Remove \"Read and Star\" section if you don't want tasks automatically read and starred.\n4. (Optional) Adjust AI node - especially useful if you want to use different model or have response in different language\n\n**NOTE** Chat does not heave memory attached on purpose. The purpose is that it should analyze each inbox message separately, not in thread. When using memory, it can get lost easily.\n\n**NOTE2** You might want to adjust limits on nodes \"Get Unread From Inbox\", \"Get Starred From Inbox\" and \"Get Open Tasks\", especially if having issues with model complying to output structure.\n\nAnd that's it. I hope that this automation will make your Gmail &lt;-&gt; Todoist process much more streamlined!\n\n# What's More? #\n\nThere is actually more that you could do with this automation, but it really depends on your needs. For example, you could add Form trigger to handle incoming support requests. Another thing is that you could replace Todoist with Asana or any database (like NocoDB) if you are using it for your task management.",
+    "workflow": {
+      "id": "WUX0BsRA1dbzTKnl",
+      "meta": {
+        "instanceId": "bdce9ec27bbe2b742054f01d034b8b468d2e7758edd716403ad5bd4583a8f649",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Email mailbox as Todoist tasks",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "5b711a67-3d03-4687-a550-0514e2a5d251",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -220,
+            100
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5862ae85-d48b-49a6-9c9f-4a682d42af78",
+          "name": "Mark As Read",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            580,
+            -240
+          ],
+          "webhookId": "b1551d40-6d53-47ec-ad90-0386c04de860",
+          "parameters": {
+            "messageId": "={{ $json.id }}",
+            "operation": "markAsRead"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "UmjYQEDj616cX3UR",
+              "name": "Gmail lukp12"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "19655c59-dc43-4d3d-aaa1-a23e0b5c64e2",
+          "name": "Star",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            780,
+            -240
+          ],
+          "webhookId": "b1551d40-6d53-47ec-ad90-0386c04de860",
+          "parameters": {
+            "labelIds": [
+              "STARRED"
+            ],
+            "messageId": "={{ $json.id }}",
+            "operation": "addLabels"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "UmjYQEDj616cX3UR",
+              "name": "Gmail lukp12"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "62eeda04-39b2-4423-90e4-7d6518210b00",
+          "name": "Get Starred From Inbox",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            300,
+            20
+          ],
+          "webhookId": "848b9f06-db3c-4c74-aac3-fb40feb1187b",
+          "parameters": {
+            "filters": {
+              "labelIds": [
+                "STARRED",
+                "INBOX"
+              ]
+            },
+            "operation": "getAll"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "UmjYQEDj616cX3UR",
+              "name": "Gmail lukp12"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "dfd857e6-7728-4d7e-88ad-c20ffab1a90b",
+          "name": "Get Unread From Inbox",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            300,
+            -160
+          ],
+          "webhookId": "848b9f06-db3c-4c74-aac3-fb40feb1187b",
+          "parameters": {
+            "filters": {
+              "labelIds": [
+                "INBOX"
+              ],
+              "readStatus": "unread"
+            },
+            "operation": "getAll"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "UmjYQEDj616cX3UR",
+              "name": "Gmail lukp12"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a864282e-c50c-4719-a813-dc407f28043b",
+          "name": "If Task Not Exist",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -140,
+            800
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "443f2e6e-5145-4c09-af8e-193f24b6536f",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.content }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "7f0ce1d6-14de-4087-b3f1-542cf38e5df3",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            220,
+            820
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "zjIZQuuuZMJpiUny",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "7e314e74-1f3e-460e-99f2-7338e3f4627e",
+          "name": "Structure Output Todoist Ready",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            600,
+            820
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n\t\"content\": \"Task name\",\n\t\"description\": \"Description of the thread\",\n    \"actions\": \"What actions should you take before closing this task\",\n    \"answer\": \"Proposed answer to the thread or propositions of possible actions\"\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a36464d3-917c-4a8c-bd4b-f5ae21e3d758",
+          "name": "If AI responded properly",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            740,
+            580
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1109c955-21b6-4342-8851-1926ae4216b7",
+                  "operator": {
+                    "type": "string",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.output.content }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "cc5ac32f-564f-47be-8782-600d278995fb",
+                  "operator": {
+                    "type": "string",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.output.description }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "4d2de14b-719d-44f2-a207-94cc4394738a",
+          "name": "Create Todoist Task",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            980,
+            560
+          ],
+          "parameters": {
+            "content": "={{ $json.output.content }}",
+            "options": {
+              "description": "={{ $json.output.description }}\n\n**Proposed actions**\n\n{{ $json.output.actions }}\n\n**Proposed answer**\n\n{{ $json.output.answer }}"
+            },
+            "project": {
+              "__rl": true,
+              "mode": "list",
+              "value": "2351998202",
+              "cachedResultName": "Test Project"
+            }
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "3MjbugUWx4uLv97e",
+              "name": "Todoist Konto Prywatne"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "25fddc8e-6781-473a-9978-aae3c900e39a",
+          "name": "Get Full Message",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            140,
+            580
+          ],
+          "webhookId": "d20c5a51-4078-47e2-bec4-54af54ddf4dd",
+          "parameters": {
+            "simple": false,
+            "options": {},
+            "messageId": "={{ $json.id }}",
+            "operation": "get"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "UmjYQEDj616cX3UR",
+              "name": "Gmail lukp12"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "7531e446-4d17-460f-b3c4-6830c01060c0",
+          "name": "Summarize Message",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            340,
+            580
+          ],
+          "parameters": {
+            "text": "=You are a professional email assistant. Your task is to analyze provided email content and transform email into task. Your output will be JSON and will have:\n\n- \"content\", which is exactly \"{{ $json.subject }}\"\n- \"description\", which is short summary what this email is about and what is whole thread point\n- \"actions\", which is your proposition on what actions should be done before responding or closing this email thread\n- \"answer\", which is your proposition on how to respond to this email, when all actions are done\n\nAnswer should be detailed and assuming that content of the email is not known to reader.\n\nEmail content is:\n\n{{ $json.html }}",
+            "options": {},
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.8,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "5034b666-de2f-42f4-8b3a-3a4e36ca52a7",
+          "name": "Enrich Emails With Tasks",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            760,
+            380
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {
+              "multipleMatches": "all"
+            },
+            "advanced": true,
+            "joinMode": "enrichInput1",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "Subject",
+                  "field2": "content"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.1
+        },
+        {
+          "id": "ec352eb7-7670-47ab-b16e-6407b9a69455",
+          "name": "Enrich Tasks with Emails",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            900,
+            180
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {
+              "multipleMatches": "all"
+            },
+            "advanced": true,
+            "joinMode": "enrichInput2",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "Subject",
+                  "field2": "content"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.1
+        },
+        {
+          "id": "e3a513f0-8113-4bcc-990f-c113a1086bc6",
+          "name": "If Email Unstarred (Not Exist)",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -200,
+            1160
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "4ed052b1-1938-4537-9099-f8e2475a63b3",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.Subject }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "5acaa018-6592-4449-8ff4-9225f8ed28c5",
+          "name": "Close Task",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            80,
+            1100
+          ],
+          "parameters": {
+            "taskId": "={{ $json.id }}",
+            "operation": "close"
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "3MjbugUWx4uLv97e",
+              "name": "Todoist Konto Prywatne"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "4004e68a-4dcf-4216-bd01-2f2da0eeba77",
+          "name": "Email Trigger (IMAP)",
+          "type": "n8n-nodes-base.emailReadImap",
+          "disabled": true,
+          "position": [
+            -220,
+            -80
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "imap": {
+              "id": "qdjU2dd5Fy7RqGPx",
+              "name": "IMAP support@sailingbyte"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0e986c57-a016-4053-acb3-08e3b3a7af08",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "disabled": true,
+          "position": [
+            -220,
+            -260
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {}
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "fe1012a0-638f-469f-af09-f30a890a4937",
+          "name": "No Operation, do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            0,
+            100
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5e09f039-53cc-4473-ab60-5c1337ab75af",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -280,
+            -360
+          ],
+          "parameters": {
+            "width": 500,
+            "height": 660,
+            "content": "## Select Trigger\n**This workflow will work with many triggers**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1874a3c5-7467-4642-9ce4-7171b6e76af7",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            500,
+            -380
+          ],
+          "parameters": {
+            "width": 560,
+            "height": 320,
+            "content": "## Read and Star\n**Mark messages as Read and add Star to them**\nYou can delete this section if you don't want to make this happen automatically to your emails"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c8f68aac-971c-427d-8b74-167d78b37037",
+          "name": "Merge Starred and Unread Messages",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            600,
+            40
+          ],
+          "parameters": {},
+          "typeVersion": 3.1
+        },
+        {
+          "id": "7eab417d-6332-45d9-be0d-ba7b8888dd91",
+          "name": "Get Open Tasks",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            300,
+            200
+          ],
+          "parameters": {
+            "filters": {
+              "projectId": "2351998202"
+            },
+            "operation": "getAll"
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "3MjbugUWx4uLv97e",
+              "name": "Todoist Konto Prywatne"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "60071d08-d333-475e-a48b-cdb9c19eb7a2",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            1000
+          ],
+          "parameters": {
+            "width": 720,
+            "height": 340,
+            "content": "## Close Task\n**If Email was Unstarred manually by you, then we can probably close task, so we are closing it**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "780d6400-226b-4da6-8d33-6f7977fcbb2d",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -200,
+            380
+          ],
+          "parameters": {
+            "width": 1420,
+            "height": 600,
+            "content": "## Make New Task in Todoist\nIf there is no task on Todoist with same subject as your either starred or unread message, then it's time to create one.\nBut to make it easier for you to close tasks and emails, let AI help you out.\nAI not only summarizes message. It also proposes actions you should take or answers how you should reply to this email."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "66e4624f-4d02-4895-aeda-270e9277acdf",
+      "connections": {
+        "Close Task": {
+          "main": [
+            []
+          ]
+        },
+        "Mark As Read": {
+          "main": [
+            [
+              {
+                "node": "Star",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Open Tasks": {
+          "main": [
+            [
+              {
+                "node": "Enrich Emails With Tasks",
+                "type": "main",
+                "index": 1
+              },
+              {
+                "node": "Enrich Tasks with Emails",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Get Full Message": {
+          "main": [
+            [
+              {
+                "node": "Summarize Message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "No Operation, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If Task Not Exist": {
+          "main": [
+            [
+              {
+                "node": "Get Full Message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Summarize Message",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize Message": {
+          "main": [
+            [
+              {
+                "node": "If AI responded properly",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email Trigger (IMAP)": {
+          "main": [
+            [
+              {
+                "node": "No Operation, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Unread From Inbox": {
+          "main": [
+            [
+              {
+                "node": "Mark As Read",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge Starred and Unread Messages",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Starred From Inbox": {
+          "main": [
+            [
+              {
+                "node": "Merge Starred and Unread Messages",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Enrich Emails With Tasks": {
+          "main": [
+            [
+              {
+                "node": "If Task Not Exist",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Enrich Tasks with Emails": {
+          "main": [
+            [
+              {
+                "node": "If Email Unstarred (Not Exist)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If AI responded properly": {
+          "main": [
+            [
+              {
+                "node": "Create Todoist Task",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            []
+          ]
+        },
+        "No Operation, do nothing": {
+          "main": [
+            [
+              {
+                "node": "Get Unread From Inbox",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get Starred From Inbox",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get Open Tasks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If Email Unstarred (Not Exist)": {
+          "main": [
+            [
+              {
+                "node": "Close Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structure Output Todoist Ready": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Summarize Message",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Starred and Unread Messages": {
+          "main": [
+            [
+              {
+                "node": "Enrich Emails With Tasks",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Enrich Tasks with Emails",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "No Operation, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 25,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 5
+        },
+        "n8n-nodes-base.merge": {
+          "count": 3
+        },
+        "n8n-nodes-base.todoist": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.emailReadImap": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Łukasz",
+      "username": "lukaszpp",
+      "bio": "Developer, automation enthusiast and dedicated CTO/CEO",
+      "verified": true,
+      "links": [
+        "https://sailingbyte.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/aae1a29225cc13556a92db7f75050da4bb664bf68e1d73407da6c9cd5a7a9a8a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 10,
+        "icon": "fa:inbox",
+        "name": "n8n-nodes-base.emailReadImap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/imap/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Email Trigger (IMAP)",
+          "color": "#44AA22"
+        },
+        "iconData": {
+          "icon": "inbox",
+          "type": "icon"
+        },
+        "displayName": "Email Trigger (IMAP)",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 68,
+        "icon": "file:todoist.svg",
+        "name": "n8n-nodes-base.todoist",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.todoist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/todoist/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Todoist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iI0U0NDMzMiIgZD0iTTUyLjUgMGgtNDVBNy41MiA3LjUyIDAgMCAwIDAgNy41djQ1QzAgNTYuNjI1IDMuMzc0IDYwIDcuNSA2MGg0NWM0LjEyNiAwIDcuNS0zLjM3NSA3LjUtNy41di00NUM2MCAzLjM3NSA1Ni42MjYgMCA1Mi41IDAiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIuMTIxIDI5LjU4MmMxLS42NzMgMjIuNDY5LTE1LjA1NSAyMi45Ni0xNS4zODguNDktLjMyOS41MTgtMS4zNDEtLjAzNi0xLjcwNy0uNTUtLjM2NS0xLjU5My0xLjA1Ni0xLjk4LTEuMzIxYTEuNTkgMS41OSAwIDAgMC0xLjc3MS4wMjVBMjYzOTEgMjYzOTEgMCAwIDEgMTIuMDYyIDI0LjA2Yy0uNzM3LjQ4Ni0xLjY0Mi40OTQtMi4zNzMgMEwwIDE3LjUwN3Y1LjU3YzIuMzU2IDEuNjAxIDguMjIyIDUuNTc2IDkuNjQyIDYuNTEyLjg0OC41NTUgMS42Ni41NDMgMi40ODEtLjAwNyIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xMi4xMjEgMzkuMTI4YzEtLjY3MyAyMi40NjktMTUuMDU1IDIyLjk2LTE1LjM4OS40OS0uMzI5LjUxOC0xLjM0LS4wMzYtMS43MDdhMjM0IDIzNCAwIDAgMS0xLjk4LTEuMzIgMS41OSAxLjU5IDAgMCAwLTEuNzcxLjAyNGMtLjI3NS4xODUtMTguNjIgMTIuNDY3LTE5LjIzMiAxMi44Ny0uNzM3LjQ4Ni0xLjY0Mi40OTQtMi4zNzMgMEwwIDI3LjA1MnY1LjU3YzIuMzU2IDEuNjAyIDguMjIyIDUuNTc2IDkuNjQyIDYuNTEyLjg0OC41NTYgMS42Ni41NDMgMi40ODEtLjAwNiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xMi4xMjEgNDguNjc0YzEtLjY3MyAyMi40NjktMTUuMDU2IDIyLjk2LTE1LjM5LjQ5LS4zMjguNTE4LTEuMzQtLjAzNi0xLjcwNy0uNTUtLjM2My0xLjU5My0xLjA1NS0xLjk4LTEuMzJhMS41OSAxLjU5IDAgMCAwLTEuNzcxLjAyNGMtLjI3NS4xODUtMTguNjIgMTIuNDY3LTE5LjIzMiAxMi44Ny0uNzM3LjQ4Ni0xLjY0Mi40OTUtMi4zNzMgMEwwIDM2LjU5OHY1LjU3MWMyLjM1NiAxLjYwMSA4LjIyMiA1LjU3NiA5LjY0MiA2LjUxMi44NDguNTU1IDEuNjYuNTQzIDIuNDgxLS4wMDYiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Todoist",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

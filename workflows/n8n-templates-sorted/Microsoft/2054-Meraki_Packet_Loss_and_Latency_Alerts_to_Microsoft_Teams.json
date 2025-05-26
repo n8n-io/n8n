@@ -1,0 +1,1486 @@
+{
+  "workflow": {
+    "id": 2054,
+    "name": "Meraki Packet Loss and Latency Alerts to Microsoft Teams",
+    "views": 3639,
+    "recentViews": 0,
+    "totalViews": 3639,
+    "createdAt": "2024-01-17T07:04:39.226Z",
+    "description": "This Template gives the ability to monitor all uplinks for your Meraki Dashboard and then alert your team in a method you prefer. This example is a Teams notification to our Dispatch Channel\n\n![image.png](fileId:777)\n\nSetup will probably take around 30 minutes to 1h provided with the Template. Most time intensive steps are getting a Meraki API key which I go over and setting up the Teams node which n8n has good documentation for.\n\nTutorial & explanation https://www.youtube.com/watch?v=JvaN0dNwRNU",
+    "workflow": {
+      "meta": {
+        "instanceId": "257476b1ef58bf3cb6a46e65fac7ee34a53a5e1a8492d5c6e4da5f87c9b82833",
+        "templateId": "2054"
+      },
+      "nodes": [
+        {
+          "id": "3b18d784-eded-4b74-ac44-b25565049e13",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            380,
+            400
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "96eadd32-17c2-44b0-a00b-8e2ddcecaafa",
+          "name": "Get Meraki Organizations",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "This node uses an API call to Meraki using the URL https://api.meraki.com/api/v1/organizations\n\nthe Authorization header is what is used to authenticate. You also have to set it to accept json",
+          "position": [
+            620,
+            320
+          ],
+          "parameters": {
+            "url": "https://api.meraki.com/api/v1/organizations",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "12",
+              "name": "Header Auth account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "444071ea-a364-45a6-9430-0338d2752b18",
+          "name": "Get Network IDs",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "This node uses a URL with an expression in the middle to do an API call for each ORG ID that was pulled to pull all the network's for each org",
+          "position": [
+            1020,
+            240
+          ],
+          "parameters": {
+            "url": "=https://api.meraki.com/api/v1/organizations/{{ $json.OrgID }}/networks  ",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization"
+                },
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "42deea02-e2d2-4ba6-97f7-698c219715a5",
+          "name": "Get Org Name & ID",
+          "type": "n8n-nodes-base.set",
+          "notes": "This takes the output data from the previous node and changes the variables to better suit what we'll be using. ",
+          "position": [
+            840,
+            240
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "CompanyName",
+                  "stringValue": "={{ $json.name }}"
+                },
+                {
+                  "name": "OrgID",
+                  "stringValue": "={{ $json.id }}"
+                }
+              ]
+            },
+            "include": "selected",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "3d5ce6a8-bf05-4457-88e6-c5ad5a995b1d",
+          "name": "Combine latency to its respective Network",
+          "type": "n8n-nodes-base.merge",
+          "notes": "This node matches on the NetworkID field, so that the networks we pulled earlier and the Loss / Latency can be combined into one dataset",
+          "position": [
+            1500,
+            400
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "joinMode": "enrichInput1",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "NetworkID",
+                  "field2": "networkId"
+                }
+              ]
+            }
+          },
+          "notesInFlow": false,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "caafd6dd-a2b2-405d-a078-cea3bb615788",
+          "name": "Makes Latency and Loss Filterable",
+          "type": "n8n-nodes-base.set",
+          "notes": "Like before, This takes the output data from the previous node and changes the variables to better suit what we'll be using. ",
+          "position": [
+            1680,
+            400
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "networkId",
+                  "stringValue": "={{ $json.networkId }}"
+                },
+                {
+                  "name": "NetworkName",
+                  "stringValue": "={{ $json.NetworkName }}"
+                },
+                {
+                  "name": "networkURL",
+                  "stringValue": "={{ $json.networkURL }}"
+                },
+                {
+                  "name": "Serial",
+                  "stringValue": "={{ $json.serial }}"
+                },
+                {
+                  "name": "TS0-Loss",
+                  "stringValue": "={{ $json.timeSeries[0].lossPercent }}"
+                },
+                {
+                  "name": "TS1-Loss",
+                  "stringValue": "={{ $json.timeSeries[1].lossPercent }}"
+                },
+                {
+                  "name": "TS2-Loss",
+                  "stringValue": "={{ $json.timeSeries[2].lossPercent }}"
+                },
+                {
+                  "name": "TS3-Loss",
+                  "stringValue": "={{ $json.timeSeries[3].lossPercent }}"
+                },
+                {
+                  "name": "TS4-Loss",
+                  "stringValue": "={{ $json.timeSeries[4].lossPercent }}"
+                },
+                {
+                  "name": "TS0-Latency",
+                  "stringValue": "={{ $json.timeSeries[0].latencyMs }}"
+                },
+                {
+                  "name": "TS1-Latency",
+                  "stringValue": "={{ $json.timeSeries[1].latencyMs }}"
+                },
+                {
+                  "name": "TS2-Latency",
+                  "stringValue": "={{ $json.timeSeries[2].latencyMs }}"
+                },
+                {
+                  "name": "TS3-Latency",
+                  "stringValue": "={{ $json.timeSeries[3].latencyMs }}"
+                },
+                {
+                  "name": "TS4-Latency",
+                  "stringValue": "={{ $json.timeSeries[4].latencyMs }}"
+                }
+              ]
+            },
+            "include": "selected",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "c695fd89-c884-4794-b0e5-51b91a71ac5c",
+          "name": "Filters Problematic sites",
+          "type": "n8n-nodes-base.code",
+          "notes": "This node uses JavaScript to look at the calculated averages and if they pass the threshold for 300ms Latency or 2% Loss it will pass that site info forward",
+          "position": [
+            2040,
+            400
+          ],
+          "parameters": {
+            "jsCode": "// Function to filter items based on averageLatency and averageLoss\nfunction filterItems(items) {\n  return items.filter(item =>\n    item.AverageLatency >300 || item.AverageLoss > 2\n  );\n}\n\n// Get the input items from the previous node\nconst inputItems = items.map(item => item.json); // Adjust based on your actual data structure\n\n// Filter the items based on the conditions\nconst filteredItems = filterItems(inputItems);\n\n// Return the filtered items to the workflow\nreturn filteredItems.map(item => {\n  return { json: item }; // Format each filtered item as JSON\n});\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6db219fd-f54d-4bf8-b150-9c4f3069cf92",
+          "name": "Average Latency & Loss over 5m",
+          "type": "n8n-nodes-base.code",
+          "notes": "This node uses JavaScript to calculate the average over the last 5 entries of packet loss and latency",
+          "position": [
+            1860,
+            400
+          ],
+          "parameters": {
+            "jsCode": "// Assuming $input.all() is an array of items and each item has a json property\nfunction calculateAverages(inputItems) {\n  return inputItems.map(item => {\n    // Calculate total and average loss\n    const totalLoss = \n      parseFloat(item.json['TS0-Loss']) +\n      parseFloat(item.json['TS1-Loss']) +\n      parseFloat(item.json['TS2-Loss']) +\n      parseFloat(item.json['TS3-Loss']) +\n      parseFloat(item.json['TS4-Loss']);\n    const averageLoss = totalLoss / 5;\n    item.json['AverageLoss'] = averageLoss;\n\n    // Calculate total and average latency\n    const totalLatency = \n      parseFloat(item.json['TS0-Latency']) +\n      parseFloat(item.json['TS1-Latency']) +\n      parseFloat(item.json['TS2-Latency']) +\n      parseFloat(item.json['TS3-Latency']) +\n      parseFloat(item.json['TS4-Latency']);\n    const averageLatency = totalLatency / 5;\n    item.json['AverageLatency'] = averageLatency;\n\n    // Return the modified item\n    return item;\n  });\n}\n\nreturn calculateAverages($input.all());\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f3831843-2596-492d-b800-7d349e443293",
+          "name": "Get Uplink Loss and Latency",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "This uses a URL with an expression in the middle so that for each org ID it will pull the Loss and Latency for their uplinks. ",
+          "position": [
+            840,
+            400
+          ],
+          "parameters": {
+            "url": "=https://api.meraki.com/api/v1/organizations/{{ $json.id }}/devices/uplinksLossAndLatency?timespan=300",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "12",
+              "name": "Header Auth account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "87c3f32c-de4f-48fd-a711-3521a008c245",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "notes": "schedules the workflow to run every 5 minutes mon-fri 8am-5pm",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "expression": "*/5 8-16 * * 1-5"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "572adb5c-6745-4b4e-89d8-a97835c3d486",
+          "name": "Sets Network Variables",
+          "type": "n8n-nodes-base.set",
+          "notes": "Like before, This takes the output data from the previous node and changes the variables to better suit what we'll be using. ",
+          "position": [
+            1220,
+            240
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "NetworkID",
+                  "stringValue": "={{ $json.id }}"
+                },
+                {
+                  "name": "NetworkName",
+                  "stringValue": "={{ $json.name }}"
+                },
+                {
+                  "name": "networkURL",
+                  "stringValue": "={{ $json.url }}"
+                }
+              ]
+            },
+            "include": "selected",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "01717ed3-1012-4eda-9da9-567038132e06",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "notes": "This looks at the problematic sites as well as the info from the database. It will pass on all non-matching as if the site name matches with the database then that means we have an open alert for that site already.",
+          "position": [
+            2720,
+            300
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "joinMode": "keepNonMatches",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "NetworkName",
+                  "field2": "NetworkName"
+                }
+              ]
+            },
+            "outputDataFrom": "input2"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a20f6f7c-0c92-4db9-903b-e322d67b536d",
+          "name": "Check if Alert Exists",
+          "type": "n8n-nodes-base.redis",
+          "notes": "This node Looks to see if the alert already exists in the Redis database. If it does exist it won't alert us in Teams",
+          "position": [
+            2300,
+            240
+          ],
+          "parameters": {
+            "key": "={{ $json.NetworkName }}",
+            "options": {
+              "dotNotation": "={{ true }}"
+            },
+            "operation": "get",
+            "propertyName": "NetworkName"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "63590446-2938-443a-adbe-bfc0ba89008c",
+          "name": "Create Response",
+          "type": "n8n-nodes-base.code",
+          "notes": "If the alert isn't in the database all the Redis will respond with is \"null\" \n\nother n8n nodes see null as (no data) and show blank which is fair. So I made this node to look at the null responses and make a response of \"false\" for a \"alertExists\" variable. that way we have something to filter on",
+          "position": [
+            2500,
+            240
+          ],
+          "parameters": {
+            "jsCode": "return items.map(item => {\n  // Check if the 'NetworkName' property is not null, indicating an alert exists.\n  // If 'NetworkName' is null, no alert exists for this network.\n  const alertExists = item.json.NetworkName !== null;\n\n  // Set the alertExists property correctly based on the condition.\n  item.json.alertExists = alertExists;\n\n  return item;\n});\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c63e2a45-bf5e-455f-8012-9868d55aa3e2",
+          "name": "Message Techs",
+          "type": "n8n-nodes-base.microsoftTeams",
+          "notes": "sends an alert to Dispatch with info related to the site.",
+          "position": [
+            2920,
+            300
+          ],
+          "parameters": {
+            "chatId": "19:bfd41d9621e544c88ae9f2f275e373b5@thread.v2",
+            "message": "=<strong>Loss & Latency Alert</strong> <br><br>\n<strong>Network Name:</strong> <a href=\"{{ $json.networkURL }}\">{{ $json.NetworkName }}</a> <br>\n<strong>Average Loss:</strong> {{ $json.AverageLoss }}% <br>\n<strong>Average Latency:</strong> {{ $json.AverageLatency }} <br> ",
+            "options": {},
+            "resource": "chatMessage"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b4ae54cd-8345-4611-9fbe-32e7537855a9",
+          "name": "Log the Alert",
+          "type": "n8n-nodes-base.redis",
+          "notes": "Logs the alert and sets the TTL to 3h, after 3h Redis will delete the entry and if the site is still having issues, the next run of the workflow will notify us again",
+          "position": [
+            3120,
+            300
+          ],
+          "parameters": {
+            "key": "={{ $('Merge').item.json.NetworkName }}",
+            "ttl": 10800,
+            "value": "={{ $('Merge').item.json.NetworkName }}",
+            "expire": true,
+            "keyType": "string",
+            "operation": "set"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "05416de5-a0c0-4ff8-bfc5-3d26f0d88139",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            573.394087003982,
+            143.69977924944794
+          ],
+          "parameters": {
+            "width": 791.5865288559442,
+            "height": 462.84878343542437,
+            "content": "## Pulling in Info \nThis section pulls in all the data we will need to see any possible errors and generate our alert\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aeb1c8a6-3cec-4899-83e2-098d0b1a9703",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1464,
+            211
+          ],
+          "parameters": {
+            "width": 688.5000872281419,
+            "height": 411.1258278145692,
+            "content": "## Changing data\nThis section pulls together the data we got from the first section and sets everything up to be notified "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9ca9e89b-61ce-4b3f-af8e-bf03daff6710",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2260,
+            60
+          ],
+          "parameters": {
+            "width": 1015.6997792494475,
+            "height": 614.8167770419421,
+            "content": "## Notify\nThis last section is for the push of the alert as well as storing the alert as to not re-notify every time the workflow runs"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "801879be-e83b-4c74-b8ac-b20157ca32d1",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            600,
+            640
+          ],
+          "parameters": {
+            "width": 673.6064168725538,
+            "height": 394.26386951839356,
+            "content": "## Explanation\nusing an HTTP request you will can do a get request for all Organizations your Meraki account has access to. \n\nYou will have to Generate your own API key inside of the Meraki Dashboard explained here https://documentation.meraki.com/General_Administration/Other_Topics/Cisco_Meraki_Dashboard_API\n\nYou will have to add two headers to your HTTPS node Authorization and Accept. the 1st is how you'll authenticate with Meraki and the second is how it will know how to answer the request. \n\nUsing the same methods you'll do a get for Organizations, Network IDs and Uplink stats\n\nUsing the Set nodes to organize the data in a \"neat\" way"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2b028326-0776-4b9b-bdf2-d79949809092",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1480,
+            660
+          ],
+          "parameters": {
+            "width": 645.9603701592033,
+            "height": 389.89870424786454,
+            "content": "## Explanation\nthe Merge node will combine the Networks with their respective stats by matching on NetworkID and networkid and enriching the input \n\nagain we add a set node to better organize the statistics of the uplinks. \n\nThe first JS node will average the 5 Time stamps of Latency and Packet loss \n\nThe last JS node will send the data forward only for sites that pass the threshold (in this example 300ms latency and 2% packet loss) "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f7c1448d-3a03-4196-bde6-a1aea92f28ad",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2300,
+            700
+          ],
+          "parameters": {
+            "width": 913.6905067516504,
+            "height": 523.763772544089,
+            "content": "## Explanation \nwe will send the problematic sites to both the Redis node and the Merge node. \n\nThe Redis node does a get request to see if a key exists matching the Network name in Meraki. If so it will respond with the Network name, If not it will respond with \"null\" \n\nthe n8n nodes view \"null\" as no data (which isn't exactly wrong as it literally is no data) but the next node will just say the input is blank so I've added the JS node to look at the output and respond if an alert does or doesn't exist based on the response of the Redis node. \n\nThis time we Merge looking at the NetworkName and keep all non-matching. The reason for this is because if they match, that means the key in the database exists, meaning we've already sent a message that the site is having issues. \n\nWe send the tickets forth that don't match and we will send a teams message that will notify of a Network passing the threshold for issues. I've included the Network URL and re-written the message to include a hyperlink that way the alert can be used to take you straight to the problematic site. \n\nFinally we log the site in the database with a TTL of 3h, this way if the error has not been fixed in 3h we will get another message. \n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4f4d40ef-8e7d-420a-8273-4cfefd3af6e9",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1460,
+            -320
+          ],
+          "parameters": {
+            "width": 670.6963066922013,
+            "height": 366.61782280504275,
+            "content": "## other usecases \n If you feel confident enough the Teams nodes can be replaced with a node that can generate a ticket for your PSA such as ConnectWise Mange. That way these are generating tickets rather than just messages. "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Message Techs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Message Techs": {
+          "main": [
+            [
+              {
+                "node": "Log the Alert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Response": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Network IDs": {
+          "main": [
+            [
+              {
+                "node": "Sets Network Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Get Meraki Organizations",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Org Name & ID": {
+          "main": [
+            [
+              {
+                "node": "Get Network IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Alert Exists": {
+          "main": [
+            [
+              {
+                "node": "Create Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sets Network Variables": {
+          "main": [
+            [
+              {
+                "node": "Combine latency to its respective Network",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Meraki Organizations": {
+          "main": [
+            [
+              {
+                "node": "Get Org Name & ID",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get Uplink Loss and Latency",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filters Problematic sites": {
+          "main": [
+            [
+              {
+                "node": "Check if Alert Exists",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Get Uplink Loss and Latency": {
+          "main": [
+            [
+              {
+                "node": "Combine latency to its respective Network",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Average Latency & Loss over 5m": {
+          "main": [
+            [
+              {
+                "node": "Filters Problematic sites",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Get Meraki Organizations",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Makes Latency and Loss Filterable": {
+          "main": [
+            [
+              {
+                "node": "Average Latency & Loss over 5m",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine latency to its respective Network": {
+          "main": [
+            [
+              {
+                "node": "Makes Latency and Loss Filterable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 23,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.code": {
+          "count": 3
+        },
+        "n8n-nodes-base.merge": {
+          "count": 2
+        },
+        "n8n-nodes-base.redis": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftTeams": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Gavin",
+      "username": "sniped-you-fool",
+      "bio": null,
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/c9bf5420133c3612bddb5a889d41f5868bb101104e18bb879589c541216010af?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 33,
+        "icon": "file:redis.svg",
+        "name": "n8n-nodes-base.redis",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.redis/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/redis/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Redis"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNBNDFFMTEiIGQ9Ik01Ny42NTYgNDMuOTljLTMuMjAxIDEuNjgzLTE5Ljc4NyA4LjU2MS0yMy4zMTggMTAuNDE3cy01LjQ5NCAxLjgzOC04LjI4My40OTRjLTIuNzktMS4zNDMtMjAuNDQ5LTguNTM1LTIzLjYyOS0xMC4wNjdDLjgzNCA0NC4wNjYuMDAyIDQzLjQyMi4wMDIgNDIuODExdi02LjExN3MyMi45OC01LjA0NSAyNi42OS02LjM4OCA0Ljk5NS0xLjM5IDguMTU0LS4yMjVjMy4xNiAxLjE2NSAyMi4wMzUgNC42MDMgMjUuMTU0IDUuNzU2djYuMDMyYzAgLjYwNS0uNzIgMS4yODMtMi4zNSAyLjEyNHoiLz48cGF0aCBmaWxsPSIjRDgyQzIwIiBkPSJNNTcuNjU2IDM3Ljg3MmMtMy4yMDEgMS42ODUtMTkuNzg3IDguNTYtMjMuMzE4IDEwLjQxN3MtNS40OTQgMS44MzgtOC4yODMuNDk0Yy0yLjc5LTEuMzQzLTIwLjQ0OS04LjUzNC0yMy42My0xMC4wNjhzLTMuMjQzLTIuNTg4LS4xMjItMy44MmwyNC4zODgtOS41MmMzLjcxLTEuMzQgNC45OTQtMS4zOSA4LjE1My0uMjI1czE5LjY0MyA3Ljc4IDIyLjc0NyA4Ljk1MWMzLjEwMyAxLjE3IDMuMjQgMi4wODYuMDM3IDMuNzg2eiIvPjxwYXRoIGZpbGw9IiNBNDFFMTEiIGQ9Ik01Ny42NTYgMzQuMDE1Yy0zLjIwMSAxLjY4My0xOS43ODcgOC41NjEtMjMuMzE4IDEwLjQxN3MtNS40OTQgMS44MzgtOC4yODMuNDk1Yy0yLjc5LTEuMzQ0LTIwLjQ0OS04LjUzNi0yMy42MjktMTAuMDY3Qy44MzQgMzQuMDkyLjAwMiAzMy40NDcuMDAyIDMyLjgzNlYyNi43MnMyMi45OC01LjA0NSAyNi42OS02LjM4N2MzLjcxMS0xLjM0MyA0Ljk5NS0xLjM5IDguMTU0LS4yMjUgMy4xNiAxLjE2NSAyMi4wMzUgNC42MDIgMjUuMTU0IDUuNzU2djYuMDMyYzAgLjYwNS0uNzIgMS4yODMtMi4zNSAyLjEyM3oiLz48cGF0aCBmaWxsPSIjRDgyQzIwIiBkPSJNNTcuNjU2IDI3Ljg5OGMtMy4yMDEgMS42ODUtMTkuNzg3IDguNTYxLTIzLjMxOCAxMC40MTdzLTUuNDk0IDEuODM4LTguMjgzLjQ5NWMtMi43OS0xLjM0NC0yMC40NDktOC41MzQtMjMuNjMtMTAuMDY3LTMuMTgtMS41MzQtMy4yNDMtMi41ODgtLjEyMi0zLjgybDI0LjM4OC05LjUyYzMuNzEtMS4zNDMgNC45OTQtMS4zOSA4LjE1My0uMjI1IDMuMTYgMS4xNjYgMTkuNjQ0IDcuNzg1IDIyLjc2NSA4LjkzNXMzLjI0IDIuMDg1LjAzOCAzLjc4NXoiLz48cGF0aCBmaWxsPSIjQTQxRTExIiBkPSJNNTcuNjU2IDIzLjY3MWMtMy4yMDEgMS42ODMtMTkuNzg3IDguNTYxLTIzLjMxOCAxMC40MTlzLTUuNDk0IDEuODM4LTguMjgzLjQ5NWMtMi43OS0xLjM0NC0yMC40NDktOC41MzUtMjMuNjI5LTEwLjA2OS0xLjU5Mi0uNzY1LTIuNDI0LTEuNDExLTIuNDI0LTIuMDJ2LTYuMTFzMjIuOTgtNS4wNDUgMjYuNjktNi4zODggNC45OTUtMS4zOSA4LjE1NC0uMjI1YzMuMTYgMS4xNjUgMjIuMDM1IDQuNTkxIDI1LjE1NCA1Ljc0NXY2LjAzMmMwIC42MDUtLjcyIDEuMjgzLTIuMzUgMi4xMjN6Ii8+PHBhdGggZmlsbD0iI0Q4MkMyMCIgZD0iTTU3LjY1NiAxNy41NTNjLTMuMjAxIDEuNjg1LTE5Ljc4NyA4LjU2MS0yMy4zMTggMTAuNDE3cy01LjQ5NCAxLjgzOC04LjI4My40OTVjLTIuNzktMS4zNDQtMjAuNDQ5LTguNTM0LTIzLjYzLTEwLjA2OHMtMy4yNDMtMi41ODctLjEyMi0zLjgybDI0LjM4OC05LjUyYzMuNzEtMS4zNDMgNC45OTQtMS4zOSA4LjE1My0uMjI2IDMuMTYgMS4xNjUgMTkuNjQzIDcuNzg1IDIyLjc2NSA4LjkzNnMzLjI0IDIuMDg1LjAzOCAzLjc4NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJtMzEuNDk3IDE1LjAzMi0xLjg4LTMuMTUzLTYuMDAyLS41NDUgNC40OC0xLjYzTDI2Ljc1IDcuMmw0LjE5MiAxLjY1MyAzLjk1NS0xLjMwNS0xLjA3IDIuNTg2IDQuMDMyIDEuNTI0LTUuMTk4LjU0NnptLTEwLjAxNCA2LjI3NSAxMy45MDMtMi4xNTMtNC4yIDYuMjExem0tMTEuMTctNS4xNjdjMC0xLjYxIDMuMzE0LTIuOTA2IDcuNDMxLTIuOTA2IDQuMTE4IDAgNy40MzIgMS4yOTYgNy40MzIgMi45MDZzLTMuMzE0IDIuOTA1LTcuNDMyIDIuOTA1Yy00LjExNyAwLTcuNDMxLTEuMjk1LTcuNDMxLTIuOTA1Ii8+PHBhdGggZmlsbD0iIzdBMEMwMCIgZD0ibTUyLjIzMyAxNS43MTQtOC4yMjQgMy4yNzYtLjAwNy02LjU1NnoiLz48cGF0aCBmaWxsPSIjQUQyMTE1IiBkPSJtNDQuMDEgMTguOTkxLS44OS4zNTMtOC4yMTctMy4yNzYgOS4wOTQtMy42M3oiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Redis",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 368,
+        "icon": "file:teams.svg",
+        "name": "n8n-nodes-base.microsoftTeams",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftteams/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Microsoft Teams"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMzgxLjQgMjM1NC41Ij48cGF0aCBmaWxsPSIjNTU1OGFmIiBkPSJNMjAxNS42IDg5OS4yYzE5LjUgMTkuNSA0Mi41IDM1IDY3LjkgNDUuOCA1MyAyMi4yIDExMi43IDIyLjIgMTY1LjggMCA1MS4yLTIxLjggOTItNjIuNSAxMTMuNy0xMTMuNyAyMi4yLTUzIDIyLjItMTEyLjcgMC0xNjUuOC0yMS44LTUxLjItNjIuNS05Mi0xMTMuNy0xMTMuNy01My0yMi4yLTExMi43LTIyLjItMTY1LjggMC01MS4yIDIxLjgtOTIgNjIuNS0xMTMuNyAxMTMuNy0yMi4yIDUzLTIyLjIgMTEyLjcgMCAxNjUuOCAxMC44IDI1LjMgMjYuNCA0OC40IDQ1LjggNjcuOW0tNjIuNCAxOTcuOHY2NDIuMWgxMDdjMzYuOC0uMiA3My40LTMuNiAxMDkuNS0xMC40IDM2LjMtNi40IDcxLjMtMTguNiAxMDMuNy0zNi4yIDMwLjYtMTYuNiA1Ny00MCA3Ny4zLTY4LjIgMjEuMy0zMS4zIDMyLTY4LjYgMzAuNS0xMDYuNVYxMDk3em0tMzQ2LjgtMjY5LjJjMjguNC4yIDU2LjYtNS41IDgyLjgtMTYuNyA1MS4yLTIxLjggOTEuOS02Mi41IDExMy42LTExMy43IDIyLjItNTMgMjIuMi0xMTIuNy0uMS0xNjUuOC0yMS44LTUxLjItNjIuNS05Mi0xMTMuNy0xMTMuNy0yNi4yLTExLjItNTQuNC0xNi45LTgyLjktMTYuNy0yOC4zLS4yLTU2LjMgNS41LTgyLjMgMTYuNy0xOS40IDguMy0yNS41IDE5LjEtNTIuMiAzMi4xdjMyOWMyNi44IDEzLjEgMzIuOCAyMy44IDUyLjIgMzIuMSAyNi4xIDExLjMgNTQuMiAxNi45IDgyLjYgMTYuN20tMTM0LjggMTA4MS4xYzI2LjggNS44IDM2LjQgMTAuMyA1NS40IDEyLjkgMjAuOCAzIDQxLjggNC41IDYyLjggNC42IDMyLjQtLjIgNjQuOC0zLjYgOTYuNS0xMC40IDMyLjMtNi41IDYzLjMtMTguNiA5MS41LTM1LjcgMjcuNy0xNyA1MS00MC4yIDY4LjItNjcuNyAxOS0zMi4xIDI4LjMtNjkuMSAyNi45LTEwNi40di03NDNoLTQwMS4zek0wIDIxMTMuN2wxMzkxLjMgMjQwLjhWMEwwIDI0MC44eiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Im0xMDE2LjcgNzIyLjQtNjQyLjEgMzkuMXYxNDguMWwyNDAuOC05Ljd2Njg2LjdsMTYwLjUgOS40Vjg5My42bDI0MC44LTEwLjd6Ii8+PC9zdmc+"
+        },
+        "displayName": "Microsoft Teams",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      },
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": [
+      {
+        "id": 777,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_85a70376a6.png"
+      }
+    ]
+  }
+}

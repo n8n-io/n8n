@@ -1,0 +1,61 @@
+URL: https://docs.n8n.io/flow-logic/
+Scraped_At: 2025-05-20T18:43:03.009712
+
+Flow logic
+#
+n8n allows you to represent complex logic in your workflows.
+This section covers:
+Splitting with conditionals
+Merging data
+Looping
+Waiting
+Sub-workflows
+Error handling
+Execution order in multi-branch workflows
+Related sections
+#
+You need some understanding of
+Data
+in n8n, including
+Data structure
+and
+Data flow within nodes
+.
+When building your logic, you'll use n8n's
+Core nodes
+, including:
+Splitting:
+IF
+and
+Switch
+.
+Merging:
+Merge
+,
+Compare Datasets
+, and
+Code
+.
+Looping:
+IF
+and
+Loop Over Items
+.
+Waiting:
+Wait
+.
+Creating sub-workflows:
+Execute Workflow
+and
+Execute Workflow Trigger
+.
+Error handling:
+Stop And Error
+and
+Error Trigger
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

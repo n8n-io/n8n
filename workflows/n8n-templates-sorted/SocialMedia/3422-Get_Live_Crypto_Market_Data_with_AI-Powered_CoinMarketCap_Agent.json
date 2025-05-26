@@ -1,0 +1,833 @@
+{
+  "workflow": {
+    "id": 3422,
+    "name": "Get Live Crypto Market Data with AI-Powered CoinMarketCap Agent",
+    "views": 3435,
+    "recentViews": 47,
+    "totalViews": 3435,
+    "createdAt": "2025-04-03T13:26:21.792Z",
+    "description": "**Access real-time cryptocurrency prices, market rankings, metadata, and global stats—powered by GPT-4o and CoinMarketCap!**  \nThis modular AI-powered agent is part of a broader CoinMarketCap multi-agent system designed for **crypto analysts, traders, and developers**. It uses the **CoinMarketCap API** and intelligently routes queries to the correct tool using AI.\n\nThis agent can be used standalone or triggered by a supervisor AI agent for multi-agent orchestration.\n\n---\n\n## **Supported API Tools (6 Total)**  \nThis agent intelligently selects from the following tools to answer your crypto-related questions:\n\n### 🔍 Tool Summary  \n1. **Crypto Map** – Lookup CoinMarketCap IDs and active coins  \n2. **Crypto Info** – Get metadata, whitepapers, and social links  \n3. **Crypto Listings** – Ranked coins by market cap  \n4. **CoinMarketCap Price** – Live prices, volume, and supply  \n5. **Global Metrics** – Total market cap, BTC dominance  \n6. **Price Conversion** – Convert between crypto and fiat\n\n---\n\n## **What You Can Do with This Agent**  \n🔹 Get live prices and volume for tokens (e.g., BTC, ETH, SOL)  \n🔹 Convert crypto → fiat or fiat → crypto instantly  \n🔹 Retrieve whitepapers, logos, and website links for any token  \n🔹 Analyze total market cap, BTC dominance, and circulating supply  \n🔹 Discover new tokens and track their CoinMarketCap IDs  \n🔹 View the top 100 coins ranked by market cap or volume  \n\n---\n\n## **Example Queries**  \n✅ _\"What is the CoinMarketCap ID for PEPE?\"_  \n✅ _\"Show me the top 10 cryptocurrencies by market cap.\"_  \n✅ _\"Convert 5 ETH to USD.\"_  \n✅ _\"What’s the 24h volume for ADA?\"_  \n✅ _\"Get the global market cap and BTC dominance.\"_  \n\n---\n\n##  AI Architecture  \n- **AI Brain**: GPT-4o-mini  \n- **Memory**: Session buffer with `sessionId`  \n- **Agent Type**: Subworkflow AI tool  \n- **Connected APIs**: 6 CoinMarketCap endpoints  \n- **Trigger Mode**: Executes when called by a supervisor (via `message` and `sessionId` inputs)\n\n---\n\n## **Setup Instructions**  \n1. **Get a CoinMarketCap API Key**  \n   - Register here: [https://coinmarketcap.com/api/](https://coinmarketcap.com/api/)  \n2. **Configure Credentials in n8n**  \n   - Use `HTTP Header Auth` with your API key for each connected endpoint  \n3. **Connect This Agent to a Supervisor Workflow (Optional)**  \n   - Trigger this agent using `Execute Workflow` with inputs `message` and `sessionId`  \n4. **Test Prompts**  \n   - Try asking: _“Convert 1000 DOGE to BTC”_ or _“Top 5 coins in EUR”_\n\n---\n\n## Included Sticky Notes  \n\n**Crypto Agent Guide** – Agent overview, node map, and endpoint details  \n\n**Usage Instructions** – Step-by-step usage and sample prompts  \n\n**Error Handling & Licensing** – Troubleshooting and IP rights\n\n---\n\n## ✅ Final Notes  \nThis agent is part of the **CoinMarketCap AI Analyst System**, which includes multiple specialized agents for cryptocurrencies, exchanges, community data, and DEX insights. Visit [my Creator profile](https://n8n.io/creators/don-the-gem-dealer/) to find the full suite of tools.\n\n---\n\n**Get smarter about crypto—analyze the market in real time with AI and CoinMarketCap.**  \n\n",
+    "workflow": {
+      "id": "R4EuB1gx1IpMXCJM",
+      "meta": {
+        "instanceId": "a5283507e1917a33cc3ae615b2e7d5ad2c1e50955e6f831272ddd5ab816f3fb6",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "CoinMarketCap_Crypto_Agent_Tool",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "c055762a-8fe7-4141-a639-df2372f30060",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -240,
+            260
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "message"
+                },
+                {
+                  "name": "sessionId"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3638379c-fad2-4d3b-bb90-b32242da4cc7",
+          "name": "CoinMarketCap Crypto Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            260,
+            260
+          ],
+          "parameters": {
+            "text": "={{ $json.message }}",
+            "options": {
+              "systemMessage": "You are an AI cryptocurrency analyst. You have access to six live CoinMarketCap tools, each linked to a real API endpoint. These tools allow you to retrieve price data, metadata, market rankings, conversions, and global market stats.\n\nUse the most relevant tool based on the user’s intent. Below is a list of your currently connected tools, their functions, and accepted input parameters.\n\n---\n\n### 🔧 **Connected Tools & Supported Inputs**\n\n---\n\n#### 1. **Crypto Map**\n- **Endpoint**: `/v1/cryptocurrency/map`\n- **Purpose**: Get CoinMarketCap IDs, symbols, and names.\n- **Supported Inputs**:\n  - `symbol` – (Optional) Comma-separated crypto symbols (e.g., BTC,ETH)\n  - `listing_status` – `active`, `inactive`, or `untracked`\n  - `start` – (Pagination start)\n  - `limit` – (Number of results)\n- **Use Cases**:\n  - “What is the CoinMarketCap ID for SOL?”\n  - “List all active cryptocurrencies.”\n\n---\n\n#### 2. **Crypto Info**\n- **Endpoint**: `/v2/cryptocurrency/info`\n- **Purpose**: Get metadata like description, whitepaper, and social links.\n- **Supported Inputs**:\n  - `symbol` – (Required) Comma-separated symbols\n- **Use Cases**:\n  - “Show me the whitepaper for ETH.”\n  - “What’s the website and Twitter handle of DOGE?”\n\n---\n\n#### 3. **Crypto Listings**\n- **Endpoint**: `/v1/cryptocurrency/listings/latest`\n- **Purpose**: Ranked list of coins sorted by market cap.\n- **Supported Inputs**:\n  - `start` – (e.g., 1 for top coin, 101 for rank 101+)\n  - `limit` – (e.g., 10 for top 10)\n  - `convert` – Currency to convert values into (e.g., USD, EUR)\n- **Use Cases**:\n  - “Show me the top 20 coins.”\n  - “What are the top 5 coins in EUR?”\n\n---\n\n#### 4. **CoinMarketCap Price**\n- **Endpoint**: `/v2/cryptocurrency/quotes/latest`\n- **Purpose**: Real-time price, volume, and market cap.\n- **Supported Inputs**:\n  - `symbol` – (Required) Single or multiple symbols\n  - `convert` – Currency to display results in (e.g., USD)\n- **Use Cases**:\n  - “What’s the current price of ADA?”\n  - “How much volume has BTC traded in the last 24h?”\n\n---\n\n#### 5. **Global Metrics**\n- **Endpoint**: `/v1/global-metrics/quotes/latest`\n- **Purpose**: Global crypto market stats.\n- **Supported Inputs**:\n  - *(None required)*\n- **Use Cases**:\n  - “What’s the total crypto market cap?”\n  - “How dominant is Bitcoin?”\n\n---\n\n#### 6. **Price Conversion**\n- **Endpoint**: `/v1/tools/price-conversion`\n- **Purpose**: Convert one crypto/fiat into another.\n- **Supported Inputs**:\n  - `amount` – (Required) Numerical amount to convert\n  - `symbol` – (Required) The crypto to convert from\n  - `convert` – (Required) The target currency (e.g., BTC, USD)\n- **Use Cases**:\n  - “Convert 5 ETH to USD.”\n  - “What’s 1000 DOGE in BTC?”\n\n"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "52e42df6-6b67-45d6-80a0-5361259a9d8f",
+          "name": "Crypto Agent Brain",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -300,
+            520
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "yUizd8t0sD5wMYVG",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "8387d236-2e94-48de-b5b9-0838762440f9",
+          "name": "Crypto Agent Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -120,
+            520
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "a48f47a0-9bef-412c-91b8-df57ce3dba12",
+          "name": "CoinMarketCap Price",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            600,
+            520
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "symbol"
+                },
+                {
+                  "name": "convert"
+                }
+              ]
+            },
+            "toolDescription": "The tool going to recieve input of cryptocurrency name and then request the price from CoinMarketCap and send the price back in a message.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d5d5e847-efbc-41cd-b581-095eb3825bfd",
+          "name": "Crypto Map",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            60,
+            520
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v1/cryptocurrency/map",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "symbol",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "listing_status",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "start",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Get a map of all cryptocurrencies with CoinMarketCap ID, name, and symbol.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "ac224086-1243-4dcb-85eb-dbf59fc927ac",
+          "name": "Crypto Info",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            240,
+            520
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v2/cryptocurrency/info",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "symbol"
+                }
+              ]
+            },
+            "toolDescription": "Get metadata for one or more cryptocurrencies including logo, description, and links.\n\n",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b261f3ed-a1dc-4dd0-bc63-31e77041bb01",
+          "name": "Crypto Listings",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            420,
+            520
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "start"
+                },
+                {
+                  "name": "limit"
+                },
+                {
+                  "name": "convert"
+                }
+              ]
+            },
+            "toolDescription": "Retrieve a ranked list of cryptocurrencies sorted by market cap. Supports pagination and conversion currency.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "cfa6badf-0eed-4b37-bb1d-2ffcd39a23fc",
+          "name": "Global Metrics",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            800,
+            520
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v1/global-metrics/quotes/latest",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Returns global crypto market metrics including market cap, 24h volume, BTC dominance, and total active cryptocurrencies.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "ca40fc60-8cdd-48ec-98ba-63259582a16e",
+          "name": "Price Conversion",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1000,
+            520
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v1/tools/price-conversion",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "amount"
+                },
+                {
+                  "name": "symbol"
+                },
+                {
+                  "name": "convert"
+                }
+              ]
+            },
+            "toolDescription": "Convert cryptocurrency or fiat value from one currency to another.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "360bb74c-0ca6-4cd7-95ab-7f14a2c89e6c",
+          "name": "Crypto Agent Guide",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1140,
+            -760
+          ],
+          "parameters": {
+            "width": 840,
+            "height": 840,
+            "content": "# 🧠 CoinMarketCap_Crypto_Agent_Tool Guide\n\nThis agent is part of the modular **CoinMarketCap AI Analyst** system in **n8n**, focused on **cryptocurrency-level queries** such as price, supply, metadata, rankings, and conversions.\n\n## 🔌 Endpoints Supported:\n1. `/v1/cryptocurrency/map` – Get IDs, symbols, names\n2. `/v2/cryptocurrency/info` – Get metadata, logos, whitepapers\n3. `/v1/cryptocurrency/listings/latest` – Market rankings by cap\n4. `/v2/cryptocurrency/quotes/latest` – Price, volume, and supply\n5. `/v1/global-metrics/quotes/latest` – Total market cap, BTC dominance\n6. `/v1/tools/price-conversion` – Fiat and crypto conversions\n\n## 🧠 Node Overview:\n- **🧠 Brain**: `GPT-4o Mini`\n- **💾 Memory**: Session context buffer\n- **⚙️ Tools**: 6 live API endpoints\n\n## ⚙️ Required Inputs:\n- `message` – User query\n- `sessionId` – Used to preserve memory between calls\n\n## 📝 Tip:\nUse descriptive prompts like:\n- “What is the CoinMarketCap ID for ETH?”\n- “Convert 1000 DOGE to BTC.”\n- “Show top 10 tokens by market cap.”"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f2f24886-4157-40f5-9731-dea431fb6cb8",
+          "name": "Usage & Examples",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -120,
+            -760
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 720,
+            "height": 900,
+            "content": "## 📌 Usage Instructions\n\n### ✅ Step 1: Provide Inputs\nUse `symbol`, `amount`, `convert`, `start`, `limit` where needed.\n\n### ✅ Step 2: Trigger from Supervisor\nSupervisor AI sends the message and sessionId to this agent.\n\n### ✅ Step 3: Review Output\nReturns raw JSON or formatted insights.\n\n---\n\n## 🔍 Sample Prompts\n\n### 1️⃣ Convert 5 ETH to USD\n```plaintext\nGET /v1/tools/price-conversion?amount=5&symbol=ETH&convert=USD\n```\n\n### 2️⃣ Get CoinMarketCap ID of SHIB\n```plaintext\nGET /v1/cryptocurrency/map?symbol=SHIB\n```\n\n### 3️⃣ View total market cap\n```plaintext\nGET /v1/global-metrics/quotes/latest\n```\n\n### 4️⃣ Top 5 coins in EUR\n```plaintext\nGET /v1/cryptocurrency/listings/latest?limit=5&convert=EUR\n```"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "06d501a6-8730-4093-a145-53fd9378fa8e",
+          "name": "Errors & Licensing",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            780,
+            -760
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 600,
+            "height": 560,
+            "content": "## ⚠️ API Errors & Troubleshooting\n\n| Code | Message |\n|------|---------|\n| 200  | OK ✅ |\n| 400  | Bad Request – Check inputs |\n| 401  | Unauthorized – Invalid/missing API key |\n| 429  | Rate limit exceeded – Slow down |\n| 500  | CoinMarketCap server issue |\n\n### ✅ Tips:\n- Double check symbols and convert params\n- Use `start`, `limit`, `convert` for pagination\n- Add delay to avoid 429 rate limits\n\n---\n\n## 🛠️ Need Help?\n🔗 [Don Jayamaha – LinkedIn](https://linkedin.com/in/donjayamahajr)\n\n© 2025 Treasurium Capital Limited Company. All rights reserved.\nThis AI workflow architecture, including logic, design, and prompt structures, is the intellectual property of Treasurium Capital Limited Company. Unauthorized reproduction, redistribution, or resale is prohibited under U.S. copyright law. Licensed use only."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "a6a08338-6720-4a3a-bf3b-ed9559257b10",
+      "connections": {
+        "Crypto Map": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Crypto Info": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Global Metrics": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Crypto Listings": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Price Conversion": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Crypto Agent Brain": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CoinMarketCap Price": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Crypto Agent Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "CoinMarketCap Crypto Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 13,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 6
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Don Jayamaha Jr",
+      "username": "don-the-gem-dealer",
+      "bio": "With 12 years of experience as a Blockchain Strategist and Web3 Architect, I specialize in bridging the gap between traditional industries and decentralized technologies. My expertise spans tokenized assets, crypto payment integrations, and blockchain-driven market solutions.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/donjayamahajr/"
+      ],
+      "avatar": "https://gravatar.com/avatar/95f70084b3fec5ed68a61eef6dc6128dfb085d865a02ed631d0853d2730696bf?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

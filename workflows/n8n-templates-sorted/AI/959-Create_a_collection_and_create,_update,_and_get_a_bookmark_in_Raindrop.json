@@ -1,0 +1,199 @@
+{
+  "workflow": {
+    "id": 959,
+    "name": "Create a collection and create, update, and get a bookmark in Raindrop",
+    "views": 829,
+    "recentViews": 0,
+    "totalViews": 829,
+    "createdAt": "2021-03-01T10:55:15.001Z",
+    "description": "This workflow allows you to create a collection and create, update, and get a bookmark in Raindrop.\n\n![workflow-screenshot](fileId:422)\n\n**Raindrop node:** This node will create a new collection in Raindrop. If you already have a collection, you can skip this node.\n\n**Raindrop1 node:** This node will create a new bookmark and add it to a collection.\n\n**Raindrop2 node:** This node will update the bookmark that we created in the previous node.\n\n**Raindrop3 node:** This node will return the information about the bookmark that we created earlier.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Raindrop",
+          "type": "n8n-nodes-base.raindrop",
+          "position": [
+            470,
+            320
+          ],
+          "parameters": {
+            "title": "n8n-docs",
+            "operation": "create",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "raindropOAuth2Api": "Raindrop OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Raindrop1",
+          "type": "n8n-nodes-base.raindrop",
+          "position": [
+            670,
+            320
+          ],
+          "parameters": {
+            "link": "https://docs.n8n.io",
+            "resource": "bookmark",
+            "operation": "create",
+            "collectionId": "={{$json[\"_id\"]}}",
+            "additionalFields": {
+              "title": "Documentation"
+            }
+          },
+          "credentials": {
+            "raindropOAuth2Api": "Raindrop OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Raindrop2",
+          "type": "n8n-nodes-base.raindrop",
+          "position": [
+            870,
+            320
+          ],
+          "parameters": {
+            "resource": "bookmark",
+            "operation": "update",
+            "bookmarkId": "={{$json[\"_id\"]}}",
+            "updateFields": {
+              "title": "n8n Documentation"
+            }
+          },
+          "credentials": {
+            "raindropOAuth2Api": "Raindrop OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Raindrop3",
+          "type": "n8n-nodes-base.raindrop",
+          "position": [
+            1070,
+            320
+          ],
+          "parameters": {
+            "resource": "bookmark",
+            "bookmarkId": "={{$json[\"_id\"]}}"
+          },
+          "credentials": {
+            "raindropOAuth2Api": "Raindrop OAuth Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Raindrop": {
+          "main": [
+            [
+              {
+                "node": "Raindrop1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Raindrop1": {
+          "main": [
+            [
+              {
+                "node": "Raindrop2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Raindrop2": {
+          "main": [
+            [
+              {
+                "node": "Raindrop3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.raindrop": {
+          "count": 4
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 460,
+        "icon": "file:raindrop.svg",
+        "name": "n8n-nodes-base.raindrop",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.raindrop/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/raindrop/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Raindrop"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSItMiAtNSA0MiA0MiI+PGRlZnM+PHBhdGggaWQ9ImEiIGQ9Ik05LjUuOTE3YTkuNSA5LjUgMCAwIDEgOS41IDkuNXY5LjVIOS41YTkuNSA5LjUgMCAwIDEgMC0xOSIvPjxwYXRoIGlkPSJjIiBkPSJNMCAxOS45MTd2LTkuNWwuMDA0LS4yN2E5LjUgOS41IDAgMSAxIDkuNDk2IDkuNzd6Ii8+PC9kZWZzPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZmlsbD0iIzE5ODhFMCIgZD0iTTI4LjE5MiA0LjdjNS4wNzcgNC45MzMgNS4wNzcgMTIuOTMgMCAxNy44NjNxLS4yNTUuMjQ4LS41MTkuNDc5TDE5IDMxbC04LjY3My03Ljk1OHEtLjI2NC0uMjMxLS41Mi0uNDc5Yy01LjA3Ni00LjkzMi01LjA3Ni0xMi45MyAwLTE3Ljg2MyA1LjA3Ny00LjkzMyAxMy4zMDktNC45MzMgMTguMzg1IDAiLz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgwIDExLjA4MykiPjxtYXNrIGlkPSJiIiBmaWxsPSIjZmZmIj48dXNlIHhsaW5rOmhyZWY9IiNhIi8+PC9tYXNrPjx1c2UgeGxpbms6aHJlZj0iI2EiIGZpbGw9IiMyQ0Q0RUQiLz48cGF0aCBmaWxsPSIjMERCNEUyIiBkPSJNMjguMTkyLTYuMzg0YzUuMDc3IDQuOTMzIDUuMDc3IDEyLjkzMSAwIDE3Ljg2NHEtLjI1NS4yNDctLjUxOS40NzhMMTkgMTkuOTE3bC04LjY3My03Ljk1OXEtLjI2NC0uMjMtLjUyLS40NzhjLTUuMDc2LTQuOTMzLTUuMDc2LTEyLjkzIDAtMTcuODY0IDUuMDc3LTQuOTMzIDEzLjMwOS00LjkzMyAxOC4zODUgMCIgbWFzaz0idXJsKCNiKSIvPjwvZz48ZyB0cmFuc2Zvcm09InRyYW5zbGF0ZSgxOSAxMS4wODMpIj48bWFzayBpZD0iZCIgZmlsbD0iI2ZmZiI+PHVzZSB4bGluazpocmVmPSIjYyIvPjwvbWFzaz48dXNlIHhsaW5rOmhyZWY9IiNjIiBmaWxsPSIjMzE2OUZGIi8+PHBhdGggZmlsbD0iIzMxNTNGRiIgZD0iTTkuMTkyLTYuMzg0YzUuMDc3IDQuOTMzIDUuMDc3IDEyLjkzMSAwIDE3Ljg2NHEtLjI1NS4yNDctLjUxOS40NzhMMCAxOS45MTdsLTguNjczLTcuOTU5cS0uMjY0LS4yMy0uNTItLjQ3OGMtNS4wNzYtNC45MzMtNS4wNzYtMTIuOTMgMC0xNy44NjQgNS4wNzctNC45MzMgMTMuMzA5LTQuOTMzIDE4LjM4NSAwIiBtYXNrPSJ1cmwoI2QpIi8+PC9nPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Raindrop",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 422,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/0539cccc5f784a459d5801e9d33785bf.png"
+      }
+    ]
+  }
+}

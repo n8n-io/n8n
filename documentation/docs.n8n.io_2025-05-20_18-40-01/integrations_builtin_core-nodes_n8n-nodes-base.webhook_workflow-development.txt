@@ -1,0 +1,42 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/workflow-development/
+Scraped_At: 2025-05-20T18:56:58.494251
+
+Workflow development
+#
+The
+Webhook node
+works a bit differently from other core nodes. n8n recommends following these processes for building, testing, and using your Webhook node in production.
+n8n generates two
+Webhook URLs
+for each Webhook node: a
+Test URL
+and a
+Production URL
+.
+Build and test workflows
+#
+While building or testing a workflow, use the
+Test
+webhook URL.
+Using a test webhook ensures that you can view the incoming data in the editor UI, which is useful for debugging. Select
+Listen for test event
+to register the webhook before sending the data to the test webhook. The test webhook stays active for 120 seconds.
+When using the Webhook node on localhost on a
+self-hosted
+n8n instance, run n8n in tunnel mode:
+npm with tunnel
+Docker with tunnel
+Production workflows
+#
+When your workflow is ready, switch to using the
+Production
+webhook URL. You can then activate your workflow, and n8n runs it automatically when an external service calls the webhook URL.
+When working with a Production webhook, ensure that you have saved and activated the workflow. Data flowing through the webhook isn't visible in the editor UI with the production webhook.
+Refer to
+Create a workflow
+for more information on activating workflows.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

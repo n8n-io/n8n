@@ -1,0 +1,60 @@
+URL: https://docs.n8n.io/choose-n8n/
+Scraped_At: 2025-05-20T18:40:38.880644
+
+Choose your n8n
+#
+This section contains information on n8n's range of platforms, pricing plans, and licenses.
+Platforms
+#
+There are different ways to set up n8n depending on how you intend to use it:
+n8n Cloud
+: hosted solution, no need to install anything.
+Self-host
+: recommended method for production or customized use cases.
+npm
+Docker
+Server setup guides
+for popular platforms
+Embed
+: n8n Embed allows you to white label n8n and build it into your own product. Contact n8n on the
+Embed website
+for pricing and support.
+Self-hosting knowledge prerequisites
+Self-hosting n8n requires technical knowledge, including:
+Setting up and configuring servers and containers
+Managing application resources and scaling
+Securing servers and applications
+Configuring n8n
+n8n recommends self-hosting for expert users. Mistakes can lead to data loss, security issues, and downtime. If you aren't experienced at managing servers, n8n recommends
+n8n Cloud
+.
+Licenses
+#
+n8n's
+Sustainable Use License
+and
+n8n Enterprise License
+are based on the
+fair-code
+model.
+For a detailed explanation of the license, refer to
+Sustainable Use License
+.
+Free versions
+#
+n8n offers the following free options:
+A free trial of Cloud
+A free self-hosted community edition for self-hosted users
+Paid versions
+#
+n8n has two paid versions:
+n8n Cloud: choose from a range of paid plans to suit your usage and feature needs.
+Self-hosted: there are both free and paid versions of self-hosted.
+For details of the Cloud plans and contact details for Enterprise Self-hosted, refer to
+Pricing
+on the n8n website.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

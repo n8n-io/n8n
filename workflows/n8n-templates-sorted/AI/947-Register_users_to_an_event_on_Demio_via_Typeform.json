@@ -1,0 +1,241 @@
+{
+  "workflow": {
+    "id": 947,
+    "name": "Register users to an event on Demio via Typeform",
+    "views": 367,
+    "recentViews": 0,
+    "totalViews": 367,
+    "createdAt": "2021-02-18T11:23:48.628Z",
+    "description": "This workflow allows you to register your audience to an event on Demio via a Typeform submission.\n\n![workflow-screenshot](fileId:419)\n\n**Typeform Trigger node:** This node will trigger the workflow when a form response is submitted. Based on your use-case, you may use a different platform. Replace the Typeform Trigger node with a node of that platform. \n\n**Demio node:** This node registers a user for an event. It gets the details of the users from the Typeform response.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Typeform Trigger",
+          "type": "n8n-nodes-base.typeformTrigger",
+          "position": [
+            510,
+            260
+          ],
+          "webhookId": "1cbca674-78fb-402e-b225-2aa6f92b5338",
+          "parameters": {
+            "formId": ""
+          },
+          "credentials": {
+            "typeformApi": "Typeform Burner Account"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Demio",
+          "type": "n8n-nodes-base.demio",
+          "position": [
+            710,
+            260
+          ],
+          "parameters": {
+            "email": "={{$json[\"What's your email address?\"]}}",
+            "eventId": 357191,
+            "firstName": "={{$json[\"Let's start with your name.\"]}}",
+            "operation": "register",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "demioApi": "Demio API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Typeform Trigger": {
+          "main": [
+            [
+              {
+                "node": "Demio",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.demio": {
+          "count": 1
+        },
+        "n8n-nodes-base.typeformTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 51,
+        "icon": "file:typeform.svg",
+        "name": "n8n-nodes-base.typeformTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Form"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.typeformtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/typeform/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Typeform Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4Ljg4NzYgMC4wNzM4OTg0QzI0LjAzMTYgLTAuMzQ5NjE4IDI3LjcyNiAxLjAxNTY2IDMxLjcwMTIgNC45ODg0NkMzNS45OTMgOS4yNzc2NyAzOC44NDYzIDE0LjgzNjEgMzkuNjE1MiAyMC43NTdDNDAuNDcwOCAyNy4zNDE1IDM5LjI5NCAzMi4yNTUxIDM1LjY2OTcgMzUuODUyNUMzMi4yMDQgMzkuMjkyNCAyNy4xNDE5IDQwLjQyNyAyMC4zNzk3IDM5Ljg2MTdMMjAuMDk5OCAzOS44MzcxQzE0LjM0MTUgMzkuMzA3NyAxMC4yNjg2IDM3LjQxOTcgNi4zMjIzMyAzMy40MjMxQzIuMTA3MTEgMjkuMTU0IC0wLjExNDA5NCAyNC4zMDcgMC4wMDQ1MTUwMyAxOS4yMTk2QzAuMDYyNTI4MiAxNi43MjkgMC43NjgwNDYgMTQuNjA2MyAyLjEyODY3IDEyLjUyMzZDMy4wMjA2OCAxMS4xNTgyIDMuOTI2NTcgMTAuMDkzMSA1LjgyMTQ5IDguMTM5N0w2LjQ1Mzg5IDcuNDkxOTNMNy4xNTEgNi43ODUzNUMxMS42NDE4IDIuMjcxMjggMTQuNTk4NCAwLjQyNzA0MiAxOC44ODc2IDAuMDczODk4NFpNMzEuMzk1NSA1LjI5NDMyQzI3LjUwOTkgMS40MTEgMjMuOTQwMSAwLjA5MTc4OTggMTguOTIzMSAwLjUwNDg1M0MxNC42OTUgMC44NTI5NjYgMTEuNzkxMyAyLjcwMDEgNy4yNDcwNiA3LjMwMjcxTDYuOTE4MzIgNy42MzYyNUM0LjcwNDI2IDkuODg3MDQgMy42NjY2OSAxMS4wMzc4IDIuNzUyNzEgMTIuMzY4N0wyLjYxOTcyIDEyLjU2NDlMMi40OTA2OCAxMi43NjAxQzEuMTcyNjEgMTQuNzc3NyAwLjQ5Mjg3MyAxNi44MjI4IDAuNDM2ODEgMTkuMjI5NkMwLjMyMTE0MyAyNC4xOTA5IDIuNDkyMjggMjguOTI4NiA2LjYzMDAyIDMzLjExOTJDMTAuNTY2MyAzNy4xMDU4IDE0LjYxMDIgMzguOTQ1NiAyMC40MTU4IDM5LjQzMDhMMjAuNzAzOCAzOS40NTM5QzI3LjIwNzEgMzkuOTU0IDMyLjA1NTYgMzguODMwNCAzNS4zNjUgMzUuNTQ1NkMzOC44ODEyIDMyLjA1NTYgNDAuMDI2MSAyNy4yNzUxIDM5LjE4NjQgMjAuODEyN0MzOC40MzAxIDE0Ljk4OTEgMzUuNjIxNSA5LjUxNzczIDMxLjM5NTUgNS4yOTQzMlpNMjYuMDE0MSAxNC41NDlWMTYuNjYxNEgyMS41Mjc4VjI4Ljc2ODFIMTkuMjkzMVYxNi42NjE0SDE0LjgwNjhWMTQuNTQ5SDI2LjAxNDFaIiBmaWxsPSIjMjYyNjI3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Typeform Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 453,
+        "icon": "file:demio.svg",
+        "name": "n8n-nodes-base.demio",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.demio/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/demio/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Demio"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjQ1IDU1IDMxMCAzMTAiPjxwYXRoIGZpbGw9IiMwMGJmNmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTE4Ni4wMTQgNzIuNzM3Yy01LjAxMS41NDMtOS41NTMgMS4yNjctOS45OSAxLjU5Mi0uMjIuMTYzLTIuMDU1LjU5Ni00LjA3OC45NjItMy40MzUuNjIyLTE2LjA1OCA0LjQzNy0xNi41MDEgNC45ODctLjExLjEzNi0xLjE4OS41OTEtMi4zOTggMS4wMTEtMi4wODMuNzIzLTEwLjQwOSA0LjY1Ni0xMi45ODcgNi4xMzQtMy40MDEgMS45NTEtOC40MTYgNS4wMzQtOC41OTEgNS4yODItLjExLjE1NS0uNjUuNTE2LTEuMTk5LjgwMS0xLjMzNy42OTQtNS42MiAzLjc5NC04LjE0NyA1Ljg5NS0xLjEyNC45MzUtMi42NCAyLjE5My0zLjM3IDIuNzk3LTIuNzk4IDIuMzE1LTE0LjkgMTQuNjA4LTE1LjQ3NCAxNS43MTctLjMzMS42NDEtLjc2MyAxLjE2Ni0uOTU5IDEuMTY2cy0uNzE5LjU4NC0xLjE2MiAxLjI5OWMtLjQ0My43MTQtMS4xNjkgMS42ODctMS42MTMgMi4xNjEtLjQ0NC40NzUtMS40NDMgMS44NTYtMi4yMTkgMy4wNzEtLjc3NyAxLjIxNC0xLjU5NyAyLjMyMS0xLjgyMyAyLjQ2MXMtLjc2MS45NDEtMS4xOSAxLjc4M2MtLjQyOS44NDEtMS4wMTEgMS43NzMtMS4yOTMgMi4wNy0uMjgyLjI5OC0xLjA0MiAxLjUyOS0xLjY4OSAyLjczNS0uNjQ3IDEuMjA3LTEuNTcxIDIuNzc4LTIuMDU1IDMuNDlzLTEuMjEzIDIuMTA4LTEuNjIxIDMuMWMtLjQwOC45OTEtLjg1IDEuODA0LS45ODIgMS44MDQtLjEzMi4wMDEtLjczNyAxLjIxNi0xLjM0NCAyLjY5OWExMjggMTI4IDAgMCAxLTIuNDU4IDUuNTI1Yy0uNzQ0IDEuNTU0LTEuMzUzIDMuMDg2LTEuMzUzIDMuNDAycy0uMzUyIDEuMjMzLS43ODIgMi4wMzZjLS40MzEuODA0LTEuMjUxIDMuMTM5LTEuODIzIDUuMTg5cy0xLjIwNyA0LjA4OC0xLjQxIDQuNTI4Yy0uNTczIDEuMjM2LTEuNDA5IDQuODAxLTIuMTU3IDkuMTktLjM3NCAyLjE5OC0uODQ4IDQuMzU2LTEuMDUyIDQuNzk2LTEuNzcgMy44MDItMy4wNCAxMTMuMzAzLTEuNDIzIDEyMi42NzIgMS4yNTcgNy4yODcgNC44NTYgMTIuOTI3IDEyLjA3OSAxOC45MzQgMy4xODUgMi42NDggOC44MjkgNC43IDE0LjQyNSA1LjI0NCA1LjEwNy40OTcgOTIuOTE1LjUwMyAxMDMuNDIyLjAwOCA4LjE4My0uMzg2IDE2Ljk1Ni0xLjMyOCAxOC4zODItMS45NzQuNDM5LS4xOTkgMS45NjgtLjU3IDMuMzk2LS44MjQgMy41MzUtLjYyOCA5LjMwMS0yLjAzMSA5Ljc5MS0yLjM4Mi4yMTktLjE1NyAxLjgzOC0uNjk3IDMuNTk2LTEuMTk4IDEuNzU4LS41MDIgMy43MzYtMS4xNTUgNC4zOTYtMS40NTFzMi43MjMtMS4wOTUgNC41ODYtMS43NzVjMS44NjMtLjY4MSAzLjQ4MS0xLjM2MyAzLjU5Ni0xLjUxN3MxLjI4OC0uNzA3IDIuNjA3LTEuMjI4YzEuMzE5LS41MjIgMi44NDctMS4yMzIgMy4zOTYtMS41NzguNTUtLjM0NyAyLjE2OC0xLjIyMiAzLjU5Ny0xLjk0NXMzLjg1Ni0yLjExMyA1LjM5NC0zLjA4N2EyODggMjg4IDAgMCAxIDQuODk2LTMuMDI3YzEuMTUzLS42OSAyLjA5Ny0xLjQyMSAyLjA5Ny0xLjYyNXMuMTg4LS4zNy40MTctLjM3IDEuNDIxLS43NjUgMi42NDktMS42OTlhMTQxIDE0MSAwIDAgMSAzLjA3OS0yLjI5MWMuNDY3LS4zMjUgMi4yODctMS44MzIgNC4wNDUtMy4zNDggNy44NDEtNi43NiAxNC44OTctMTQuMjgzIDIwLjg1My0yMi4yMzMuOTA2LTEuMjA5IDEuOTc5LTIuNzUgMi4zODUtMy40MjUuNDA2LS42NzYgMS42MjUtMi41NjQgMi43MDktNC4xOTYgMS4wODMtMS42MzMgMi40OS0zLjk5OSAzLjEyNS01LjI2czEuMjk1LTIuMzc4IDEuNDY2LTIuNDg0LjkxNS0xLjU5MiAxLjY1My0zLjMwMyAxLjQ1NS0zLjIgMS41OTQtMy4zMWMuMTM4LS4xMS43NTYtMS41NDggMS4zNzMtMy4xOTcuNjE2LTEuNjQ4IDEuMjgzLTMuMjA1IDEuNDgyLTMuNDU5LjM3My0uNDc5IDIuMzIxLTYuMzYgMi4zMjEtNy4wMDggMC0uMjAxLjM1LTEuMTMzLjc3Ny0yLjA3LjQyNy0uOTM4IDEuMjU2LTQuMTIgMS44NDEtNy4wNzEuNTg1LTIuOTUyIDEuMjE3LTUuNzI2IDEuNDA0LTYuMTY2IDEuNTg4LTMuNzM5IDIuNDc0LTIzLjY1NCAxLjU1LTM0Ljg0My0uNjQ0LTcuODAxLTMuMzk1LTIyLjIwNC00Ljc5Mi0yNS4wOTctLjIxMy0uNDM5LS44Mi0yLjIzOC0xLjM0OS0zLjk5Ni0uOTkyLTMuMjk1LTQuMTgxLTExLjQzNC00LjYxOS0xMS43ODgtLjEzNi0uMTEtLjU2MS0xLjAwOS0uOTQ0LTEuOTk4cy0xLjAwMy0yLjM1OC0xLjM3OC0zLjA0MWEzNjQgMzY0IDAgMCAxLTIuMjMxLTQuMTk2Yy0uODUyLTEuNjI0LTEuNjgxLTMuMDQzLTEuODQyLTMuMTUzcy0uNjE0LS44MjktMS4wMDUtMS41OThjLS4zOTItLjc2OS0xLjQ5Ni0yLjUtMi40NTQtMy44NDctLjk1Ny0xLjM0Ny0xLjc0MS0yLjY0MS0xLjc0MS0yLjg3N3MtLjI0MS0uNTczLS41MzYtLjc0OWMtLjI5NS0uMTc1LS44NzUtLjg1OS0xLjI4OS0xLjUxOC0yLjU3MS00LjA5OC0xNC4wMDEtMTYuNS0xOS4zNjktMjEuMDE3LTQuMDgyLTMuNDM1LTYuNjQzLTUuNDU2LTcuNDc5LTUuOTA0YTcuNSA3LjUgMCAwIDEtMS40NjMtMS4wNzRjLS44NzgtLjg3OC03LjY5OS01LjM3Mi04LjE1My01LjM3Mi0uMjA2IDAtLjU2MS0uMjI1LS43OS0uNS0uMjI4LS4yNzYtMS42NDQtMS4xMjQtMy4xNDYtMS44ODUtMS41MDEtLjc2MS0yLjgyNS0xLjUxNS0yLjk0MS0xLjY3Ny0uMTE2LS4xNjEtMS41NTUtLjg2Mi0zLjE5Ny0xLjU1Ny0xLjY0Mi0uNjk0LTMuMTgtMS40MTktMy40MTctMS42MXMtMS42NzUtLjgxNi0zLjE5Ni0xLjM4OGMtMS41MjItLjU3My0zLjcxNi0xLjQ3NS00Ljg3Ni0yLjAwNnMtMi4yNi0uOTY1LTIuNDQzLS45NjUtMi4xMjMtLjYwMi00LjMxLTEuMzM3Yy0yLjE4OC0uNzM1LTYuMDMzLTEuNzQyLTguNTQ2LTIuMjM4cy00LjkyOS0xLjA2Ni01LjM2OC0xLjI2NmMtMy4xLTEuNDEtMjkuNzEyLTIuNDgtMzguMzYyLTEuNTQzbTIxLjQwOCA0Ni41ODZjMy41MDIuNTk3IDExLjU4NiAzLjUxNCAxMy4xNTcgNC43NDcuMzMuMjU4IDEuNDYzLjk2MyAyLjUxNyAxLjU2NSAyLjMyMiAxLjMyNiA5LjUyMSA4LjE1MiAxMC43MjkgMTAuMTczLjQ3OC44IDEuMTg5IDEuODE0IDEuNTggMi4yNTQgMS40NjMgMS42NDYgNC4zNTQgOC4xIDUuMTkzIDExLjU4OC40NzUgMS45NzggMS4wNjUgNC4wMjkgMS4zMTIgNC41NTYuNjggMS40NTkuNjMxIDUxLjI2MS0uMDUyIDUxLjQ4OC0uMjc1LjA5Mi0uNDk5LjU1OC0uNDk5IDEuMDM1IDAgNy4yMjktOS42NzUgMjIuMjM3LTE3LjE3MiAyNi42MzgtLjkzNi41NDktMi4wMjkgMS4zMDItMi40MjkgMS42NzItLjQuMzcxLTIuMDQzIDEuMjQ2LTMuNjUgMS45NDctMS42MDguNy0zLjEwMyAxLjQxLTMuMzIzIDEuNTc5LTQuNTc0IDMuNTE0LTIzLjgwNyAyLjkwOS0zMi4wNjEtMS4wMDgtMS42MTQtLjc2Ni0zLjA3OS0xLjM5My0zLjI1Ny0xLjM5M3MtLjY0OC0uMzYtMS4wNDUtLjc5OWMtLjM5OC0uNDQtLjg3OS0uOC0xLjA3LS44LS42NTMgMC0zLjcwNS0yLjE5Ny00Ljg1Ni0zLjQ5Ni0uNjMyLS43MTQtMS40MDEtMS4yOTktMS43MDgtMS4yOTlzLS41NTgtLjE0My0uNTU4LS4zMTljMC0uMTc1LS42NzUtMS4wMzEtMS40OTktMS45LTIuMjE3LTIuMzQtNC42NTYtNS43MjYtNS44OTktOC4xOTEtLjYwNC0xLjE5Ny0xLjIyOC0yLjI2Ny0xLjM4Ni0yLjM3Ny0uNDE1LS4yODgtMS44MTItNC4yMjctMi40MDktNi43OTMtLjI4Mi0xLjIwOS0uNjUzLTIuMjkxLS44MjUtMi40MDQtMS4xOTEtLjc4My0xLjYxNy01MC4wNTctLjQ2Ni01My45NCAyLjg1MS05LjYyMSAyLjcyOC05LjI5NCA1LjA5Mi0xMy41NzIuNzg1LTEuNDIgMS41NTYtMi42NzkgMS43MTMtMi43OTdzLjc5MS0uOTU5IDEuNDA4LTEuODY5YzEuMTk1LTEuNzYxIDUuMzEyLTUuOTI3IDguMjM5LTguMzM1IDEuNjE5LTEuMzMyIDIuNDc3LTEuODcgNi4xNzQtMy44NzIgNy42MzYtNC4xMzUgMTcuNzU5LTUuNjYxIDI3LjA1LTQuMDc4bS0xNC40MTUgMTQuNTg3Yy0zLjY1My45NjktNS42NjcgMS42ODUtNi4xNzggMi4xOTUtLjMwNy4zMDctLjY2NS41NTgtLjc5NS41NTgtLjM1IDAtMy4zODMgMi4wNDctNC43MzYgMy4xOTctMi4xNzMgMS44NDYtNS43MTkgNi42NDEtNi42NzUgOS4wMjUtLjUyMSAxLjMtMS4wOTUgMi40NjYtMS4yNzcgMi41OS0xLjQ0MS45OTEtMi4zNTUgNDQuOTI4LTEuMDk2IDUyLjY4NiAxLjQ3OCA5LjExMSA5LjMyMSAxOC4yIDE3Ljk2IDIwLjgxMyAxLjY0OC40OTkgMy40MjkgMS4xMDcgMy45NTcgMS4zNTMgMS4yOTYuNjAyIDEwLjUzNy41ODUgMTEuMjcxLS4wMjEuMzA2LS4yNTMgMS4yNDQtLjU4OSAyLjA4NS0uNzQ2IDEuOTk4LS4zNzMgNC45MzMtMS40OTYgNS43ODYtMi4yMTQuMzczLS4zMTMgMS4xMjctLjc3MyAxLjY3Ni0xLjAyMyA0LjA5Ni0xLjg2MSAxMS4xODktMTEuMTc0IDExLjE4OS0xNC42ODkgMC0uMzE2LjE3Ni0uNjM0LjM5Mi0uNzA4IDEuNzc3LS42MDQgMS43NzktNTQuMjc5LjAwMi01NC4yNzktLjE2MiAwLS40MDMtLjU0Mi0uNTM1LTEuMjA1LS4zMjgtMS42MzYtMi4yMjYtNS41ODgtMi42ODUtNS41ODgtLjIwNCAwLS4zNzEtLjI4Ni0uMzcxLS42MzUgMC0uOTY2LTYuNDctNy4xNTYtOC4zNDItNy45ODMtLjkwNy0uMzk5LTEuNjQ4LS44NDctMS42NDgtLjk5NSAwLS4zNjgtMy4xNTMtMS41NDItNS45MTQtMi4yMDItMi41OTMtLjYxOS0xMS44OTUtLjcwNS0xNC4wNjYtLjEyOW0xMC45NzMgMjcuNzc4YzMuMDg5IDIuMzU5IDMuMDEzIDEuODA3IDMuMDEzIDIxLjk4djE3Ljg2bC0xLjAxNiAxLjczNGMtMi42NTQgNC41MjgtOS41OTkgNC4zODUtMTIuMDUtLjI0OWwtLjkyLTEuNzR2LTE3LjczMmMwLTE5LjcyMi0uMDMxLTE5LjQ3MiAyLjY0Ni0yMS41NyAyLjk3LTIuMzI5IDUuNTMzLTIuNDE2IDguMzI3LS4yODNtNjUuNzkgNTUuNzIzYzMuODI5IDIuNzI3IDQuOTUgNi44IDIuOTM1IDEwLjY2My0uMzE1LjYwMy0uNTczIDEuMzI3LS41NzUgMS42MDktLjAwNiAxLjQwOC0zLjA0MiA5LjAyLTQuOTc1IDEyLjQ3NS0yLjE2OSAzLjg3Ny0zLjU5NCA2LjE0Mi00LjQzOCA3LjA1Mi0uNTM4LjU4MS0uOTc5IDEuMjA3LS45NzkgMS4zOTEgMCAuOTM4LTEwLjc5IDExLjg2NC0xNC4xODYgMTQuMzY1LTMuMTc0IDIuMzM3LTkuNDM4IDYuMzYzLTkuODk5IDYuMzYzLS4yMDIgMC0uOS4zNzktMS41NTEuODQzcy0yLjU2MiAxLjM3NC00LjI0NiAyLjAyMmMtMS42ODMuNjQ4LTMuMjQ2IDEuMzI4LTMuNDcyIDEuNTEtLjczNy41OTQtMTAuMjk5IDMuMjgzLTE0LjM5OCA0LjA0OS04LjIyNyAxLjUzOS0yMi41MDIgMS4zOTktMzAuMzctLjI5NWE0MTQgNDE0IDAgMCAwLTMuMTk2LS42ODEgMyAzIDAgMCAxLS44LS4zMmMtLjIxOS0uMTM0LTEuOTAyLS42MjktMy43MzktMS4xMDJzLTMuOTk1LTEuMTkxLTQuNzk1LTEuNTk3Yy0uODAxLS40MDUtMi43MTQtMS4yMzItNC4yNTMtMS44MzYtMS41MzgtLjYwNS0zLjA2Ny0xLjMxOS0zLjM5Ni0xLjU4Ny0uMzMtLjI2OC0xLjY3LTEuMDA5LTIuOTc4LTEuNjQ2cy0yLjY5NC0xLjQ2Ni0zLjA4LTEuODQxYy0uMzg2LS4zNzYtMS40MjktMS4wNTQtMi4zMTctMS41MDdzLTEuNjE1LS45NzItMS42MTUtMS4xNTQtLjM1LS40OTMtLjc3OC0uNjkxYy0yLjYzOS0xLjIyNS0xMS4yNDItOS45LTE1LjQxNi0xNS41NDUtMS4zMDUtMS43NjYtNS4zODUtOC40MzUtNS4zODUtOC44MDQgMC0uMTI4LS41NC0xLjMyMi0xLjIwMS0yLjY1NC01LjI1LTEwLjU4Mi01LjE3Ni0xNy4xODMuMjE1LTE5LjI4NCA0LjczOS0xLjg0NiA4LjU2Ni41MTQgMTAuMTYgNi4yNjUgMS4wMzggMy43NDggMy4yMTIgOC43MjkgNS41NDUgMTIuNzA3IDMuMTE3IDUuMzE1IDEyLjYwNiAxNS41NjUgMTQuNDEgMTUuNTY1LjI0MyAwIC40NDIuMTcyLjQ0Mi4zODNzLjg1NC44NyAxLjg5OCAxLjQ2NSAyLjI1NyAxLjM4OSAyLjY5NyAxLjc2NWMxLjA0Ni44OTMgOC44NDggNC42NTQgMTAuMzkgNS4wMDkuNjU5LjE1MSAxLjkzLjYwMSAyLjgyNS45OTkgNS4zNTUgMi4zODIgMjUuNzU2IDMuNjQxIDMzLjEzOSAyLjA0NSA0Ljc2NC0xLjAzIDcuNi0xLjc2MiA3Ljk5Mi0yLjA2Mi4yMTktLjE2OSAxLjM4OC0uNjIyIDIuNTk3LTEuMDA2IDIuNjIyLS44MzMgOS42ODUtNC4zMyAxMS40MjYtNS42NTcuNjgtLjUxOSAxLjQxNS0uOTQzIDEuNjMyLS45NDNzLjkyLS41MzQgMS41NjEtMS4xODdjLjY0MS0uNjU0IDEuMzUzLTEuMTkzIDEuNTgyLTEuMTk5LjgyNC0uMDIyIDkuODgxLTkuMjI3IDExLjIxNi0xMS40LjQwNS0uNjU5Ljg2MS0xLjI5IDEuMDEyLTEuNDAyLjI4LS4yMDUgMi41MDYtMy45OSAzLjY0MS02LjE5IDEuMDM0LTIuMDA0IDEuODk2LTQuMTkgMS44OTYtNC44MDkgMC0uMzIyLjE1My0uNTg2LjM0LS41ODZzLjY1LTEuMjE0IDEuMDI5LTIuNjk3YzEuNzA4LTYuNjkzIDEuNzI5LTYuNzMyIDQuNjQ3LTguNjYyIDIuNDI1LTEuNjA1IDQuNzQ0LTEuNjczIDYuODExLS4yMDEiLz48L3N2Zz4="
+        },
+        "displayName": "Demio",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 419,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/912d1ccee0f647c2b884696554ae7afd.png"
+      }
+    ]
+  }
+}

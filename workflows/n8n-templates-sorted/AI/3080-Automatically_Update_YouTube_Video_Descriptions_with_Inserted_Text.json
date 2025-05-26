@@ -1,0 +1,718 @@
+{
+  "workflow": {
+    "id": 3080,
+    "name": "Automatically Update YouTube Video Descriptions with Inserted Text",
+    "views": 1075,
+    "recentViews": 3,
+    "totalViews": 1075,
+    "createdAt": "2025-03-04T20:14:04.289Z",
+    "description": "## Who is this for?\n\nThis workflow is designed for YouTubers who want to update their video descriptions in bulk without manually editing each one. It's especially useful for creators who include a standard set of links in their descriptions and need to insert a new link between existing ones across multiple videos.\n## What problem does this workflow solve?\n\nManually updating video descriptions for multiple videos can be tedious and time-consuming. If you have a section in your video descriptions that contains important links, adding a new one in a specific position (e.g., between two existing links) can be a challenge. This workflow automates that process, allowing you to insert a specific string between two predefined rows in all of your video descriptions at once.\n## What this workflow does\n\n1. Fetches all videos from your YouTube channel.\n2. Iterates through each video to retrieve its existing description.\n3. Identifies two predefined rows in the description.\n4. Inserts a new row between the two specified rows.\n5. Updates the video description with the modified text.\n\n## Setup\n\n1. Connect your YouTube account to n8n and grant necessary permissions.\n2. Define your variables in the \"Set String to Insert\" node:\n   - **rowBefore**: The existing row after which the new row will be inserted.\n   - **rowToInsert**: The new text or link to insert.\n   - **rowAfter**: The existing row before which the new row will be inserted.\n3. Run the workflow using the manual trigger.\n4. Review the updated descriptions to ensure accuracy.\n\n## How to customize this workflow to your needs\n\n- **Change the insertion criteria** by modifying the rowBefore and rowAfter values.\n- **Insert multiple rows** by adjusting the JavaScript code in the Code node.\n- **Extend the workflow** by adding conditions (e.g., only updating descriptions of videos with certain tags).\n- **Filter specific** videos instead of updating all by modifying the \"Get All Videos\" node.\n\nThis workflow ensures that all your YouTube descriptions stay updated and consistent with minimal effort.",
+    "workflow": {
+      "name": "Automatically Update YouTube Video Descriptions with Inserted Text",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "19cafddc-6199-4418-8213-9743c34c9176",
+          "name": "Get All Videos",
+          "type": "n8n-nodes-base.youTube",
+          "position": [
+            480,
+            380
+          ],
+          "parameters": {
+            "limit": 3,
+            "filters": {},
+            "options": {
+              "order": "date"
+            },
+            "resource": "video"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "63a6a8e6-994f-46ab-a731-609549fec99f",
+          "name": "Update Video Description",
+          "type": "n8n-nodes-base.youTube",
+          "position": [
+            1320,
+            460
+          ],
+          "parameters": {
+            "title": "={{ $('Get Specific Video').item.json.snippet.title }}",
+            "videoId": "={{ $('Get Specific Video').item.json.id}}",
+            "resource": "video",
+            "operation": "update",
+            "categoryId": "={{ $('Get Specific Video').item.json.snippet.categoryId }}",
+            "regionCode": "US",
+            "updateFields": {
+              "tags": "={{ $('Get Specific Video').item.json.snippet.tags.join() }}",
+              "description": "={{ $json.updatedDescription }}"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ce147272-f6c3-4cfb-954b-9a77c63a6232",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            120,
+            380
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9ba206b2-1161-41a3-8581-d60dae665096",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            120
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 580,
+            "height": 180,
+            "content": "## Insert Text into YouTube Video Descriptions\n**Automatically insert a row of text between two specified rows** in all your YouTube video descriptions. \n\nThis workflow is ideal for YouTubers who need to update multiple video descriptions at once. Easily add a new link or text between existing lines, ensuring consistency across all your video descriptions without manual edits."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e05f5b9c-c160-45d7-b67a-62d68acc0829",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            560
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 340,
+            "height": 260,
+            "content": "## Configure text string to insert 👆 \nDefine the text string (row) that will be added to your YouTube video descriptions.\n\n### Variables\n- **rowBefore** → The new row will be inserted *after* this line.\n- **rowToInsert** -→ The text or link you want to add.\n- **rowAfter**→ The new row will be inserted *before* this line.\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "51a3fd15-8767-4cc0-98a8-fe98ec90db70",
+          "name": "Set String to Insert",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            300,
+            380
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "a05b56b1-6f18-4359-aa4b-127399877301",
+                  "name": "rowBefore",
+                  "type": "string",
+                  "value": "=https://firstlink.com"
+                },
+                {
+                  "id": "95ac4a95-cdf4-4d7a-b9a3-78d54c879115",
+                  "name": "rowToInsert",
+                  "type": "string",
+                  "value": "https://mynewlinktoinsert.com"
+                },
+                {
+                  "id": "ded86a1f-f0a5-42b8-9176-9be4038f6290",
+                  "name": "rowAfter",
+                  "type": "string",
+                  "value": "https://secondlink.com"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "590b8bb3-6eb4-4bb8-af4c-c2d95221f045",
+          "name": "Loop Over Videos",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            700,
+            380
+          ],
+          "parameters": {
+            "options": {
+              "reset": false
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a80ac941-0a99-4eab-8a6c-effef1e136fa",
+          "name": "Get Specific Video",
+          "type": "n8n-nodes-base.youTube",
+          "position": [
+            900,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "videoId": "={{ $json.id.videoId }}",
+            "resource": "video",
+            "operation": "get"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2c4519e2-1af9-42d7-818c-8165365587fb",
+          "name": "Create New Video Description with Row Inserted",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1100,
+            460
+          ],
+          "parameters": {
+            "jsCode": "// Access the input data (YouTube description)\nconst description = $('Get Specific Video').first().json.snippet.description;\n//console.log(inputData)\n\nconst variables = $('Set String to Insert').first().json\n// Define the rows to search for and the row to insert\nconst rowBefore = variables.rowBefore;\nconst rowAfter = variables.rowAfter;\nconst rowToInsert = variables.rowToInsert;\n\n// Split the description into an array of rows\nconst rows = description.split(\"\\n\");\nconsole.log(rows)\n// Find the index of the rowBefore and rowAfter\nconst indexBefore = rows.findIndex(row => row.trim() === rowBefore);\nconst indexAfter = rows.findIndex(row => row.trim() === rowAfter);\n\n// Check if both rows are found and rowBefore comes before rowAfter\nif (indexBefore !== -1 && indexAfter !== -1 && indexBefore < indexAfter) {\n  // Insert the new row between rowBefore and rowAfter\n  rows.splice(indexBefore + 1, 0, rowToInsert);\n}\n\n// Join the rows back into a single string\nconst updatedDescription = rows.join(\"\\n\");\n\n// Return the updated description in the correct n8n output structure\nreturn [\n  {\n    json: {\n      updatedDescription: updatedDescription\n    }\n  }\n];"
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "50fd0bcb-7441-45eb-ab58-ca2a7de78516",
+      "connections": {
+        "Get All Videos": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Videos",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Videos": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Get Specific Video",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Specific Video": {
+          "main": [
+            [
+              {
+                "node": "Create New Video Description with Row Inserted",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set String to Insert": {
+          "main": [
+            [
+              {
+                "node": "Get All Videos",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Video Description": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Videos",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Set String to Insert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create New Video Description with Row Inserted": {
+          "main": [
+            [
+              {
+                "node": "Update Video Description",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 9,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.youTube": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Akram Kadri",
+      "username": "akramkadri",
+      "bio": "n8n Automation Freelancer\n------------------------\nContact me at: akram@digispruce.com",
+      "verified": true,
+      "links": [
+        "https://youtube.com/@kadri_akram"
+      ],
+      "avatar": "https://gravatar.com/avatar/e57785a112fbcca1ac70d537a9ed5c5a68be59f808ed8b36475bde0e2c8f384b?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 357,
+        "icon": "file:youTube.png",
+        "name": "n8n-nodes-base.youTube",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.youtube/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "YouTube"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAABGCAYAAABxLuKEAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAewQAAHsEBw2lUUwAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAAOLSURBVHic7ZrNSltBFMf/kdAmtiER/CQUXBVqIC5aaBH0CVqQgkv1FQpdxPYJ3JQiheo2a7d5AoOUSt0IEZcuWhK1ojbfJeR0MQRFc5oz00kT2/ODIbnkMHPmd+/k3rkzAQIIyg0Gep1Av6JiGFQMg4phUDEMKoZBxTCoGAYVw6BiGFQMg4phUDEMKoZBxTCoGIag9xpjMSASAe7dMyUWM5/hMBCNXsYFAua333F+DtCV92gXF0C1CpTL5rdy2ZRi0Rx7xF3M0BCwsAA8eQIkEsCDB8DYGHDnjsf0LPj5EygUgK9fgVwO+PIF2NwEzs7c6iNzTuQlECB6+5aoUqG+p1IhSqVMzpb9tBezvt7r7tqzsdFlMfPzve6iOy9fWomxuyu9fu02XvuBV6+swgPi5ZNIxNwVAgGXtHoPkbkL/vghCpdfMcnk7ZUCmNwTCXG4XMz0tEs6/UUyKQ6Vi3n0yCWV/mJqShwqFzMx4ZJKexoNIJv1V5+U8XFxqFzMyIhLKu1pNIC5OeDFC+Dw0F+9nRgdFYfKxQwPu6TyezIZc3mvrAClkv/6r2NzcsUPPfm8v4etavVm/fE4UTpN1Gz6a+c6+XwXHvAGBx1OkQXfvgHLy8CzZ8Dnz91pIxwWh8rF3L3rkoo9OzvAzAywtAQcHfmt26YP4hm1z0u83VBqV2IxotVVolrNT7vNpnimLRMTCvlJrIVUTKs8fEiUyfhpOxTqwiTyf+JWDKV63U+73ocS4G+cE3UWMzBAtLhIVCj4a1PS7pUif+dbr/+dO9PTp8Damvn0Tb0uDpX/x1QqLqnIiceBdBr49Kk7UgCzwiBELub01CWVzoTDQCoFHByYZ5duvvP5/l0cKh9KFpWKef4c+PABmJz0X3c7Tk7EoXIxFpV2bjUIbG0Bs7P+6pRwfCwOlQ+lQsEllfYEg39fCmA1xZCLyeVcUukvLPogF7O355JKf2HRB10+YZBfMcUisL3tmlbvyWbFUgDb/THv39um0z+8e2cXbzX9B27nov7Hj3Z9tJpEXp1pp1JE5XKvu9uZSoXozRunbSDyP9/rtDYOPX5slj7jcbNuEwo5VffH1GqXG4f294Hd3T/aOOQuhiMaBe7fN9vLIpHLY59bzUol871YNFvNWsce8S/mH0FfbTKoGAYVw6BiGFQMg4phUDEMKoZBxTCoGAYVw6BiGFQMg4phUDEMKobhF0xEbb6Jqe94AAAAAElFTkSuQmCC"
+        },
+        "displayName": "YouTube",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,24 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.kobotoolboxtrigger/
+Scraped_At: 2025-05-20T19:07:02.488050
+
+KoboToolbox Trigger node
+#
+KoboToolbox
+is a field survey and data collection tool to design interactive forms to be completed offline from mobile devices. It's available both as a free cloud solution or as a self-hosted version.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+KoboToolbox Trigger integrations
+page.
+This node starts a workflow upon new submissions of a specified form. The trigger node handles the creation/deletion of the hook, so you don't need to do any setup in KoboToolbox.
+It works the same way as the Get Submission operation in the
+KoboToolbox
+node, including supporting the same reformatting options.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

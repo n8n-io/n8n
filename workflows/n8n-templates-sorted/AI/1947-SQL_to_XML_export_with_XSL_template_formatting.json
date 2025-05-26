@@ -1,0 +1,1165 @@
+{
+  "workflow": {
+    "id": 1947,
+    "name": "SQL to XML export with XSL template formatting",
+    "views": 1436,
+    "recentViews": 0,
+    "totalViews": 1436,
+    "createdAt": "2023-09-19T15:35:42.417Z",
+    "description": "This workflow demonstrates how to export SQL to XML and present the data nicely formatted using an XSL Template.\n\nThe upper part of the workflow starts with a webhook. Then it gets several random records from the SQL table and converts them into an XML string. Then a final XML file is created that contains a link to the XML Stylesheet file.\n\nThe lower part of the workflow contains a helper Webhook that reads an XSL Template from the GitHub gist and serves it back via the Respond to Webhook node. This is required to comply with the CORS rules of modern browsers. These rules dictate that both XML data and a stylesheet file should come from the same domain.",
+    "workflow": {
+      "id": "v5wqVsciFcGDMujC",
+      "meta": {
+        "instanceId": "fb924c73af8f703905bc09c9ee8076f48c17b596ed05b18c0ff86915ef8a7c4a"
+      },
+      "name": "XML usecase: advanced",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "bca571ac-25dc-470d-b249-460861e99791",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            660,
+            380
+          ],
+          "webhookId": "81115579-ca32-496f-baa7-f14fb3baec6f",
+          "parameters": {
+            "path": "81115579-ca32-496f-baa7-f14fb3baec6f",
+            "options": {},
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e851d287-f739-462e-816b-605daf7b4897",
+          "name": "Show 16 random products",
+          "type": "n8n-nodes-base.mySql",
+          "position": [
+            840,
+            380
+          ],
+          "parameters": {
+            "query": "SELECT * from products\nORDER BY RAND()\nLIMIT 16;",
+            "options": {},
+            "operation": "executeQuery"
+          },
+          "credentials": {
+            "mySql": {
+              "id": "EEPqCgKBDiRRZ3ua",
+              "name": "db4free MySQL"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "895725ed-e250-408b-95f5-32223a58adfe",
+          "name": "Define file structure",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1020,
+            380
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "Product.Code",
+                  "value": "={{ $json.productCode }}"
+                },
+                {
+                  "name": "Product.Name",
+                  "value": "={{ $json.productName }}"
+                },
+                {
+                  "name": "Product.Line",
+                  "value": "={{ $json.productLine }}"
+                },
+                {
+                  "name": "Product.Scale",
+                  "value": "={{ $json.productScale }}"
+                },
+                {
+                  "name": "Product.Price",
+                  "value": "={{ $json.MSRP }}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "4bf5deb3-56d8-45f3-8c26-01cd7e58968c",
+          "name": "Concatenate Items",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            1200,
+            380
+          ],
+          "parameters": {
+            "aggregate": "aggregateAllItemData",
+            "operation": "concatenateItems",
+            "destinationFieldName": "Products"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "0d97118d-bf0c-4084-9d18-54fed1a9c8b6",
+          "name": "Convert to XML",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            1380,
+            380
+          ],
+          "parameters": {
+            "mode": "jsonToxml",
+            "options": {
+              "headless": true
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "670f23f3-2b18-4121-93c8-6b047f999054",
+          "name": "Create HTML",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            1760,
+            380
+          ],
+          "parameters": {
+            "html": "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<?xml-stylesheet type=\"text/xsl\" href=\"{{ $env.WEBHOOK_URL }}webhook/044ccd2d-d1a7-485b-bb22-218a6848fd1c/models.xsl\"?>\n\n{{ $json.data }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "43bb6052-4a4e-4951-836b-ee5afe478188",
+          "name": "Move Binary Data",
+          "type": "n8n-nodes-base.moveBinaryData",
+          "position": [
+            2240,
+            380
+          ],
+          "parameters": {
+            "mode": "jsonToBinary",
+            "options": {
+              "mimeType": "text/xml",
+              "keepSource": false,
+              "useRawData": true
+            },
+            "sourceKey": "html",
+            "convertAllData": false
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3ca41f0f-e21a-450e-bfbe-8d94c3f65277",
+          "name": "Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            2420,
+            380
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200,
+              "responseHeaders": {
+                "entries": [
+                  {
+                    "name": "Content-Type",
+                    "value": "text/xml"
+                  },
+                  {
+                    "name": "Control-Allow-Origin",
+                    "value": "*"
+                  }
+                ]
+              }
+            },
+            "respondWith": "binary"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "776db7a4-7e03-4bb1-a937-e15cb1f66a59",
+          "name": "Get XSLT",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            840,
+            740
+          ],
+          "parameters": {
+            "url": "https://gist.githubusercontent.com/teds-tech-talks/02c4bb157627e5e9031df996ffa7d2d2/raw/9a058ba2866c9853c52cdd136c74276b883af04a/models.xsl",
+            "options": {
+              "response": {
+                "response": {
+                  "responseFormat": "file"
+                }
+              }
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "aedf30e5-d670-4f14-8ba1-f7afd613628d",
+          "name": "Respond to Webhook1",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1020,
+            740
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200,
+              "responseHeaders": {
+                "entries": [
+                  {
+                    "name": "Content-Type",
+                    "value": "text/xsl"
+                  }
+                ]
+              }
+            },
+            "respondWith": "binary"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb69cda9-3639-46cc-a16d-aaf101261fb2",
+          "name": "Request xsl template",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            660,
+            740
+          ],
+          "webhookId": "044ccd2d-d1a7-485b-bb22-218a6848fd1c",
+          "parameters": {
+            "path": "044ccd2d-d1a7-485b-bb22-218a6848fd1c/models.xsl",
+            "options": {
+              "rawBody": false
+            },
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "306bc89e-d497-4344-9bb5-6f4ea607130a",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            620,
+            657.1779141104296
+          ],
+          "parameters": {
+            "width": 644.1717791411014,
+            "height": 249.44785276073617,
+            "content": "### This webhook is needed to comply with the CORS policy of modern browsers.\n### It requests XSL template stored on GitHub gist and serves it using your n8n URL"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5f57d577-577f-4dc9-a0b3-696fedeeab08",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            234.8490345891829
+          ],
+          "parameters": {
+            "width": 728.0981595091996,
+            "height": 315.4577138770747,
+            "content": "## Get data from SQL and convert it to XML\n### Note that XML node has an activated Headless toggle"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "21ecc2b5-8ae1-421b-8a0e-8d75d94dd63e",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1560,
+            233.36956603560543
+          ],
+          "parameters": {
+            "width": 511.65644171779115,
+            "height": 315.43648613045264,
+            "content": "## Set node can be used as well\n### XML declaration and a link to the XSL template are added here\n### Note that {{$env.WEBHOOK_URL}} variable is used, so that an URL of your n8n instance is automatically selected"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "84df91b1-767b-46fb-aa1f-847b549a3c0d",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2100,
+            237.0954119462532
+          ],
+          "parameters": {
+            "width": 531.5337423312881,
+            "height": 312.1448304414918,
+            "content": "## Convert to binary data and send the webhook response"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "saveManualExecutions": true,
+        "saveDataSuccessExecution": "all"
+      },
+      "versionId": "c9205b2e-e8f0-4131-ac45-a6cf08b9c8cd",
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Show 16 random products",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get XSLT": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create HTML": {
+          "main": [
+            [
+              {
+                "node": "Move Binary Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert to XML": {
+          "main": [
+            [
+              {
+                "node": "Create HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Move Binary Data": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Concatenate Items": {
+          "main": [
+            [
+              {
+                "node": "Convert to XML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Request xsl template": {
+          "main": [
+            [
+              {
+                "node": "Get XSLT",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Define file structure": {
+          "main": [
+            [
+              {
+                "node": "Concatenate Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Show 16 random products": {
+          "main": [
+            [
+              {
+                "node": "Define file structure",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": null,
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 62,
+        "icon": "fa:exchange-alt",
+        "name": "n8n-nodes-base.moveBinaryData",
+        "codex": {
+          "data": {
+            "alias": [
+              "Move Binary Data"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Convert to/from binary data",
+          "color": "#7722CC"
+        },
+        "iconData": {
+          "icon": "exchange-alt",
+          "type": "icon"
+        },
+        "displayName": "Convert to/from binary data",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 109,
+        "icon": "file:mysql.svg",
+        "name": "n8n-nodes-base.mySql",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mySql/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "MySQL"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg0NDUgMzAuMzY4NEMzNC42NjggMzAuMzEzOSAzMi45ODE1IDMwLjUzMTkgMzEuNTY2NSAzMS4xMzA0QzMxLjE1ODUgMzEuMjkzNCAzMC41MDU1IDMxLjI5MzkgMzAuNDUxIDMxLjgxMDRDMzAuNjY5IDMyLjAyODQgMzAuNjk2IDMyLjM4MTkgMzAuODg2NSAzMi42ODA5QzMxLjIxMyAzMy4yMjQ5IDMxLjc4NCAzMy45NTk0IDMyLjMwMSAzNC4zNDA0QzMyLjg3MiAzNC43NzU0IDMzLjQ0MzUgMzUuMjEwOSAzNC4wNDIgMzUuNTkxOUMzNS4xMDMgMzYuMjQ0OSAzNi4zIDM2LjYyNTkgMzcuMzM0IDM3LjI3ODRDMzcuOTMyNSAzNy42NTg5IDM4LjUzMSAzOC4xNDg5IDM5LjEyOTUgMzguNTU2OUMzOS40MjkgMzguNzc0NCAzOS42MTkgMzkuMTI3OSA0MCAzOS4yNjQ0VjM5LjE4MjlDMzkuODA5NSAzOC45Mzc5IDM5Ljc1NSAzOC41ODQ0IDM5LjU2NSAzOC4zMTI0QzM5LjI5MyAzOC4wNDA0IDM5LjAyMSAzNy43OTU0IDM4Ljc0OSAzNy41MjM0QzM3Ljk2IDM2LjQ2MjQgMzYuOTgwNSAzNS41Mzc0IDM1LjkxOTUgMzQuNzc1OUMzNS4wNDkgMzQuMTc3NCAzMy4xNDQ1IDMzLjM2MTQgMzIuNzkxIDMyLjM1NDRMMzIuNzM2NSAzMi4yOTk5QzMzLjMzNSAzMi4yNDU0IDM0LjA0MjUgMzIuMDI3OSAzNC42MTM1IDMxLjg2NDRDMzUuNTM4NSAzMS42MTk0IDM2LjM4MiAzMS42NzM5IDM3LjMzNCAzMS40Mjk0QzM3Ljc3MjggMzEuMzE0NyAzOC4yMDg0IDMxLjE4NzcgMzguNjQgMzEuMDQ4NFYzMC44MDM5QzM4LjE1MDUgMzAuMzEzOSAzNy43OTY1IDI5LjY2MTQgMzcuMjggMjkuMTk4OUMzNS44OTI1IDI4LjAwMTQgMzQuMzY5IDI2LjgzMTkgMzIuNzkxIDI1Ljg1MjlDMzEuOTQ3NSAyNS4zMDg5IDMwLjg1OTUgMjQuOTU0OSAyOS45NjE1IDI0LjQ5MjRDMjkuNjM1IDI0LjMyODkgMjkuMDkxIDI0LjI0NzQgMjguOTAwNSAyMy45NzU0QzI4LjQxMDUgMjMuMzc2OSAyOC4xMzg1IDIyLjU4NzkgMjcuNzg1IDIxLjg4MDRDMjYuOTk2NSAyMC4zODM5IDI2LjIzNDUgMTguNzI0OSAyNS41NTQgMTcuMTQ2OUMyNS4wNjQ1IDE2LjA4NTkgMjQuNzY1IDE1LjAyNDkgMjQuMTY2NSAxNC4wNDU0QzIxLjM2NDUgOS40MjA0MSAxOC4zMTc1IDYuNjE4NDIgMTMuNjM4MSAzLjg3MDQzQzEyLjYzMTYgMy4yOTk0MyAxMS40MzQ2IDMuMDU0NDMgMTAuMTU2MSAyLjc1NDkzTDguMTE1NTcgMi42NDU5M0M3LjY4MDU3IDIuNDU1NDMgNy4yNDUwNyAxLjkzODQzIDYuODY0MDcgMS42OTM5M0M1LjMxMzU3IDAuNzE0OTMyIDEuMzE0NTggLTEuNDA2NTYgMC4xNzE1ODIgMS4zOTU0M0MtMC41NjI5MTcgMy4xNjM0MyAxLjI2MDA4IDQuOTA0NDIgMS44ODU1OCA1LjgwMjQyQzIuMzQ4MDggNi40Mjc5MiAyLjk0NjU4IDcuMTM1NDIgMy4yNzMwOCA3Ljg0MjkyQzMuNDYzNTggOC4zMDQ5MiAzLjUxNzU3IDguNzk0OTIgMy43MDgwNyA5LjI4NDkxQzQuMTQzNTcgMTAuNDgxOSA0LjU1MTU3IDExLjgxNDkgNS4xMjI1NyAxMi45MzA0QzUuNDIyMDcgMTMuNTAxNCA1Ljc0ODA3IDE0LjEwMDQgNi4xMjkwNyAxNC42MTY5QzYuMzQ2NTcgMTQuOTE1OSA2LjcyNzU3IDE1LjA1MjQgNi44MDkwNyAxNS41NDE5QzYuNDI4MDcgMTYuMDg1OSA2LjQwMTA3IDE2LjkwMjQgNi4xODMwNyAxNy41ODI0QzUuMjAzNTcgMjAuNjU2NCA1LjU4NDU3IDI0LjQ2NTQgNi45NzIwNyAyNi43MjM0QzcuNDA3MDcgMjcuNDAzNCA4LjQ0MTA2IDI4Ljg5OTkgOS44Mjg1NiAyOC4zMjg0QzExLjA1MjYgMjcuODM4OSAxMC43ODA2IDI2LjI4NzkgMTEuMTM0NiAyNC45Mjc5QzExLjIxNjYgMjQuNjAxNCAxMS4xNjIxIDI0LjM4MzkgMTEuMzI1MSAyNC4xNjY0VjI0LjIyMDlMMTIuNDQwNiAyNi40Nzg5QzEzLjI4NDEgMjcuODExOSAxNC43NTMxIDI5LjE5OTQgMTUuOTc3IDMwLjEyNDRDMTYuNjMgMzAuNjEzOSAxNy4xNDcgMzEuNDU3NCAxNy45NjMgMzEuNzU2OVYzMS42NzQ5SDE3LjkwODVDMTcuNzQ1IDMxLjQyOTkgMTcuNTAwNSAzMS4zMjE0IDE3LjI4MyAzMS4xMzA5QzE2Ljc5MzUgMzAuNjQxNCAxNi4yNDkgMzAuMDQyOSAxNS44Njg1IDI5LjQ5ODRDMTQuNzI2MSAyNy45NzQ5IDEzLjcxOTEgMjYuMjg4NCAxMi44MjE2IDI0LjU0NjlDMTIuMzg2NiAyMy43MDM0IDEyLjAwNTYgMjIuNzc4NCAxMS42NTE2IDIxLjkzNTRDMTEuNDg4MSAyMS42MDg5IDExLjQ4ODEgMjEuMTE5NCAxMS4yMTYxIDIwLjk1NTlDMTAuODA4MSAyMS41NTQ0IDEwLjIwOTYgMjIuMDcxNCA5LjkxMDA2IDIyLjgwNTlDOS4zOTM1NiAyMy45NzU5IDkuMzM5MDYgMjUuNDE3NCA5LjE0ODU2IDI2LjkxMzlDOS4wNDAwNiAyNi45NDE0IDkuMDk0MDYgMjYuOTEzOSA5LjAzOTU2IDI2Ljk2ODRDOC4xNjkwNyAyNi43NTA0IDcuODY5NTcgMjUuODUyOSA3LjU0MzA3IDI1LjA5MTRDNi43MjcwNyAyMy4xNTk5IDYuNTkxMDcgMjAuMDU4NCA3LjI5ODU3IDE3LjgyNzlDNy40ODkwNyAxNy4yNTY0IDguMzA1MDcgMTUuNDYwOSA3Ljk3ODU3IDE0LjkxNjlDNy44MTU1NyAxNC4zOTk5IDcuMjcxMDcgMTQuMTAwOSA2Ljk3MjA3IDEzLjY5MjlDNi42MTg1NyAxMy4xNzU5IDYuMjM3NTcgMTIuNTIyOSA1Ljk5MjU3IDExLjk1MTlDNS4zMzk1NyAxMC40Mjg0IDUuMDEzMDcgOC43NDE5MiA0LjMwNjA3IDcuMjE3OTJDMy45Nzk1NyA2LjUxMDQyIDMuNDA4NTggNS43NzU5MiAyLjk0NTU4IDUuMTIzNDJDMi40MzAwOCA0LjM4NzkyIDEuODU4NTggMy44NzA5MyAxLjQ1MDU4IDMuMDAwNDNDMS4zMTQ1OCAyLjcwMTQzIDEuMTI0MDggMi4yMTE0MyAxLjM0MTU4IDEuODg0OTNDMS4zOTYwOCAxLjY2NzQzIDEuNTA0NTggMS41ODU5MyAxLjcyMjU4IDEuNTMxNDNDMi4wNzYwOCAxLjIzMTkzIDMuMDgzMDggMS42MTI5MyAzLjQzNjU4IDEuNzc1OTNDNC40NDMwNyAyLjE4MzkzIDUuMjg2NTcgMi41NjQ5MyA2LjEzMDA3IDMuMTM2NDNDNi41MTEwNyAzLjQwODQzIDYuOTE5MDcgMy45MjU0MyA3LjQwODU3IDQuMDYxNDNINy45ODAwN0M4Ljg1MDU2IDQuMjUxOTIgOS44MzAwNiA0LjExNTkyIDEwLjY0NjEgNC4zNjA0MkMxMi4wODgxIDQuODIyOTIgMTMuMzkzNiA1LjUwMjkyIDE0LjU2MzYgNi4yMzc0MkMxOC4xMjc1IDguNDk1NDIgMjEuMDY1NSAxMS43MDU5IDIzLjA1MTUgMTUuNTQxNEMyMy4zNzggMTYuMTY2OSAyMy41MTQgMTYuNzM4NCAyMy44MTMgMTcuMzkxNEMyNC4zODQ1IDE4LjcyNDQgMjUuMDkxNSAyMC4wODQ5IDI1LjY2MyAyMS4zOTA0QzI2LjIzNCAyMi42Njg5IDI2Ljc3ODUgMjMuOTc0OSAyNy41OTQ1IDI1LjAzNTlDMjguMDAyNSAyNS42MDY5IDI5LjYzNSAyNS45MDY0IDMwLjM2OTUgMjYuMjA1OUMzMC45MTM1IDI2LjQ1MDQgMzEuNzU3IDI2LjY2ODQgMzIuMjQ2NSAyNi45Njc0QzMzLjE3MTUgMjcuNTM4NCAzNC4wOTY1IDI4LjE5MTQgMzQuOTY3IDI4LjgxNzRDMzUuNDAyNSAyOS4xNDM5IDM2Ljc2MjUgMjkuODIzOSAzNi44NDQgMzAuMzY3OUwzNi44NDQ1IDMwLjM2ODRaTTkuMDk1MDYgNi43Mjc0MkM4LjcxODg4IDYuNzIzNzYgOC4zNDM4NSA2Ljc2OTQ4IDcuOTc5NTcgNi44NjM0MlY2LjkxNzkySDguMDM0MDdDOC4yNTIwNyA3LjM1MjkyIDguNjMyNTYgNy42NTI0MiA4LjkwNDU2IDguMDMzNDJMOS41MzA1NiA5LjMzOTQxTDkuNTg1MDYgOS4yODQ5MUM5Ljk2NjA2IDkuMDEyOTEgMTAuMTU2NiA4LjU3NzQyIDEwLjE1NjYgNy45MjQ0MkM5Ljk5MzA2IDcuNzMzOTIgOS45NjYwNiA3LjU0MzQyIDkuODMwMDYgNy4zNTI5MkM5LjY2NzA2IDcuMDgwOTIgOS4zMTMwNiA2Ljk0NDkyIDkuMDk1NTYgNi43MjY5Mkw5LjA5NTA2IDYuNzI3NDJaIiBmaWxsPSIjMDA1NDZCIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "MySQL",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,68 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsses/
+Scraped_At: 2025-05-20T18:45:55.210446
+
+AWS SES node
+#
+Use the AWS SES node to automate work in AWS SES, and integrate AWS SES with other applications. n8n has built-in support for a wide range of AWS SES features, including creating, getting, deleting, sending, updating, and adding templates and emails.
+On this page, you'll find a list of operations the AWS SES node supports and links to more resources.
+Credentials
+Refer to
+AWS SES credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Custom Verification Email
+Create a new custom verification email template
+Delete an existing custom verification email template
+Get the custom email verification template
+Get all the existing custom verification email templates for your account
+Add an email address to the list of identities
+Update an existing custom verification email template.
+Email
+Send
+Send Template
+Template
+Create a template
+Delete a template
+Get a template
+Get all templates
+Update a template
+Templates and examples
+#
+Create screenshots with uProc, save to Dropbox and send by email
+by Miquel Colomer
+View template details
+Send an email using AWS SES
+by amudhan
+View template details
+Auto-Notify on New Major n8n Releases via RSS, Email & Telegram
+by Miquel Colomer
+View template details
+Browse AWS SES integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

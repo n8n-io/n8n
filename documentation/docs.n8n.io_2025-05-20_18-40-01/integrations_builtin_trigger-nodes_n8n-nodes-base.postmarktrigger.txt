@@ -1,0 +1,20 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.postmarktrigger/
+Scraped_At: 2025-05-20T19:07:29.797862
+
+Postmark Trigger node
+#
+Postmark
+helps deliver and track application email. You can track statistics such as the number of emails sent or processed, opens, bounces and, spam complaints.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Postmark Trigger integrations
+page.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,201 @@
+{
+  "workflow": {
+    "id": 543,
+    "name": "Get invoices from Xero",
+    "views": 1576,
+    "recentViews": 0,
+    "totalViews": 1576,
+    "createdAt": "2020-07-20T13:06:31.903Z",
+    "description": "Companion workflow for Xero node docs\n\n![workflow-screenshot](fileId:141)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Xero",
+          "type": "n8n-nodes-base.xero",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "getAll",
+            "organizationId": "ab7e9014-5d01-418f-a64c-dbb6bf5ba2ea"
+          },
+          "credentials": {
+            "xeroOAuth2Api": "n8n_xero"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Xero",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.xero": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 344,
+        "icon": "file:xero.svg",
+        "name": "n8n-nodes-base.xero",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.xero/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/xero/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Xero"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMwMEIyRDUiIGQ9Ik0zMCA1OS41MzhjMTYuMzM2IDAgMjkuNTM4LTEzLjIwMiAyOS41MzgtMjkuNTM4UzQ2LjMzNi40NjIgMzAgLjQ2Mi40NjIgMTMuNjY0LjQ2MiAzMCAxMy42NjQgNTkuNTM4IDMwIDU5LjUzOCIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Im0xNC41ODggMjkuOTA4IDUuMDM1LTUuMDM1YS45NS45NSAwIDAgMCAuMjU2LS42MTYuOTIuOTIgMCAwIDAtLjkyNS0uOTI1Yy0uMjU2IDAtLjQ2MS4wOTItLjY2Ny4yNTZsLTUuMDM0IDUuMDM1LTUuMDM1LTUuMDM1YS45NS45NSAwIDAgMC0uNjE2LS4yNTYuOTIuOTIgMCAwIDAtLjkyNS45MjVjMCAuMjU2LjA5Mi40NjEuMjU2LjY2N2w1LjAzNSA1LjAzNC01LjA0NSA1LjAyN2MtLjIwNi4xNTQtLjI1Ny40MS0uMjU3LjY2NyAwIC41MTQuNDExLjkyNS45MjUuOTI1YS44NS44NSAwIDAgMCAuNjE3LS4yNTdsNS4wMzQtNS4wMzQgNS4wMzUgNS4wMzRhLjg1Ljg1IDAgMCAwIC42NjcuMjU3LjkyLjkyIDAgMCAwIC45MjUtLjkyNS44NS44NSAwIDAgMC0uMjU2LS42MTd6bTI5Ljk1IDBjMCAuOTI1LjcyIDEuNjQzIDEuNjQ0IDEuNjQzczEuNjQzLS43MiAxLjY0My0xLjY0My0uNzItMS42NDMtMS42NDMtMS42NDNjLS44NzQgMC0xLjY0NC43Ny0xLjY0NCAxLjY0M20tNC45ODQgMGE2LjY0NiA2LjY0NiAwIDAgMCA2LjYyNyA2LjYyNiA2LjY0NiA2LjY0NiAwIDAgMCA2LjYyNi02LjYyNiA2LjY0NiA2LjY0NiAwIDAgMC02LjYyNi02LjYyNyA2LjY0NiA2LjY0NiAwIDAgMC02LjYyNyA2LjYyN20xLjkwMSAwYTQuNzcgNC43NyAwIDAgMSA0Ljc3OC00Ljc3OCA0Ljc3IDQuNzcgMCAwIDEgNC43NzggNC43NzggNC43MzUgNC43MzUgMCAwIDEtNC43NzggNC43NzggNC43NyA0Ljc3IDAgMCAxLTQuNzc4LTQuNzc4bS0yLjM2My02LjQ3NGgtLjI1NmEzLjc4IDMuNzggMCAwIDAtMi4zMTIuNzdjLS4wOTItLjQxLS40NjEtLjcyLS44NzMtLjcyYS44NjUuODY1IDAgMCAwLS44NzMuODc0djExLjE0OGMwIC41MTQuNDEuOTI1LjkyNS45MjVhLjkyLjkyIDAgMCAwIC45MjUtLjkyNXYtNi44MzJjMC0yLjI2Mi4yMDYtMy4xODUgMi4xNTctMy40NDRoLjM3Yy41MTMgMCAuOTI0LS4zNjkuOTI0LS44NzMtLjA1Mi0uNTY1LS40NjEtLjkyNS0uOTc2LS45MjV6bS02LjIxNSA1LjIzYy0uNDEtMS44NDktMS4zODctMy4zMzgtMi45MjgtNC4zMTUtMi4yNjEtMS40MzgtNS4yNC0xLjMzNi03LjM5Ny4yMDYtMS43NDcgMS4yMzMtMi43NzQgMy4zMzktMi43NzQgNS40NDYgMCAuNTE0LjA1MiAxLjA4LjIwNiAxLjU5Mi42NjcgMi42MiAyLjkyOCA0LjYxNiA1LjYgNC45MzJhNi4xIDYuMSAwIDAgMCAyLjM2Mi0uMTU0IDcuMiA3LjIgMCAwIDAgMi4wMDMtLjgzYy42NjgtLjQxMSAxLjE4Mi0uOTc2IDEuNjk2LTEuNTkzbC4wNTItLjA1MmMuMzY5LS40NjEuMzA4LTEuMDgtLjA5My0xLjM4Ny0uMzA4LS4yNTctLjg3My0uMzctMS4zMzUuMjA2LS4wOTMuMTU0LS4yMDYuMjU2LS4zMDkuNDFhNS40IDUuNCAwIDAgMS0xLjI5MiAxLjA4IDQuNiA0LjYgMCAwIDEtMi4yMDkuNTY1Yy0yLjYyLS4wNTEtNC4wMDYtMS44NDgtNC41Mi0zLjE4NGE1LjQgNS40IDAgMCAxLS4yMDYtLjc3di0uMTU1aDkuNDUyYzEuMjMzLS4wNTIgMS45MDItLjk3NiAxLjY5Ni0yLjAwM3ptLTExLjA5NS4xNTR2LS4wOTJjLjUxNC0yLjA1NSAyLjQxNS0zLjU5NiA0LjYxNS0zLjU5NiAyLjI2MiAwIDQuMTYxIDEuNTkyIDQuNjc1IDMuNjk5eiIvPjxwYXRoIGZpbGw9IiMwMEIyRDUiIGQ9Ik0yOS41MzggNTkuMDc3YzE2LjMzNiAwIDI5LjUzOS0xMy4yMDMgMjkuNTM5LTI5LjUzOUM1OS4wNzcgMTMuMjAzIDQ1Ljg3NCAwIDI5LjUzOCAwIDEzLjIwMyAwIDAgMTMuMjAzIDAgMjkuNTM4czEzLjIwMyAyOS41MzkgMjkuNTM4IDI5LjUzOSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Im0xNC4xMjcgMjkuNDQ2IDUuMDM0LTUuMDM0YS45NS45NSAwIDAgMCAuMjU3LS42MTcuOTIuOTIgMCAwIDAtLjkyNS0uOTI1Yy0uMjU3IDAtLjQ2Mi4wOTItLjY2Ny4yNTdMMTIuNzkgMjguMTZsLTUuMDM0LTUuMDM0YS45NS45NSAwIDAgMC0uNjE3LS4yNTcuOTIuOTIgMCAwIDAtLjkyNS45MjVjMCAuMjU3LjA5Mi40NjIuMjU3LjY2N2w1LjAzNCA1LjAzNS01LjA0NCA1LjAyNmMtLjIwNi4xNTQtLjI1Ny40MS0uMjU3LjY2NyAwIC41MTUuNDEuOTI1LjkyNS45MjVhLjg1Ljg1IDAgMCAwIC42MTYtLjI1Nmw1LjAzNS01LjAzNSA1LjAzNCA1LjAzNWEuODUuODUgMCAwIDAgLjY2OC4yNTYuOTIuOTIgMCAwIDAgLjkyNS0uOTI1Ljg1Ljg1IDAgMCAwLS4yNTctLjYxNmwtNS4wMjQtNS4xMjh6bTI5Ljk1IDBjMCAuOTI1LjcyIDEuNjQzIDEuNjQzIDEuNjQzczEuNjQzLS43MiAxLjY0My0xLjY0My0uNzItMS42NDMtMS42NDMtMS42NDNjLS44NzMgMC0xLjY0My43Ny0xLjY0MyAxLjY0M20tNC45ODUgMGE2LjY0NiA2LjY0NiAwIDAgMCA2LjYyNyA2LjYyNyA2LjY0NiA2LjY0NiAwIDAgMCA2LjYyNy02LjYyNyA2LjY0NiA2LjY0NiAwIDAgMC02LjYyNy02LjYyNyA2LjY0NiA2LjY0NiAwIDAgMC02LjYyNyA2LjYyN20xLjkwMiAwYTQuNzcgNC43NyAwIDAgMSA0Ljc3OC00Ljc3OCA0Ljc3IDQuNzcgMCAwIDEgNC43NzggNC43NzggNC43MzUgNC43MzUgMCAwIDEtNC43NzggNC43NzggNC43NyA0Ljc3IDAgMCAxLTQuNzc4LTQuNzc4bS0yLjM2My02LjQ3M2gtLjI1N2MtLjgzIDAtMS42NDMuMjU2LTIuMzExLjc3LS4wOTMtLjQxLS40NjItLjcyLS44NzMtLjcyYS44NjUuODY1IDAgMCAwLS44NzQuODc0djExLjE0OGMwIC41MTQuNDExLjkyNS45MjUuOTI1YS45Mi45MiAwIDAgMCAuOTI1LS45MjV2LTYuODMzYzAtMi4yNjIuMjA2LTMuMTg1IDIuMTU3LTMuNDQzaC4zN2MuNTE0IDAgLjkyNS0uMzcuOTI1LS44NzMtLjA1Mi0uNTY1LS40NjItLjkyNS0uOTc2LS45MjV6bS02LjIxNSA1LjIzYy0uNDExLTEuODUtMS4zODgtMy4zMzktMi45MjgtNC4zMTYtMi4yNjItMS40MzgtNS4yNC0xLjMzNS03LjM5OC4yMDYtMS43NDYgMS4yMzMtMi43NzQgMy4zMzktMi43NzQgNS40NDYgMCAuNTE1LjA1MiAxLjA4LjIwNiAxLjU5My42NjggMi42MiAyLjkyOCA0LjYxNSA1LjYgNC45MzIuNzkuMTA0IDEuNTkzLjA1MSAyLjM2My0uMTU0YTcuMiA3LjIgMCAwIDAgMi4wMDMtLjgzMWMuNjY3LS40MTEgMS4xODEtLjk3NiAxLjY5NS0xLjU5M2wuMDUyLS4wNTFjLjM3LS40NjIuMzA4LTEuMDgtLjA5Mi0xLjM4OC0uMzA5LS4yNTYtLjg3My0uMzY5LTEuMzM2LjIwNi0uMDkyLjE1NC0uMjA2LjI1Ny0uMzA4LjQxMS0uMzcuNDEtLjc3MS43Ny0xLjI5MyAxLjA4YTQuNiA0LjYgMCAwIDEtMi4yMDguNTY1Yy0yLjYyLS4wNTItNC4wMDctMS44NDktNC41Mi0zLjE4NWE1LjQgNS40IDAgMCAxLS4yMDctLjc3di0uMTU1aDkuNDUzYzEuMjMzLS4wNTEgMS45MDEtLjk3NSAxLjY5NS0yLjAwM3ptLTExLjA5Ni4xNTR2LS4wOTJjLjUxNC0yLjA1NSAyLjQxNS0zLjU5NyA0LjYxNi0zLjU5NyAyLjI2MSAwIDQuMTYgMS41OTMgNC42NzQgMy43eiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Xero",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": [
+      {
+        "id": 141,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/1c2b3e3f2f164a2fb4b952136c002a50.png"
+      }
+    ]
+  }
+}

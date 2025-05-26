@@ -1,0 +1,16 @@
+URL: https://docs.n8n.io/data/code/
+Scraped_At: 2025-05-20T18:42:24.909470
+
+Processing data with code
+#
+Function
+#
+A function is a block of code designed to perform a certain task. In n8n, you can write custom JavaScript or Python code snippets to add, remove, and update the data you receive from a node.
+The
+Code
+node gives you access to the incoming data and you can manipulate it. With this node you can create any function you want using JavaScript code.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

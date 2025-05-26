@@ -1,0 +1,44 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickchart/
+Scraped_At: 2025-05-20T18:51:01.216285
+
+QuickChart node
+#
+Use the QuickChart node to automate work in QuickChart, and integrate QuickChart with other applications. n8n has built-in support for a wide range of QuickChart chart types, including bar, doughnut, line, pie, and polar charts.
+On this page, you'll find a list of operations the QuickChart node supports and links to more resources.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Create a chart by selecting the chart type:
+Chart Type
+Bar Chart
+Doughnut Chart
+Line Chart
+Pie Chart
+Polar Chart
+Templates and examples
+#
+AI Agent with charts capabilities using OpenAI Structured Output and Quickchart
+by Agent Studio
+View template details
+Visualize your SQL Agent queries with OpenAI and Quickchart.io
+by Agent Studio
+View template details
+✨📊Multi-AI Agent Chatbot for Postgres/Supabase DB and QuickCharts + Tool Router
+by Joseph LePage
+View template details
+Browse QuickChart integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+QuickChart's API documentation
+for more information about the service.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

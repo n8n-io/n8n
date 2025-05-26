@@ -1,0 +1,26 @@
+URL: https://docs.n8n.io/integrations/builtin/cluster-nodes/
+Scraped_At: 2025-05-20T18:53:09.961706
+
+Cluster nodes
+#
+Cluster nodes
+are node groups that work together to provide functionality in an n8n workflow. Instead of using a single node, you use a
+root node
+and one or more
+sub-nodes
+that extend the functionality of the node.
+Root nodes
+#
+Each cluster starts with one
+root node
+.
+Sub-nodes
+#
+Each root node can have one or more
+sub-nodes
+attached to it.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

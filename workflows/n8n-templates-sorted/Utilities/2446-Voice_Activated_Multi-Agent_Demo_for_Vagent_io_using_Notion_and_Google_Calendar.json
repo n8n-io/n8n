@@ -1,0 +1,1586 @@
+{
+  "workflow": {
+    "id": 2446,
+    "name": "Voice Activated Multi-Agent Demo for Vagent.io using Notion and Google Calendar",
+    "views": 10121,
+    "recentViews": 2,
+    "totalViews": 10121,
+    "createdAt": "2024-09-30T21:52:26.532Z",
+    "description": "## Purpose\nUse a lightweight Voice Interface, for you and your entire organization, to interact with an AI Supervisor, a personal AI Assistant, which has access to your custom workflows. You can also connect the supervisor to your already existing Agents.\n\n## Demo & Explanation\n[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/qe23D1hgLwY/0.jpg)](https://youtu.be/qe23D1hgLwY)\n\n## How it works\n- After recording a message in the Vagent App, it gets transcribed and sent in combination with a session ID to the registered webhook\n- The Main Agent acts as a router. I interprets the message while using the stored chat history (bound to the session ID) and chooses which tool to use to perform the required action and. Tools on this level are workflows, which contain subordinated Agents. Since the Main Agent interprets the original message, the raw input is passed to the Tools/Sub-Agents as a separate parameter\n- Within the Sub-Agents the actual processing takes place. Each of those has it’s separate chat memory (with a suffix to the main session ID), to achieve a clear separation of concerns\n- Depending on the required action an HTTP Request Tool is called. The result is being formatted in Markdown and returned to the Main Agent with an additional short prompt, so it does not get interpreted by the Main Agent.\n- Drafts are separated from a short message by added indentation (angle brackets). If some information is missing, no tool is called just yet, instead a message is returned back to the user\n- The Main Agent then outputs the result from the called Sub-Agent. If a draft is included, it gets separated from the spoken output\n- Finally the formatted output is returned as response to the webhook. The message is split into a spoken and a text version, which enables the App to read out loud unnecessary information like drafts in this example\n\nSee the full documentation of Vagent: [https://vagent.io/docs](https://vagent.io/docs)\n\n## Setup\n- Import this workflow into your n8n instance\n- Follow the instructions given in the sticky notes on the canvas\n- Setup your credentials. OpenAI can be replaced by another LLM in the workflow, but is required for the App to work. Google Calendar and Notion are required for all scenarios to work\n- Copy the Webhook URL from the Webhook node of the main workflow\n- Download the Vagent App from [https://vagent.io](https://vagent.io)\n- In the settings paste your OpenAI API Token, the Webhook URL and the password defined for Header Auth\n- Now you can use the App to interact with the Multi-Agent using your Voice by tapping the Mic symbol in the App to record your message.\n\n*To use the chat trigger (for testing) properly, temporarily disable the nodes after the Tools Agent.*",
+    "workflow": {
+      "meta": {
+        "instanceId": "84ba6d895254e080ac2b4916d987aa66b000f88d4d919a6b9c76848f9b8a7616",
+        "templateId": "2446"
+      },
+      "nodes": [
+        {
+          "id": "af0765f4-75b5-445c-80d7-51b0aa180fe5",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            820,
+            620
+          ],
+          "parameters": {
+            "model": "gpt-4o",
+            "options": {
+              "temperature": 0,
+              "responseFormat": "text"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "497c534e-e117-4592-b76f-bef424a7fd5a",
+          "name": "Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1500,
+            400
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5b358850-cbc3-4a8c-b2b8-12e3b7aa1e44",
+          "name": "calendarAgent",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            1060,
+            620
+          ],
+          "parameters": {
+            "name": "calendarAgent",
+            "fields": {
+              "values": [
+                {
+                  "name": "sessionId",
+                  "stringValue": "={{ $json.sessionId }}"
+                },
+                {
+                  "name": "prompt",
+                  "stringValue": "={{ $json.chatInput }}"
+                }
+              ]
+            },
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "yPCMz4zxB291oM31",
+              "cachedResultName": "Google Calendar Agent"
+            },
+            "description": "Call this workflow to do handle every request regarding calendar management.",
+            "responsePropertyName": "output"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "8bcc4b27-59b9-4ce3-8525-34221c10f11a",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            460,
+            480
+          ],
+          "webhookId": "96e410fe-ef91-4767-aa9a-bf95ba50f972",
+          "parameters": {
+            "public": true,
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "0aa8e0ff-7ed3-4fef-9b7c-f2caa8f85612",
+          "name": "taskAgent",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            1180,
+            620
+          ],
+          "parameters": {
+            "name": "taskAgent",
+            "fields": {
+              "values": [
+                {
+                  "name": "sessionId",
+                  "stringValue": "={{ $json.sessionId }}"
+                },
+                {
+                  "name": "prompt",
+                  "stringValue": "={{ $json.chatInput }}"
+                }
+              ]
+            },
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ICTXOidW1oyJDYP7",
+              "cachedResultName": "Notion Task Agent"
+            },
+            "description": "Call this workflow to do handle every request regarding task management.",
+            "responsePropertyName": "output"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "b46f4ed0-6de6-44ab-8b91-521b011d7869",
+          "name": "Window Buffer Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            940,
+            620
+          ],
+          "parameters": {
+            "sessionKey": "={{ $json.sessionId }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 15
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e778c2bf-1681-418d-a434-d1a0cdeaa5d7",
+          "name": "Map Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            680,
+            320
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f8c5a03f-ea21-4877-a71b-32e8b4dd30fb",
+                  "name": "chatInput",
+                  "type": "string",
+                  "value": "={{ $json.body.prompt }}"
+                },
+                {
+                  "id": "3d4fecc4-78a5-47ba-a239-5fdc9b224d82",
+                  "name": "sessionId",
+                  "type": "string",
+                  "value": "={{ $json.body.sessionID }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c54d0fab-b25c-48fc-b027-dcdf78dd2b09",
+          "name": "Map Fields1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            680,
+            480
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "36f24729-17ae-4d69-961f-424a1797b42c",
+                  "name": "chatInput",
+                  "type": "string",
+                  "value": "={{ $json.chatInput }}"
+                },
+                {
+                  "id": "05ea359a-d82e-4917-9245-38016314ad10",
+                  "name": "sessionId",
+                  "type": "string",
+                  "value": "={{ $json.sessionId }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "cefe6cc8-4a87-47c8-a518-c0bf06f96a2a",
+          "name": "Exclude Previews from Speech",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1280,
+            400
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "424b3c35-fd3d-4021-86e7-0d90529550b0",
+                  "name": "response.text",
+                  "type": "string",
+                  "value": "={{ $json.output }}"
+                },
+                {
+                  "id": "0cbe6fd9-3464-4bd1-b9c0-365548dc232a",
+                  "name": "response.speech",
+                  "type": "string",
+                  "value": "={{ $if($json.output.search(/>\\s/) > -1, $json.output.substring(0, $json.output.search(/>\\s/)), $json.output) }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "815eb1a4-ef2d-430d-8884-217164214440",
+          "name": "Main Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            900,
+            400
+          ],
+          "parameters": {
+            "text": "={{ $json.chatInput }}",
+            "options": {
+              "systemMessage": "=# Role:\nYou are a helpful assistant. Your sole responsibility is to determine which tool to forward the original chat input to. Do not process, modify, or interpret the input or output in any way. Only route it to the correct tool.\n\n# Behavior:\nBe clear, very concise, and accurate in tool routing. Do not modify, interpret, or analyze the incoming input or the tool's response. If the request is ambiguous, ask for clarification regarding tool selection only.\n\n# Command:\nRoute all incoming requests to the available tools if they match their description.\nCheck the memory to route ongoing conversations correctly — only choose another tool if a new task has been requested or the context clearly has been switched. If the context has changed (e.g. you were asked to create a task before, but now the user asks to create an event), forget everything before the context switch.\n\nOnly call one tool at a time.\n\nDo not modify or alter the input before sending it to the tool or the output after receiving it from the tool. Simply pass through both input and output as they are.\n\n# Format:\nPass every response of each tool in raw format to the output. Do not modify, interpret, or add any information at all."
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "07b6d7e2-ab73-4f23-8dca-7c8b0309574c",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1520,
+            1100
+          ],
+          "parameters": {
+            "model": "gpt-4o",
+            "options": {
+              "temperature": 0
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "882a93d8-886e-465d-9c81-cc8069abd281",
+          "name": "HTTP Request",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1760,
+            1100
+          ],
+          "parameters": {
+            "url": "https://api.notion.com/v1/pages",
+            "method": "POST",
+            "jsonBody": "={\n  \"parent\": {\n    \"database_id\": \"{{ $json.databaseID }}\"\n  },\n  \"properties\": {\n    \"Name\": {\n      \"title\": [\n        {\n          \"text\": {\n            \"content\": \"{title}\"\n          }\n        }\n      ]\n    },\n    \"Priority\": {\n      \"select\": {\n        \"name\": \"{priority}\"\n      }\n    }\n  },\n  \"children\": [\n    {\n      \"object\": \"block\",\n      \"type\": \"paragraph\",\n      \"paragraph\": {\n        \"rich_text\": [\n          {\n            \"type\": \"text\",\n            \"text\": {\n              \"content\": \"{description}\"\n            }\n          }\n        ]\n      }\n    }\n  ]\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "toolDescription": "Create a Task in Notion using a title, description and priority.",
+            "nodeCredentialType": "notionApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "title",
+                  "type": "string",
+                  "description": "The name / title of the task."
+                },
+                {
+                  "name": "description",
+                  "type": "string",
+                  "description": "The description of the task."
+                },
+                {
+                  "name": "priority",
+                  "type": "string",
+                  "description": "The priority of the task. One of these values: \"do first\", \"important\", \"urgent\""
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e19aad2c-132e-454f-a091-334f128b0636",
+          "name": "Settings",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1320,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3f65df4c-fae1-4da3-acfd-acf352a3f8d2",
+                  "name": "sessionId",
+                  "type": "string",
+                  "value": "={{ $json.sessionId }}"
+                },
+                {
+                  "id": "9745bdbd-fd97-46db-a742-6540f86dd43c",
+                  "name": "chatInput",
+                  "type": "string",
+                  "value": "={{ $json.prompt }}"
+                },
+                {
+                  "id": "5e757768-d780-4b11-a6e0-593b08f32cc3",
+                  "name": "databaseID",
+                  "type": "string",
+                  "value": "92da2aa018ed4095afc0f1a0670f36e9"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0fe6aa57-7a64-40f4-af2d-30f4286b8aee",
+          "name": "Format output",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1920,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "934c387a-71a5-4549-a68a-312708368117",
+                  "name": "output",
+                  "type": "string",
+                  "value": "=Please respond this to the user without modifications:\n\n{{ $json.output }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b2170997-5ebb-4261-92ce-70b33d68931f",
+          "name": "Notion Task Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1540,
+            880
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=# Role:\nYou are a helpful assistant. Your job is to create Tasks in Notion.\n\n# Behavior:\nBe clear, very concise, efficient, and accurate in responses. If the request is ambiguous, ask for clarification.\n\n# Command:\nYou create tasks in Notion. Each task consists of the mandatory fields title, description and priority. Priority is an enum value consisting of 'do first', 'important' and 'urgent'.\n\n# Ask questions:\nIf required information is missing, ask the user about the missing information and only the missing ones. Ask priority as last.\n\nIf the user only describes the task within a few words, use that as the title. In that case, ask the user, if he wants to add a more detailed description. If he responds with \"No\", leave the description empty when creating the task.\nOn the other hand if the user describes the task more detailed from the beginning, use that as the description and create a short meaningful title for that. \n\nIf you have all the required information, ask for approval, before creating the task. In that case, always return a draft, containing the title, description and priority.\n\n# Format:\nThe output of the draft for approval should always be in markdown and in this format (placeholders in angle brackets):\n\nHere is the drafted task. Shall I create it?\n\n> **<title>**  \n> *<priority>*  \n>  \n> <description (optional)>\n\n# Responses:\nAfter successfully created event, only respond with \"Okay, done.\""
+            }
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "a83fdec9-8c0e-45d0-8439-41c23440a21e",
+          "name": "Window Buffer Memory1",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            1640,
+            1100
+          ],
+          "parameters": {
+            "sessionKey": "={{ $json.sessionId }}-{{ $workflow.id }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 15
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "80ae1a6f-5811-407a-a287-5150b8ecba22",
+          "name": "Get calendar availability",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            820,
+            1100
+          ],
+          "parameters": {
+            "url": "https://www.googleapis.com/calendar/v3/freeBusy",
+            "method": "POST",
+            "jsonBody": "={\n  \"timeMin\": \"{timeMin}\",\n  \"timeMax\": \"{timeMax}\",\n  \"timeZone\": \"{{ $json.timeZone }}\",\n  \"groupExpansionMax\": 20,\n  \"calendarExpansionMax\": 10,\n  \"items\": [\n    {\n      \"id\": \"{{ $json.calendarID }}\"\n    }\n  ]\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "toolDescription": "Call this tool to get the calendar availability for a particular period on the calendar. The tool may refer to availability as \"Free\" or \"Busy\". \n\nUse {timeMin} and {timeMax} to specify the window for the availability query. For example, to get availability for 25 July, 2024 the {timeMin} would be 2024-07-25T00:00:00+02:00 and {timeMax} would be 2024-07-26T00:00:00+02:00.\n\nIf the tool returns an empty response, it means that something went wrong. It does not mean that there is no availability.",
+            "nodeCredentialType": "googleCalendarOAuth2Api"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1d44a1eb-1b14-4ce8-b874-673db7be482c",
+          "name": "Book appointment",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            940,
+            1100
+          ],
+          "parameters": {
+            "url": "=https://www.googleapis.com/calendar/v3/calendars/{{ $json.calendarID }}/events",
+            "method": "POST",
+            "jsonBody": "={\n  \"summary\": \"{eventName}\",\n  \"start\": {\n    \"dateTime\": \"{startTime}\",\n    \"timeZone\": \"Europe/Berlin\"\n  },\n  \"end\": {\n    \"dateTime\": \"{endTime}\",\n    \"timeZone\": \"Europe/Berlin\"\n  }\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "toolDescription": "Call this tool to create an event in the calendar.",
+            "nodeCredentialType": "googleCalendarOAuth2Api",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "eventName",
+                  "description": "A short but precise title for the event."
+                },
+                {
+                  "name": "startTime",
+                  "description": "The start time of the event in Europe/Berlin timezone. For example, 2024-07-24T10:00:00+02:00"
+                },
+                {
+                  "name": "endTime",
+                  "description": "The end time of the event in Europe/Berlin timezone. It should always be 30 minutes after the startTime. "
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d814abe2-fe6f-43ba-99b7-8380ed78dd26",
+          "name": "Google Calendar Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            660,
+            880
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=# Role:\nYou are a helpful assistant. Your job is to schedule Google Calendar Events.\n\n# Behavior:\nBe clear, very concise, efficient, and accurate in responses. If the request is ambiguous, ask for clarification.\n\n# Command:\nYou create Google Calendar events. Each event requires a title, date and time. The default duration - if not provided by the user - is 1 hour.\n\nBefore creating even showing a draft of the event, use the provided tool to check for the availibilty in the calendar. If there are any conflicts, tell the user about the timespans which are blocked, propose another time slot close by and ask the user if he would like to change the time to that.\n\n# Ask questions:\nIf required information is missing, ask the user about the missing information and only the missing ones.\n\nIf you have all the required information, ask for approval, before creating the event. In that case, always return a draft, containing the title, date and time.\n\n# Format:\nThe output of the draft for approval should always be in markdown and in this format (placeholders in angle brackets):\n\nHere is the event. Shall I create it?\n\n> **<title>**  \n> <date e.g., September 15, 2024>  \n> <time e.g., 10am-12pm>\n\n# Responses:\nAfter successfully created event, only respond with \"You are all set.\"\n\n# Additional Guidelines:\nToday’s date is {{ $now.setZone($json.timeZone).format('dd LLL yyyy') }}.\n"
+            }
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "9c4738b9-c7bc-4e90-9dc3-7f99822a19ca",
+          "name": "OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            580,
+            1100
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "40b9b4e0-0e84-43fa-a4bc-a5eb99988cbd",
+          "name": "Settings1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            440,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3f65df4c-fae1-4da3-acfd-acf352a3f8d2",
+                  "name": "sessionId",
+                  "type": "string",
+                  "value": "={{ $json.sessionId }}"
+                },
+                {
+                  "id": "9745bdbd-fd97-46db-a742-6540f86dd43c",
+                  "name": "chatInput",
+                  "type": "string",
+                  "value": "={{ $json.prompt }}"
+                },
+                {
+                  "id": "5e757768-d780-4b11-a6e0-593b08f32cc3",
+                  "name": "calendarID",
+                  "type": "string",
+                  "value": "primary"
+                },
+                {
+                  "id": "4085421e-7f2c-429c-a85f-c6170a655823",
+                  "name": "timeZone",
+                  "type": "string",
+                  "value": "Europe/Berlin"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "4bafef7b-3474-42c0-9f21-5c0c02cd9e73",
+          "name": "Format output1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1040,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "934c387a-71a5-4549-a68a-312708368117",
+                  "name": "output",
+                  "type": "string",
+                  "value": "=Please respond this to the user without modifications:\n\n{{ $json.output }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "6ebcf3cd-8ff2-4605-b4b6-69155918b290",
+          "name": "Window Buffer Memory2",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            700,
+            1100
+          ],
+          "parameters": {
+            "sessionKey": "={{ $json.sessionId }}-{{ $workflow.id }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 15
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "1269083c-aac7-4a4f-9b3b-bb82a670ff94",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            800
+          ],
+          "parameters": {
+            "width": 857.6171119733089,
+            "height": 469.7141529250314,
+            "content": "## Sub-Agent for scheduling calendar events"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "48df65e9-4628-4b5d-bbad-a8a68289d8b8",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1260,
+            800
+          ],
+          "parameters": {
+            "width": 859.4283058500632,
+            "height": 469.7141529250314,
+            "content": "## Sub-Agent for crating notion tasks\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "48f050ec-3bda-4105-a859-e8f2039abe8e",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {
+            "width": 1323.0939382992326,
+            "height": 537.6599060701709,
+            "content": "## Main Agent which is connected to Vagent.io"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c768a760-9511-4543-b3ea-f1d83c263098",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1720,
+            240
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 398.5850611544016,
+            "height": 537.9088390659099,
+            "content": "## Setup\n\n### Create workflows\n- Create a separate workflow for each Sub-Agent and move over the nodes from here\n- In each of those workflows add an **Execute Workflow Trigger** node and connect it to the beginning of the copied nodes\n\n### Configure main workflow\n- Select the corresponding credentials\n- Update the Webhook URL and create a Header Auth (Key: Authorization)\n- Update the tools \"claendarAgent\" and \"task Agent\" by choosing the corresponding sub-workflows you just created in the \"Workflow\" dropdown menu\n- Activate the workflow\n\n### Configure sub-workflows\n- Select the corresponding credentials\n- Update the \"Settings\" node (do not touch the first two values), e.g. set your Notion DB ID"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "42abacd3-02ba-466e-a8d4-f1c2f5c96c00",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            460,
+            320
+          ],
+          "webhookId": "46116445-3b13-48c0-9a38-cd034bee92ac",
+          "parameters": {
+            "path": "46116445-3b13-48c0-9a38-cd034bee92ac",
+            "options": {},
+            "httpMethod": "POST",
+            "responseMode": "responseNode",
+            "authentication": "headerAuth"
+          },
+          "typeVersion": 2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Map Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Settings": {
+          "main": [
+            [
+              {
+                "node": "Notion Task Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Settings1": {
+          "main": [
+            [
+              {
+                "node": "Google Calendar Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "taskAgent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Main Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Main Agent": {
+          "main": [
+            [
+              {
+                "node": "Exclude Previews from Speech",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map Fields": {
+          "main": [
+            [
+              {
+                "node": "Main Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map Fields1": {
+          "main": [
+            [
+              {
+                "node": "Main Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HTTP Request": {
+          "ai_tool": [
+            [
+              {
+                "node": "Notion Task Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "calendarAgent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Main Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Book appointment": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion Task Agent": {
+          "main": [
+            [
+              {
+                "node": "Format output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Notion Task Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Google Calendar Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Main Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Window Buffer Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "Main Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Calendar Agent": {
+          "main": [
+            [
+              {
+                "node": "Format output1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Window Buffer Memory1": {
+          "ai_memory": [
+            [
+              {
+                "node": "Notion Task Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Window Buffer Memory2": {
+          "ai_memory": [
+            [
+              {
+                "node": "Google Calendar Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get calendar availability": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Map Fields1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Exclude Previews from Speech": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 28,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 7
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 3
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Mario",
+      "username": "octionic",
+      "bio": "Workflow Optimization Expert | Software Architect. Use my link to book an initial consultation for custom built workflows using n8n.",
+      "verified": true,
+      "links": [
+        "https://octionic.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/48bf351cec848d87566d8cc78c9a783ec4807408366648de04cfe955d7a5ba21?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

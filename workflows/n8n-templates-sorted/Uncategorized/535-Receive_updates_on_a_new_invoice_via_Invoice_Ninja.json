@@ -1,0 +1,105 @@
+{
+  "workflow": {
+    "id": 535,
+    "name": "Receive updates on a new invoice via Invoice Ninja",
+    "views": 775,
+    "recentViews": 0,
+    "totalViews": 775,
+    "createdAt": "2020-07-17T08:55:35.159Z",
+    "description": "Companion workflow for Invoice Ninja Trigger node docs\n\n![workflow-screenshot](fileId:133)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Invoice Ninja Trigger",
+          "type": "n8n-nodes-base.invoiceNinjaTrigger",
+          "position": [
+            890,
+            400
+          ],
+          "webhookId": "97be21b3-ebf5-48cf-b291-5d954657a544",
+          "parameters": {
+            "event": "create_invoice"
+          },
+          "credentials": {
+            "invoiceNinjaApi": "invoice_ninja_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.invoiceNinjaTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 305,
+        "icon": "file:invoiceNinja.svg",
+        "name": "n8n-nodes-base.invoiceNinjaTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.invoiceninjatrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/invoiceNinja/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Invoice Ninja Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMTkuOTg5NiIgY3k9IjE5Ljk3NDkiIHI9IjE4Ljc3NTIiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0yNy4wNDMyIDE3LjIwOThDMjcuMDQzMiAxNy43MjQzIDI2LjgzODggMTguMjE3NyAyNi40NzUgMTguNTgxNkMyNi4xMTEyIDE4Ljk0NTQgMjUuNjE3NyAxOS4xNDk4IDI1LjEwMzIgMTkuMTQ5OEMyNC41ODg3IDE5LjE0OTggMjQuMDk1MiAxOC45NDU0IDIzLjczMTQgMTguNTgxNkMyMy4zNjc2IDE4LjIxNzcgMjMuMTYzMiAxNy43MjQzIDIzLjE2MzIgMTcuMjA5OEMyMy4xNjMyIDE2LjY5NTIgMjMuMzY3NiAxNi4yMDE4IDIzLjczMTQgMTUuODM4QzI0LjA5NTIgMTUuNDc0MSAyNC41ODg3IDE1LjI2OTcgMjUuMTAzMiAxNS4yNjk3QzI1LjYxNzcgMTUuMjY5NyAyNi4xMTEyIDE1LjQ3NDEgMjYuNDc1IDE1LjgzOEMyNi44Mzg4IDE2LjIwMTggMjcuMDQzMiAxNi42OTUyIDI3LjA0MzIgMTcuMjA5OFpNMTYuNTYzMSAxNy4yMDk4QzE2LjU2MzEgMTcuNDY0NiAxNi41MTI5IDE3LjcxNyAxNi40MTU0IDE3Ljk1MjVDMTYuMzE3OCAxOC4xODggMTYuMTc0OSAxOC40MDE5IDE1Ljk5NDYgMTguNTgyMkMxNS44MTQ0IDE4Ljc2MjQgMTUuNjAwNCAxOC45MDUzIDE1LjM2NSAxOS4wMDI5QzE1LjEyOTUgMTkuMTAwNCAxNC44NzcxIDE5LjE1MDYgMTQuNjIyMiAxOS4xNTA2QzE0LjM2NzQgMTkuMTUwNiAxNC4xMTUgMTkuMTAwNCAxMy44Nzk1IDE5LjAwMjlDMTMuNjQ0IDE4LjkwNTMgMTMuNDMwMSAxOC43NjI0IDEzLjI0OTggMTguNTgyMkMxMy4wNjk2IDE4LjQwMTkgMTIuOTI2NyAxOC4xODggMTIuODI5MSAxNy45NTI1QzEyLjczMTYgMTcuNzE3IDEyLjY4MTQgMTcuNDY0NiAxMi42ODE0IDE3LjIwOThDMTIuNjgxNCAxNi42OTUgMTIuODg1OSAxNi4yMDE0IDEzLjI0OTggMTUuODM3NEMxMy42MTM4IDE1LjQ3MzQgMTQuMTA3NSAxNS4yNjg5IDE0LjYyMjIgMTUuMjY4OUMxNS4xMzcgMTUuMjY4OSAxNS42MzA2IDE1LjQ3MzQgMTUuOTk0NiAxNS44Mzc0QzE2LjM1ODYgMTYuMjAxNCAxNi41NjMxIDE2LjY5NSAxNi41NjMxIDE3LjIwOThaTTE2LjMyOTggMzkuNzQzM0M4LjQ3NjM0IDM4LjExIDIuNjE3OTQgMzIuNjQ4MyAwLjUyNjI1NiAyNS4wMDY1Qy0wLjE3NTQxOSAyMi40NDQ4IC0wLjE3NTQxOSAxNy41MjMxIDAuNTI2MjU2IDE0Ljk2MTRDMi40NzQ2MSA3Ljg0OCA3Ljg0OCAyLjQ3NDYxIDE0Ljk1OTcgMC41MjYyNTZDMTcuNTIzMSAtMC4xNzU0MTkgMjIuNDQzMiAtMC4xNzU0MTkgMjUuMDA2NSAwLjUyNjI1NkMzMi4xMTgzIDIuNDc0NjEgMzcuNDkzMyA3Ljg0OCAzOS40NCAxNC45NTk3QzM5Ljg0IDE2LjQxNjQgMzkuOTMgMTcuMzQzMSAzOS45MyAxOS45ODMxQzM5LjkzIDIyLjYyMzIgMzkuODQgMjMuNTQ5OCAzOS40NDE3IDI1LjAwNjVDMzcuNDkxNyAzMi4xMjQ5IDMyLjA0MzMgMzcuNTY2NiAyNS4wMDY1IDM5LjQyMzNDMjIuNjg4MiA0MC4wMzUgMTguNDc5OCA0MC4xOSAxNi4zMjk4IDM5Ljc0MzNaTTI3LjM5NjUgMjQuMjE4MkMyMi4zMTgyIDIxLjk3MTUgMjAuNjM5OCAyMS4zMjMxIDE5Ljg5NjUgMjEuMzIzMUMxOS4xNTMxIDIxLjMyMzEgMTcuNTA4MSAyMS45NTY1IDEyLjU5NjQgMjQuMTI5OEM5LjExMTM1IDI1LjY3MzIgNi4yMTYzMiAyNy4wNjMyIDYuMTYyOTggMjcuMTEzMkgzMy45MzQ5TDI3LjM5NjUgMjQuMjE4MlpNMTAuOTQxNCAyMy42MTY1QzEzLjY0MzEgMjIuNDAxNSAxNi4wNDE0IDIxLjMwNDggMTYuMjY4MSAyMS4xNzY1QzE2LjY5ODEgMjAuOTM0OCAxNi44Mjk4IDIxLjAyNjUgNy40NTk2NiAxNS4wMzk3QzYuNTI2MzIgMTQuNDQzMSA1Ljc1NDY0IDEzLjg3NjQgNS43NTEzMSAxMy45NTY0VjI1LjkzOTlDNy40ODMgMjUuMTY5MSA5LjIxMzAyIDI0LjM5NDcgMTAuOTQxNCAyMy42MTY1Wk0zNC40MDQ5IDE5Ljk1OThWMTQuMDI4MUMzNC40MDQ5IDEzLjg0NDcgMzEuNjExNiAxNS42ODMxIDI4LjU3ODIgMTcuNTYxNEMyMy41NzgyIDIwLjY1MTUgMjMuMTA5OCAyMC45OTQ4IDIzLjU3MTUgMjEuMjAzMUMyNS44MTMyIDIyLjIyMTUgMzQuMjcxNiAyNS45NzMyIDM0LjQwNDkgMjUuOTg5OVYxOS45NTk4Wk0yMC43ODk4IDIwLjE0MzFDMjEuNjk4MSAyMC4zNTE1IDIxLjg2MTUgMjAuMzE2NSAyMi44MzMyIDE5LjcwNDhDMjMuNDE0OCAxOS4zMzgxIDIzLjkyNDggMTkuMDA2NSAyMy45NjgyIDE4Ljk2ODFDMjQuMDExNSAxOC45MjgxIDIzLjg4NDggMTguNjY2NCAyMy42ODk4IDE4LjM4NDhDMjMuNDkzMiAxOC4xMDQ4IDIzLjMzMTUgMTcuNTUxNCAyMy4zMzE1IDE3LjE1MzFWMTYuNDMzMUwyMi4zODMyIDE2Ljc4MzFDMjEuMTczMSAxNy4yMjgxIDE4LjU4MzEgMTcuMjMzMSAxNy4zODMxIDE2Ljc5MTRMMTYuNDU2NCAxNi40NDk4TDE2LjQ3ODEgMTcuMjAzMUMxNi40ODk4IDE3LjYzNjQgMTYuMzMxNCAxOC4xNDE0IDE2LjEwMzEgMTguMzk0OEMxNS43MTY0IDE4LjgyMTQgMTUuNzM2NCAxOC44NTQ4IDE2Ljg1MzEgMTkuNjA0OEMxNy45MTk4IDIwLjMyNDggMTguMDYxNCAyMC4zNjMxIDE4LjkwMzEgMjAuMTQ5OEMxOS41MjIzIDE5Ljk5NDkgMjAuMTcgMTkuOTkzOCAyMC43ODk4IDIwLjE0NjVWMjAuMTQzMVpNMTMuNzM5NyAxNS43MjY0QzEzLjU2NDcgMTUuNTM4MSA4Ljc4OTY4IDE0LjEzNjQgOC42ODQ2OCAxNC4yNDE0QzguNjM0NjcgMTQuMjkxNCA5LjUyNDY5IDE0LjkzMTQgMTAuNjYxNCAxNS42NjQ3TDEyLjcyODEgMTYuOTk4MUwxMy4yOTQ3IDE2LjQyNDhDMTMuNjA0NyAxNi4xMTE0IDEzLjgwNjQgMTUuNzk2NCAxMy43NDE0IDE1LjcyNDhMMTMuNzM5NyAxNS43MjY0Wk0zMC4wMDY2IDE1LjEwNDdDMzAuNzk0OSAxNC41OTQ3IDMxLjMzOTkgMTQuMTc5NyAzMS4yMTk5IDE0LjE3OTdDMzAuOTYxNiAxNC4xNzk3IDI2LjQyNDkgMTUuNTE5NyAyNi4xNzQ5IDE1LjY2OTdDMjYuMDc5OSAxNS43MjY0IDI2LjIyOTkgMTYuMDUxNCAyNi41MDgyIDE2LjM5MTRMMjcuMDE0OSAxNy4wMDgxTDI3Ljc5ODIgMTYuNTE5OEMyOC4yMjY2IDE2LjI0OTggMjkuMjIxNiAxNS42MTMxIDMwLjAwODIgMTUuMTAzMUwzMC4wMDY2IDE1LjEwNDdaTTI3LjI3OTkgMTQuMTc5N0MzMC43OTY2IDEzLjE5NjQgMzMuNzI0OSAxMi4zNDMgMzMuNzg2NiAxMi4yODE0SDUuOTQ3OThDNi4yNTk2NSAxMi41OTMgMTguOTEzMSAxNS45Mzk4IDE5LjgxOTggMTUuOTUxNEMyMC41MDMxIDE1Ljk1OTggMjMuMTc2NSAxNS4zMjQ3IDI3LjI3OTkgMTQuMTc5N1oiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Invoice Ninja Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": [
+      {
+        "id": 133,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/497f605c19fc4f42af7b029469f9ebd1.png"
+      }
+    ]
+  }
+}

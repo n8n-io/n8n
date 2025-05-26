@@ -1,0 +1,45 @@
+URL: https://docs.n8n.io/code/builtin/data-transformation-functions/
+Scraped_At: 2025-05-20T18:40:46.405353
+
+Data transformation functions
+#
+Data transformation functions are helper functions to make data transformation easier in
+expressions
+.
+JavaScript in expressions
+You can use any JavaScript in expressions. Refer to
+Expressions
+for more information.
+For a list of available functions, refer to the page for your data type:
+Arrays
+Dates
+Numbers
+Objects
+Strings
+Usage
+#
+Data transformation functions are available in the expressions editor.
+The syntax is:
+1
+{{
+dataItem
+.
+function
+()
+}}
+For example, to check if a string is an email:
+1
+2
+3
+{{
+"example@example.com"
+.
+isEmail
+()
+}}
+// Returns true
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

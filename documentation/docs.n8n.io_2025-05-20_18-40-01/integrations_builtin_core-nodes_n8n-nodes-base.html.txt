@@ -1,0 +1,138 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/
+Scraped_At: 2025-05-20T18:56:03.159989
+
+HTML
+#
+The HTML node provides operations to help you work with HTML in n8n.
+HTML Extract node
+The HTML node replaces the HTML Extract node from version 0.213.0 on. If you're using an older version of n8n, you can still view the
+HTML Extract node documentation
+.
+Cross-site scripting
+When using the HTML node to generate an HTML template you can introduce
+XSS (cross-site scripting)
+. This is a security risk. Be careful with un-trusted inputs.
+Operations
+#
+Generate HTML template
+: Use this operation to create an HTML template. This allows you to take data from your workflow and output it as HTML.
+Extract HTML content
+: Extract contents from an HTML-formatted source. The source can be in JSON or a binary file (
+.html
+).
+Convert to HTML Table
+: Convert content to an HTML table.
+The node parameters and options depend on the operation you select. Refer to the sections below for more details on configuring each operation.
+Generate HTML template
+#
+Create an HTML template. This allows you to take data from your workflow and output it as HTML.
+You can include:
+Standard HTML
+CSS in
+<style>
+tags.
+JavaScript in
+<script>
+tags. n8n doesn't execute the JavaScript.
+Expressions, wrapped in
+{{}}
+.
+You can use
+Expressions
+in the template, including n8n's
+Built-in methods and variables
+.
+Extract HTML Content
+#
+Extract contents from an HTML-formatted source. The source can be in JSON or a binary file (
+.html
+).
+Use these parameters:
+Source Data
+#
+Select the source type for your HTML content. Choose between:
+JSON
+: If you select this source data, enter the
+JSON Property
+: the name of the input containing the HTML you want to extract. The property can contain a string or an array of strings.
+Binary
+: If you select this source data, enter the
+Input Binary Field
+: the name of the input containing the HTML you want to extract. The property can contain a string or an array of strings.
+Extraction Values
+#
+Key
+: Enter the key to save the extracted value under.
+CSS Selector
+: Enter the CSS selector to search for.
+Return Value
+: Select the type of data to return. Choose from:
+Attribute
+: Return an attribute value like
+class
+from an element.
+If you select this option, enter the name of the
+Attribute
+to return the value of.
+HTML
+: Return the HTML that the element contains.
+Text
+: Return the text content of the element.
+If you choose this option, you can also enter a comma-separated list of selectors to skip in the
+Skip Selectors
+.
+Value
+: Return the value of an input, select, or text area.
+Return Array
+: Choose whether to return multiple extraction values as an array (turned on) or as a single string (turned off).
+Extract HTML Content options
+#
+You can also configure this operation with these options:
+Trim Values
+: Controls whether to remove all spaces and newlines from the beginning and end of the values (turned on) or leaves them (turned off).
+Clean Up Text
+: Controls whether to remove leading whitespaces, trailing whitespaces, and line breaks (newlines) and condense multiple consecutive whitespaces into a single space (turned on) or to leave them as-is (turned off).
+Convert to HTML Table
+#
+This operation expects data from another node. It has no parameters. It includes these options:
+Capitalize Headers
+: Controls whether to capitalize the table's headers (turned on) or not (turned off).
+Custom Styling
+: Controls whether to use custom styling (turned on) or not (turned off).
+Caption
+: Enter a caption to add to the table.
+Table Attributes
+: Enter any attributes to apply to the
+<table>
+, such as style attributes.
+Header Attributes
+: Enter any attributes to apply to the table's headers
+<th>
+.
+Row Attributes
+: Enter any attributes to apply to the table's rows
+<tr>
+.
+Cell Attributes
+: Enter any attributes to apply to the table's cells
+<td>
+.
+Templates and examples
+#
+Scrape and summarize webpages with AI
+by n8n Team
+View template details
+Pulling data from services that n8n doesn’t have a pre-built integration for
+by Jonathan
+View template details
+Automated Web Scraping: email a CSV, save to Google Sheets & Microsoft Excel
+by Mihai Farcas
+View template details
+Browse HTML integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

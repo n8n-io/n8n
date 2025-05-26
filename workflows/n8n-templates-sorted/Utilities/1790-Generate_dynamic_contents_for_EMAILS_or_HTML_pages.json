@@ -1,0 +1,571 @@
+{
+  "workflow": {
+    "id": 1790,
+    "name": "Generate dynamic contents for EMAILS or HTML pages",
+    "views": 6649,
+    "recentViews": 0,
+    "totalViews": 6649,
+    "createdAt": "2022-09-11T11:08:29.695Z",
+    "description": "![workflown8nnodesdocumentgenerator.jpeg](fileId:663)\n\n==Disclaimer: This template contains a community node and therefore only works for n8n self-hosted users==\n\nThis is Miquel from **[Aprende n8n](https://aprenden8n.com)** and **[Automate with n8n](https://automatewithn8n.com)**.\n\nWe have created a new community node **[Document Generator](https://www.npmjs.com/package/n8n-nodes-document-generator)** that generates dynamic content using templates.\n\nYou can compose complex content with no SETs or FUNCTION ITEMs nodes using this node, like:\n- Send one email with a list of items in the body (i.e., one email with the last entries of an RSS feed).\n- Send one email per item (i.e., one invoice per email).\n\nEmails are just a sample. You can create complex dynamic content to:\n* Send messages to Telegram/Slack.\n* Create WordPress entries.\n* Create HTML pages for your website.\n* Create tickets.\n\nAnd more! The sky is your limit ;)\n\nIf you want to use this workflow, install the community node **n8n-nodes-document-generator** from *Settings &gt; Community nodes*. Type \"n8n-nodes-document-generator\", check \"I understand the risks...\" and click on \"Install\":\n![installn8nnodesdocumentgenerator.jpeg](fileId:662)\n\nLater, copy and paste this workflow into your n8n.\n\nYou will get this workflow:\n![workflown8nnodesdocumentgenerator.jpeg](fileId:663)\n\nThis workflow uses the **Customer Datastore node** to generate sample input items.\n\nYou can render one template with all items (enable \"Render All Items with One Template\"):\n![onetemplateallitems.jpeg](fileId:664)\n\nor one template per input item:\n![onetemplateperitem.jpeg](fileId:665)\n\nVisit the **[oficial NPM page](https://www.npmjs.com/package/n8n-nodes-document-generator)** to see more samples.\n\nLearning n8n by yourself is nice, but a bit tricky :) We offer n8n training video courses at **[Aprende n8n](https://aprenden8n.com)**. If you need custom trainings, [let us know](mailto:miquel@aprenden8n.com).\n\nAdditionally, you can contact us at **[Automate with n8n](https://automatewithn8n.com)** if you need the next services:\n- Custom installations.\n- Custom nodes.\n- Monitor and alarms.\n- Delegate 12/5 or 24/7 workflow issue resolutions.\n- Automated backups of your workflows.\n- HTTP integrations of non-supported APIs.\n- Complex workflows.\n\nI hope you will enjoy this new node and this workflow.\n\nAutomate your life! Automate it with n8n!\n\n\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "14c5980141526fbb38db85208103f515afa76de9c8760a23a1771b4ed940dc7b"
+      },
+      "nodes": [
+        {
+          "id": "4704e44a-80c6-41b4-a0b9-ece060d53836",
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -220,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "74a78b35-b453-4345-8cd9-9d8a62961c29",
+          "name": "Customer Datastore",
+          "type": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+          "position": [
+            20,
+            300
+          ],
+          "parameters": {
+            "operation": "getAllPeople",
+            "returnAll": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "10b633de-e5e5-4fd2-bb4b-7a16bac5f69c",
+          "name": "Item Lists",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            220,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "sort",
+            "sortFieldsUi": {
+              "sortField": [
+                {
+                  "fieldName": "name"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aa90be4e-f548-459f-822b-a3dc1d20d58e",
+          "name": "One item per template",
+          "type": "n8n-nodes-document-generator.DocumentGenerator",
+          "position": [
+            660,
+            160
+          ],
+          "parameters": {
+            "template": "Date: {{created}}\nTo: {{name}} <{{email}}>\nAddress: {{country}}\nDetails:\n{{#each lines}}\n- \"{{description}}\" x {{quantity}} = {{amount}}€ + {{vat}}€ = {{total}}€\n{{/each}}\nTotal invoice: {{total}}€"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "914c4c67-81df-45ec-9eea-3efb96383dfc",
+          "name": "All items, one template",
+          "type": "n8n-nodes-document-generator.DocumentGenerator",
+          "position": [
+            660,
+            400
+          ],
+          "parameters": {
+            "template": "<html>\n<head>\n</head>\n<body>\nNew customers in last 24h:\n<ul id=\"customer_list\">\n  {{#each items}}\n  <li>{{name}}: {{email}}</li>\n  {{/each}}\n</ul>\n</body>\n</html>",
+            "oneTemplate": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bc1821d1-7d08-4208-aa5e-7290f5604e91",
+          "name": "Add lines",
+          "type": "n8n-nodes-base.functionItem",
+          "position": [
+            440,
+            160
+          ],
+          "parameters": {
+            "functionCode": "item.lines = [\n  {\n    concept: \"Service\",\n    description: \"Design of HTML banners\",\n    quantity: 1,\n    amount: 22,\n    vat: 22 * 0.21,\n    total: 22 * 1.21\n  },\n  {\n    concept: \"Service\",\n    description: \"Design of PNG banners\",\n    quantity: 1,\n    amount: 33,\n    vat: 33 * 0.21,\n    total: 33 * 1.21\n  }\n]\n\nitem.date = \"2022-01-12\";\nitem.total = 133.10;\n\nreturn item;"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "99ccf5f0-6d82-4a9c-a314-711249fbdfc9",
+          "name": "Send one TEXT email per item",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            880,
+            160
+          ],
+          "parameters": {
+            "html": "={{ $json[\"text\"] }}",
+            "options": {},
+            "subject": "=Invoice for {{ $node[\"Add lines\"].json[\"name\"] }}",
+            "toEmail": "mcolomer@n8nhackers.com",
+            "fromEmail": "mcolomer@n8nhackers.com"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "54",
+              "name": "SMTP account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3bc12345-da46-4c1f-8fe3-5bb0683cbcda",
+          "name": "Send one HTML Email per list",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            880,
+            400
+          ],
+          "parameters": {
+            "html": "={{ $json[\"text\"] }}",
+            "options": {},
+            "subject": "New customers",
+            "toEmail": "mcolomer@n8nhackers.com",
+            "fromEmail": "mcolomer@n8nhackers.com"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "54",
+              "name": "SMTP account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Add lines": {
+          "main": [
+            [
+              {
+                "node": "One item per template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Item Lists": {
+          "main": [
+            [
+              {
+                "node": "All items, one template",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Add lines",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Datastore": {
+          "main": [
+            [
+              {
+                "node": "Item Lists",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Customer Datastore",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "One item per template": {
+          "main": [
+            [
+              {
+                "node": "Send one TEXT email per item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "All items, one template": {
+          "main": [
+            [
+              {
+                "node": "Send one HTML Email per list",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 8,
+      "nodeTypes": {
+        "n8n-nodes-base.emailSend": {
+          "count": 2
+        },
+        "n8n-nodes-base.itemLists": {
+          "count": 1
+        },
+        "n8n-nodes-base.functionItem": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.n8nTrainingCustomerDatastore": {
+          "count": 1
+        },
+        "n8n-nodes-document-generator.DocumentGenerator": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Miquel Colomer",
+      "username": "mcolomer",
+      "bio": "As a passionate developer and AI agent creator, I’ve been at the forefront of automation, pioneering workflows and training AI to handle complex tasks seamlessly. I’m an early adopter and expert of n8n, having worked with its powerful capabilities to create automation solutions for diverse industries. I founded n8nhackers, the first AI-powered agency focused on n8n, where we help businesses transform their workflows with cutting-edge automation.",
+      "verified": true,
+      "links": [
+        "https://n8nhackers.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/c4974f5be3985d7f30465d2d963967905bcb2f9b8a8ecaf8ba4396bfbd034db2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 11,
+        "icon": "fa:envelope",
+        "name": "n8n-nodes-base.emailSend",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMTP",
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Send Email",
+          "color": "#00bb88"
+        },
+        "iconData": {
+          "icon": "envelope",
+          "type": "icon"
+        },
+        "displayName": "Send Email",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 15,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.functionItem",
+        "codex": {
+          "data": {
+            "alias": [
+              "Javascript",
+              "Code",
+              "Custom Code",
+              "JS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function Item",
+          "color": "#ddbb33"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function Item",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 496,
+        "icon": "file:n8nTrainingCustomerDatastore.svg",
+        "name": "n8n-nodes-base.n8nTrainingCustomerDatastore",
+        "codex": {
+          "data": {
+            "categories": []
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Customer Datastore (n8n training)"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTcuODg3ODYgMjEuNDExQzcuNzE5ODYgMjEuMzA5IDcuNTA1ODYgMjEuNDI3IDcuNTA1ODYgMjEuNjIzVjI2LjkwM0M3LjUwNTg2IDI5LjE1MSAxMy4xMDM5IDMwLjk4NSAyMC4wMDU5IDMwLjk4NUMyNi45MDc5IDMwLjk4NSAzMi41MDU5IDI5LjE1MSAzMi41MDU5IDI2LjkwM1YyMS42MjNDMzIuNTA1OSAyMS40MjcgMzIuMjkxOSAyMS4zMDkgMzIuMTIzOSAyMS40MTFDMjkuMzcxOSAyMy4wOTEgMjQuNjgxOSAyMy44NzUgMjAuMDA1OSAyMy44NzVDMTUuMzI5OSAyMy44NzUgMTAuNjM5OSAyMy4wODkgNy44ODc4NiAyMS40MTFaIiBmaWxsPSIjNzE3MTcyIi8+CjxwYXRoIGQ9Ik03Ljg4NzkxIDMwLjMzOUM3LjcxOTkxIDMwLjIzNyA3LjUwNTkxIDMwLjM1NSA3LjUwNTkxIDMwLjU1MVYzNS44MzFDNy41MDU5MSAzOC4wNzkgMTMuMTAzOSAzOS45MTMgMjAuMDA1OSAzOS45MTNDMjYuOTA3OSAzOS45MTMgMzIuNTA1OSAzOC4wNzkgMzIuNTA1OSAzNS44MzFWMzAuNTUxQzMyLjUwNTkgMzAuMzU1IDMyLjI5MTkgMzAuMjM3IDMyLjEyMzkgMzAuMzM5QzI5LjM3MTkgMzIuMDE5IDI0LjY4MTkgMzIuODAzIDIwLjAwNTkgMzIuODAzQzE1LjMyOTkgMzIuODAzIDEwLjYzOTkgMzIuMDE5IDcuODg3OTEgMzAuMzM5Wk0yMS45MDE5IDE2Ljk2NUMyMS4yODU5IDE3LjE1NSAyMC42NDc5IDE3LjI1MSAyMC4wMDU5IDE3LjI1MUMxOS4zNTU5IDE3LjI1MSAxOC43MTM5IDE3LjE1NSAxOC4wOTc5IDE2Ljk2N0w3LjkyOTkxIDEzLjg0M0M3LjgwOTkxIDEzLjgwNyA3LjY3NzkxIDEzLjg2MyA3LjYyNzkxIDEzLjk3N0M3LjU0NTkxIDE0LjE2NSA3LjUwMzkxIDE0LjM1NSA3LjUwMzkxIDE0LjU0OVYxNy45NzVDNy41MDM5MSAyMC4yMjMgMTMuMTAxOSAyMi4wNTcgMjAuMDAzOSAyMi4wNTdDMjYuOTA1OSAyMi4wNTcgMzIuNTAzOSAyMC4yMjMgMzIuNTAzOSAxNy45NzVWMTQuNTQ5QzMyLjUwMzkgMTQuMzUzIDMyLjQ2MTkgMTQuMTYxIDMyLjM3OTkgMTMuOTczQzMyLjMyOTkgMTMuODU5IDMyLjE5NzkgMTMuODAzIDMyLjA3NzkgMTMuODM5TDIxLjkwMTkgMTYuOTY1WiIgZmlsbD0iIzcxNzE3MiIvPgo8cGF0aCBkPSJNMzguODk2IDYuNTc0OThMMjEuNDYyIDEuMjE4OThDMjAuNTA5MiAwLjkyNzAwOCAxOS40OTA4IDAuOTI3MDA4IDE4LjUzOCAxLjIxODk4TDEuMTA0IDYuNTc0OThDLTAuMzY4IDcuMDI2OTggLTAuMzY4IDguOTcyOTggMS4xMDQgOS40MjQ5OEw0LjE0NCAxMC4zNTlDMy40NzggMTEuMTgzIDMuMDY4IDEyLjE4OSAzLjAyNiAxMy4yOTFDMi40MjQgMTMuNjM1IDIgMTQuMjU3IDIgMTUuMDAxQzIgMTUuNjc1IDIuMzU2IDE2LjI0MSAyLjg2NiAxNi42MDVMMS4yNyAyMy43ODVDMS4xMzIgMjQuNDA5IDEuNjA2IDI1LjAwMSAyLjI0NiAyNS4wMDFINS43NTJDNi4zOTIgMjUuMDAxIDYuODY4IDI0LjQwOSA2LjcyOCAyMy43ODVMNS4xMzIgMTYuNjA1QzUuNjQ0IDE2LjI0MyA1Ljk5OCAxNS42NzUgNS45OTggMTUuMDAxQzUuOTk4IDE0LjI3NyA1LjU5NCAxMy42NzMgNS4wMiAxMy4zMjFDNS4wNjggMTIuMzgzIDUuNTQ4IDExLjU1MyA2LjMxNCAxMS4wMjVMMTguNTM4IDE0Ljc4MUMxOS4xMDQgMTQuOTU1IDIwLjE5IDE1LjE3MSAyMS40NjIgMTQuNzgxTDM4Ljg5NiA5LjQyNDk4QzQwLjM2OCA4Ljk3Mjk4IDQwLjM2OCA3LjAyODk4IDM4Ljg5NiA2LjU3NDk4WiIgZmlsbD0iI0ZGNkQ1QSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Customer Datastore (n8n training)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": null,
+            "name": null
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 662,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/install_n8n_nodes_document_generator_b59f56e86b.jpeg"
+      },
+      {
+        "id": 663,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/workflow_n8n_nodes_document_generator_7536567a95.jpeg"
+      },
+      {
+        "id": 664,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/one_template_all_items_7075198561.jpeg"
+      },
+      {
+        "id": 665,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/one_template_per_item_1acd99d6d8.jpeg"
+      }
+    ]
+  }
+}

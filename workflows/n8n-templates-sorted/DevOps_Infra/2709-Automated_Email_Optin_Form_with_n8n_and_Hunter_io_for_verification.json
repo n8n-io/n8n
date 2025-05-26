@@ -1,0 +1,689 @@
+{
+  "workflow": {
+    "id": 2709,
+    "name": "Automated Email Optin Form with n8n and Hunter io for verification",
+    "views": 649,
+    "recentViews": 1,
+    "totalViews": 649,
+    "createdAt": "2025-01-09T05:40:32.489Z",
+    "description": "## Case Study 📧\nWant to collect email subscribers without paying expensive monthly fees? 💰 This workflow creates a free email collection system with built-in email verification to ensure you only collect legitimate email addresses! ✨\n\n## Learn more:\n📺 [Watch the tutorial](https://www.youtube.com/watch?v=NgvEHwu19Rs&t=2s): \n\n📝 [Read the detailed guide](https://rumjahn.com/create-email-capture-forms-for-free-using-n8n-and-sendgrid-and-easily-grow-your-subscriber-list/)\n\n## What this workflow does 🛠️\n- Creates a customizable email collection form that can be embedded on your website 🌐\n- Verifies email addresses using Hunter.io to filter out fake or invalid emails ✅\n- Stores verified email addresses in SendGrid for your email marketing needs 📊\n- Completely free solution (except for Hunter.io's 50 free monthly credits) 🆓\n\n## Setup ⚙️\n1. Set up a free Hunter.io account for email verification\n2. Configure your SendGrid account credentials\n3. Customize the email collection form fields\n4. Get the embedded form code for your website\n\n## How to adjust it to your needs 🔧\n- Add additional form fields beyond just email collection\n- Customize the form's appearance and labels\n- Modify the verification logic based on your requirements\n- Connect to different email marketing platforms instead of SendGrid\n- Add additional automation steps after email verification\n\n## Benefits 🌟\n- No monthly subscription fees for email collection 💸\n- Built-in email verification prevents fake signups 🛡️\n- Scalable solution that won't lock you into expensive plans 📈\n- Clean email list with only verified addresses ✨\n- Simple setup and customization 🎯\n\nThis workflow is perfect for bloggers, small businesses, and anyone looking to build an email list without getting locked into expensive email marketing platforms as their subscriber count grows! 🚀\n\nBuilt by [rumjahn](https://rumjahn.com)",
+    "workflow": {
+      "id": "1blBTEfOEjamDB0N",
+      "meta": {
+        "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Email form",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "0994dde9-bad8-49b8-b164-1f191decf9ff",
+          "name": "Email is not valid, do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            940,
+            480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "b27e140e-7758-42d4-bf07-39b17f85fc82",
+          "name": "Check if the email is valid",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            620,
+            260
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 1,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "54d84c8a-63ee-40ed-8fb2-301fff0194ba",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.status }}",
+                  "rightValue": "valid"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a691af9a-f66f-4fd1-ab82-3d3450098d67",
+          "name": "Verify email",
+          "type": "n8n-nodes-base.hunter",
+          "position": [
+            360,
+            260
+          ],
+          "parameters": {
+            "email": "={{ $json.Email }}",
+            "operation": "emailVerifier"
+          },
+          "credentials": {
+            "hunterApi": {
+              "id": "wC6eWJWcNeFHvBqV",
+              "name": "Hunter account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cfe4d91b-209c-49df-8483-141f5e27fba2",
+          "name": "Submit form",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            80,
+            260
+          ],
+          "webhookId": "80be3272-e1bc-47e4-8112-d39488e84f4b",
+          "parameters": {
+            "options": {},
+            "formTitle": "Join my mailing list now",
+            "formFields": {
+              "values": [
+                {
+                  "fieldLabel": "Email",
+                  "requiredField": true
+                }
+              ]
+            },
+            "formDescription": "10x your productivity with my A.I. tips. I'll cut the B.S. and give you the most practical tips for A.I. automation."
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "30d816d9-7a91-47b2-8c06-da0b9114f375",
+          "name": "Add contact to list",
+          "type": "n8n-nodes-base.sendGrid",
+          "position": [
+            940,
+            240
+          ],
+          "parameters": {
+            "email": "={{ $json.Email }}",
+            "resource": "contact",
+            "additionalFields": {
+              "listIdsUi": {
+                "listIdValues": {
+                  "listIds": [
+                    "11a55438-d4a8-4740-b054-d273359b7dfe"
+                  ]
+                }
+              }
+            }
+          },
+          "credentials": {
+            "sendGridApi": {
+              "id": "AFtBIAiI3x5QS0WL",
+              "name": "SendGrid account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e80255c8-25b2-48d5-8605-d7702cbf7bc7",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            -100
+          ],
+          "parameters": {
+            "width": 505,
+            "height": 180,
+            "content": "## Automate Email List Building with n8n and Hunter io\n\n💡 Read the [case study here](https://rumjahn.com/create-email-capture-forms-for-free-using-n8n-and-sendgrid-and-easily-grow-your-subscriber-list/).\n\n📺 Watch the [youtube tutorial here](https://www.youtube.com/watch?v=NgvEHwu19Rs&t=2s)\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f989d552-81b9-4ee7-aa28-a006b703280f",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            100
+          ],
+          "parameters": {
+            "color": 4,
+            "height": 320,
+            "content": "## Hunter io\n\nYou need to get a Hunter.io account and input the API key. There's 50 free credits per month."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "1df322f8-6d69-4ae7-b094-3f0dec019d3b",
+      "connections": {
+        "Submit form": {
+          "main": [
+            [
+              {
+                "node": "Verify email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify email": {
+          "main": [
+            [
+              {
+                "node": "Check if the email is valid",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if the email is valid": {
+          "main": [
+            [
+              {
+                "node": "Add contact to list",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Email is not valid, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.hunter": {
+          "count": 1
+        },
+        "n8n-nodes-base.sendGrid": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Keith Rumjahn",
+      "username": "rumjahn",
+      "bio": "I create automations with A.I. for SEO content and other smart automations.",
+      "verified": true,
+      "links": [
+        "https://rumjahn.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/e037c9d6e16284c4cf5149094a1725ed92f76e61813b8f8c32c1b83dcf4f9f4b?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 136,
+        "icon": "file:hunter.png",
+        "name": "n8n-nodes-base.hunter",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hunter/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/hunter/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Hunter"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAw1BMVEUAAAD/Qhz/VxX/RQD/RQD/RAD/PQH/SAD/RQD/OwH/RgD/OQD/SAD/SAD/RgD/QQD/RgD/RAD/QQD/OgD/SgD/SgD/SAD/RAD/QgD/QgD/SAD/SgD/SQD/SAD/SAD/RgD/SAD/SgD/SQD/RAD/RQD/QwD/QgD/PAD/SAD/RAD/SAD/RgD/RgD/RAD/RQD/QgD/QwD/QgD/SwD/TQD/SAD/RwD/QwD/QwD/QgD/PgD/RAD/RQD/SQD/TQD/TAD/TgD/VQBe3z92AAAAO3RSTlMABAL6/fwG/PcKZw7XyJYuYVQbF/nxwoBLMvTt59zPzbyxkoR7OikS4qiejId4c1BGQfTitaZbPSclIH7mBkUAAAKqSURBVEjHxZbXdqMwEIYHVCg27r3bcUlPNj1hJPL+T7WSkiCzwWBf7dg+HMx8558iaYD/Z457KuGqryGPRh2oD8E11NFEEx/udHCNVcWA5URrgjhrAwzE5+VRCIdrSYhsQrAQPm7KGRVPECEjSQ3+oCIvwCktVgBrSWKG09aTZDSefJTJOBwGHUrjOKZVdVHoDfBCCfX0rotMExRjZUxG3HELe/5e85DGxr4uXmcAvACoXJ8LqjWs6TockHFVYcKpQJ/GGWN0XAcnl3ChvhDI9iQoo6lM/jps+JJkFAh6xGSDr/kyfREbBysiJ57QfzGstsD9LbJOCMsS3u128yyYKXRvl+rYpZsJShmRN0Zb6oSI6LVU2dx9jd05skxxmTfaQhBwuEqIUiSyutEbjvPvvnI4E75K1jLKCa8qoK2GJjbsXL/ZbjhQmSMm3RFmcsHorNEc3J0hNbI0Ob/s34YvrwpQnz/dZB4O6z1kmWwS7Dx00OomQkhvvGzpuNY01FGEgmX6TgillO3dK/PY56WjGv9SN6s+lBnELOeYZu612Kz9s14cWCmVUiNiGRjA/OZ4BOKLhm3nsBvTciJZ8G/CNIcUu1NKfDF9B+dHZDcrjoupcqGo2s3DoYGHRajyRyG68749PV03eDoYF1X+iXxc9u8D5bmX/NhjBxRigdVVs679eUroRYMezVWIxej5fuemo8Mim5FCcgg5rn1oh9Tfbpl2lJc+kb2hemrdMzI3if+bEFcO6PjzDyW+SBlLrJVCwSBqVwX5h1AnmCKKmCihZI/AqKI1Chm+8qTP0r3hNYGXDkkY9ASSL4hhVDT+7XiphNUEzWnMxC04R41WaDdmKJARSrbHTX6dL7+/mAhMptwi5RC0wovHpXvK64Wm3rZwkjlcUaeaW9D3v/GpwMArl9LJAAAAAElFTkSuQmCC"
+        },
+        "displayName": "Hunter",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 439,
+        "icon": "file:sendGrid.svg",
+        "name": "n8n-nodes-base.sendGrid",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.sendgrid/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/sendGrid/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "SendGrid"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTAgMjEuMjVoMjEuMzc0djIxLjM3NEgweiIvPjxwYXRoIGZpbGw9IiM5OWUxZjQiIGQ9Ik0wIDIxLjI1aDIxLjM3NHYyMS4zNzRIMHoiLz48cGF0aCBkPSJNMjEuMzc0IDQyLjYyNmgyMS4yNXYyMS4yNWgtMjEuMjV6Ii8+PHBhdGggZmlsbD0iIzk5ZTFmNCIgZD0iTTIxLjM3NCA0Mi42MjZoMjEuMjV2MjEuMjVoLTIxLjI1eiIvPjxwYXRoIGZpbGw9IiMxYTgyZTIiIGQ9Ik0wIDYzLjg3N2gyMS4zNzRWNjRIMHptMC0yMS4yNWgyMS4zNzR2MjEuMjVIMHoiLz48cGF0aCBmaWxsPSIjMDBiM2UzIiBkPSJNMjEuMzc0IDBoMjEuMjV2MjEuMjVoLTIxLjI1em0yMS4yNTIgMjEuMzc0SDY0djIxLjI1SDQyLjYyNnoiLz48cGF0aCBmaWxsPSIjMDA5ZGQ5IiBkPSJNMjEuMzc0IDQyLjYyNmgyMS4yNVYyMS4yNWgtMjEuMjV6Ii8+PHBhdGggZmlsbD0iIzFhODJlMiIgZD0iTTQyLjYyNiAwSDY0djIxLjI1SDQyLjYyNnptMCAyMS4yNUg2NHYuMTIzSDQyLjYyNnoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "SendGrid",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

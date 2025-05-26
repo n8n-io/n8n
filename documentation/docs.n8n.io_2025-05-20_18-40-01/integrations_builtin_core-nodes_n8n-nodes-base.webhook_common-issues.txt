@@ -1,0 +1,165 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/common-issues/
+Scraped_At: 2025-05-20T18:56:57.019373
+
+Common issues and questions
+#
+Here are some common issues and questions for the
+Webhook node
+and suggested solutions.
+Listen for multiple HTTP methods
+#
+By default, the Webhook node accepts calls that use a single method. For example, it can accept GET or POST requests, but not both. If you want to accept calls using multiple methods:
+Open the node
+Settings
+.
+Turn on
+Allow Multiple HTTP Methods
+.
+Return to
+Parameters
+. By default, the node now accepts GET and POST calls. You can add other methods in the
+HTTP Methods
+field.
+The Webhook node has an output for each method, so you can perform different actions depending on the method.
+Use the HTTP Request node to trigger the Webhook node
+#
+The
+HTTP Request
+node makes HTTP requests to the URL you specify.
+Create a new workflow.
+Add the HTTP Request node to the workflow.
+Select a method from the
+Request Method
+dropdown list. For example, if you select GET as the
+HTTP method
+in your Webhook node, select GET as the request method in the HTTP Request node.
+Copy the URL from the Webhook node, and paste it in the
+URL
+field in the HTTP Request node.
+If using the test URL for the webhook node: execute the workflow with the Webhook node.
+Execute the HTTP Request node.
+Use curl to trigger the Webhook node
+#
+You can use
+curl
+to make HTTP requests that trigger the Webhook node.
+Note
+In the examples, replace
+<https://your-n8n.url/webhook/path>
+with your webhook URL.
+The examples make GET requests. You can use whichever HTTP method you set in
+HTTP Method
+.
+Make an HTTP request without any parameters:
+1
+curl
+--request
+GET
+<https://your-n8n.url/webhook/path>
+Make an HTTP request with a body parameter:
+1
+curl
+--request
+GET
+<https://your-n8n.url/webhook/path>
+--data
+'key=value'
+Make an HTTP request with header parameter:
+1
+curl
+--request
+GET
+<https://your-n8n.url/webhook/path>
+--header
+'key=value'
+Make an HTTP request to send a file:
+1
+curl
+--request
+GET
+<https://your-n8n.url/webhook/path>
+--from
+'key=@/path/to/file'
+Replace
+/path/to/file
+with the path of the file you want to send.
+Send a response of type string
+#
+By default, the response format is JSON or an array. To send a response of type string:
+Select
+Response Mode
+>
+When Last Node Finishes
+.
+Select
+Response Data
+>
+First Entry JSON
+.
+Select
+Add Option
+>
+Property Name
+.
+Enter the name of the property that contains the response. This defaults to
+data
+.
+Connect an
+Edit Fields node
+to the Webhook node.
+In the Edit Fields node, select
+Add Value
+>
+String
+.
+Enter the name of the property in the
+Name
+field. The name should match the property name from step 4.
+Enter the string value in the
+Value
+field.
+Toggle
+Keep Only Set
+to on (green).
+When you call the Webhook, it sends the string response from the Edit Fields node.
+Test URL versus Production URL
+#
+n8n generates two
+Webhook URLs
+for each Webhook node: a
+Test URL
+and a
+Production URL
+.
+While building or testing a workflow, use the
+Test URL
+. Once you're ready to use your Webhook URL in production, use the
+Production URL
+.
+URL type
+How to trigger
+Listening duration
+Data shown in editor UI?
+Test URL
+Select
+Listen for test event
+and trigger a test event from the source.
+120 seconds
+Production URL
+Activate the workflow
+Until workflow deactivated
+Refer to
+Workflow development
+for more information.
+IPs in Whitelist are failing to connect
+#
+If you're unable to connect from IPs in your IP Whitelist, check if you are running n8n behind a reverse proxy.
+If so, set the
+N8N_PROXY_HOPS
+environment variable
+to the number of reverse-proxies n8n is running behind.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

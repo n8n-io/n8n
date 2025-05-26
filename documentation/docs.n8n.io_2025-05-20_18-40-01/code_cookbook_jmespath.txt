@@ -1,0 +1,919 @@
+URL: https://docs.n8n.io/code/cookbook/jmespath/
+Scraped_At: 2025-05-20T18:41:32.319530
+
+Query JSON with JMESPath
+#
+JMESPath
+is a query language for JSON that you can use to extract and transform elements from a JSON document. For full details of how to use JMESPath, refer to the
+JMESPath documentation
+.
+The
+jmespath()
+method
+#
+n8n provides a custom method,
+jmespath()
+. Use this method to perform a search on a JSON object using the JMESPath query language.
+The basic syntax is:
+JavaScript
+Python
+1
+$jmespath
+(
+object
+,
+searchString
+)
+1
+_jmespath
+(
+object
+,
+searchString
+)
+To help understand what the method does, here is the equivalent longer JavaScript:
+1
+2
+var
+jmespath
+=
+require
+(
+'jmespath'
+);
+jmespath
+.
+search
+(
+object
+,
+searchString
+);
+Expressions must be single-line
+The longer code example doesn't work in Expressions, as they must be single-line.
+object
+is a JSON object, such as the output of a previous node.
+searchString
+is an expression written in the JMESPath query language. The
+JMESPath Specification
+provides a list of supported expressions, while their
+Tutorial
+and
+Examples
+provide interactive examples.
+Search parameter order
+The examples in the
+JMESPath Specification
+follow the pattern
+search(searchString, object)
+. The
+JMESPath JavaScript library
+, which n8n uses, supports
+search(object, searchString)
+instead. This means that when using examples from the JMESPath documentation, you may need to change the order of the search function parameters.
+Common tasks
+#
+This section provides examples for some common operations. More examples, and detailed guidance, are available in
+JMESPath's own documentation
+.
+When trying out these examples, you need to set the Code node
+Mode
+to
+Run Once for Each Item
+.
+Apply a JMESPath expression to a collection of elements with projections
+#
+From the
+JMESPath projections documentation
+:
+Projections are one of the key features of JMESPath. Use it to apply an expression to a collection of elements. JMESPath supports five kinds of projections:
+List Projections
+Slice Projections
+Object Projections
+Flatten Projections
+Filter Projections
+The following example shows basic usage of list, slice, and object projections. Refer to the
+JMESPath projections documentation
+for detailed explanations of each projection type, and more examples.
+Given this JSON from a webhook node:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+[
+{
+"headers"
+:
+{
+"host"
+:
+"n8n.instance.address"
+,
+...
+},
+"params"
+:
+{},
+"query"
+:
+{},
+"body"
+:
+{
+"people"
+:
+[
+{
+"first"
+:
+"James"
+,
+"last"
+:
+"Green"
+},
+{
+"first"
+:
+"Jacob"
+,
+"last"
+:
+"Jones"
+},
+{
+"first"
+:
+"Jayden"
+,
+"last"
+:
+"Smith"
+}
+],
+"dogs"
+:
+{
+"Fido"
+:
+{
+"color"
+:
+"brown"
+,
+"age"
+:
+7
+},
+"Spot"
+:
+{
+"color"
+:
+"black and white"
+,
+"age"
+:
+5
+}
+}
+}
+}
+]
+Retrieve a
+list
+of all the people's first names:
+Expressions (JavaScript)
+Code node (JavaScript)
+Code node (Python)
+1
+2
+{{
+$jmespath
+(
+$json
+.
+body
+.
+people
+,
+"[*].first"
+)}}
+// Returns ["James", "Jacob", "Jayden"]
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+let
+firstNames
+=
+$jmespath
+(
+$json
+.
+body
+.
+people
+,
+"[*].first"
+)
+return
+{
+firstNames
+};
+/* Returns:
+[
+{
+"firstNames": [
+"James",
+"Jacob",
+"Jayden"
+]
+}
+]
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+firstNames
+=
+_jmespath
+(
+_json
+.
+body
+.
+people
+,
+"[*].first"
+)
+return
+{
+"firstNames"
+:
+firstNames
+}
+"""
+Returns:
+[
+{
+"firstNames": [
+"James",
+"Jacob",
+"Jayden"
+]
+}
+]
+"""
+Get a
+slice
+of the first names:
+Expressions (JavaScript)
+Code node (JavaScript)
+Code node (Python)
+1
+2
+{{
+$jmespath
+(
+$json
+.
+body
+.
+people
+,
+"[:2].first"
+)}}
+// Returns ["James", "Jacob"]
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+let
+firstTwoNames
+=
+$jmespath
+(
+$json
+.
+body
+.
+people
+,
+"[:2].first"
+);
+return
+{
+firstTwoNames
+};
+/* Returns:
+[
+{
+"firstNames": [
+"James",
+"Jacob",
+"Jayden"
+]
+}
+]
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+firstTwoNames
+=
+_jmespath
+(
+_json
+.
+body
+.
+people
+,
+"[:2].first"
+)
+return
+{
+"firstTwoNames"
+:
+firstTwoNames
+}
+"""
+Returns:
+[
+{
+"firstTwoNames": [
+"James",
+"Jacob"
+]
+}
+]
+"""
+Get a list of the dogs' ages using
+object projections
+:
+Expressions (JavaScript)
+Code node (JavaScript)
+Code node (Python)
+1
+2
+{{
+$jmespath
+(
+$json
+.
+body
+.
+dogs
+,
+"*.age"
+)}}
+// Returns [7,5]
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+let
+dogsAges
+=
+$jmespath
+(
+$json
+.
+body
+.
+dogs
+,
+"*.age"
+);
+return
+{
+dogsAges
+};
+/* Returns:
+[
+{
+"dogsAges": [
+7,
+5
+]
+}
+]
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+dogsAges
+=
+_jmespath
+(
+_json
+.
+body
+.
+dogs
+,
+"*.age"
+)
+return
+{
+"dogsAges"
+:
+dogsAges
+}
+"""
+Returns:
+[
+{
+"dogsAges": [
+7,
+5
+]
+}
+]
+"""
+Select multiple elements and create a new list or object
+#
+Use
+Multiselect
+to select elements from a JSON object and combine them into a new list or object.
+Given this JSON from a webhook node:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+[
+{
+"headers"
+:
+{
+"host"
+:
+"n8n.instance.address"
+,
+...
+},
+"params"
+:
+{},
+"query"
+:
+{},
+"body"
+:
+{
+"people"
+:
+[
+{
+"first"
+:
+"James"
+,
+"last"
+:
+"Green"
+},
+{
+"first"
+:
+"Jacob"
+,
+"last"
+:
+"Jones"
+},
+{
+"first"
+:
+"Jayden"
+,
+"last"
+:
+"Smith"
+}
+],
+"dogs"
+:
+{
+"Fido"
+:
+{
+"color"
+:
+"brown"
+,
+"age"
+:
+7
+},
+"Spot"
+:
+{
+"color"
+:
+"black and white"
+,
+"age"
+:
+5
+}
+}
+}
+}
+]
+Use multiselect list to get the first and last names and create new lists containing both names:
+Expressions (JavaScript)
+Code node (JavaScript)
+Code node (Python)
+1
+2
+{{
+$jmespath
+(
+$json
+.
+body
+.
+people
+,
+"[].[first, last]"
+)}}
+// Returns [["James","Green"],["Jacob","Jones"],["Jayden","Smith"]]
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+let
+newList
+=
+$jmespath
+(
+$json
+.
+body
+.
+people
+,
+"[].[first, last]"
+);
+return
+{
+newList
+};
+/* Returns:
+[
+{
+"newList": [
+[
+"James",
+"Green"
+],
+[
+"Jacob",
+"Jones"
+],
+[
+"Jayden",
+"Smith"
+]
+]
+}
+]
+*/
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+newList
+=
+_jmespath
+(
+_json
+.
+body
+.
+people
+,
+"[].[first, last]"
+)
+return
+{
+"newList"
+:
+newList
+}
+"""
+Returns:
+[
+{
+"newList": [
+[
+"James",
+"Green"
+],
+[
+"Jacob",
+"Jones"
+],
+[
+"Jayden",
+"Smith"
+]
+]
+}
+]
+"""
+An alternative to arrow functions in expressions
+#
+For example, generate some input data by returning the below code from the Code node:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+return
+[
+{
+"json"
+:
+{
+"num_categories"
+:
+"0"
+,
+"num_products"
+:
+"45"
+,
+"category_id"
+:
+5529735
+,
+"parent_id"
+:
+1407340
+,
+"pos_enabled"
+:
+1
+,
+"pos_favorite"
+:
+0
+,
+"name"
+:
+"HP"
+,
+"description"
+:
+""
+,
+"image"
+:
+""
+}
+},
+{
+"json"
+:
+{
+"num_categories"
+:
+"0"
+,
+"num_products"
+:
+"86"
+,
+"category_id"
+:
+5529740
+,
+"parent_id"
+:
+1407340
+,
+"pos_enabled"
+:
+1
+,
+"pos_favorite"
+:
+0
+,
+"name"
+:
+"Lenovo"
+,
+"description"
+:
+""
+,
+"image"
+:
+""
+}
+}
+]
+You could do a search like "find the item with the name Lenovo and tell me their category ID."
+1
+{{
+$jmespath
+(
+$
+(
+"Code"
+).
+all
+(),
+"[?json.name=='Lenovo'].json.category_id"
+)
+}}
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

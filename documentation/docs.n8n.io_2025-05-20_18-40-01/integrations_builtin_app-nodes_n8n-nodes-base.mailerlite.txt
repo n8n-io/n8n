@@ -1,0 +1,37 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailerlite/
+Scraped_At: 2025-05-20T18:49:12.045938
+
+MailerLite node
+#
+Use the MailerLite node to automate work in MailerLite, and integrate MailerLite with other applications. n8n has built-in support for a wide range of MailerLite features, including creating, updating, deleting, and getting subscribers.
+On this page, you'll find a list of operations the MailerLite node supports and links to more resources.
+Credentials
+Refer to
+MailerLite credentials
+for guidance on setting up authentication.
+Operations
+#
+Subscriber
+Create a new subscriber
+Get an subscriber
+Get all subscribers
+Update an subscriber
+Templates and examples
+#
+Create, update and get a subscriber using the MailerLite node
+by Harshil Agrawal
+View template details
+Receive updates when a subscriber is added to a group in MailerLite
+by Harshil Agrawal
+View template details
+Capture Gumroad sales, add buyer to MailerLite group, log to Google Sheets CRM
+by Aitor | 1node.ai
+View template details
+Browse MailerLite integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

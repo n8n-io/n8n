@@ -1,0 +1,1829 @@
+{
+  "workflow": {
+    "id": 3472,
+    "name": "Automate WordPress Contact Form (CF7) Responses and Classification with Gemini",
+    "views": 940,
+    "recentViews": 19,
+    "totalViews": 940,
+    "createdAt": "2025-04-08T09:34:12.687Z",
+    "description": "This workflow optimizes the management of inquiries received through a **contact form (Contact Form 7 - CF7 Plugin)** on a **WordPress site**, automating the process of classification, response drafting, and data storage.\n\nThis workflow is particularly useful for businesses that receive multiple daily inquiries and want to improve their efficiency in managing customer communications. \n\n### **Benefits:**  \n✅ **Automation & Speed** – Reduces the time needed to handle inquiries manually.  \n✅ **Better Email Management** – Ensures every message receives a timely and accurate response.  \n✅ **Customization** – The generated draft can be edited before sending, maintaining a personal touch.  \n✅ **Inquiry History** – Storing data in Google Sheets allows for easy tracking of customer interactions.  \n✅ **Easy Integration** – Works seamlessly with Contact Form 7 without complex configurations. \n\n---- \n\n### How It Works  \n1. **Form Submission Handling**: The workflow starts with a WordPress form submission captured via a webhook. The form data (first name, last name, email, phone, and message) is extracted and structured using the \"Set Fields\" node.  \n2. **Message Classification**: The submitted message is classified into predefined categories (e.g., \"Product Info,\" \"Order Info,\" or \"Other\") using the \"Message Classifier\" node, powered by Google Gemini.  \n3. **Automated Email Drafting**: Based on the classification, the workflow generates a professional email draft using one of three \"Email Writer\" nodes (for Product, Order, or Other requests). Each node uses Google Gemini to craft a personalized response with a structured format (subject and body).  \n4. **Email Draft Creation**: The drafted email is sent as a Gmail draft to the appropriate department, including the original form data for context.  \n5. **Data Logging**: All submissions, along with their classifications and email drafts, are logged in a Google Sheets spreadsheet for record-keeping and further action.  \n\n---\n\n### Set Up Steps  \n1. **Install WordPress Plugin**: Install the \"CF7 to Webhook\" plugin on WordPress and configure it to send form submissions to the n8n webhook URL.  \n2. **Configure Webhook in n8n**: Set up the \"From Wordpress\" webhook node in n8n to receive POST requests from the WordPress form.  \n3. **Google Gemini Integration**: Ensure the Google Gemini nodes are properly authenticated with the correct API credentials.  \n4. **Gmail and Google Sheets Setup**: Authenticate the Gmail and Google Sheets nodes with the appropriate OAuth2 credentials and specify the target spreadsheet and sheet name.  \n5. **Customize Classification Categories**: Adjust the categories in the \"Message Classifier\" node to match your business needs.  \n6. **Test the Workflow**: Trigger a test form submission to verify the workflow processes data correctly, classifies the message, generates an email draft, and logs the data.  \n\n---\n\n\n### **Need help customizing?**  \n[Contact me](mailto:info@n3w.it) for consulting and support or add me on [Linkedin](https://www.linkedin.com/in/davideboizza/). ",
+    "workflow": {
+      "id": "fvgP264GysfRJXdr",
+      "meta": {
+        "instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "WordPress Contact Form (CF7) Responses and Classification",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "789a4732-c652-45b5-9019-4aa082cd3a29",
+          "name": "From Wordpress",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -500,
+            -120
+          ],
+          "webhookId": "61858d25-af82-4cab-bb1b-68bea4989e15",
+          "parameters": {
+            "path": "61858d25-af82-4cab-bb1b-68bea4989e15",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "958507a3-d9ac-430f-8d3d-701544e995a0",
+          "name": "Set Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -240,
+            -120
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "c2fb7eb9-898e-47ab-ae67-b3d2dcd9ac0e",
+                  "name": "first_name",
+                  "type": "string",
+                  "value": "={{ $json.body.first_name }}"
+                },
+                {
+                  "id": "8fb2afd5-aef8-4118-b760-ea21f0d3da95",
+                  "name": "last_name",
+                  "type": "string",
+                  "value": "={{ $json.body.last_name }}"
+                },
+                {
+                  "id": "292727f0-f08c-48a1-ada6-9437a056662d",
+                  "name": "email",
+                  "type": "string",
+                  "value": "={{ $json.body.email }}"
+                },
+                {
+                  "id": "394aec5f-2553-4210-8d37-b109772ac083",
+                  "name": "phone",
+                  "type": "string",
+                  "value": "={{ $json.body.phone }}"
+                },
+                {
+                  "id": "db9a1211-3aa5-4421-9ede-5231a2017c8a",
+                  "name": "message",
+                  "type": "string",
+                  "value": "={{ $json.body.message }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "00b0653e-34a1-434e-abb5-ed3d4995ae58",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -40,
+            80
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "0p34rXqIqy8WuoPg",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "55e80a8c-7c44-4324-bd79-024ab494177e",
+          "name": "Message Classifier",
+          "type": "@n8n/n8n-nodes-langchain.textClassifier",
+          "position": [
+            -20,
+            -120
+          ],
+          "parameters": {
+            "options": {
+              "fallback": "other",
+              "systemPromptTemplate": "Please classify the text provided by the user into one of the following categories: {categories}, and use the provided formatting instructions below. Don't explain, and only output the json."
+            },
+            "inputText": "={{ $json.message }}",
+            "categories": {
+              "categories": [
+                {
+                  "category": "Product Info",
+                  "description": "Product information request"
+                },
+                {
+                  "category": "Order Info",
+                  "description": "Request information on the order placed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "44c87bc8-7b6d-4d0b-8f34-b3ab1150e5e1",
+          "name": "Google Gemini Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            520,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "0p34rXqIqy8WuoPg",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a66b653e-7df1-4f69-b37e-71a064d975be",
+          "name": "Email draft - Other info",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            980,
+            220
+          ],
+          "webhookId": "37831ee6-2a6e-4036-a567-ed839ab4276e",
+          "parameters": {
+            "message": "={{ $json.output.text }}\n\n---\n\nFirst Name: {{ $('Set Fields').item.json.first_name }}\nLast Name: {{ $('Set Fields').item.json.last_name }}\nEmail: {{ $('Set Fields').item.json.email }}\nPhone: {{ $('Set Fields').item.json.phone }}\n\nMessage:\n{{ $('Set Fields').item.json.message }}",
+            "options": {
+              "sendTo": "={{ $('Message Classifier').item.json.email }}"
+            },
+            "subject": "={{ $json.output.subject }}",
+            "resource": "draft"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "nyuHvSX5HuqfMPlW",
+              "name": "Gmail account (n3w.it)"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "adc0baaa-f265-4912-9a2a-0f5c6f5a15db",
+          "name": "Email writer (Others)",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            540,
+            220
+          ],
+          "parameters": {
+            "text": "=This is the message you received that you need to reply to:\n\nFirst Name: {{ $('Set Fields').item.json.first_name }}\nLast Name: {{ $('Set Fields').item.json.last_name }}\nEmail: {{ $('Set Fields').item.json.email }}\nPhone: {{ $('Set Fields').item.json.phone }}\n\nMessage:\n{{ $('Set Fields').item.json.message }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=# System Prompt for Form Response AI Agent\n\nYou are an AI assistant specialized in creating professional responses to customers who have filled out a form on the company website. Your purpose is to analyze the data received from the form and prepare a professional, courteous, and helpful draft response.\n\n## Basic Behavior\n- Carefully analyze all fields of the received form.\n- Generate a personalized response based on the information provided by the customer.\n- Maintain a professional yet friendly tone.\n- If crucial information is missing, insert a placeholder in square brackets [example: status of order #12345].\n- Adapt the response style according to the nature of the request (information request, complaint, technical support, etc.).\n\n## Response Structure\n1. **Header**: Appropriate greeting with the customer's name if available.\n2. **Acknowledgment**: Thank the customer for contacting the company.\n3. **Body**: Detailed response to the specific request, with all relevant details.\n4. **Action**: Clearly indicate what steps will be taken or what actions are required from the customer.\n5. **Closing**: Professional farewell formula with an offer of further assistance.\n6. **Signature**: Company name and relevant department.\n\n## Handling Specific Scenarios\n\n### Product/Service Information Requests\n- Provide precise details about requested products/services.\n- Include links to relevant pages on the website when appropriate.\n- Offer complementary options if relevant.\n\n### Order Status Requests\n- Confirm receipt of the request.\n- Insert order information if available or use placeholders [current status of order #12345].\n- Indicate expected delivery or completion times.\n\n### Complaints\n- Show empathy and understanding for the inconvenience.\n- Summarize the problem to demonstrate attentiveness.\n- Propose a concrete solution to the exposed problem.\n- Offer compensation when appropriate.\n\n### Technical Support\n- Confirm understanding of the technical issue.\n- Provide clear, step-by-step instructions.\n- Propose alternative solutions if necessary.\n- Offer a direct channel for continued assistance.\n\n## Personalization\n- Use the customer's name when available.\n- Reference previous interactions if mentioned.\n- Adapt technical language to the customer's apparent level of expertise.\n\n## Tone of Voice\n- Professional but not detached\n- Empathetic without being overly informal\n- Solution-oriented and action-focused\n- Clear and concise, avoiding ambiguity\n\nRemember: Each response must best represent the company image and leave the customer with a positive feeling of being heard and receiving competent assistance.\n\nToday is {{ $now }}"
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "a700a2c9-0d12-48fb-92f0-c060ae656010",
+          "name": "Google Gemini Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            520,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "0p34rXqIqy8WuoPg",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "19887247-2d04-4f25-8610-c57dd5a6d0b7",
+          "name": "Google Gemini Chat Model3",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            540,
+            -300
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "0p34rXqIqy8WuoPg",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "92a70faa-673d-4354-9146-4a533e096969",
+          "name": "Email writer (Order info)",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            540,
+            -120
+          ],
+          "parameters": {
+            "text": "=This is the message you received that you need to reply to:\n\nFirst Name: {{ $('Set Fields').item.json.first_name }}\nLast Name: {{ $('Set Fields').item.json.last_name }}\nEmail: {{ $('Set Fields').item.json.email }}\nPhone: {{ $('Set Fields').item.json.phone }}\n\nMessage:\n{{ $('Set Fields').item.json.message }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=# System Prompt for Form Response AI Agent\n\nYou are an AI assistant specialized in creating professional responses to customers who have filled out a form on the company website. Your purpose is to analyze the data received from the form and prepare a professional, courteous, and helpful draft response.\n\n## Basic Behavior\n- Carefully analyze all fields of the received form.\n- Generate a personalized response based on the information provided by the customer.\n- Maintain a professional yet friendly tone.\n- If crucial information is missing, insert a placeholder in square brackets [example: status of order #12345].\n- Adapt the response style according to the nature of the request (information request, complaint, technical support, etc.).\n\n## Response Structure\n1. **Header**: Appropriate greeting with the customer's name if available.\n2. **Acknowledgment**: Thank the customer for contacting the company.\n3. **Body**: Detailed response to the specific request, with all relevant details.\n4. **Action**: Clearly indicate what steps will be taken or what actions are required from the customer.\n5. **Closing**: Professional farewell formula with an offer of further assistance.\n6. **Signature**: Company name and relevant department.\n\n## Handling Specific Scenarios\n\n### Product/Service Information Requests\n- Provide precise details about requested products/services.\n- Include links to relevant pages on the website when appropriate.\n- Offer complementary options if relevant.\n\n### Order Status Requests\n- Confirm receipt of the request.\n- Insert order information if available or use placeholders [current status of order #12345].\n- Indicate expected delivery or completion times.\n\n### Complaints\n- Show empathy and understanding for the inconvenience.\n- Summarize the problem to demonstrate attentiveness.\n- Propose a concrete solution to the exposed problem.\n- Offer compensation when appropriate.\n\n### Technical Support\n- Confirm understanding of the technical issue.\n- Provide clear, step-by-step instructions.\n- Propose alternative solutions if necessary.\n- Offer a direct channel for continued assistance.\n\n## Personalization\n- Use the customer's name when available.\n- Reference previous interactions if mentioned.\n- Adapt technical language to the customer's apparent level of expertise.\n\n## Tone of Voice\n- Professional but not detached\n- Empathetic without being overly informal\n- Solution-oriented and action-focused\n- Clear and concise, avoiding ambiguity\n\nRemember: Each response must best represent the company image and leave the customer with a positive feeling of being heard and receiving competent assistance.\n\nToday is {{ $now }}"
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "1def4974-d267-4b6d-9256-412a6d02d6ba",
+          "name": "Email writer (Product info)",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            540,
+            -480
+          ],
+          "parameters": {
+            "text": "=This is the message you received that you need to reply to:\n\nFirst Name: {{ $('Set Fields').item.json.first_name }}\nLast Name: {{ $('Set Fields').item.json.last_name }}\nEmail: {{ $('Set Fields').item.json.email }}\nPhone: {{ $('Set Fields').item.json.phone }}\n\nMessage:\n{{ $('Set Fields').item.json.message }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=# System Prompt for Form Response AI Agent\n\nYou are an AI assistant specialized in creating professional responses to customers who have filled out a form on the company website. Your purpose is to analyze the data received from the form and prepare a professional, courteous, and helpful draft response.\n\n## Basic Behavior\n- Carefully analyze all fields of the received form.\n- Generate a personalized response based on the information provided by the customer.\n- Maintain a professional yet friendly tone.\n- If crucial information is missing, insert a placeholder in square brackets [example: status of order #12345].\n- Adapt the response style according to the nature of the request (information request, complaint, technical support, etc.).\n\n## Response Structure\n1. **Header**: Appropriate greeting with the customer's name if available.\n2. **Acknowledgment**: Thank the customer for contacting the company.\n3. **Body**: Detailed response to the specific request, with all relevant details.\n4. **Action**: Clearly indicate what steps will be taken or what actions are required from the customer.\n5. **Closing**: Professional farewell formula with an offer of further assistance.\n6. **Signature**: Company name and relevant department.\n\n## Handling Specific Scenarios\n\n### Product/Service Information Requests\n- Provide precise details about requested products/services.\n- Include links to relevant pages on the website when appropriate.\n- Offer complementary options if relevant.\n\n### Order Status Requests\n- Confirm receipt of the request.\n- Insert order information if available or use placeholders [current status of order #12345].\n- Indicate expected delivery or completion times.\n\n### Complaints\n- Show empathy and understanding for the inconvenience.\n- Summarize the problem to demonstrate attentiveness.\n- Propose a concrete solution to the exposed problem.\n- Offer compensation when appropriate.\n\n### Technical Support\n- Confirm understanding of the technical issue.\n- Provide clear, step-by-step instructions.\n- Propose alternative solutions if necessary.\n- Offer a direct channel for continued assistance.\n\n## Personalization\n- Use the customer's name when available.\n- Reference previous interactions if mentioned.\n- Adapt technical language to the customer's apparent level of expertise.\n\n## Tone of Voice\n- Professional but not detached\n- Empathetic without being overly informal\n- Solution-oriented and action-focused\n- Clear and concise, avoiding ambiguity\n\nRemember: Each response must best represent the company image and leave the customer with a positive feeling of being heard and receiving competent assistance.\n\nToday is {{ $now }}"
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "16be317a-c0ef-4603-913d-8bc5ad141d29",
+          "name": "Email draft - Product info",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            980,
+            -480
+          ],
+          "webhookId": "37831ee6-2a6e-4036-a567-ed839ab4276e",
+          "parameters": {
+            "message": "={{ $json.output.text }}\n\n---\n\nFirst Name: {{ $('Set Fields').item.json.first_name }}\nLast Name: {{ $('Set Fields').item.json.last_name }}\nEmail: {{ $('Set Fields').item.json.email }}\nPhone: {{ $('Set Fields').item.json.phone }}\n\nMessage:\n{{ $('Set Fields').item.json.message }}",
+            "options": {
+              "sendTo": "={{ $('Message Classifier').item.json.email }}"
+            },
+            "subject": "={{ $json.output.subject }}",
+            "resource": "draft"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "nyuHvSX5HuqfMPlW",
+              "name": "Gmail account (n3w.it)"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9cc28565-e0e6-49ca-80f0-98f6eafe15e3",
+          "name": "Email draft - Order info",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            980,
+            -120
+          ],
+          "webhookId": "37831ee6-2a6e-4036-a567-ed839ab4276e",
+          "parameters": {
+            "message": "={{ $json.output.text }}\n\n---\n\nFirst Name: {{ $('Set Fields').item.json.first_name }}\nLast Name: {{ $('Set Fields').item.json.last_name }}\nEmail: {{ $('Set Fields').item.json.email }}\nPhone: {{ $('Set Fields').item.json.phone }}\n\nMessage:\n{{ $('Set Fields').item.json.message }}",
+            "options": {
+              "sendTo": "={{ $('Message Classifier').item.json.email }}"
+            },
+            "subject": "={{ $json.output.subject }}",
+            "resource": "draft"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "nyuHvSX5HuqfMPlW",
+              "name": "Gmail account (n3w.it)"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "098f2af1-8596-43e0-84cf-8271da85d63f",
+          "name": "Save on Sheet (product)",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1220,
+            -480
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "DATE": "={{ $now.format('dd/MM/yyyy') }}",
+                "DRAFT": "={{ $('Email writer (Product info)').item.json.output.text }}",
+                "PHONE": "={{ $('Set Fields').item.json.phone }}",
+                "EMAIL ": "={{ $('Set Fields').item.json.email }}",
+                "MESSAGE": "={{ $('Set Fields').item.json.message }}",
+                "LAST NAME": "={{ $('Set Fields').item.json.last_name }}",
+                "CLASSIFIED": "Other request",
+                "FIRST NAME": "={{ $('Set Fields').item.json.first_name }}"
+              },
+              "schema": [
+                {
+                  "id": "DATE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "DATE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "FIRST NAME",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "FIRST NAME",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "LAST NAME",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "LAST NAME",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "EMAIL ",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "EMAIL ",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "PHONE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "PHONE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "MESSAGE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "MESSAGE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "CLASSIFIED",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "CLASSIFIED",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "DRAFT",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "DRAFT",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4/edit#gid=0",
+              "cachedResultName": "Foglio1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4/edit?usp=drivesdk",
+              "cachedResultName": "Contact Form 7"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "JYR6a64Qecd6t8Hb",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "545afc6a-b6b1-445f-856a-cde7d8a0f2f6",
+          "name": "Save on Sheet (order)",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1220,
+            -120
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "DATE": "={{ $now.format('dd/MM/yyyy') }}",
+                "DRAFT": "={{ $('Email writer (Order info)').item.json.output.text }}",
+                "PHONE": "={{ $('Set Fields').item.json.phone }}",
+                "EMAIL ": "={{ $('Set Fields').item.json.email }}",
+                "MESSAGE": "={{ $('Set Fields').item.json.message }}",
+                "LAST NAME": "={{ $('Set Fields').item.json.last_name }}",
+                "CLASSIFIED": "Other request",
+                "FIRST NAME": "={{ $('Set Fields').item.json.first_name }}"
+              },
+              "schema": [
+                {
+                  "id": "DATE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "DATE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "FIRST NAME",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "FIRST NAME",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "LAST NAME",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "LAST NAME",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "EMAIL ",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "EMAIL ",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "PHONE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "PHONE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "MESSAGE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "MESSAGE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "CLASSIFIED",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "CLASSIFIED",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "DRAFT",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "DRAFT",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4/edit#gid=0",
+              "cachedResultName": "Foglio1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4/edit?usp=drivesdk",
+              "cachedResultName": "Contact Form 7"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "JYR6a64Qecd6t8Hb",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "6a8fb3a0-f31a-4177-98cb-de607e412772",
+          "name": "Save on Sheet (other)",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1220,
+            220
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "DATE": "={{ $now.format('dd/MM/yyyy') }}",
+                "DRAFT": "={{ $('Email writer (Others)').item.json.output.text }}",
+                "PHONE": "={{ $('Set Fields').item.json.phone }}",
+                "EMAIL ": "={{ $('Set Fields').item.json.email }}",
+                "MESSAGE": "={{ $('Set Fields').item.json.message }}",
+                "LAST NAME": "={{ $('Set Fields').item.json.last_name }}",
+                "CLASSIFIED": "Other request",
+                "FIRST NAME": "={{ $('Set Fields').item.json.first_name }}"
+              },
+              "schema": [
+                {
+                  "id": "DATE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "DATE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "FIRST NAME",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "FIRST NAME",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "LAST NAME",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "LAST NAME",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "EMAIL ",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "EMAIL ",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "PHONE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "PHONE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "MESSAGE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "MESSAGE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "CLASSIFIED",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "CLASSIFIED",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "DRAFT",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "DRAFT",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4/edit#gid=0",
+              "cachedResultName": "Foglio1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/18nEagLwTPmJUN9UAJ2rEqZKB9C6LLD18bUpuY5vdOw4/edit?usp=drivesdk",
+              "cachedResultName": "Contact Form 7"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "JYR6a64Qecd6t8Hb",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "bec108fe-4a5c-4d75-b589-1d74245f4bb9",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -520,
+            -360
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 800,
+            "height": 140,
+            "content": "## PRELIMINARY STEP\n- Download the Wordpress Plugin [CF7 to Webhook](https://wordpress.org/plugins/cf7-to-zapier/) and install it\n- Go to webhook tab on Wordpress and set the url of the n8n Webhook trigger\n- Set the POST request"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e82d4a99-0839-4ef3-a89f-25c1fdcfd636",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -80,
+            -180
+          ],
+          "parameters": {
+            "width": 360,
+            "height": 200,
+            "content": "Set your own classification categories"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6e9967e0-21ca-4307-9fbc-e846e63e03ac",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            520,
+            -600
+          ],
+          "parameters": {
+            "width": 320,
+            "height": 1140,
+            "content": "Create the draft of the reply email by dividing it into subject and text ready to be sent"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7390f9c8-d243-4d15-b887-ab8c61c32948",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            -600
+          ],
+          "parameters": {
+            "width": 180,
+            "height": 1140,
+            "content": "send the draft to the correct department's company email"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "002e8fc9-92f2-4453-bc16-58068f372bf4",
+          "name": "Subject and Text",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            720,
+            -300
+          ],
+          "parameters": {
+            "schemaType": "manual",
+            "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"subject\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n\t\t\"text\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "c5b3690c-47c2-4faa-90fd-84556658f4a5",
+          "name": "Subject and Text 2",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            720,
+            20
+          ],
+          "parameters": {
+            "schemaType": "manual",
+            "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"subject\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n\t\t\"text\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d1498232-9ecd-4abd-ae84-f8936bcbb2b8",
+          "name": "Subject and Text 3",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            740,
+            420
+          ],
+          "parameters": {
+            "schemaType": "manual",
+            "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"subject\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n\t\t\"text\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "05fa4b16-4328-49f0-bb31-6b2a0f4b1df4",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -520,
+            -680
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 800,
+            "height": 280,
+            "content": "# WordPress Contact Form (CF7) Responses and Classification \n\nThis workflow optimizes the management of inquiries received through a contact form on a WordPress site, automating the process of classification, response drafting, and data storage.\n\nThis workflow is particularly useful for businesses that receive multiple daily inquiries and want to improve their efficiency in managing customer communications. "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "0c27484c-95ca-45c4-89cb-eada3117c9a3",
+      "connections": {
+        "Set Fields": {
+          "main": [
+            [
+              {
+                "node": "Message Classifier",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "From Wordpress": {
+          "main": [
+            [
+              {
+                "node": "Set Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subject and Text": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Email writer (Product info)",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Message Classifier": {
+          "main": [
+            [
+              {
+                "node": "Email writer (Product info)",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Email writer (Order info)",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Email writer (Others)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subject and Text 2": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Email writer (Order info)",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subject and Text 3": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Email writer (Others)",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email writer (Others)": {
+          "main": [
+            [
+              {
+                "node": "Email draft - Other info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email draft - Order info": {
+          "main": [
+            [
+              {
+                "node": "Save on Sheet (order)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email draft - Other info": {
+          "main": [
+            [
+              {
+                "node": "Save on Sheet (other)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Message Classifier",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email writer (Order info)": {
+          "main": [
+            [
+              {
+                "node": "Email draft - Order info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Email writer (Others)",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Email writer (Order info)",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model3": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Email writer (Product info)",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email draft - Product info": {
+          "main": [
+            [
+              {
+                "node": "Save on Sheet (product)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email writer (Product info)": {
+          "main": [
+            [
+              {
+                "node": "Email draft - Product info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 24,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 3
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.textClassifier": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Davide",
+      "username": "n3witalia",
+      "bio": "Full-stack Web Developer based in Italy specialising in Marketing & AI-powered automations. For business enquiries, send me an email at info@n3w.it or add me on Linkedin.com/in/davideboizza",
+      "verified": true,
+      "links": [
+        "https://n3w.it"
+      ],
+      "avatar": "https://gravatar.com/avatar/d41b8a0aa81139243509c58870f5b4be292824a507ab57d10ed066d8628ed8da?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1265,
+        "icon": "fa:tags",
+        "name": "@n8n/n8n-nodes-langchain.textClassifier",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.text-classifier/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Text Classifier"
+        },
+        "iconData": {
+          "icon": "tags",
+          "type": "icon"
+        },
+        "displayName": "Text Classifier",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

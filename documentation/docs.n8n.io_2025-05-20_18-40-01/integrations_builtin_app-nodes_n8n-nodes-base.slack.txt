@@ -1,0 +1,281 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/
+Scraped_At: 2025-05-20T18:51:31.580690
+
+Slack node
+#
+Use the Slack node to automate work in Slack, and integrate Slack with other applications. n8n has built-in support for a wide range of Slack features, including creating, archiving, and closing channels, getting users and files, as well as deleting messages.
+On this page, you'll find a list of operations the Slack node supports and links to more resources.
+Credentials
+Refer to
+Slack credentials
+for guidance on setting up authentication.
+Operations
+#
+Channel
+Archive
+a channel.
+Close
+a direct message or multi-person direct message.
+Create
+a public or private channel-based conversation.
+Get
+information about a channel.
+Get Many
+: Get a list of channels in Slack.
+History
+: Get a channel's history of messages and events.
+Invite
+a user to a channel.
+Join
+an existing channel.
+Kick
+: Remove a user from a channel.
+Leave
+a channel.
+Member
+: List the members of a channel.
+Open
+or resume a direct message or multi-person direct message.
+Rename
+a channel.
+Replies
+: Get a thread of messages posted to a channel.
+Sets purpose
+of a channel.
+Sets topic
+of a channel.
+Unarchive
+a channel.
+File
+Get
+a file.
+Get Many
+: Get and filter team files.
+Upload
+: Create or upload an existing file.
+Message
+Delete
+a message
+Get permalink
+: Get a message's permalink.
+Search
+for messages
+Send
+a message
+Send and Wait for Approval
+: Send a message and wait for approval from the recipient before continuing.
+Update
+a message
+Reaction
+Add
+a reaction to a message.
+Get
+a message's reactions.
+Remove
+a reaction from a message.
+Star
+Add
+a star to an item.
+Delete
+a star from an item.
+Get Many
+: Get a list of an authenticated user's stars.
+User
+Get
+information about a user.
+Get Many
+: Get a list of users.
+Get User's Profile
+.
+Get User's Status
+.
+Update User's Profile
+.
+User Group
+Create
+a user group.
+Disable
+a user group.
+Enable
+a user group.
+Get Many
+: Get a list of user groups.
+Update
+a user group.
+Templates and examples
+#
+Back Up Your n8n Workflows To Github
+by Jonathan
+View template details
+Slack chatbot powered by AI
+by n8n Team
+View template details
+Advanced AI Demo (Presented at AI Developers #14 meetup)
+by Max Tkacz
+View template details
+Browse Slack integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+Slack's documentation
+for more information about the service.
+Required scopes
+#
+Once you create a Slack app for your
+Slack credentials
+, you must add the appropriate scopes to your Slack app for this node to work. Start with the scopes listed in the
+Scopes | Slack credentials
+page.
+If those aren't enough, use the table below to look up the resource and operation you want to use, then follow the link to Slack's API documentation to find the correct scopes.
+Resource
+Operation
+Slack API method
+Channel
+Archive
+conversations.archive
+Channel
+Close
+conversations.close
+Channel
+Create
+conversations.create
+Channel
+Get
+conversations.info
+Channel
+Get Many
+conversations.list
+Channel
+History
+conversations.history
+Channel
+Invite
+conversations.invite
+Channel
+Join
+conversations.join
+Channel
+Kick
+conversations.kick
+Channel
+Leave
+conversations.leave
+Channel
+Member
+conversations.members
+Channel
+Open
+conversations.open
+Channel
+Rename
+conversations.rename
+Channel
+Replies
+conversations.replies
+Channel
+Set Purpose
+conversations.setPurpose
+Channel
+Set Topic
+conversations.setTopic
+Channel
+Unarchive
+conversations.unarchive
+File
+Get
+files.info
+File
+Get Many
+files.list
+File
+Upload
+files.upload
+Message
+Delete
+chat.delete
+Message
+Get Permalink
+chat.getPermalink
+Message
+Search
+search.messages
+Message
+Send
+chat.postMessage
+Message
+Send and Wait for Approval
+chat.postMessage
+Message
+Update
+chat.update
+Reaction
+Add
+reactions.add
+Reaction
+Get
+reactions.get
+Reaction
+Remove
+reactions.remove
+Star
+Add
+stars.add
+Star
+Delete
+stars.remove
+Star
+Get Many
+stars.list
+User
+Get
+users.info
+User
+Get Many
+users.list
+User
+Get User's Profile
+users.profile.get
+User
+Get User's Status
+users.getPresence
+User
+Update User's Profile
+users.profile.set
+User Group
+Create
+usergroups.create
+User Group
+Disable
+usergroups.disable
+User Group
+Enable
+usergroups.enable
+User Group
+Get Many
+usergroups.list
+User Group
+Update
+usergroups.update
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

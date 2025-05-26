@@ -1,0 +1,141 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.salesforce/
+Scraped_At: 2025-05-20T18:51:13.765639
+
+Salesforce node
+#
+Use the Salesforce node to automate work in Salesforce, and integrate Salesforce with other applications. n8n has built-in support for a wide range of Salesforce features, including creating, updating, deleting, and getting accounts, attachments, cases, and leads, as well as uploading documents.
+On this page, you'll find a list of operations the Salesforce node supports and links to more resources.
+Credentials
+Refer to
+Salesforce credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Account
+Add note to an account
+Create an account
+Create a new account, or update the current one if it already exists (upsert)
+Get an account
+Get all accounts
+Returns an overview of account's metadata.
+Delete an account
+Update an account
+Attachment
+Create a attachment
+Delete a attachment
+Get a attachment
+Get all attachments
+Returns an overview of attachment's metadata.
+Update a attachment
+Case
+Add a comment to a case
+Create a case
+Get a case
+Get all cases
+Returns an overview of case's metadata
+Delete a case
+Update a case
+Contact
+Add lead to a campaign
+Add note to a contact
+Create a contact
+Create a new contact, or update the current one if it already exists (upsert)
+Delete a contact
+Get a contact
+Returns an overview of contact's metadata
+Get all contacts
+Update a contact
+Custom Object
+Create a custom object record
+Create a new record, or update the current one if it already exists (upsert)
+Get a custom object record
+Get all custom object records
+Delete a custom object record
+Update a custom object record
+Document
+Upload a document
+Flow
+Get all flows
+Invoke a flow
+Lead
+Add lead to a campaign
+Add note to a lead
+Create a lead
+Create a new lead, or update the current one if it already exists (upsert)
+Delete a lead
+Get a lead
+Get all leads
+Returns an overview of Lead's metadata
+Update a lead
+Opportunity
+Add note to an opportunity
+Create an opportunity
+Create a new opportunity, or update the current one if it already exists (upsert)
+Delete an opportunity
+Get an opportunity
+Get all opportunities
+Returns an overview of opportunity's metadata
+Update an opportunity
+Search
+Execute a SOQL query that returns all the results in a single response
+Task
+Create a task
+Delete a task
+Get a task
+Get all tasks
+Returns an overview of task's metadata
+Update a task
+User
+Get a user
+Get all users
+Templates and examples
+#
+Create and update lead in Salesforce
+by amudhan
+View template details
+Create Salesforce accounts based on Excel 365 data
+by Tom
+View template details
+Create Salesforce accounts based on Google Sheets data
+by Tom
+View template details
+Browse Salesforce integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Working with Salesforce custom fields
+#
+To add custom fields to your request:
+Select
+Additional Fields
+>
+Add Field
+.
+In the dropdown, select
+Custom Fields
+.
+You can then find and add your custom fields.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

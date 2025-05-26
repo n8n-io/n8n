@@ -1,0 +1,1196 @@
+{
+  "workflow": {
+    "id": 3424,
+    "name": "Analyze DEX Liquidity, Trades & Spot Pairs with CoinMarketCap AI Agent",
+    "views": 1977,
+    "recentViews": 27,
+    "totalViews": 1977,
+    "createdAt": "2025-04-03T13:41:05.768Z",
+    "description": "**Gain full visibility into decentralized exchanges using CoinMarketCap’s DEXScan API—powered by AI.**  \n\nThis workflow is part of the **CoinMarketCap AI Analyst system** and delivers real-time and historical insights on spot trading pairs, DEX liquidity, trading activity, and OHLCV data across chains like Ethereum, Polygon, Solana, and more.\n\nUse this workflow as a sub-agent triggered by a parent supervisor workflow, or run it manually with inputs `sessionId` and `message`.\n\n---\n\n## 🔧 Supported Tools (8 Total)\n\n1. **DEX Metadata** → Static info (name, launch date, logo, URLs)  \n2. **DEX Networks List** → All supported DEX chains + network metadata  \n3. **DEX Listings Quotes** → Ranked list of DEXs with live trading volume, market share  \n4. **DEX Pair Quotes (Latest)** → Real-time liquidity, price, and buy/sell stats  \n5. **DEX OHLCV Historical** → Time-series data (daily/hourly/1m)  \n6. **DEX OHLCV Latest** → Today’s price, volume, open/close for pairs  \n7. **DEX Trades Latest** → Up to 100 recent trades for any DEX pair  \n8. **DEX Spot Pairs Latest** → Active token pairs across DEXs + filters (volume, liquidity, volatility)\n\n---\n\n## Agent Architecture  \n- **AI Model**: `gpt-4o-mini`  \n- **Context Memory**: `Window buffer using sessionId`  \n- **Trigger Input**: `message`, `sessionId`  \n- **Execution**: Via `Execute Workflow` or parent AI supervisor  \n- **Design**: Tool-based LangChain agent with CMC DEXScan endpoints  \n\n---\n\n## 💡 Use Cases  \n🔹 Find top DEXs by 24h volume  \n🔹 Get spot pairs with highest liquidity on a specific network  \n🔹 Track historical OHLCV for Uniswap pairs  \n🔹 View latest trades for SOL/USDC pool  \n🔹 Analyze tax, pooled % and holders for specific pairs  \n🔹 Filter pairs by 24h volume, percent change, liquidity, or number of transactions  \n\n---\n\n## ✅ Example Queries  \n✅ _\"Top 5 DEXs by 24h volume on Ethereum\"_  \n✅ _\"Get historical OHLCV for SOL-USDC on Solana\"_  \n✅ _\"Latest trades for a PancakeSwap pair\"_  \n✅ _\"Show all spot pairs with over $500K in liquidity on Polygon\"_  \n✅ _\"Retrieve metadata for Uniswap and SushiSwap\"_  \n\n---\n\n## 🛠️ Setup Instructions  \n1. **Get a CoinMarketCap API Key**  \n   - Sign up at: [https://coinmarketcap.com/api/](https://coinmarketcap.com/api/)  \n2. **Add API Key to Credentials in n8n**  \n   - Use `HTTP Header Auth` method  \n3. **Trigger from Parent Workflow (Optional)**  \n   - Use `Execute Workflow` and pass `message` and `sessionId`  \n4. **Test Prompt Ideas**  \n   - Try: _\"Compare liquidity of Uniswap and Curve pairs on Ethereum\"_\n\n---\n\n## Sticky Notes Included  \n\n**DEXScan Agent Guide** – Workflow architecture + supported tools  \n\n**Usage & API Call Examples** – Prompts, test inputs, setup flow  \n\n**Error Codes + Licensing** – 400/401/429/500 troubleshooting, IP rights\n\n---\n\n## ✅ Final Notes  \nThis agent is part of the **CoinMarketCap AI Analyst System**, which includes multiple specialized agents for cryptocurrencies, exchanges, and community data. Visit [my Creator profile](https://n8n.io/creators/don-the-gem-dealer/) to find the full suite of tools.\n\n---\n\n**Master DEX analytics with AI—get powerful liquidity, trading, and pair insights in seconds.**\n\n",
+    "workflow": {
+      "id": "ImiznkEUWCkKbg1w",
+      "meta": {
+        "instanceId": "a5283507e1917a33cc3ae615b2e7d5ad2c1e50955e6f831272ddd5ab816f3fb6",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "CoinMarketCap_DEXScan_Agent_Tool",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "c055762a-8fe7-4141-a639-df2372f30060",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -60,
+            320
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "sessionId"
+                },
+                {
+                  "name": "message"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "427c5700-f6d4-4e98-b2ef-c8eac986a754",
+          "name": "CoinMarketCap DEXScan Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            360,
+            320
+          ],
+          "parameters": {
+            "text": "={{ $json.message }}",
+            "options": {
+              "systemMessage": "You are an AI agent connected to CoinMarketCap's DEXScan API via a suite of HTTP tools. You can retrieve detailed, real-time, and historical data about decentralized exchanges, spot pairs, liquidity pools, trading activity, and more.\n\nEach tool includes parameter validation and usage guidance to prevent 400 Bad Request errors.\n\n🔧 Available Tools & Descriptions\n1. 📜 DEX Metadata\nPurpose: Retrieve static information (name, logo, URLs, launch date, etc.) for one or more DEXs.\nEndpoint: /v4/dex/listings/info\nRequired: id (one or more CMC DEX IDs)\nOptional: aux → urls, logo, description, date_launched, notice\n\n2. 🌐 DEX Networks List\nPurpose: Get all blockchain networks associated with DEX trading, including metadata.\nEndpoint: /v4/dex/networks/list\nOptional Query Parameters:\n\nstart, limit (pagination)\n\nsort: id, name\n\nsort_dir: asc, desc\n\naux: alternativeName, cryptocurrencyId, cryptocurrencySlug, wrappedTokenId, etc.\n\n3. 📊 DEX Listings Quotes\nPurpose: List all decentralized exchanges with live trading data.\nEndpoint: /v4/dex/listings/quotes\nOptional:\n\nstart, limit, sort, sort_dir, type, aux, convert_id\nSort options: volume_24h, market_share, name, num_markets\n\n4. 🔁 DEX Pair Quotes Latest\nPurpose: Return latest market quotes for one or more spot pairs.\nEndpoint: /v4/dex/pairs/quotes/latest\nRequired: contract_address or network_id or network_slug\nOptional: aux, convert_id, skip_invalid, reverse_order\n\n5. 📈 DEX OHLCV Historical\nPurpose: Retrieve historical OHLCV (Open, High, Low, Close, Volume) data for spot pairs.\nEndpoint: /v4/dex/pairs/ohlcv/historical\nRequired: contract_address or use network+asset identifiers\nOptional:\n\ntime_period: daily, hourly, 1m, 5m, etc.\n\ntime_start, time_end, count, interval\n\naux, convert_id, skip_invalid, reverse_order\n\n6. 🕒 DEX OHLCV Latest\nPurpose: Returns current-day OHLCV data for spot pairs (real-time snapshot).\nEndpoint: /v4/dex/pairs/ohlcv/latest\nRequired: contract_address or network_id or network_slug\nOptional: aux, convert_id, skip_invalid, reverse_order\n\n7. 🧾 DEX Trades Latest\nPurpose: View the latest trades (up to 100) for one or more spot pairs.\nEndpoint: /v4/dex/pairs/trade/latest\nRequired: contract_address or network_id or network_slug\nOptional: aux, convert_id, skip_invalid, reverse_order\n\n8. 🪙 DEX Spot Pairs Latest\nPurpose: List all active spot trading pairs with latest market data.\nEndpoint: /v4/dex/spot-pairs/latest\nRequired (any of):\n\nnetwork_id, network_slug\n\ndex_id, dex_slug\n\nbase_asset_id, base_asset_symbol, base_asset_contract_address\n\nquote_asset_id, quote_asset_symbol, quote_asset_contract_address\nOptional:\n\nlimit, scroll_id\n\nliquidity_min/max, volume_24h_min/max, percent_change_24h_min/max\n\nsort: name, price, volume_24h, etc.\n\nsort_dir: asc, desc\n\naux, convert_id, reverse_order\n\n⚠️ General Rules to Avoid 400 Errors\nAlways include at least one required identifier per endpoint.\n\nUse proper casing and valid slugs (e.g., ethereum, polygon).\n\nAvoid mixing convert and convert_id.\n\nUse comma-separated values when multiple inputs are allowed.\n\nOnly use documented values in aux, sort, and interval fields.\n\nDo not leave required parameters blank or use unsupported types."
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "3101c7f4-cf73-4150-8a17-e11366c07c80",
+          "name": "DEXScan Agent Brain",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -400,
+            620
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "yUizd8t0sD5wMYVG",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a596e26a-61eb-4fe1-8a07-3a93694beca0",
+          "name": "DEXScan Agent Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -220,
+            620
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "49bb58dc-d68b-4091-86f1-12e1071b1fbc",
+          "name": "DEX Metadata",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            -40,
+            620
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/listings/info",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "id"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Returns static metadata for one or more decentralized exchanges, including launch date, description, URLs, and logos.\n\nHere is a precise and complete **tool description** for the `GET /v4/dex/listings/info` endpoint, formatted for use in your n8n agent system or documentation:\n\n---\n\n### 🧭 **DEX Metadata Tool**\n\n**Purpose:**  \nRetrieve static metadata for one or more decentralized exchanges (DEXs) listed on CoinMarketCap. This includes key profile information such as name, status, description, launch date, logos, official URLs, and important notices.\n\n**Endpoint:**  \n`https://pro-api.coinmarketcap.com/v4/dex/listings/info`\n\n---\n\n**Query Parameters:**\n\n- `id` *(string, required)* – One or more comma-separated CoinMarketCap DEX IDs to fetch metadata for.\n- `aux` *(string, optional)* – A comma-separated list of supplemental fields to include in the response.  \n  Valid values:\n  - `\"urls\"` – Official website, social media, and documentation links\n  - `\"logo\"` – Hosted logo (default 64x64, customizable size via URL)\n  - `\"description\"` – Platform description\n  - `\"date_launched\"` – ISO 8601 launch date timestamp\n  - `\"notice\"` – Markdown-formatted warning about operational issues or status alerts\n\n---\n\n**Returns (200 OK):**\n\nFor each exchange:\n- `id`: Unique CoinMarketCap ID\n- `name`: Exchange name\n- `slug`: URL-friendly name\n- `status`: `\"active\"` or `\"inactive\"`\n- `description`: (if requested via `aux`)\n- `date_launched`: (if requested via `aux`)\n- `logo`: (if requested via `aux`)\n- `urls`: (if requested via `aux`)\n- `notice`: Operational message, if applicable\n\n---\n\n**Error Handling:**\n\n- **400 Bad Request**: Triggered if the `id` is missing or invalid.\n- **⚠️ Large Response Alert:** If multiple IDs return too much metadata and exceed the GPT model’s context window, notify with:  \n  > **\"⚠️ The returned metadata exceeds processing limits. Please reduce the number of IDs or narrow the `aux` parameters.\"**\n\n",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f87838f8-0840-4a78-9d4b-96c79a137d48",
+          "name": "DEX Networks List",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            140,
+            620
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/networks/list",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "start",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "sort",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "sort_dir",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Returns a list of all decentralized exchange (DEX) blockchain networks along with their CoinMarketCap IDs and associated metadata.\n\nOptional query parameters (to avoid errors):\n\nstart (string) – Offset for pagination (1-based index)\n\nlimit (string) – Number of results to return (e.g. \"100\")\n\nsort (string) – Sort field. Valid values: \"id\", \"name\"\n\nsort_dir (string) – Sort order. Valid values: \"asc\", \"desc\"\n\naux (string) – Comma-separated list of extra fields. Valid values:\n\"alternativeName\", \"cryptocurrencyId\", \"cryptocurrenySlug\",\n\"wrappedTokenId\", \"wrappedTokenSlug\", \"tokenExplorerUrl\",\n\"poolExplorerUrl\", \"transactionHashUrl\"\n\nMake sure input values for sort, sort_dir, and aux are spelled exactly as shown to prevent a 400 error response.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3f356c20-4efc-479b-b0fa-ab346c7340d8",
+          "name": "DEX Listings Quotes",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            360,
+            620
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/listings/quotes",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "start",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "sort",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "sort_dir",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "type",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "convert_id",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Returns a paginated list of all decentralized exchanges (DEXs) with their latest market data, including market share, quote volume, trading pairs, and multi-currency conversions.\n\n🛠️ Acceptable Query Inputs:\nstart – Offset pagination start (e.g., \"1\")\n\nlimit – Max results to return\n\nsort – Valid: \"name\", \"volume_24h\", \"market_share\", \"num_markets\"\n\nsort_dir – \"asc\" or \"desc\"\n\ntype – \"all\", \"orderbook\", \"swap\", \"aggregator\"\n\naux – Optional extras, e.g., \"date_launched\"\n\nconvert_id – Currency IDs to convert quote values (up to 30)",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3fceb769-621f-4e7f-9351-4052d72b3346",
+          "name": "DEX Pair Quotes Latest",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            560,
+            620
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/pairs/quotes/latest",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "convert_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "skip_invalid",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "reverse_order",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_slug",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Returns the latest market quote for one or more DEX spot trading pairs, including metrics like:\n\nLiquidity\n\n24h buy/sell volume\n\nSecurity scans\n\nBuy/sell tax\n\nPercent pooled\n\nPool creation and supply stats\n\n🛠️ Query Parameters Supported:\n\ncontract_address – (Comma-separated smart contract addresses)\n\nnetwork_id – CMC network IDs\n\nnetwork_slug – Slug-formatted network names (e.g., ethereum, polygon)\n\naux – Comma-separated fields:\npool_created, percent_pooled_base_asset, num_transactions_24h,\npool_base_asset, pool_quote_asset, 24h_volume_quote_asset,\ntotal_supply_quote_asset, total_supply_base_asset, holders,\nbuy_tax, sell_tax, security_scan, 24h_no_of_buys, 24h_no_of_sells,\n24h_buy_volume, 24h_sell_volume\n\nconvert_id – Comma-separated CMC currency IDs for conversion\n\nskip_invalid – Pass \"true\" to ignore invalid results\n\nreverse_order – Pass \"true\" to invert base/quote pair display",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "134d7fc5-15cf-4897-92bb-97b18a121e41",
+          "name": "DEX OHLCV Historical",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            740,
+            620
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/pairs/ohlcv/historical",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_slug",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "time_period",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "time_start",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "time_end",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "count",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "interval",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "convert_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "skip_invalid",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "reverse_order",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves historical OHLCV (Open, High, Low, Close, Volume) data for DEX spot trading pairs. It includes optional data on security risks, transaction activity, supply, and tax information. Supports flexible time range and sampling intervals for charting or backtesting.\n\n✅ Valid Query Parameters:\n\ncontract_address (string) – A single DEX spot pair’s smart contract address (required unless using network + asset options).\n\nnetwork_id (string) – One or more CMC network IDs.\n\nnetwork_slug (string) – Friendly name slug of the network (e.g., \"ethereum\").\n\ntime_period (string) – Time unit for OHLCV data.\nAllowed: \"daily\", \"hourly\", \"1m\", \"5m\", \"15m\", \"30m\", \"4h\", \"8h\", \"12h\", \"weekly\", \"monthly\"\n(Default: \"daily\")\n\ntime_start (string) – ISO or Unix timestamp for start (e.g., \"2024-01-01\").\n\ntime_end (string) – ISO or Unix timestamp for end (e.g., \"2024-03-01\"). Optional.\n\ncount (string) – Number of time intervals to return (default is 10, max is 500).\n\ninterval (string) – How frequently to sample the time_period. Same options as time_period.\n\naux (string) – Optional comma-separated extra fields to return: pool_created, percent_pooled_base_asset, num_transactions_24h,\npool_base_asset, pool_quote_asset, 24h_volume_quote_asset,\ntotal_supply_quote_asset, total_supply_base_asset, holders,\nbuy_tax, sell_tax, security_scan, 24h_no_of_buys, 24h_no_of_sells,\n24h_buy_volume, 24h_sell_volume\n\nconvert_id (string) – Comma-separated CMC currency IDs for market conversion (e.g., \"1,2781\").\n\nskip_invalid (string) – Pass \"true\" to skip failed lookups in bulk queries.\n\nreverse_order (string) – Pass \"true\" to reverse base/quote asset display order.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "bee1d41a-af4c-442d-b0c6-7be0e17c31a5",
+          "name": "DEX OHLCV Latest",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            940,
+            640
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/pairs/ohlcv/latest",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_slug",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "convert_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "skip_invalid",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "reverse_order",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves the most recent OHLCV (Open, High, Low, Close, Volume) data for one or more spot trading pairs on decentralized exchanges. It reflects market activity during the current UTC day and is continuously updated. Suitable for real-time monitoring of decentralized market performance, this tool supports advanced filtering via network identifiers or contract addresses.\n\nRequired Input (at least one of the following):\ncontract_address (string)\nOne or more comma-separated smart contract addresses for the trading pair(s).\n\nExample: \"0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640\"\n\nnetwork_id (string)\nOne or more CoinMarketCap internal network IDs.\n\nExample: \"1\" (Ethereum)\n\nnetwork_slug (string)\nThe lowercase, hyphenated identifier of a blockchain network.\n\nExample: \"ethereum\", \"binance-smart-chain\"\n\n🧩 Optional Query Parameters:\naux (string)\nComma-separated list of additional fields to enrich the returned data:\nValid values: pool_created, percent_pooled_base_asset, num_transactions_24h,\npool_base_asset, pool_quote_asset, 24h_volume_quote_asset,\ntotal_supply_quote_asset, total_supply_base_asset, holders,\nbuy_tax, sell_tax, security_scan, 24h_no_of_buys, 24h_no_of_sells,\n24h_buy_volume, 24h_sell_volume\n\nExample: \"security_scan,holders,pool_created\"\n\nconvert_id (string)\nCalculate quote values in one or more fiat/crypto currencies using CoinMarketCap IDs.\n\nExample: \"1\" (USD), \"2781\" (BTC)\n\nNote: Cannot be used with the convert symbol-based parameter.\n\nskip_invalid (string)\nAccepts \"true\" or \"false\" (default).\nIf set to \"true\", skips spot pairs with invalid or missing data instead of returning a 400 error.\n\nExample: \"true\"\n\nreverse_order (string)\nAccepts \"true\" or \"false\" (default).\nFlips the order of the token pair if the token contract uses reverse naming convention.\n\nExample: \"true\"\n\n⚠️ Tips to Avoid 400 Errors:\nEnsure at least one of contract_address, network_id, or network_slug is included.\n\nUse correct spelling and case for slugs (e.g., \"ethereum\" not \"Ethereum\").\n\nOnly include valid aux values in a comma-separated list.\n\nDo not use both convert and convert_id at the same time.\n\nAvoid empty strings for required parameters or unsupported values in optional fields.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "742a6f07-d85d-4b6c-9ba6-90940e2b365c",
+          "name": "DEX Trades Latest",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1140,
+            640
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/pairs/trade/latest",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_slug",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "convert_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "skip_invalid",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "reverse_order",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "Returns up to the latest 100 trades for one or more DEX spot pairs using CoinMarketCap.\nQuery Parameters Accepted:\n\ncontract_address: (Required*) One or more comma-separated contract addresses.\n\nnetwork_id: CoinMarketCap network ID (alternative to contract_address).\n\nnetwork_slug: URL-friendly network name (alternative to network_id).\n\naux: Optional fields to include: \"transaction_hash\", \"blockchain_explorer_link\".\n\nconvert_id: One or more fiat/crypto IDs to return converted market values.\n\nskip_invalid: \"true\" to skip invalid pairs instead of erroring.\n\nreverse_order: \"true\" to reverse trading pair (e.g., A/B → B/A).\n\nUse at least one of contract_address, network_id, or network_slug to avoid a 400 error.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3ddf229c-16b2-4610-982e-d5e3c07b0cb0",
+          "name": "DEX Spot Pairs Latest",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1340,
+            640
+          ],
+          "parameters": {
+            "url": "https://pro-api.coinmarketcap.com/v4/dex/spot-pairs/latest",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "network_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "network_slug",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "dex_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "dex_slug",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "base_asset_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "base_asset_symbol",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "base_asset_contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "base_asset_ucid",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "quote_asset_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "quote_asset_symbol",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "quote_asset_contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "quote_asset_ucid",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "scroll_id",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "liquidity_min",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "liquidity_max",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "volume_24h_min",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "volume_24h_max",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "no_of_transactions_24h_min",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "no_of_transactions_24h_max",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "percent_change_24h_min",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "percent_change_24h_max",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "sort",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "sort_dir",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "aux",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "reverse_order",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "convert_id",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool calls the /v4/dex/spot-pairs/latest endpoint to retrieve a paginated list of all active decentralized exchange (DEX) spot pairs with the latest market data. This includes price, liquidity, trading volume, and more. You can filter, sort, and enrich the results using query parameters.\n\n⚠️ To avoid a 400 Bad Request error, you must include at least one of the following identifiers in your request:\n\nnetwork_id OR network_slug\n\ndex_id OR dex_slug\n\nbase_asset_id, base_asset_symbol, or base_asset_contract_address\n\nquote_asset_id, quote_asset_symbol, or quote_asset_contract_address\n\n✅ Supported Query Parameters\nCore Identifiers (At least one required):\nnetwork_id: One or more comma-separated CoinMarketCap network IDs.\n\nnetwork_slug: One or more comma-separated URL-friendly network slugs.\n\ndex_id: One or more CoinMarketCap DEX exchange IDs.\n\ndex_slug: One or more URL-friendly DEX slugs.\n\nbase_asset_id, base_asset_symbol, base_asset_contract_address: Identify the base asset of the pair.\n\nquote_asset_id, quote_asset_symbol, quote_asset_contract_address: Identify the quote asset of the pair.\n\nbase_asset_ucid / quote_asset_ucid: Optional unique CoinMarketCap identifiers.\n\nPagination:\nscroll_id: For continuous pagination. Use the scroll_id from the previous response to get the next set.\n\nlimit: Maximum number of results to return.\n\nFiltering:\nliquidity_min, liquidity_max: Minimum/maximum liquidity thresholds.\n\nvolume_24h_min, volume_24h_max: Minimum/maximum 24h volume thresholds.\n\nno_of_transactions_24h_min, no_of_transactions_24h_max: Filter by transaction count.\n\npercent_change_24h_min, percent_change_24h_max: 24-hour price change filters.\n\nSorting:\nsort: Sort the results by:\n\nname, date_added, price, volume_24h, percent_change_1h, percent_change_24h, liquidity, fully_diluted_value, no_of_transactions_24h\n\nsort_dir: Direction of sort (asc or desc, default: desc)\n\nAdditional Metadata (Optional):\nUse the aux parameter to enrich the response with supplemental fields:\n\npool_created, percent_pooled_base_asset, num_transactions_24h, pool_base_asset, pool_quote_asset, 24h_volume_quote_asset, total_supply_quote_asset, total_supply_base_asset, holders, buy_tax, sell_tax, security_scan, 24h_no_of_buys, 24h_no_of_sells, 24h_buy_volume, 24h_sell_volume\n\nQuote Conversion:\nconvert_id: Convert pricing to specific fiat or crypto by CMC ID (e.g. convert_id=1,2781 for BTC, USD).\n\n⚠️ Cannot be used with convert (symbol-based conversion).\n\nOther Options:\nreverse_order: Flip the base/quote asset order if needed.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OKXROn8aWkgAOvvV",
+              "name": "CoinMarketCap Standard"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3dab3ebc-14c5-49a8-bb11-aa82564785a5",
+          "name": "DEXScan Agent Guide",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1580,
+            -760
+          ],
+          "parameters": {
+            "width": 1080,
+            "height": 1420,
+            "content": "# 📊 CoinMarketCap DEXScan AI Agent Tool (n8n Workflow)\n\n## 🧠 Multi-Agent System: DEXScan Agent\nThis workflow powers **DEX intelligence capabilities** in the CoinMarketCap AI Analyst ecosystem. It enables deep insights into **liquidity**, **volume**, **spot pairs**, and **trading activity** across decentralized exchanges.\n\n---\n\n### 🔧 Connected DEX Tools:\n1. **DEX Metadata** – `/v4/dex/listings/info`\n2. **DEX Networks List** – `/v4/dex/networks/list`\n3. **DEX Listings Quotes** – `/v4/dex/listings/quotes`\n4. **DEX Pair Quotes Latest** – `/v4/dex/pairs/quotes/latest`\n5. **DEX OHLCV Historical** – `/v4/dex/pairs/ohlcv/historical`\n6. **DEX OHLCV Latest** – `/v4/dex/pairs/ohlcv/latest`\n7. **DEX Trades Latest** – `/v4/dex/pairs/trade/latest`\n8. **DEX Spot Pairs Latest** – `/v4/dex/spot-pairs/latest`\n\n---\n\n## ✅ Key Capabilities:\n- View real-time DEX liquidity and 24h trading volume\n- Retrieve metadata (logos, URLs, launch info) for decentralized exchanges\n- Track market pair quotes, liquidity, and spot pair data\n- Monitor historical OHLCV data for technical analysis\n- Identify recent trades and pair-specific activity\n\n---\n\n## 🧠 Agent Structure\n### **1️⃣ DEXScan Brain**\n- **Type**: GPT-4o Mini\n- **Function**: Understands queries, routes tools, summarizes results\n\n### **2️⃣ Session Memory**\n- Maintains contextual state via memory buffer\n\n### **3️⃣ Tool Triggers**\n- **HTTP Tools:** Each CMC endpoint is mapped to one of 8 tool nodes with rich parameter control\n\n---\n\n## ⚠️ Notes:\n- Use **`contract_address`**, **`network_slug`**, or **`network_id`** in nearly all endpoints\n- Avoid using both `convert` and `convert_id` in the same query\n- Be cautious of high-volume requests which may exceed token limits (e.g., when requesting OHLCV for many intervals)\n\n---\n\n📎 API responses are designed for fine-tuned filtering. You can retrieve:\n- Top trading pairs on Polygon\n- Volume-based DEX rankings\n- Historical trade data for a Uniswap pair\n- Real-time liquidity on Solana spot pairs"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "af395be6-3683-478e-bffd-087ffa8dc8c9",
+          "name": "DEX Usage + Examples",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -100,
+            -760
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 960,
+            "height": 1000,
+            "content": "## 📌 How to Use the Workflow\n\n### ✅ Step 1: Provide Inputs\nUse `contract_address`, `network_slug`, `dex_slug`, or `convert_id` as needed\n\n### ✅ Step 2: Trigger From Supervisor Agent\nParent agent forwards user message and sessionId to DEXScan\n\n### ✅ Step 3: DEX Data is Returned\nData can be streamed to Telegram, dashboards, or HTTP response\n\n---\n\n## 🔍 Example API Calls\n\n### 1️⃣ Get Top DEXs by 24h Volume\n```plaintext\nGET /v4/dex/listings/quotes?sort=volume_24h&limit=5\n```\n\n### 2️⃣ Query Historical OHLCV for SOL-USDT\n```plaintext\nGET /v4/dex/pairs/ohlcv/historical?network=solana&pair=SOL-USDT&interval=1d\n```\n\n### 3️⃣ Latest Trades on a Uniswap Pair\n```plaintext\nGET /v4/dex/pairs/trade/latest?contract_address=0x...&network_slug=ethereum\n```\n\n### 4️⃣ Spot Pairs on Polygon\n```plaintext\nGET /v4/dex/spot-pairs/latest?network_slug=polygon&sort=volume_24h\n```\n\n### 5️⃣ DEX Metadata for PancakeSwap\n```plaintext\nGET /v4/dex/listings/info?id=123&aux=logo,description,date_launched\n```"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0fcffddb-d343-4739-917a-878925673295",
+          "name": "DEX Errors + IP Notice",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1220,
+            -760
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 740,
+            "height": 600,
+            "content": "## ⚠️ DEXScan Error Codes & Fixes\n\n| Code | Message |\n|------|---------|\n| `200` | Success |\n| `400` | Bad Request – missing/invalid query |\n| `401` | Unauthorized – invalid API key |\n| `429` | Rate limit exceeded |\n| `500` | Server error |\n\n### 🔍 Fixes:\n- Always use at least 1 required param: `contract_address`, `network_slug`, etc.\n- Double-check slugs and convert ID formats\n- Don’t mix `convert` and `convert_id`\n- Avoid oversized `aux` and `interval` combinations\n\n---\n\n## 🚀 Support & Licensing\n\n🔗 **Don Jayamaha – LinkedIn**  \n[http://linkedin.com/in/donjayamahajr](http://linkedin.com/in/donjayamahajr)\n\n© 2025 Treasurium Capital Limited Company. All rights reserved.\nThis AI workflow architecture, including logic, design, and prompt structures, is the intellectual property of Treasurium Capital Limited Company. Unauthorized reproduction, redistribution, or resale is prohibited under U.S. copyright law. Licensed use only."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "2507ec1c-d0e3-45ef-aca6-f16c81f9cf17",
+      "connections": {
+        "DEX Metadata": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX OHLCV Latest": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX Networks List": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX Trades Latest": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX Listings Quotes": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEXScan Agent Brain": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX OHLCV Historical": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEXScan Agent Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX Spot Pairs Latest": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DEX Pair Quotes Latest": {
+          "ai_tool": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "CoinMarketCap DEXScan Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 15,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 8
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Don Jayamaha Jr",
+      "username": "don-the-gem-dealer",
+      "bio": "With 12 years of experience as a Blockchain Strategist and Web3 Architect, I specialize in bridging the gap between traditional industries and decentralized technologies. My expertise spans tokenized assets, crypto payment integrations, and blockchain-driven market solutions.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/donjayamahajr/"
+      ],
+      "avatar": "https://gravatar.com/avatar/95f70084b3fec5ed68a61eef6dc6128dfb085d865a02ed631d0853d2730696bf?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

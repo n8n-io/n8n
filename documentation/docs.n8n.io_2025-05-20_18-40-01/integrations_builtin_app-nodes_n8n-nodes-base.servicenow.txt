@@ -1,0 +1,78 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.servicenow/
+Scraped_At: 2025-05-20T18:51:26.621450
+
+ServiceNow node
+#
+Use the ServiceNow node to automate work in ServiceNow, and integrate ServiceNow with other applications. n8n has built-in support for a wide range of ServiceNow features, including getting business services, departments, configuration items, and dictionary as well as creating, updating, and deleting incidents, users, and table records.
+On this page, you'll find a list of operations the ServiceNow node supports and links to more resources.
+Credentials
+Refer to
+ServiceNow credentials
+for guidance on setting up authentication.
+Operations
+#
+Business Service
+Get All
+Configuration Items
+Get All
+Department
+Get All
+Dictionary
+Get All
+Incident
+Create
+Delete
+Get
+Get All
+Update
+Table Record
+Create
+Delete
+Get
+Get All
+Update
+User
+Create
+Delete
+Get
+Get All
+Update
+User Group
+Get All
+User Role
+Get All
+Templates and examples
+#
+ServiceNow Incident Notifications to Slack Workflow
+by Angel Menendez
+View template details
+List recent ServiceNow Incidents in Slack Using Pop Up Modal
+by Angel Menendez
+View template details
+Display ServiceNow Incident Details in Slack using Slash Commands
+by Angel Menendez
+View template details
+Browse ServiceNow integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,50 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.okta/
+Scraped_At: 2025-05-20T18:50:21.306688
+
+Okta node
+#
+Use the Okta node to automate work in Okta and integrate Okta with other applications. n8n has built-in support for a wide range of Okta features, which includes creating, updating, and deleting users.
+On this page, you'll find a list of operations the Okta node supports, and links to more resources.
+Credentials
+You can find authentication information for this node
+here
+.
+Operations
+#
+User
+Create a new user
+Delete an existing user
+Get details of a user
+Get many users
+Update an existing user
+Templates and examples
+#
+Browse Okta integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+Okta's documentation
+for more information about the service.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,763 @@
+{
+  "workflow": {
+    "id": 1931,
+    "name": "Report number of weekly created records in an app",
+    "views": 2019,
+    "recentViews": 0,
+    "totalViews": 2019,
+    "createdAt": "2023-07-03T11:20:47.198Z",
+    "description": "This template shows how you can create reports on data in an app and share a summary in another app.\n\nSpecifically, this example checks a **Notion database** for new submissions, filters for submissions with a specific tag, and then sends a **Slack message** with the number created this week.\n\nSetup instructions are located inside the workflow template. ",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "5eeb368d-737a-4186-afef-3072d0e9a1c7",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "notes": "Execute WF on a schedule",
+          "position": [
+            940,
+            280
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {}
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1.1
+        },
+        {
+          "id": "175f3ae0-6710-4934-b6c0-ebc21e26d0b5",
+          "name": "Notion",
+          "type": "n8n-nodes-base.notion",
+          "disabled": true,
+          "position": [
+            1220,
+            80
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "key": "Created time|created_time",
+                  "condition": "on_or_after",
+                  "createdTimeValue": "={{ $now.minus(7, 'days').toISOString() }}"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "matchType": "allFilters",
+            "operation": "getAll",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "4ab15dec-f104-488e-936b-d14122106e7f",
+              "cachedResultUrl": "https://www.notion.so/4ab15decf104488e936bd14122106e7f",
+              "cachedResultName": "Product ideas list"
+            },
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "5",
+              "name": "Notion account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "8210582d-aae4-42b4-86d1-0513ad987c55",
+          "name": "Slack",
+          "type": "n8n-nodes-base.slack",
+          "notes": "Post message in channel",
+          "position": [
+            2100,
+            280
+          ],
+          "parameters": {
+            "text": "=Yay, we added *{{ $json.unique_count_id }} new UX ideas* in the last 7 days :tada:",
+            "select": "channel",
+            "channelId": {
+              "__rl": true,
+              "mode": "name",
+              "value": "#nik-wf-testing"
+            },
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "6",
+              "name": "Idea Bot"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "7db1f3c1-d1c9-4f41-a873-0f083543b4b4",
+          "name": "Item Lists",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            1800,
+            280
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "summarize",
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "id",
+                  "aggregation": "countUnique"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "f6856a5e-d57d-43f4-986b-cd8439e4caa0",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            400,
+            80
+          ],
+          "parameters": {
+            "width": 424,
+            "height": 515.6050016413932,
+            "content": "## 👋 How to use this template\nThis template shows how you can create reports on data in an app and share a summary in another app. Here's how to use it:\n\n1. Double click the `Slack` node and create a credential by signing in.\n2. Change the channel name in the `Slack` node to a channel you have in Slack.\n2. Click the `Execute Workflow` button and double click the nodes to see the input and output data\n\n### To customize it to you needs, just do the following:\n1. Enable or exchange the `Notion` node with any service that fits your use case.\n2. Change the `2. Filter and transform your data` section to fit your needs\n3. Adjust the Slack node or exchange it with any node that fits your use case\n4. Disable or remove the `Mock Data` node\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "13386afe-01c2-4f6e-b9d5-8fc485353ff9",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2040,
+            220
+          ],
+          "parameters": {
+            "width": 317.52886836027733,
+            "height": 373.04798303066787,
+            "content": "### 3. Notify the right channel\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nFinally, we're sending a message to the `#ideas-overview` channel in Slack.\n\n**You can replace this node with any service like [Teams](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsoftteams/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.microsoftTeams), [Telegram](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.telegram), [Email](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.emailSend) etc.**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1b4108e0-9e91-4b4e-a4cf-75366d7c82c0",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            860,
+            180
+          ],
+          "parameters": {
+            "width": 282,
+            "height": 415.1692017070486,
+            "content": "### 1. Define a trigger that should start your wofklow\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWe added a `Schedule trigger` that starts the workflow once a week. \n\n**Double click the node to modify when it runs**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ba3eb63f-bdcd-4a58-949a-2d24d4c872c4",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1160,
+            0
+          ],
+          "parameters": {
+            "width": 348,
+            "height": 597.3550016413941,
+            "content": "### 2. Load your data\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nIn our example, we're getting all new entries from a `Notion` Database in which we save new product ideas.\n\n**You can replace product ideas with any data that you want to summarize any service you wish, like [Jira](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jira/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.jira), [Airtable](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.airtable), [Google Sheets](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.googleSheets) etc.**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9ec65fe7-3264-4437-a1bf-3bdec1c886fe",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1540,
+            160
+          ],
+          "parameters": {
+            "width": 462,
+            "height": 444.12384956830226,
+            "content": "### 2. Filter and transform your data\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWe only want to count the UX ideas of the team. We use the `Filter` node to filter out all other items, and use the `Item Lists` node to summarize the data for us.\n\nTo edit the nodes, simply drag and drop input data into the fields or change the values directly. **n8n comes with a set of powerful transformation and branching tools like [Set](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.set), [ItemList](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.itemLists), [Code](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.code), [If](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/?utm_source=n8n_app&utm_medium=node_settings_modal-credential_link&utm_campaign=n8n-nodes-base.if)  and many more.**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5597d8bb-ae15-4ea0-be16-531d8a8f7018",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "notes": "Only keep UX ideas",
+          "position": [
+            1600,
+            280
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ $json.property_type.includes(\"UX\") }}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "e4a13d15-368f-42a5-b23a-736883e7c1aa",
+          "name": "Code",
+          "type": "n8n-nodes-base.code",
+          "notes": "Mock Data",
+          "position": [
+            1220,
+            280
+          ],
+          "parameters": {
+            "jsCode": "return [\n  {\n    \"id\": \"32cb4a89-7735-497d-8862-fc66cb6383f2\",\n    \"name\": \"Promote credential test result to NDV, + run on NDV first open\",\n    \"url\": \"https://www.notion.so/Promote-credential-test-result-to-NDV-run-on-NDV-first-open-32cb4a897735497d8862fc66cb6383f2\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"UX\",\n      \"Pain\",\n      \"UI\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Credentials\",\n      \"Nodes\",\n      \"Node details view\"\n    ],\n    \"property_votes\": 2,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-23T13:37:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-23T12:48:00.000Z\",\n    \"property_nodes_affected\": [],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\",\n      \"jon@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-23T15:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Promote credential test result to NDV, + run on NDV first open\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  },\n  {\n    \"id\": \"c2ab7fe1-c7ff-4cf0-881d-a039ec90306e\",\n    \"name\": \"Add “Duplicate sticky” action\",\n    \"url\": \"https://www.notion.so/Add-Duplicate-sticky-action-c2ab7fe1c7ff4cf0881da039ec90306e\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"Tweak\",\n      \"UX\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Canvas\",\n      \"Stickies\"\n    ],\n    \"property_votes\": 3,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-23T14:15:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-23T11:46:00.000Z\",\n    \"property_nodes_affected\": [],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\",\n      \"jon@n8n.io\",\n      \"giulio@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-23T14:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Add “Duplicate sticky” action\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  },\n  {\n    \"id\": \"b3e99a3a-451b-4290-9a2b-5121755709d9\",\n    \"name\": \"Show “last used” (MVP: created) in cred dropdown; and sort by it\",\n    \"url\": \"https://www.notion.so/Show-last-used-MVP-created-in-cred-dropdown-and-sort-by-it-b3e99a3a451b42909a2b5121755709d9\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"Tweak\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Nodes\",\n      \"Credentials\"\n    ],\n    \"property_votes\": 2,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-22T14:37:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-22T14:28:00.000Z\",\n    \"property_nodes_affected\": [],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\",\n      \"jon@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-22T16:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Show “last used” (MVP: created) in cred dropdown; and sort by it\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  },\n  {\n    \"id\": \"a26efc3e-67fe-46d5-8d75-40f125a16e39\",\n    \"name\": \"Improve naming of Google Sheets actions (use “row” consistently)\",\n    \"url\": \"https://www.notion.so/Improve-naming-of-Google-Sheets-actions-use-row-consistently-a26efc3e67fe46d58d7540f125a16e39\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"Tweak\",\n      \"UX\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Nodes\"\n    ],\n    \"property_votes\": 1,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-22T14:37:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-22T14:21:00.000Z\",\n    \"property_nodes_affected\": [\n      \"n8n-nodes-base.googleSheets\"\n    ],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-22T16:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Improve naming of Google Sheets actions (use “row” consistently)\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  },\n  {\n    \"id\": \"a4c72db2-1c0e-45a5-934a-eed187137bc0\",\n    \"name\": \"Change Notion trigger event “Page updated in database” to convey that it also fires for page creation\",\n    \"url\": \"https://www.notion.so/Change-Notion-trigger-event-Page-updated-in-database-to-convey-that-it-also-fires-for-page-creatio-a4c72db21c0e45a5934aeed187137bc0\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"Tweak\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Nodes\"\n    ],\n    \"property_votes\": 2,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-22T14:37:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-22T14:16:00.000Z\",\n    \"property_nodes_affected\": [\n      \"n8n-nodes-base.notionTrigger\"\n    ],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\",\n      \"jon@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-22T16:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Change Notion trigger event “Page updated in database” to convey that it also fires for page creation\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  },\n  {\n    \"id\": \"9cdaca54-eacb-4623-99e4-09e3957a75df\",\n    \"name\": \"Improve “no credential set” error in Google Sheets node\",\n    \"url\": \"https://www.notion.so/Improve-no-credential-set-error-in-Google-Sheets-node-9cdaca54eacb462399e409e3957a75df\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"UX\",\n      \"Tweak\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Nodes\",\n      \"Credentials\",\n      \"Error handling\"\n    ],\n    \"property_votes\": 1,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-21T14:37:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-21T13:48:00.000Z\",\n    \"property_nodes_affected\": [\n      \"n8n-nodes-base.googleSheets\"\n    ],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-21T16:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Improve “no credential set” error in Google Sheets node\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  },\n  {\n    \"id\": \"dda6acab-2160-4570-b110-4f06e126af19\",\n    \"name\": \"Promote new features in docs\",\n    \"url\": \"https://www.notion.so/Promote-new-features-in-docs-dda6acab21604570b1104f06e126af19\",\n    \"property_tags\": [],\n    \"property_priority\": null,\n    \"property_type\": [\n      \"Growth\",\n      \"Monetization\"\n    ],\n    \"property_deletion_time\": null,\n    \"property_complexity\": null,\n    \"property_area\": [\n      \"Other\"\n    ],\n    \"property_votes\": 2,\n    \"property_sync_time\": null,\n    \"property_consider_soon\": false,\n    \"property_last_edited\": \"2023-06-21T09:38:00.000Z\",\n    \"property_property\": \"\",\n    \"property_created_time\": \"2023-06-21T09:03:00.000Z\",\n    \"property_nodes_affected\": [],\n    \"property_linear_ticket\": null,\n    \"property_external_request_link\": null,\n    \"property_voters\": [\n      \"max@n8n.io\",\n      \"jon@n8n.io\"\n    ],\n    \"property_published_time\": {\n      \"start\": \"2023-06-21T11:37:00.000+02:00\",\n      \"end\": null,\n      \"time_zone\": null\n    },\n    \"property_created_by\": [\n      \"max@n8n.io\"\n    ],\n    \"property_sub_area\": [],\n    \"property_impact\": null,\n    \"property_metric_to_improve\": [],\n    \"property_status\": null,\n    \"property_name\": \"Promote new features in docs\",\n    \"property_implementation_phase\": null,\n    \"property_timeline_status\": null\n  }\n]"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Code": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter": {
+          "main": [
+            [
+              {
+                "node": "Item Lists",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Item Lists": {
+          "main": [
+            [
+              {
+                "node": "Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Code",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 11,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.notion": {
+          "count": 1
+        },
+        "n8n-nodes-base.itemLists": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "workflow": {
+    "id": 536,
+    "name": "Receive updates for new events in Clockify",
+    "views": 423,
+    "recentViews": 0,
+    "totalViews": 423,
+    "createdAt": "2020-07-17T10:36:13.859Z",
+    "description": "Companion workflow for Clockify Trigger node docs\n\n![workflow-screenshot](fileId:134)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Clockify Trigger",
+          "type": "n8n-nodes-base.clockifyTrigger",
+          "position": [
+            450,
+            480
+          ],
+          "parameters": {
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "workspaceId": "5f115b31e3f0ad7f90326b39"
+          },
+          "credentials": {
+            "clockifyApi": "clockify_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.clockifyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 266,
+        "icon": "file:clockify.svg",
+        "name": "n8n-nodes-base.clockifyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.clockifytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clockify/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Clockify Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yNS44MDA1IDEzLjc0ODRMMzQuOTg0NCA0LjU1ODcyTDM3LjYxMzMgNy4xODczMUwyOC40MjkzIDE2LjM3NzJMMjUuODAwNSAxMy43NDg0Wk0yMi4wNzkxIDIzLjEzOThDMjAuMjgxOCAyMy4xMzk4IDE4LjgyNTcgMjEuNjc3MyAxOC44MjU3IDE5Ljg3MTRDMTguODI1NyAxOC4wNjczIDIwLjI4MTggMTYuNjAyOSAyMi4wNzkxIDE2LjYwMjlDMjMuODc2NSAxNi42MDI5IDI1LjMzMjYgMTguMDY3MyAyNS4zMzI2IDE5Ljg3MTRDMjUuMzMyNiAyMS42NzczIDIzLjg3NjUgMjMuMTM5OCAyMi4wNzkxIDIzLjEzOThaTTM3LjY1NjIgMzIuNjMyTDM1LjAyNzQgMzUuMjYyNUwyNS44NDMzIDI2LjA3MjVMMjguNDcyMiAyMy40NDJMMzcuNjU2MiAzMi42MzJaIiBmaWxsPSIjMjIyMjIyIi8+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjIuMTczOSAzNC4wMDU4QzI0LjAyNTIgMzQuMDA1OCAyNS43ODg5IDMzLjYzNjQgMjcuNDA1NSAzMi45Nzk3TDMxLjg5MTEgMzcuNDcwM0MyOS4wMTQ0IDM5LjA3NjQgMjUuNzAzMSA0MCAyMi4xNzM5IDQwQzExLjEzNjYgNDAgMi4xODc1IDMxLjA0NTIgMi4xODc1IDIwLjAwMDlDMi4xODc1IDguOTU0ODQgMTEuMTM2NyAwIDIyLjE3MzkgMEMyNS42Njc4IDAgMjguOTQ5MiAwLjkwMTA5NCAzMS44MDUzIDIuNDc3NUwyNy4zOTQyIDYuODkzMjhDMjUuNzc5NyA2LjI0MDMxIDI0LjAyMTYgNS44NzA5NCAyMi4xNzM5IDUuODcwOTRDMTQuNDQ0MiA1Ljg3MDk0IDguMTc3ODEgMTIuMTY5MiA4LjE3NzgxIDE5LjkzOTRDOC4xNzc4MSAyNy43MDc1IDE0LjQ0NDEgMzQuMDA1OCAyMi4xNzM5IDM0LjAwNThaIiBmaWxsPSIjMDNBOUY0Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Clockify Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 134,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6d11a4cfabb04e8e9d26062048920646.png"
+      }
+    ]
+  }
+}

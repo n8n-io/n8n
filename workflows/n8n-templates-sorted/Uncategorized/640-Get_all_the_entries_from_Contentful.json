@@ -1,0 +1,211 @@
+{
+  "workflow": {
+    "id": 640,
+    "name": "Get all the entries from Contentful",
+    "views": 452,
+    "recentViews": 0,
+    "totalViews": 452,
+    "createdAt": "2020-09-09T10:34:44.258Z",
+    "description": "![workflow-screenshot](fileId:215)",
+    "workflow": {
+      "name": "",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            150,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Contentful",
+          "type": "n8n-nodes-base.contentful",
+          "position": [
+            350,
+            300
+          ],
+          "parameters": {
+            "operation": "getAll",
+            "returnAll": true,
+            "additionalFields": {}
+          },
+          "credentials": {
+            "contentfulApi": "contentful"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Contentful",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.contentful": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 359,
+        "icon": "file:contentful.png",
+        "name": "n8n-nodes-base.contentful",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.contentful/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/contentful/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Contentful"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAACzVBMVEUAAAD//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////v3wV1FOteFQteH/11/8/f79/v///f3xWlX///4tsN//12BYuOPwXljORzn/2GXwYFry+Pz/1lrwVk/++/lTtuHvPzXvLyD//fdhueNbuOP/12L/1En/1EXvSkPq8/rO5fT/+e5LtOE9suD/9doAd7wIgbYAgbb/2nD/113MSjz+9PTU5/T98O+72++22e+GxedHs+AzseAArN73v74Ae7IAbq7/5KT0m5m6so//22H/2lnwTUb/1DzvRDvOTjrMPzfKRTbvOS7wNCnvKhjIAQD2+v3i7/jc6/fF4PL87Oz86umWy+mSyuh2wOX/9eH74eA/suA4sd8mr98crt763Nz/8tf61tb/8NL50tGiu8/6zs04ncz4yskbjcAAiMD/6r8AfLcohLYdgrYIgrYvhbU0hbT2s7L0pKLzlJHzjYvyf3v/23npzHjxcW3/3l7/2VXuVlDwUUvZT0TUSj7JLTjuJQ3+9fX//Oun0eqbzeqZzOl/wub/+eVtveSsyN8Prd4ArN2Ludnd2ss4ksL2uLcRgrb2t7Xy0LQAcbHorar+4qbczaPiqaDgpJ3nl5T0yY7Juou1rYbyhYLxeHX/33P/32/4yWTyZmHwZmH4yVvtsVPpp1PeWFD/2k/PVk3xUkvMVEnppEjILUTIIDvnoTj/1SvmmRDWLA7KHADUAAA0tfvvAAAAQ3RSTlMA/vz6AgQIBQOJf3UV+fjCbF1aVxEH9+7r5dzXyoRnUEpFKSUc8ejhtq6fm3FvMCwiCryxr6WWjnphQD42DdLNxZg46i9pNgAABRtJREFUSMelloV700AYxpNUJ8wZG3PB3V2vtq50LbSTlm0wxsYYDHfXbbi7u7u7u7u729/Ad+nCJaE0PPDuedbker973+/ukivlVgqlUk7u1EqlgvpLyZUq/BES3zwmODimRUIrfKeC0SQFNvAvMbBGZGU/xMovvG3jYF9olMYBLR9YtRISqULDGPZLT1KpqXpNqyAsmieEFRGgplQKj7bR4RzImZLbisEezMtTdf1dfZFIXGMD3z/QcjUVFIqIp1s8LBYs3LAU5YUQQ1B3OINQTUold8NWxyzyKEx7Uarf4eoYlRSmxclVkPk31pjkklFE+1BKIRsIrIjkXxsFdCyfVlPxDDSK0W59pw8Y0H/6NDtcJ/HpMF9B3ZFIxmeTgBxwSr/AjJWfOSs3CRmNvFmrSmAFVQtYga39uN6cn6fTg3S6QYPNc3KJOc4YRIL7VuKHpjug3KzBeXq+5i+cbf9Fw16oqKLkZcZeqBxhOyB0du2aVTqw5IRxc+ZUQsNe4axDKghna8XwjT2HrckDKMNisWS4+Ix8HdDEWgHW2DiAXzGNLg7feKXnpmGrLFkZ+eaFgwdZLC7aPBAZiTVXdSTPWIN6PCjYXAjwJd35+XNmnxyYucjMuusHZdmB5qzxhIN5HbgmBac/GVWwpbCw54a1lv7dcMwp02Yt0lnyAM+086wrJVIK+KsJqYnxui+71xdu2bxh+AU74tRXvyAzK2vICWBJ7kDIraYa8Evu3Ct1zP31BQXXVyCuK3x0OzPk3JCBdgFcAxetqoIYYrxsXCfDmN2jRt3qgDsgDp+S279vEmFxoZF4uuvKEK/kEV07GQxj9r05DQN5ECBhITDXzfmLnL5rX7YhJbvLCGAlYFkdgIOQjBh3T01JMRiyuyyRhlEcwAF8eG4XSG3ondJdCoa0wQD78OEeuOSU1F6d4VrKudn/wrX+NXYQwIH/OmGxAMfxl6rzrtRsyN31pgjWJCcna4QwUxvgeFq8SXqP3rv3mIBOdo0ggCv4AlwvXLQ9e49+8erzPUwQNn350KUa3EK2Z2v2qKgvejBGv5x4+PD328BoyhKjGY+KJzt3HCXekLURHBwKylv4SI57OnHihKKi0rt9WBL3X2obbzWZjmwDawJHs49kexybvAwef/g0oWPHjkXfng2dgcn0xSMdB0xarfbA8z6cNcChCa53d4TwNfT1I4YnHXxXnLZz5MjtexwOE2a1abZ+YM2V7A+ZKS43CXSt9C0Lm0xpOQ7H+LGAYpnGP0Qaza/UAewLUC54ovG2vFP6vmjSof0YAGEQbK1jc+aBMQdXDoGCWevqfGsY/MaPQ6+BJUoz2SZbCQupvbAxa53AwC2fXqktNtk4T63Waht7ZAcULNghCu6ga4LPG0LTqN+2HGeOyWqzWm02a5qjZM9qxGNpwfmu5F6CxHzm1Z05zhKn01ky2bp9ZTpuI0dsG8hLztg4JKMFtAacZi4funXr5dWL+wj3NQPPBF5jQkchP4TEOCcWJaHZZRKompgGhJPo11Q78BX9DPNHoUhatAxVw91FtMIf+dFSLMNgVi1k2YaGSMZ4ZmVwRBFWmDwKoXIezBnYDLVIZjEdFw5F0X+sFkW0hIVxL/iiXhOE3IZnAC3nLSfz7I6m4hsxuCvD0GRxZHi40MaJXLke8ISoiq6YZUJYEU0T8ZcSkquhU4so/zASuXJ975Z4XDxTkjhrEFI7JtrH29snOrZOK4qHSksNXQXDua/1J0BR0xDIlyn3AAAAAElFTkSuQmCC"
+        },
+        "displayName": "Contentful",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 215,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/c4295556425146228bc1407515bba62e.png"
+      }
+    ]
+  }
+}

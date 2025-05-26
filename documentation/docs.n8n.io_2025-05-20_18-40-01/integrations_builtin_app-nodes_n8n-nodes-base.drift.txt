@@ -1,0 +1,45 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.drift/
+Scraped_At: 2025-05-20T18:47:00.096660
+
+Drift node
+#
+Use the Drift node to automate work in Drift, and integrate Drift with other applications. n8n has built-in support for a wide range of Drift features, including creating, updating, deleting, and getting contacts.
+On this page, you'll find a list of operations the Drift node supports and links to more resources.
+Credentials
+Refer to
+Drift credentials
+for guidance on setting up authentication.
+Operations
+#
+Contact
+Create a contact
+Get custom attributes
+Delete a contact
+Get a contact
+Update a contact
+Templates and examples
+#
+Browse Drift integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

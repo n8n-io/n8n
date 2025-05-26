@@ -1,0 +1,491 @@
+{
+  "workflow": {
+    "id": 385,
+    "name": "Send Airtable data as tasks to Trello",
+    "views": 600,
+    "recentViews": 0,
+    "totalViews": 600,
+    "createdAt": "2020-05-28T18:14:31.208Z",
+    "description": "In this workflow, we'll automate the export of all the submissions which have a total score greater than 15 for a final review on Trello. The workflow will also generate social media assets for the organizers and add them to the Trello card.",
+    "workflow": {
+      "id": "55",
+      "name": "CFP Selection 2",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            400,
+            250
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            600,
+            250
+          ],
+          "parameters": {
+            "table": "",
+            "operation": "list",
+            "application": "",
+            "additionalOptions": {
+              "filterByFormula": "{Total Score} > 15"
+            }
+          },
+          "credentials": {
+            "airtableApi": "Airtable"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Bannerbear",
+          "type": "n8n-nodes-base.bannerbear",
+          "position": [
+            800,
+            250
+          ],
+          "parameters": {
+            "templateId": "",
+            "modificationsUi": {
+              "modificationsValues": [
+                {
+                  "name": "talk title",
+                  "text": "={{$node[\"Airtable\"].json[\"fields\"][\"What's the title of your talk?\"]}}"
+                },
+                {
+                  "name": "abstract",
+                  "text": "={{$node[\"Airtable\"].json[\"fields\"][\"Please share the abstract of your talk.\"]}}"
+                },
+                {
+                  "name": "profile image",
+                  "imageUrl": "={{$node[\"Airtable\"].json[\"fields\"][\"Please share a URL of your profile picture.\"]}}"
+                },
+                {
+                  "name": "username",
+                  "text": "={{$node[\"Airtable\"].json[\"fields\"][\"Your twitter handle\"]}}"
+                },
+                {
+                  "name": "full name",
+                  "text": "={{$node[\"Airtable\"].json[\"fields\"][\"Great, can we get your full name?\"]}}"
+                }
+              ]
+            },
+            "additionalFields": {
+              "waitForImage": true
+            }
+          },
+          "credentials": {
+            "bannerbearApi": "Bannerbear"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Trello",
+          "type": "n8n-nodes-base.trello",
+          "position": [
+            1000,
+            250
+          ],
+          "parameters": {
+            "name": "={{$node[\"Airtable\"].json[\"fields\"][\"What's the title of your talk?\"]}}",
+            "listId": "",
+            "description": "=Abstract: {{$node[\"Airtable\"].json[\"fields\"][\"Please share the abstract of your talk.\"]}}\n\nName: {{$node[\"Airtable\"].json[\"fields\"][\"Great, can we get your full name?\"]}}\nBio: {{$node[\"Airtable\"].json[\"fields\"][\"Please share a bit of information about you.\"]}}\nEmail: {{$node[\"Airtable\"].json[\"fields\"][\"And what's your email address?\"]}}\nTwitter: {{$node[\"Airtable\"].json[\"fields\"][\"Your twitter handle\"]}}",
+            "additionalFields": {
+              "urlSource": "={{$node[\"Bannerbear\"].json[\"image_url\"]}}"
+            }
+          },
+          "credentials": {
+            "trelloApi": "Trello"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Airtable": {
+          "main": [
+            [
+              {
+                "node": "Bannerbear",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bannerbear": {
+          "main": [
+            [
+              {
+                "node": "Trello",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.trello": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 1
+        },
+        "n8n-nodes-base.bannerbear": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 43,
+        "icon": "file:trello.svg",
+        "name": "n8n-nodes-base.trello",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.trello/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/trello/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Trello"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMDA3OUJGIiByeD0iMjUiLz48cmVjdCB3aWR0aD0iNjEiIGhlaWdodD0iODcuNSIgeD0iMTEzIiB5PSIyNiIgZmlsbD0iI0ZGRiIgcng9IjEyIi8+PHJlY3Qgd2lkdGg9IjYxIiBoZWlnaHQ9IjEzNy41IiB4PSIyNiIgeT0iMjYiIGZpbGw9IiNGRkYiIHJ4PSIxMiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Trello",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 311,
+        "icon": "file:bannerbear.png",
+        "name": "n8n-nodes-base.bannerbear",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bannerbear/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/bannerbear/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Bannerbear"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAMAAAC5zwKfAAAArlBMVEX/1wD91QAAAAD/3QD/2wD/2gDmwQD2zwDpxADGpgDzzADwywArIwCtkQCqjwDfvADduQDBogCylQCTewC2mQBKPQAzKQANCQD40QDQrgAeFwD60wDtyAC7nQCagQBWRwA7MAAkHAATDgACAQCfhgCKcwBOQQD/3wDVswDKqgBqWABFOQDivgDXtQBkUwBBNQCnjACNdgCFbwB6ZgBzXwAaFAB/agBeTgADAgCCbQCn+cgBAAAD70lEQVRYw+1YZ1fjQAy0ZiWn2DHpnTRSSEg5Qr3//8duLds47wovG/hwHzI8wLHwRFqNZtl4V1xxxf8LUnwjHRsL/i5KYi7WoqhWZKZvSc/4CygWvvl6kuRxDRatB1jU2KMv1xsBmG8L5WoDQMR0WVpZaWQqwKRqWIRNDx1UTBYhh2TZY6GErwS0hoYUq+1shpJJImL/6Nz8pLRvFGJGYh/oF81HulXM4HMckfLjfn1e/cRFAJFlsV8b4F75FLSqARsN8AhAIHQW4Q3aGMWEpgn8MHQaewSacYgXCDXZszDHuChEMuxgPPBOCSWY4n1oY7xtIRI6s8cyHEhaVk8TzGPmFhhxHOwGcr5sxKOkI69/JEFv0FLJE3IRov3mBlBl+i1i1kBDG+0ocW32T6Hcv7LAHiheMDBkfqSSibnEQi9U69p6R5AUDtgk7mBkUA6CArHhmLPQwkF17wRNpGaI2LupH98mYXjYL5q+MOl4l4wzoTxhUhar8mec4Fhk7f6TOLfEV71xD+hP+7OOxaw/fdG+y2uiHBfo1O3YK4SYArhD+iPEG+lqNJ1rfsa469k8+zjB3TumgUgQ4vkCEc6NbfUDOnfI8aJmw0dXKZKpxSLUjobIGO1FGPdXozWXmtWmHqzWyBuMMcVdzveU5P+OBZOTqlvxE/psx9KkCNGySkpWuOWgbfVY3BpK9DPBdDoDZlY0bwFTNpY3Dimq622ZEvLyI4B3WMy76T3T0zd0yLCBZVYSCVfnY9ztf/jsZbeGfTScFnGTO5dHxCsf7WDFRF7uYRuHBCVo67aX37CEZY9OS7DvIOTSk8xPkk0zJhS9TBe57tIVu+a5+YsnlBHqi3Qj0P3LYU5myWgR37d2nBHyerlNb1ddZsUWpF6ol3PMVwNjTaIsA/OKZqZOoO5AGOkgpMa9LBoZ2efZVNvYGcp0EzkQVvCQEnrdJR5GT7D4OWrjmTI3mjkRNhEOhVLrHsOiGcFiE2R3ty4ea+vMRUHcXVdufcM3zUqPhHIdlMwFOtSq9UihRwv74hIdqlHno0oxkl8ne6Kusou/HqxuPt0hFk72tf5Ut7rXr13sy+u29F/Nf5qH9e6uDbs47CeTQGbk4K8K3Zxw8/dnaNVDmr9LijtgEjD9LeTjRUfQCbruy+CP0yLRyg+TA5UrpKGHMktxSid6QGuI5wxLYxlR6RqhD4gpz229DQ27M0oFwPI2YJMcHo0M620AFXHmy4b4fgkgXNzu/GHRv2++dgAs741HFx/mu/UDFP0+FId6N+vHhUkWSscJUkyOpcLF6eVtlXK1VI+ieqlalrhDX//IRtgoWL7pwxv6gHfFFVf8p/gFQ+05RiEQxa0AAAAASUVORK5CYII="
+        },
+        "displayName": "Bannerbear",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

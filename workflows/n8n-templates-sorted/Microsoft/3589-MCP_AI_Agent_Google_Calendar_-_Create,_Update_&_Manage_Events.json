@@ -1,0 +1,245 @@
+{
+  "workflow": {
+    "id": 3589,
+    "name": "MCP AI Agent Google Calendar - Create, Update & Manage Events",
+    "views": 1062,
+    "recentViews": 62,
+    "totalViews": 1062,
+    "createdAt": "2025-04-17T14:53:38.759Z",
+    "description": "### Hi! I’m Amanda :) 💖 \nI created this sweet little workflow with lots of love and care, just for you who wants to manage your Google Calendar in a smart and gentle way 💌\n\nThis AI-powered agent connects with MCP (Multi-Channel Protocol) and understands natural language like “book a meeting tomorrow at 3pm”, “reschedule my call to Monday”, or “what events do I have on Wednesday?” — and it does everything quietly and beautifully in your calendar 🧸\n\n---\n\n## 💡 What this lovely agent does\n\n- 🗓️ Creates new events in your Google Calendar (with or without guests)  \n- ✏️ Updates existing events with new times or details  \n- 🧹 Deletes events you no longer need  \n- 🔍 Retrieves scheduled events by date  \n- 🤖 Works through GPT-4o or any AI via MCP Agent\n\n---\n\n## ⚙️ How to set it up (gently and step-by-step)\n\n1. **Webhook** is ready for MCP messages at `POST /mcp/calendar`  \n2. **Connect your Google Calendar account** using OAuth2 inside n8n  \n3. **Link it to your favorite AI tool** (like LangChain, Typebot, etc.) that can talk to the MCP agent  \n4. All details like title, time, date, and guests are parsed automatically from natural language 💫\n\n---\n\n## ✨ Requirements\n\n- Google Calendar connected to n8n  \n- n8n instance (Cloud or Self-hosted — both are supported!)  \n- An AI interface that talks to the MCP agent (like LangChain or Typebot)  \n- MCP Trigger API set up in your n8n environment\n\n---\n\nThis agent is perfect for therapists, consultants, coaches, small teams, or anyone who wants to keep their calendar flowing naturally and peacefully with a little help from AI 💆‍♀️🧠\n\n---\n\n## Want something customized just for you?\n### Chat with me 💻💛 [Chat via WhatsApp](https://wa.me/5517991557874) (+55 17 99155-7874)\n.\n.\n## Tradução para Português:\n### 💖 Oi! Eu sou a Amanda :)\n\nEsse fluxinho aqui foi feito com muito cuidado pra você que quer automatizar sua agenda do Google Calendar de forma inteligente, simples e com muito carinho 💌\n\nEle funciona como um agente que conversa com outro sistema de IA (via MCP) e consegue entender pedidos como “agende uma consulta amanhã às 15h”, “remarque a reunião para segunda”, ou “quais eventos tenho na quarta?” — tudo isso feito direto no seu calendário, sem você precisar abrir nada 🧸\n\n---\n\n## 💡 O que ele faz com amor\n\n- 🗓️ Cria eventos no seu Google Calendar (com ou sem convidados)  \n- ✏️ Atualiza eventos já existentes com novos horários  \n- 🧹 Exclui eventos que você não precisa mais  \n- 🔍 Busca seus compromissos com base em datas específicas  \n- ❤️ Tudo isso com suporte ao modelo GPT-4o via agente MCP\n\n---\n\n## ⚙️ Como configurar (bem facinho, prometo!)\n\n1. **Conecte o webhook**: o endpoint do MCP já vem prontinho com o caminho `mcp/calendar`  \n2. **Conecte sua conta do Google Calendar** usando o OAuth2 no n8n  \n3. **Adicione a integração do MCP Trigger** com seu sistema de IA (LangChain, Typebot, etc.)  \n4. Todos os campos como título, data, hora e convidados são extraídos automaticamente via IA 💫\n\n---\n\n## ✨ Requisitos\n\n- Conta Google Calendar integrada ao n8n  \n- Instância n8n (Cloud ou Self-hosted)  \n- Integração com uma IA que converse com o MCP Agent (como LangChain)  \n- Acesso à API MCP ativado no n8n\n\n---\n\nEsse agente é ideal pra psicólogos, consultores, times de atendimento, terapeutas — ou qualquer pessoa fofa que quer deixar sua agenda fluindo sozinha, com a ajuda de um toque de inteligência 💆‍♀️🧠\n\n---\n\n## Quer algo feito só pra você?\n### Fala comigo com carinho 💻💛 [Falar no WhatsApp](https://wa.me/5517991557874) (+55 17 99155-7874)",
+    "workflow": {
+      "id": "9np0mcrtxQ8Zk9fQ",
+      "meta": {
+        "instanceId": "6a52f06a38696cfa8d3a5b70f84891fab02c428a5c2d448dcef39b1f17adf12b",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "MCP Google Calendar",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "9d5a8ad9-68ec-4bcb-928e-d016b78c58ec",
+          "name": "MCP Server Trigger",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            80,
+            -60
+          ],
+          "webhookId": "23a95c27-5a91-49b1-8d99-1f64dfe04b2d",
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e9b03b81-c28a-4fd0-b8ff-f514c82449da",
+          "name": "Create Event with Attendee",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            480,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "ba53e659-005f-48a2-ac83-c263e2f85bdb",
+          "name": "Create Event",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            360,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "a65c0783-9be7-498d-80b2-be6a81bfe81f",
+          "name": "Get Events",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            240,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "06ad460f-b6a8-44be-8c5c-68ac0370771e",
+          "name": "Delete Event",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            120,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "d0afcce9-0cee-4b74-9424-a94de98e78dd",
+          "name": "Update Event",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            0,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "ac760115-997f-4a45-a76a-f3aeb544f1f5",
+      "connections": {
+        "Get Events": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP Server Trigger",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Event": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP Server Trigger",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete Event": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP Server Trigger",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Event": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP Server Trigger",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Event with Attendee": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP Server Trigger",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.googleCalendarTool": {
+          "count": 5
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Amanda Benks",
+      "username": "amanda",
+      "bio": "Hi loves! I've been making workflows for n8n for two years, and I hope you like my flows <3",
+      "verified": true,
+      "links": [
+        "https://iloveflows.gumroad.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/b3a5d488866a5de1fb28471770f11f0dab20e328d3b47e4fa0a379ef2a22c041?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

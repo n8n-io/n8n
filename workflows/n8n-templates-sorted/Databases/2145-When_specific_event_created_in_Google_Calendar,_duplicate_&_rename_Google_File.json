@@ -1,0 +1,587 @@
+{
+  "workflow": {
+    "id": 2145,
+    "name": "When specific event created in Google Calendar, duplicate & rename Google File",
+    "views": 1959,
+    "recentViews": 0,
+    "totalViews": 1959,
+    "createdAt": "2024-02-28T18:06:42.472Z",
+    "description": "# Who is this template for?\n\nThis template is for everyone who has to take notes during a call:\n- Talent Acquisition Managers / Talent Acquisition Specialists / Recruiters\n- HR professionals\n- Sales teams, customer success teams\n- Product teams / User Experience Designers / anyone conducting user research interviews\n\n# Use case\n\nThis workflow allows specific events created on Google Calendar (or any other meeting scheduling tool like Calendly) to trigger the duplication and renaming of a specific template document. \n\nExample: \nFor each new screening call that is scheduled in your calendar, you want to create a draft of your screening interview template for the role, titled \"{Name of the candidate} | {Date of the interview}\", and located in your Google Drive in a specific folder\n\nThis workflow could then be extended to copy the link to the file on a Notion database that is shared with the team (check \"To go further\" section). \n\nThis workflow ensures that if you're jumping from calls to calls, you're already set up to take notes, and every document is tidied up and sorted in a structured way!\n\n# How it works\n\n- The workflow starts when a new event is created in Google Calendar\n- The Filter node then selects a specific type of events, depending on a chosen pattern (title includes a specific term, organizer is X, attendees include Y, etc.)\n- The workflow then searches for a specific folder in your Google Drive, where the file you want to duplicate is located\n- The workflow then searches for the specific file you want to duplicate\n- The last step allows to duplicate and rename the file with variables from your Google Calendar event \n\n# Set up\n\n- Set up credentials for **Google Calendar**, **Google Drive**, and **Google File**. You'll need a Google Workspace account. \n- Set up the **Filter** node with the pattern you want to look for to retreive specific events in your calendar \n- Set up the **Google Drive** you want to search in\n- Set up the **Google File** you want to duplicate\n- Set up variable at the last step to rename your duplicated file however you want it, or add a description\n\n# To go further\n\nHere's a few idea to enhance this workflow depending on your specific needs:\n- Instead of a filter, separate your flow depending on your use case (ex: you have want to fetch different templates depending on the type of call it'll be). \n- Switch Google Calendar for another trigger (Calendly, Hubspot..)\n- 10 minutes before the event, send the duplicate Google File to the meeting organizer through Slack \n- The day after the event, if the event hasn't been cancelled, add the link to the Google File to your ATS, Hubspot, etc. ",
+    "workflow": {
+      "id": "7LLcCRXJjlHUoO4h",
+      "meta": {
+        "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+      },
+      "name": "New interview > Create new doc (template n8n)",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "d8930efe-e70f-49f4-986a-be5598f30d5d",
+          "name": "Filter specific event",
+          "type": "n8n-nodes-base.filter",
+          "notes": "creator.email + source.url",
+          "position": [
+            780,
+            60
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "149376d5-8f56-4acc-b270-beec7dfee052",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.creator.email }}",
+                  "rightValue": "candice@n8n.io"
+                },
+                {
+                  "id": "8e53bf94-fc5e-4c80-a428-db2ca7b5c8fa",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.source.url }}",
+                  "rightValue": "https://n8n.workable.com/events/"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "0bb2f1db-c804-4dab-8541-02386ef7ff28",
+          "name": "New event in Google Calendar",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "notes": "match term: \"interview with\"",
+          "position": [
+            560,
+            60
+          ],
+          "parameters": {
+            "options": {
+              "matchTerm": "=Interview with"
+            },
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerOn": "eventCreated",
+            "calendarId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "candice@n8n.io",
+              "cachedResultName": "candice@n8n.io"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "0kMvgMbkVY1qYjMv",
+              "name": "Google Calendar account 4"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "247df98b-8207-458d-ba6a-826d7f91831c",
+          "name": "Search folder",
+          "type": "n8n-nodes-base.googleDrive",
+          "notes": "Search for \"Screening\" folder",
+          "position": [
+            980,
+            60
+          ],
+          "parameters": {
+            "limit": 1,
+            "filter": {},
+            "options": {},
+            "resource": "fileFolder",
+            "queryString": "SCREENING"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "PWs1S7xTzQUfUtRl",
+              "name": "Google Drive account 5"
+            }
+          },
+          "executeOnce": false,
+          "notesInFlow": true,
+          "retryOnFail": false,
+          "typeVersion": 3
+        },
+        {
+          "id": "03112460-fd45-4b82-8086-bd0a09c8300a",
+          "name": "Search file to duplicate",
+          "type": "n8n-nodes-base.googleDrive",
+          "notes": "Search \"Template screening\" file",
+          "position": [
+            1200,
+            60
+          ],
+          "parameters": {
+            "limit": 1,
+            "filter": {},
+            "options": {},
+            "resource": "fileFolder",
+            "queryString": "Template | M1 | Senior AE | "
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "PWs1S7xTzQUfUtRl",
+              "name": "Google Drive account 5"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "a4d7371c-75ac-4d3d-afe1-1ec3920ee3ed",
+          "name": "Create and rename Google File",
+          "type": "n8n-nodes-base.googleDrive",
+          "notes": "Create new doc",
+          "position": [
+            1420,
+            60
+          ],
+          "parameters": {
+            "name": "={{ $('Filter specific event').item.json.source.title }}",
+            "fileId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "options": {},
+            "operation": "copy"
+          },
+          "credentials": {
+            "googleDriveOAuth2Api": {
+              "id": "PWs1S7xTzQUfUtRl",
+              "name": "Google Drive account 5"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "c78d5082-9630-4872-87b4-73c68f254b7e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            520,
+            -300
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 783.9001364220326,
+            "height": 201.86891048588683,
+            "content": "## Set up\n\n- Set up credentials for **Google Calendar**, **Google Drive**, and **Google File**. You'll need a Google Workspace account. \n- Set up the **Filter** node with the pattern you want to look for to retreive specific events in your calendar \n- Set up the **Google Drive** you want to search in\n- Set up the **Google File** you want to duplicate\n- Set up variable at the last step to rename your duplicated file however you want it, or add a description"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3ea6d7bc-3649-4ddc-9623-f094ecce6333",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            520,
+            40
+          ],
+          "parameters": {
+            "width": 183.1090661050851,
+            "height": 387.56373557965946,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n👆\n\nYou can exchange with a trigger from another scheduling tool (Calendly, Hubspot)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e1c915d6-58db-40e8-9c1e-e3446b89fa44",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            740,
+            40
+          ],
+          "parameters": {
+            "width": 185.58258497008137,
+            "height": 390.03725444465573,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n👆\n\nYou can filter with any pattern that matches the type of event you're trying to retrieve (Event title, description, organiser, attendees...)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d0a141a8-b165-411c-9237-23e73ca7e5eb",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            40
+          ],
+          "parameters": {
+            "width": 185.58258497008137,
+            "height": 390.03725444465573,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n👆\n\nSearch the folder where the file you want to duplicate is located. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5f1820b5-06ce-4fc5-8b9f-634580ce44b7",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1160,
+            40
+          ],
+          "parameters": {
+            "width": 185.58258497008137,
+            "height": 390.03725444465573,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n👆\n\nSearch the file you want to duplicate."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1efb3ca1-514b-46a3-8213-68a395cbf4ce",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1380,
+            40
+          ],
+          "parameters": {
+            "width": 185.58258497008137,
+            "height": 441.9811506095781,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n👆\n\nRename the new file whichever way you want, using variables from the first step (Calendar event). \n\nEx: {Title of the event} | {date of the event} | {attendees}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "13ae86e3-8629-4797-8d60-5791ca06a226",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            740,
+            -60
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 185.58258497008137,
+            "height": 80,
+            "content": "💡 ***You can create multiple path for different type of events***"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "ac39939b-0226-43b9-a8ac-2f38e9609ced",
+      "connections": {
+        "Search folder": {
+          "main": [
+            [
+              {
+                "node": "Search file to duplicate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter specific event": {
+          "main": [
+            [
+              {
+                "node": "Search folder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search file to duplicate": {
+          "main": [
+            [
+              {
+                "node": "Create and rename Google File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New event in Google Calendar": {
+          "main": [
+            [
+              {
+                "node": "Filter specific event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 12,
+      "nodeTypes": {
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 3
+        },
+        "n8n-nodes-base.googleCalendarTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Candice Capelle",
+      "username": "candicecpl",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/78bbae9349b470df5eba023c91c2eee1f23b113980b742403206678c4ba418ff?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 539,
+        "icon": "file:googleCalendar.svg",
+        "name": "n8n-nodes-base.googleCalendarTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlecalendartrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Google Calendar Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTYxLjA1MiAxOC45NDdIMTguOTQ3djQyLjEwNWg0Mi4xMDV6Ii8+PHBhdGggZmlsbD0iI2VhNDMzNSIgZD0iTTYxLjA1MyA4MCA4MCA2MS4wNTNINjEuMDUzeiIvPjxwYXRoIGZpbGw9IiNmYmJjMDQiIGQ9Ik04MCAxOC45NDdINjEuMDUzdjQyLjEwNUg4MHoiLz48cGF0aCBmaWxsPSIjMzRhODUzIiBkPSJNNjEuMDUyIDYxLjA1M0gxOC45NDdWODBoNDIuMTA1eiIvPjxwYXRoIGZpbGw9IiMxODgwMzgiIGQ9Ik0wIDYxLjA1M3YxMi42MzJBNi4zMTQgNi4zMTQgMCAwIDAgNi4zMTYgODBoMTIuNjMyVjYxLjA1M3oiLz48cGF0aCBmaWxsPSIjMTk2N2QyIiBkPSJNODAgMTguOTQ3VjYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDczLjY4NSAwSDYxLjA1M3YxOC45NDd6Ii8+PHBhdGggZmlsbD0iIzQyODVmNCIgZD0iTTYxLjA1MyAwSDYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDAgNi4zMTZ2NTQuNzM3aDE4Ljk0N1YxOC45NDdoNDIuMTA1VjB6TTI3LjU4NCA1MS42MTFjLTEuNTc0LTEuMDYzLTIuNjYzLTIuNjE2LTMuMjU4LTQuNjY4bDMuNjUzLTEuNTA1cS40OTggMS44OTQgMS43MzcgMi45MzdjMS4yMzkgMS4wNDMgMS44MjEgMS4wMzcgMi45ODkgMS4wMzdxMS43OTIgMCAzLjA3OS0xLjA4OWMxLjI4Ny0xLjA4OSAxLjI5LTEuNjUzIDEuMjktMi43NzRhMy40NCAzLjQ0IDAgMCAwLTEuMzU4LTIuODExYy0uOTA1LS43MjctMi4wNDItMS4wODktMy40LTEuMDg5aC0yLjExMXYtMy42MTZIMzIuMXExLjc1MiAwIDIuOTUzLS45NDdjMS4yMDEtLjk0NyAxLjItMS40OTUgMS4yLTIuNTk1cTAtMS40NjctMS4wNzQtMi4zNDJjLTEuMDc0LS44NzUtMS42MjEtLjg3OS0yLjcyMS0uODc5cS0xLjYxLS4wMDItMi41NTguODU4Yy0uOTQ4Ljg2LTEuMTA2IDEuMzAxLTEuMzc5IDIuMTExbC0zLjYxNi0xLjUwNWMuNDc5LTEuMzU4IDEuMzU4LTIuNTU4IDIuNjQ3LTMuNTk1czIuOTM3LTEuNTU4IDQuOTM3LTEuNTU4cTIuMjItLjAwMiAzLjk4OS44NThjMS43NjkuODYgMi4xMDUgMS4zNjggMi43NzQgMi4zNzlzMSAyLjE1MyAxIDMuNDE2cTAgMS45MzItLjkzMiAzLjI3NGMtLjkzMiAxLjM0Mi0xLjM4NCAxLjU3OS0yLjI4OSAyLjA1OHYuMjE2YTYuOTUgNi45NSAwIDAgMSAyLjkzNyAyLjI4OXExLjE0NiAxLjUzOCAxLjE0NyAzLjY4NGMuMDAxIDIuMTQ2LS4zNjMgMi43MTEtMS4wODkgMy44MzJzLTEuNzMyIDIuMDA1LTMuMDA1IDIuNjQ3Yy0xLjI3OS42NDItMi43MTYuOTY4LTQuMzExLjk2OC0xLjg0Ny4wMDUtMy41NTMtLjUyNi01LjEyNi0xLjU4OXptMjIuNDM3LTE4LjEyNi00LjAxIDIuOS0yLjAwNS0zLjA0MiA3LjE5NS01LjE4OWgyLjc1OHYyNC40NzloLTMuOTM3VjMzLjQ4NHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Calendar Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

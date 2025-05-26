@@ -1,0 +1,618 @@
+{
+  "workflow": {
+    "id": 3456,
+    "name": "Automated Discord Chatbot for chat Interaction in channel using Gemini 2.0 Flash",
+    "views": 61,
+    "recentViews": 23,
+    "totalViews": 61,
+    "createdAt": "2025-04-07T09:39:02.177Z",
+    "description": "A Discord bot that responds to mentions by sending messages to n8n workflows and returning the responses. Connects Discord conversations with custom automations, APIs, and AI services through n8n.\n\nFull guide on: https://github.com/JimPresting/AI-Discord-Bot/blob/main/README.md \n\n\n\n\n# Discord Bot Summary\n\n## Overview\nThe Discord bot listens for mentions, forwards questions to an n8n workflow, processes responses, and replies in Discord.\nThis workflow is intended for all Discord users who want to offer AI interactions with their respective channels.\n\n## What do you need?\n- You need a Discord account as well as a Google Cloud Project\n\n## Key Features\n\n### 1. Listens for Mentions\n- The bot monitors Discord channels for messages that mention it.\n- **Optional Configuration**: Can be set to respond only in a specific channel.\n\n### 2. Forwards Questions to n8n\n- When a user mentions the bot and asks a question:\n  - The bot extracts the question.\n  - Sends the question, along with channel and user information, to an n8n webhook URL.\n\n### 3. Processes Data in n8n\n- The n8n workflow receives the question and can:\n  - Interact with AI services (e.g., generating responses).\n  - Access databases or external APIs.\n  - Perform custom logic.\n- n8n formats the response and sends it back to the bot.\n\n### 4. Replies to Discord with n8n's Response\n- The bot receives the response from n8n.\n- It replies to the user's message in the Discord channel with the answer.\n- **Long Responses**: Handles responses exceeding Discord's 2000-character limit by chunking them into multiple messages.\n\n### 5. Error Handling\n- Includes error handling for:\n  - Issues with n8n communication.\n  - Response formatting problems.\n- Manages cases where:\n  - No question is asked.\n  - An invalid response is received from n8n.\n\n### 6. Typing Indicator\n- While waiting for n8n's response, the bot sends a \"typing...\" indicator to the Discord channel.\n\n### 7. Status Update\n- For lengthy n8n processes, the bot sends a message to the Discord channel to inform the user that it is still processing their request.\n\n\n## Step-by-Step Setup Guide as per Github Instructions\n\n\n**Key Takeaways**\n\n- You’ll configure an n8n webhook to receive Discord messages, process them with your workflow, and respond.  \n- You’ll set up a Discord application and bot, grant the right permissions/intents, and invite it to your server.  \n- You’ll prepare your server environment (Node.js), scaffold the project, and wire up environment variables.  \n- You’ll implement message‐chunking, “typing…” indicators, and robust error handling in your bot code.  \n- You’ll deploy with PM2 for persistence and know how to test and troubleshoot common issues.\n\n---\n\n## 1. n8n: Create & Expose Your Webhook\n\n1. **New Workflow**  \n   - Log into your n8n instance.  \n   - Click **Create Workflow** (➕), name it e.g. `Discord Bot Handler`.  \n\n2. **Webhook Trigger**  \n   - Add a node (➕) → search **Webhook**.  \n   - Set:  \n     - **Authentication**: None (or your choice)  \n     - **HTTP Method**: `POST`  \n     - **Path**: e.g. `/discord-bot`  \n   - Click **Execute Node** to activate.\n\n3. **Copy Webhook URL**  \n   - After execution, copy the **Production Webhook URL**.  \n   - You’ll paste this into your bot’s `.env`.  \n\n4. **Build Your Logic**  \n   - Chain additional nodes (AI, database lookups, etc.) as required.\n\n5. **Format the JSON Response**  \n   - Insert a **Function** node before the end:  \n     ```javascript\n     return {\n       json: { answer: \"Your processed reply\" }\n     };\n     ```\n\n6. **Respond to Webhook**  \n   - Add **Respond to Webhook** as the final node.  \n   - Point it at your Function node’s output (with the `answer` field).\n\n7. **Activate**  \n   - Toggle **Active** in the top‐right and **Save**.\n\n---\n\n## 2. Discord Developer Portal: App & Bot\n\n1. **New Application**  \n   - Visit the [Discord Developer Portal](https://discord.com/developers/applications).  \n   - Click **New Application**, name it.  \n   - Go to **Bot** → **Add Bot**.\n\n2. **Enable Intents & Permissions**  \n   - Under **Privileged Gateway Intents**, toggle **Message Content Intent**.  \n   - Under **Bot Permissions**, check:  \n     - Read Messages/View Channels  \n     - Send Messages  \n     - Read Message History  \n\n3. **Grab Your Token**  \n   - In **Bot** → click **Copy** (or **Reset Token**).  \n   - Store it securely.\n\n4. **Invite Link (OAuth2 URL)**  \n   - Go to **OAuth2** → **URL Generator**.  \n   - Select scopes: `bot`, `applications.commands`.  \n   - Under Bot Permissions, select the same permissions as above.  \n   - Copy the generated URL, open it in your browser, and invite your bot.\n\n---\n\n## 3. Server Prep: Node.js & Project Setup\n\n1. **Install Node.js v20.x**  \n   ```bash\n   sudo apt purge nodejs npm\n   sudo apt autoremove\n   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -\n   sudo apt install -y nodejs\n   node -v    # Expect v20.x.x\n   npm -v     # Expect 10.x.x\n   ```\n\n2. **Project Folder**  \n   ```bash\n   mkdir discord-bot\n   cd discord-bot\n   ```\n\n3. **Initialize & Dependencies**  \n   ```bash\n   npm init -y\n   npm install discord.js axios dotenv\n   ```\n\n---\n\n## 4. Bot Code & Configuration\n\n1. **Environment Variables**  \n   - Create `.env`:  \n     ```bash\n     nano .env\n     ```  \n   - Populate:  \n     ```\n     DISCORD_BOT_TOKEN=your_bot_token\n     N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/discord-bot\n     # Optional: restrict to one channel\n     # TARGET_CHANNEL_ID=123456789012345678\n     ```\n\n2. **Bot Script**  \n   - Create `index.js`:  \n     ```bash\n     nano index.js\n     ```  \n   - Implement:  \n     - Import `dotenv`, `discord.js`, `axios`.  \n     - Set up client with `MessageContent` intent.  \n     - On `messageCreate`:  \n       1. Ignore bots or non‐mentions.  \n       2. (Optional) Filter by channel ID.  \n       3. Extract and validate the user’s question.  \n       4. Send “typing…” every 5 s; after 20 s send a status update if still processing.  \n       5. POST to your n8n webhook with `question`, `channelId`, `userId`, `userName`.  \n       6. Parse various response shapes to find `answer`.  \n       7. If `answer.length ≤ 2000`, `message.reply(answer)`.  \n       8. Else, split into ~1900‑char chunks at sentence/paragraph breaks and send sequentially.  \n       9. On errors, clear intervals, log details, and reply with an error message.\n\n3. **Login**  \n   ```javascript\n   client.login(process.env.DISCORD_BOT_TOKEN);\n   ```\n\n---\n\n## 5. Deployment: Keep It Alive with PM2\n\n1. **Install PM2**  \n   ```bash\n   npm install -g pm2\n   ```\n\n2. **Start & Monitor**  \n   ```bash\n   pm2 start index.js --name discord-bot\n   pm2 status\n   pm2 logs discord-bot\n   ```\n\n3. **Auto‐Start on Boot**  \n   ```bash\n   pm2 startup\n   # Follow the printed command (e.g. sudo env PATH=$PATH:/usr/bin pm2 startup systemd -u your_user --hp /home/your_user)\n   pm2 save\n   ```\n\n---\n\n## 6. Test & Troubleshoot\n\n1. **Functional Test**  \n   - In your Discord server:  \n     ``` \n     @YourBot What’s the weather like?\n     ```  \n   - Expect a reply from your n8n workflow.\n\n2. **Common Pitfalls**  \n   - **No reply** → check `pm2 logs discord-bot`.  \n   - **Intent Errors** → verify **Message Content Intent** in Portal.  \n   - **Webhook failures** → ensure workflow is active and URL is correct.  \n   - **Formatting issues** → confirm your Function node returns `json.answer`.\n\n3. **Inspect Raw Data**  \n   - Search your logs for **Complete response from n8n:** to debug payload shapes.\n\n---\n\n\n\n\n\n```",
+    "workflow": {
+      "id": "OqfQNcgTqUK7UvZG",
+      "meta": {
+        "instanceId": "5ce52989094be90be3b3bdd9ed9cee1d7ce1fcecaa598afaec4a50646d32e291",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Youtube Discord Bot",
+      "tags": [
+        {
+          "id": "5eZb3e5PJspoJjVN",
+          "name": "Discord",
+          "createdAt": "2025-02-22T09:31:58.972Z",
+          "updatedAt": "2025-02-22T09:31:58.972Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "39832819-a14b-445c-bf5c-0bd93613b1ca",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            80,
+            440
+          ],
+          "webhookId": "b0631bec-9ccc-4eb8-b143-d73609b213c7",
+          "parameters": {
+            "path": "b0631bec-9ccc-4eb8-b143-d73609b213c7",
+            "options": {},
+            "httpMethod": "POST",
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5e70b649-5678-4718-98a7-302a4c784155",
+          "name": "Simple Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            460,
+            680
+          ],
+          "parameters": {
+            "sessionKey": "={{ $json.body.userId }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 50
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "7cc849c3-3ed8-4fe2-a378-a213736a9aef",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            180,
+            700
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "clmB8ZYJMHaHmnsu",
+              "name": "Stardawn#1"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4b664f21-6f1c-4894-9196-beecbd865d3e",
+          "name": "Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            880,
+            440
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "allIncomingItems"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "c7c779d3-e324-4a3f-a5a1-5218ec61d856",
+          "name": "correctNaming",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            680,
+            440
+          ],
+          "parameters": {
+            "jsCode": "// Hole alle Items\nconst items = $input.all();\n\n// Nehme das erste Item (falls mehrere vorhanden sind)\nconst item = items[0];\n\n// Extrahiere den output\nconst antwort = item.json.output;\n\n// Formatiere die Antwort im richtigen Format für den Discord-Bot\nreturn {\n  json: {\n    answer: antwort\n  }\n};"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9ff7ad77-88ce-467e-91b1-4fc2d13636fd",
+          "name": "Discord AI Response Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            300,
+            440
+          ],
+          "parameters": {
+            "text": "=Username: {{ $json.body.userName }}\n\nQuestion/Prompt: {{ $json.body.question }}",
+            "options": {
+              "systemMessage": "You are a helpful assistant. You answer in the language you receive the question in. Interactions might be all over the place. If there is any questions regarding the Youtube Videos of the channel: Presting Podcasts, you have the transcript of the podcast videos as additional knowledge.\nAlways begin your answer with a @insertusername to mark the guy who asked the question.  "
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "429e2ccd-5a58-4287-9ad8-314efbbecb8f",
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Discord AI Response Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "Discord AI Response Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "correctNaming": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Discord AI Response Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Discord AI Response Agent": {
+          "main": [
+            [
+              {
+                "node": "correctNaming",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "JPres",
+      "username": "stardawnai",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/c1767436a4c7e4856114365bcac5df2f32cfb367c6dc607106edffd6d3df4b2e?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

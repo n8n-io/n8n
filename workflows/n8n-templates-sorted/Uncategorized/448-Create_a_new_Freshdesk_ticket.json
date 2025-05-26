@@ -1,0 +1,206 @@
+{
+  "workflow": {
+    "id": 448,
+    "name": "Create a new Freshdesk ticket",
+    "views": 1161,
+    "recentViews": 0,
+    "totalViews": 1161,
+    "createdAt": "2020-07-06T09:30:57.015Z",
+    "description": "Companion workflow for Freshdesk node documentation\n\n![workflow-screenshot](fileId:56)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Freshdesk",
+          "type": "n8n-nodes-base.freshdesk",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "status": "open",
+            "options": {},
+            "requester": "email",
+            "requesterIdentificationValue": "user@example.com"
+          },
+          "credentials": {
+            "freshdeskApi": "freshdesk-api"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Freshdesk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.freshdesk": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 65,
+        "icon": "file:freshdesk.svg",
+        "name": "n8n-nodes-base.freshdesk",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.freshdesk/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/freshdesk/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Freshdesk"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE5Ljk5IDM5Ljk3NDlDMTQuNjg5NiAzOS45NzM2IDkuNjA2NTggMzcuODY3NyA1Ljg1ODE3IDM0LjEyMDNDMi4xMDk3NiAzMC4zNzI4IDAuMDAyNjYyNjggMjUuMjkwMyAwIDE5Ljk5QzAuMDAxMzMxNDcgMTQuNjg4NyAyLjEwNzg0IDkuNjA0OTUgNS44NTYzOSA1Ljg1NjM5QzkuNjA0OTUgMi4xMDc4NCAxNC42ODg3IDAuMDAxMzMxNDcgMTkuOTkgMEwzNC45Nzc0IDBDMzYuMzA5NSAwIDM3LjU4NyAwLjUyOTE2NSAzOC41Mjg5IDEuNDcxMDlDMzkuNDcwOCAyLjQxMzAxIDQwIDMuNjkwNTIgNDAgNS4wMjI2VjE5Ljk5QzM5Ljk5ODcgMjIuNjE2MiAzOS40OCAyNS4yMTY0IDM4LjQ3MzYgMjcuNjQyMUMzNy40NjczIDMwLjA2NzggMzUuOTkyOSAzMi4yNzE1IDM0LjEzNDcgMzQuMTI3NEMzMi4yNzY2IDM1Ljk4MzIgMzAuMDcxIDM3LjQ1NDggMjcuNjQ0IDM4LjQ1ODFDMjUuMjE3IDM5LjQ2MTUgMjIuNjE2MiAzOS45NzY5IDE5Ljk5IDM5Ljk3NDlaIiBmaWxsPSIjMjBBODQ5Ii8+CjxwYXRoIGQ9Ik0xOS45NjQ5IDkuOTk1QzE4Ljg3NjIgOS45ODkgMTcuNzk3MiAxMC4xOTkgMTYuNzkwMiAxMC42MTI5QzE1Ljc4MzMgMTEuMDI2NyAxNC44Njg0IDExLjYzNjIgMTQuMDk4NiAxMi40MDZDMTMuMzI4OCAxMy4xNzU4IDEyLjcxOTMgMTQuMDkwNyAxMi4zMDU1IDE1LjA5NzZDMTEuODkxNiAxNi4xMDQ2IDExLjY4MTYgMTcuMTgzNiAxMS42ODc2IDE4LjI3MjJWMjMuNzk3MUMxMS42ODc2IDI0LjUzMTUgMTEuOTc5IDI1LjIzNiAxMi40OTc5IDI1Ljc1NThDMTMuMDE2NyAyNi4yNzU2IDEzLjcyMDYgMjYuNTY4MyAxNC40NTUxIDI2LjU2OTZIMTYuNzYwNVYyMC4wOTA0SDEzLjU2MTFWMTguMjcyMkMxMy41NjExIDE3LjQyNiAxMy43Mjc3IDE2LjU4ODEgMTQuMDUxNiAxNS44MDYyQzE0LjM3NTQgMTUuMDI0NCAxNC44NTAxIDE0LjMxNCAxNS40NDg1IDEzLjcxNTdDMTYuMDQ2OCAxMy4xMTczIDE2Ljc1NzIgMTIuNjQyNiAxNy41MzkgMTIuMzE4OEMxOC4zMjA5IDExLjk5NDkgMTkuMTU4OCAxMS44MjgyIDIwLjAwNTEgMTEuODI4MkMyMC44NTEzIDExLjgyODIgMjEuNjg5MiAxMS45OTQ5IDIyLjQ3MTEgMTIuMzE4OEMyMy4yNTI5IDEyLjY0MjYgMjMuOTYzMyAxMy4xMTczIDI0LjU2MTYgMTMuNzE1N0MyNS4xNiAxNC4zMTQgMjUuNjM0NyAxNS4wMjQ0IDI1Ljk1ODUgMTUuODA2MkMyNi4yODI0IDE2LjU4ODEgMjYuNDQ5MSAxNy40MjYgMjYuNDQ5IDE4LjI3MjJWMjAuMDkwNEgyMy4yMzk2VjI2LjU1NDVIMjUuMzk5M1YyNi43MDAyQzI1LjM5MTUgMjcuMzU1OCAyNS4xMjc2IDI3Ljk4MjMgMjQuNjY0IDI4LjQ0NkMyNC4yMDAzIDI4LjkwOTYgMjMuNTczOCAyOS4xNzM1IDIyLjkxODIgMjkuMTgxM0gyMC40MDY5QzIwLjMwMiAyOS4xODI2IDIwLjIwMTkgMjkuMjI0OSAyMC4xMjc3IDI5LjI5OUMyMC4wNTM2IDI5LjM3MzEgMjAuMDExNCAyOS40NzMzIDIwLjAxMDEgMjkuNTc4MUMyMC4wMTE0IDI5LjY4MyAyMC4wNTM2IDI5Ljc4MzEgMjAuMTI3NyAyOS44NTczQzIwLjIwMTkgMjkuOTMxNCAyMC4zMDIgMjkuOTczNiAyMC40MDY5IDI5Ljk3NDlIMjIuODE3N0MyMy4yNTM0IDI5Ljk3NjIgMjMuNjg1MSAyOS44OTE0IDI0LjA4NzggMjkuNzI1M0MyNC40OTA2IDI5LjU1OTIgMjQuODU2NiAyOS4zMTUgMjUuMTY0NyAyOS4wMDY5QzI1LjQ3MjggMjguNjk4OSAyNS43MTY5IDI4LjMzMjkgMjUuODgzIDI3LjkzMDFDMjYuMDQ5MSAyNy41MjczIDI2LjEzNCAyNy4wOTU3IDI2LjEzMjYgMjYuNjZWMjYuNDg0MkMyNi43MTg0IDI2LjMyNDIgMjcuMjM1OCAyNS45NzY5IDI3LjYwNTggMjUuNDk1NEMyNy45NzU4IDI1LjAxMzggMjguMTc4MSAyNC40MjQ1IDI4LjE4MTggMjMuODE3MlYxOC4yOTIzQzI4LjE5NDUgMTcuMjA2IDI3Ljk5MTIgMTYuMTI3OSAyNy41ODM3IDE1LjEyMDhDMjcuMTc2MiAxNC4xMTM3IDI2LjU3MjggMTMuMTk3NSAyNS44MDgzIDEyLjQyNTZDMjUuMDQzOCAxMS42NTM2IDI0LjEzMzYgMTEuMDQxMiAyMy4xMzA0IDEwLjYyNEMyMi4xMjczIDEwLjIwNjcgMjEuMDUxMyA5Ljk5MjkzIDE5Ljk2NDkgOS45OTVaIiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Freshdesk",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 13,
+        "name": "Support"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 56,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/fba42a2265984667923ca59805d56441.png"
+      }
+    ]
+  }
+}

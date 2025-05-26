@@ -1,0 +1,2142 @@
+{
+  "workflow": {
+    "id": 2333,
+    "name": "Recipe Recommendations with Qdrant and Mistral",
+    "views": 5108,
+    "recentViews": 1,
+    "totalViews": 5108,
+    "createdAt": "2024-07-10T13:30:56.749Z",
+    "description": "This n8n workflow demonstrates creating a recipe recommendation chatbot using the Qdrant vector store recommendation API.\n\nUse this example to build recommendation features in your AI Agents for your users.\n\n## How it works\n\n* For our recipes, we'll use HelloFresh's weekly course and recipes for data. We'll scrape the website for this data.\n* Each recipe is split, vectorised and inserted into a Qdrant Collection using Mistral Embeddings\n* Additionally the whole recipe is stored in a SQLite database for later retrieval.\n* Our AI Agent is setup to recommend recipes from our Qdrant vector store. However, instead of the default similarity search, we'll use the Recommendation API instead.\n* Qdrant's Recommendation API allows you to provide a negative prompt; in our case, the user can specify recipes or ingredients to avoid.\n* The AI Agent is now able to suggest a recipe recommendation better suited for the user and increase customer satisfaction.\n\n## Requirements\n\n* Qdrant vector store instance to save the recipes\n* Mistral.ai account for embeddings and LLM agent\n\n## Customising the workflow\n\nThis workflow can work for a variety of different audiences. Try different sets of data such as clothes, sports shoes, vehicles or even holidays.",
+    "workflow": {
+      "meta": {
+        "instanceId": "26ba763460b97c249b82942b23b6384876dfeb9327513332e743c5f6219c2b8e"
+      },
+      "nodes": [
+        {
+          "id": "1eb82902-a1d6-4eff-82a2-26908a82cea2",
+          "name": "When clicking \"Test workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            720,
+            320
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e0031fc3-27f1-45d9-910b-4c07dd322115",
+          "name": "Get This Week's Menu",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            992,
+            370
+          ],
+          "parameters": {
+            "url": "=https://www.hellofresh.co.uk/menus/{{ $now.year }}-W{{ $now.weekNumber }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "2c556cc7-7d4e-4d80-902f-9686e756ed8c",
+          "name": "Extract Available Courses",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            992,
+            650
+          ],
+          "parameters": {
+            "jsCode": "const pageData = JSON.parse($input.first().json.data)\nreturn pageData.props.pageProps.ssrPayload.courses.slice(0, 10);"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "90c39db6-6116-4c37-8d48-a6d5e8f8c777",
+          "name": "Extract Server Data",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            992,
+            510
+          ],
+          "parameters": {
+            "options": {
+              "trimValues": false,
+              "cleanUpText": true
+            },
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "data",
+                  "cssSelector": "script#__NEXT_DATA__"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "fbd4ed97-0154-4991-bf16-d9c4cb3f4776",
+          "name": "Get Course Metadata",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1172,
+            370
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3c90fd1e-e9ac-49c1-a459-7cff8c87fe8d",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.recipe.name }}"
+                },
+                {
+                  "id": "c4f3a5df-346c-4e8d-90ba-a49ed6afdedf",
+                  "name": "cuisines",
+                  "type": "array",
+                  "value": "={{ $json.recipe.cuisines.map(item => item.name) }}"
+                },
+                {
+                  "id": "97917928-0956-497b-bb68-507df1783240",
+                  "name": "category",
+                  "type": "string",
+                  "value": "={{ $json.recipe.category.name }}"
+                },
+                {
+                  "id": "1e84cf1e-7ad7-4888-9606-d3f7a310ce5f",
+                  "name": "tags",
+                  "type": "array",
+                  "value": "={{ $json.recipe.tags.flatMap(tag => tag.preferences) }}"
+                },
+                {
+                  "id": "cf6e2174-e8cb-4935-8303-2f8ed067f510",
+                  "name": "nutrition",
+                  "type": "object",
+                  "value": "={{ $json.recipe.nutrition.reduce((acc,item) => ({ ...acc, [item.name]: item.amount + item.unit }), {}) }}"
+                },
+                {
+                  "id": "25ba3fe6-c2fa-4315-a2cb-112ec7e3620f",
+                  "name": "url",
+                  "type": "string",
+                  "value": "={{ $json.recipe.websiteUrl }}"
+                },
+                {
+                  "id": "8f444fb3-c2ee-4254-b505-440cca3c7b8b",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.recipe.id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "5ab1a5fa-adc3-41e0-be6d-f680af301aca",
+          "name": "Get Recipe",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1172,
+            510
+          ],
+          "parameters": {
+            "url": "={{ $json.recipe.websiteUrl }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5014dc62-8320-4968-b9bd-396a517a2b5c",
+          "name": "Embeddings Mistral Cloud",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
+          "position": [
+            1960,
+            420
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "mistralCloudApi": {
+              "id": "EIl2QxhXAS9Hkg37",
+              "name": "Mistral Cloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2a8fad89-f74b-4808-8cb6-97c6b46a53ee",
+          "name": "Default Data Loader",
+          "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+          "position": [
+            2080,
+            420
+          ],
+          "parameters": {
+            "options": {
+              "metadata": {
+                "metadataValues": [
+                  {
+                    "name": "week",
+                    "value": "={{ $json.week }}"
+                  },
+                  {
+                    "name": "cuisine",
+                    "value": "={{ $json.cuisines }}"
+                  },
+                  {
+                    "name": "category",
+                    "value": "={{ $json.category }}"
+                  },
+                  {
+                    "name": "tag",
+                    "value": "={{ $json.tags }}"
+                  },
+                  {
+                    "name": "recipe_id",
+                    "value": "={{ $json.id }}"
+                  }
+                ]
+              }
+            },
+            "jsonData": "={{ $json.data }}",
+            "jsonMode": "expressionData"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "44ceef5c-1d08-40d2-8ab4-227b551f72f5",
+          "name": "Merge Course & Recipe",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1480,
+            500
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combinationMode": "mergeByPosition"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "b56bd85e-f182-49d1-aeb1-062e905c316a",
+          "name": "Prepare Documents",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1660,
+            500
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "462567fe-02ec-4747-ae33-407d2bc6d776",
+                  "name": "data",
+                  "type": "string",
+                  "value": "=# {{ $json.name }}\n{{ $json.description.replaceAll('\\n\\n','\\n') }}\n\n# Website\n{{ $json.url }}\n\n## Ingredients\n{{ $json.ingredients.replaceAll('\\n\\n','\\n') }}\n\n## Utensils\n{{ $json.utensils }}\n\n## Nutrition\n{{ Object.keys($json.nutrition).map(key => `* ${key}: ${$json.nutrition[key]}`).join('\\n') }}\n\n## Instructions\n{{ $json.instructions.replaceAll('\\n\\n','\\n') }}"
+                },
+                {
+                  "id": "5738e420-abfe-4a85-b7ad-541cfc181563",
+                  "name": "cuisine",
+                  "type": "array",
+                  "value": "={{ $json.cuisines }}"
+                },
+                {
+                  "id": "349f46d4-e230-4da8-a118-50227ceb7233",
+                  "name": "category",
+                  "type": "string",
+                  "value": "={{ $json.category }}"
+                },
+                {
+                  "id": "9588b347-4469-4aa5-93a2-e7bf41b4c468",
+                  "name": "tag",
+                  "type": "array",
+                  "value": "={{ $json.tags }}"
+                },
+                {
+                  "id": "7ddab229-fa52-4d27-84e1-83ed47280d29",
+                  "name": "week",
+                  "type": "string",
+                  "value": "={{ $now.year }}-W{{ $now.weekNumber }}"
+                },
+                {
+                  "id": "13163e45-5699-4d25-af3d-4c7910dd2926",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "a0c5d599-ff2b-420d-9173-2baf9218abc5",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "6b800632-f320-4fc3-bd2a-6a062834343d",
+          "name": "Recursive Character Text Splitter",
+          "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+          "position": [
+            2080,
+            560
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "df7f17a2-8b27-4203-a2ff-091aaf6609b8",
+          "name": "Chat Trigger",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            2440,
+            360
+          ],
+          "webhookId": "745056ec-2d36-4ac3-9c70-6ff0b1055d0a",
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ee38effe-5929-421e-a3c5-b1055a755242",
+          "name": "Extract Recipe Details",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            1172,
+            650
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "description",
+                  "cssSelector": "[data-test-id=\"recipe-description\"]"
+                },
+                {
+                  "key": "ingredients",
+                  "cssSelector": "[data-test-id=\"ingredients-list\"]"
+                },
+                {
+                  "key": "utensils",
+                  "cssSelector": "[data-test-id=\"utensils\"]"
+                },
+                {
+                  "key": "instructions",
+                  "cssSelector": "[data-test-id=\"instructions\"]",
+                  "skipSelectors": "img,a"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "dede108f-2fde-49cb-8a0e-fa5786c59d4b",
+          "name": "Qdrant Recommend API",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            2840,
+            540
+          ],
+          "parameters": {
+            "name": "get_recipe_recommendation",
+            "fields": {
+              "values": [
+                {
+                  "name": "week",
+                  "stringValue": "={{ $now.year }}-W{{ $now.weekNumber }}"
+                }
+              ]
+            },
+            "schemaType": "manual",
+            "workflowId": "={{ $workflow.id }}",
+            "description": "Call this tool to get a recipe recommendation. Pass in the following params as a json object:\n* positives - a description of what the user wants to cook. This could be ingredients, flavours, utensils available, number of diners, type of meal etc.\n* negatives - a description of what the user wants to avoid in the recipe. This could be flavours to avoid, allergen considerations, conflicts with theme of meal etc.",
+            "inputSchema": "{\n\"type\": \"object\",\n\"properties\": {\n\t\"positive\": {\n\t\t\"type\": \"string\",\n\t\t\"description\": \"a description of what the user wants to cook. This could be ingredients, flavours, utensils available, number of diners, type of meal etc.\"\n\t},\n   \"negative\": {\n    \"type\": \"string\",\n    \"description\": \"a description of what the user wants to avoid in the recipe. This could be flavours to avoid, allergen considerations, conflicts with theme of meal etc.\"\n  }\n}\n}",
+            "specifyInputSchema": true
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5e703134-4dd9-464b-9ec9-dc6103907a1e",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            2420,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9fb5f4fd-3b38-4a35-8986-d3955754c8d1",
+          "name": "Mistral Cloud Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+          "position": [
+            2660,
+            540
+          ],
+          "parameters": {
+            "model": "mistral-large-2402",
+            "options": {}
+          },
+          "credentials": {
+            "mistralCloudApi": {
+              "id": "EIl2QxhXAS9Hkg37",
+              "name": "Mistral Cloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d38275e6-aede-4f1c-9b05-018f3cf4faab",
+          "name": "Get Tool Response",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3160,
+            940
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "10b55200-4610-4e9b-8be7-d487c6b56a78",
+                  "name": "response",
+                  "type": "string",
+                  "value": "={{ JSON.stringify($json.result) }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "dc3ceb2f-3c64-4b42-aeca-ddcdb84abf12",
+          "name": "Wait for Rate Limits",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            2420,
+            1080
+          ],
+          "webhookId": "e86d8ae4-3b0d-4c40-9d12-a11d6501a043",
+          "parameters": {
+            "amount": 1.1
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "ec36d6f8-c3da-4732-8d56-a092a3358864",
+          "name": "Get Mistral Embeddings",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2620,
+            940
+          ],
+          "parameters": {
+            "url": "https://api.mistral.ai/v1/embeddings",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "model",
+                  "value": "mistral-embed"
+                },
+                {
+                  "name": "encoding_format",
+                  "value": "float"
+                },
+                {
+                  "name": "input",
+                  "value": "={{ [$json.query.positive, $json.query.negative].compact() }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "mistralCloudApi"
+          },
+          "credentials": {
+            "mistralCloudApi": {
+              "id": "EIl2QxhXAS9Hkg37",
+              "name": "Mistral Cloud account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "aebcb860-d25c-4833-9e9d-0297101259c7",
+          "name": "Use Qdrant Recommend API",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2800,
+            940
+          ],
+          "parameters": {
+            "url": "=http://qdrant:6333/collections/hello_fresh/points/recommend/groups",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "strategy",
+                  "value": "average_vector"
+                },
+                {
+                  "name": "limit",
+                  "value": "={{ 3 }}"
+                },
+                {
+                  "name": "positive",
+                  "value": "={{ [$json.data[0].embedding] }}"
+                },
+                {
+                  "name": "negative",
+                  "value": "={{ [$json.data[1].embedding] }}"
+                },
+                {
+                  "name": "filter",
+                  "value": "={{ { \"must\": {\"key\": \"metadata.week\", \"match\": { \"value\": $('Execute Workflow Trigger').item.json.week } } } }}"
+                },
+                {
+                  "name": "with_payload",
+                  "value": "={{ true }}"
+                },
+                {
+                  "name": "group_by",
+                  "value": "metadata.recipe_id"
+                },
+                {
+                  "name": "group_size",
+                  "value": "={{ 3 }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "qdrantApi"
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "2474c97d-0d85-4acc-a95e-2eb6494786dc",
+          "name": "Get Recipes From DB",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            2980,
+            940
+          ],
+          "parameters": {
+            "language": "python",
+            "pythonCode": "import sqlite3\ncon = sqlite3.connect(\"hello_fresh_1.db\")\n\nrecipe_ids = list(set([group.id for group in _input.all()[0].json.result.groups if group.hits[0].score > 0.5]))\nplaceholders = ','.join(['?' for i in range(0,len(recipe_ids))])\n\ncur = con.cursor()\nres = cur.execute(f'SELECT * FROM recipes WHERE id IN ({placeholders})', recipe_ids)\nrows = res.fetchall()\n\ncon.close()\n\nreturn [{ \"result\": [row[2] for row in rows] }]"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "54229c2a-6e26-4350-8a94-57f415ef2340",
+          "name": "Save Recipes to DB",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1960,
+            940
+          ],
+          "parameters": {
+            "language": "python",
+            "pythonCode": "import sqlite3\ncon = sqlite3.connect(\"hello_fresh_1.db\")\n\ncur = con.cursor()\ncur.execute(\"CREATE TABLE IF NOT EXISTS recipes (id TEXT PRIMARY KEY, name TEXT, data TEXT, cuisine TEXT, category TEXT, tag TEXT, week TEXT);\")\n\nfor item in _input.all():\n  cur.execute('INSERT OR REPLACE INTO recipes VALUES(?,?,?,?,?,?,?)', (\n    item.json.id,\n    item.json.name,\n    item.json.data,\n    ','.join(item.json.cuisine),\n    item.json.category,\n    ','.join(item.json.tag),\n    item.json.week\n  ))\n\ncon.commit()\ncon.close()\n\nreturn [{ \"affected_rows\": len(_input.all()) }]"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "725c1f56-5373-4891-92b9-3f32dd28892b",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            901.1666225087287,
+            180.99920515712074
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 484.12381677448207,
+            "height": 674.1153489831718,
+            "content": "## Step 1. Fetch Available Courses For the Current Week\n\nTo populate our vectorstore, we'll scrape the weekly menu off the HelloFresh Website. The pages are quite large so may take a while so please be patient."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f4e882b8-3762-4e6b-9e95-b0d708d0c284",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            300
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 409.1756468632768,
+            "height": 398.81415970574335,
+            "content": "## Step 2. Create Recipe Documents For VectorStore\n\nTo populate our vectorstore, we'll scrape the weekly menu off the HelloFresh Website. The pages are quite large so may take a while so please be patient."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fc3c2221-b67c-451c-9096-d6acd2a297fa",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1860,
+            19.326425127730317
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 486.02284096214964,
+            "height": 690.7816167755491,
+            "content": "## Step 3. Vectorise Recipes For Recommendation Engine\n[Read more about Qdrant node](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant)\n\nWe'll store our documents in our Qdrant vectorstore by converting to vectors using Mistral Embed. Our goal is to a build a recommendation engine for meals of the week which Qdrant is a perfect solution."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "43296173-b929-46cc-b6ea-58007837b8df",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1740,
+            740
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 547.0098868353456,
+            "height": 347.6002738958705,
+            "content": "## Step 4. Save Original Document to Database\n[Read more about Code Node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code)\n\nFinally, let's have the original document stored in a more traditional datastore. USually our vectorsearch will return partial docs and those are enough for many use-cases, however in this instance we'll pull the full docs for the Agent get the info required to make the recommendation. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6e2e58d2-e0ad-4503-8ed6-891124c8035b",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2380,
+            160
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 673.6008766895472,
+            "height": 552.9202706743265,
+            "content": "## 5. Chat with Our HelloFresh Recommendation AI Agent\n[Read more about AI Agents](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent)\n\nThis agent is designed to recommend HelloFresh recipes based on your current taste preferences. Need something hot and spicy, warm and comforting or fast and chilled? This agent will capture what you would like and not like and queries our Recipe Recommendation engine powered by Qdrant Vectorstore."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ba692c21-38bc-48a1-8b40-bad298be8b9e",
+          "name": "AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2660,
+            360
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=You are a recipe bot for the company, \"Hello fresh\". You will help the user choose which Hello Fresh recipe to choose from this week's menu. The current week is {{ $now.year }}-W{{ $now.weekNumber }}.\nDo not recommend any recipes other from the current week's menu. If there are no recipes to recommend, please ask the user to visit the website instead https://hellofresh.com."
+            }
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "d7ca0f97-72dc-4f4c-8b46-3ff57b9068a4",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2320,
+            740
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 987.4785537889618,
+            "height": 531.9173034334732,
+            "content": "## 5. Using Qdrant's Recommend API & Grouping Functionality\n[Read more about Qdrant's Recommend API](https://qdrant.tech/documentation/concepts/explore/?q=recommend)\n\nUnlike basic similarity search, Qdrant's Recommend API takes a positive query to match against (eg. Roast Dinner) and a negative query to avoid (eg. Roast Chicken). This feature significantly improves results for a recommendation engine. Additionally, by utilising Qdrant's Grouping feature, we're able to group similar matches from the same recipe - meaning we can ensure unique recipes everytime."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "96a294e2-1437-4ded-9973-0999b444c999",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            440,
+            -40
+          ],
+          "parameters": {
+            "width": 432.916474478624,
+            "height": 542.9295980774649,
+            "content": "## Try it out!\n### This workflow does the following:\n* Fetches and stores this week's HelloFresh's menu\n* Builds the foundation of a recommendation engine by storing the recipes in a Qdrant Vectorstore and SQLite database.\n* Builds an AI Agent that allows for a chat interface to query for a the week's recipe recommendations.\n* AI agent uses the Qdrant Recommend API, providing what the user likes/dislikes as the query.\n* Qdrant returns the results which enable the AI Agent to make the recommendation to the user.\n\n### Need Help?\nJoin the [Discord](https://discord.com/invite/XPKeKXeB7d) or ask in the [Forum](https://community.n8n.io/)!\n\nHappy Hacking!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "72c98600-f21a-42d4-97be-836b8ef6dc77",
+          "name": "Qdrant Vector Store",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            1960,
+            240
+          ],
+          "parameters": {
+            "mode": "insert",
+            "options": {},
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "list",
+              "value": "hello_fresh",
+              "cachedResultName": "hello_fresh"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "NyinAS3Pgfik66w5",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b7c4b597-ac2b-41d7-8f0f-1cbba25085de",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1860,
+            -195.8987124522777
+          ],
+          "parameters": {
+            "width": 382.47301504497716,
+            "height": 195.8987124522777,
+            "content": "### 🚨Ensure Qdrant collection exists!\nYou'll need to run the following command in Qdrant:\n```\nPUT collections/hello_fresh\n{\n  \"vectors\": {\n    \"distance\": \"Cosine\",\n    \"size\": 1024\n  }\n}\n```"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "39191834-ecc2-46f0-a31a-0a7e9c47ac5d",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2740,
+            920
+          ],
+          "parameters": {
+            "width": 213.30551928619226,
+            "height": 332.38559808882246,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n### 🚨Configure Your Qdrant Connection\n* Be sure to enter your endpoint address"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Get Recipe": {
+          "main": [
+            [
+              {
+                "node": "Extract Recipe Details",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Chat Trigger": {
+          "main": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare Documents": {
+          "main": [
+            [
+              {
+                "node": "Qdrant Vector Store",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Save Recipes to DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Default Data Loader": {
+          "ai_document": [
+            [
+              {
+                "node": "Qdrant Vector Store",
+                "type": "ai_document",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Server Data": {
+          "main": [
+            [
+              {
+                "node": "Extract Available Courses",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Course Metadata": {
+          "main": [
+            [
+              {
+                "node": "Merge Course & Recipe",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Recipes From DB": {
+          "main": [
+            [
+              {
+                "node": "Get Tool Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get This Week's Menu": {
+          "main": [
+            [
+              {
+                "node": "Extract Server Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Qdrant Recommend API": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for Rate Limits": {
+          "main": [
+            [
+              {
+                "node": "Get Mistral Embeddings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Course & Recipe": {
+          "main": [
+            [
+              {
+                "node": "Prepare Documents",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Recipe Details": {
+          "main": [
+            [
+              {
+                "node": "Merge Course & Recipe",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Get Mistral Embeddings": {
+          "main": [
+            [
+              {
+                "node": "Use Qdrant Recommend API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings Mistral Cloud": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Qdrant Vector Store",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Wait for Rate Limits",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Mistral Cloud Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Use Qdrant Recommend API": {
+          "main": [
+            [
+              {
+                "node": "Get Recipes From DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Available Courses": {
+          "main": [
+            [
+              {
+                "node": "Get Course Metadata",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get Recipe",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Test workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Get This Week's Menu",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recursive Character Text Splitter": {
+          "ai_textSplitter": [
+            [
+              {
+                "node": "Default Data Loader",
+                "type": "ai_textSplitter",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 33,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.code": {
+          "count": 3
+        },
+        "n8n-nodes-base.html": {
+          "count": 2
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 4
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.vectorStoreQdrant": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatMistralCloud": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.embeddingsMistralCloud": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.documentDefaultDataLoader": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Jimleuk",
+      "username": "jimleuk",
+      "bio": "Freelance consultant based in the UK specialising in AI-powered automations. I work with select clients tackling their most challenging projects. For business enquiries, send me an email at hello@jimle.uk\n\nLinkedIn: https://www.linkedin.com/in/jimleuk/\nX/Twitter: https://x.com/jimle_uk",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/4ab99e51473df76838beeaac908747f7928c625f869794815cabe34016967d51?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1191,
+        "icon": "fa:grip-lines-vertical",
+        "name": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.textsplitterrecursivecharactertextsplitter/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Text Splitters"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Recursive Character Text Splitter"
+        },
+        "iconData": {
+          "icon": "grip-lines-vertical",
+          "type": "icon"
+        },
+        "displayName": "Recursive Character Text Splitter",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1243,
+        "icon": "file:binary.svg",
+        "name": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentdefaultdataloader/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Document Loaders"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Default Data Loader"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3NjgiIGhlaWdodD0iMTAyNCI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTAgOTYwVjY0aDU3NmwxOTIgMTkydjcwNHptNzA0LTY0MEw1MTIgMTI4SDY0djc2OGg2NDB6TTMyMCA1MTJIMTI4VjI1NmgxOTJ6bS02NC0xOTJoLTY0djEyOGg2NHptMCA0NDhoNjR2NjRIMTI4di02NGg2NFY2NDBoLTY0di02NGgxMjh6bTI1Ni0zMjBoNjR2NjRIMzg0di02NGg2NFYzMjBoLTY0di02NGgxMjh6bTY0IDM4NEgzODRWNTc2aDE5MnptLTY0LTE5MmgtNjR2MTI4aDY0eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Default Data Loader",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1244,
+        "icon": "file:mistral.svg",
+        "name": "@n8n/n8n-nodes-langchain.embeddingsMistralCloud",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.embeddingsmistralcloud/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Embeddings"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Embeddings Mistral Cloud"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjxzdmcKICAgd2lkdGg9IjIxNiIKICAgaGVpZ2h0PSIyMTYiCiAgIHZlcnNpb249IjEuMSIKICAgaWQ9InN2ZzQxIgogICBzb2RpcG9kaTpkb2NuYW1lPSJtaXN0cmFsLnN2ZyIKICAgaW5rc2NhcGU6dmVyc2lvbj0iMS4zLjIgKDA5MWUyMGVmMGYsIDIwMjMtMTEtMjUsIGN1c3RvbSkiCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIgogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiCiAgIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIgogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzb2RpcG9kaTpuYW1lZHZpZXcKICAgICBpZD0ibmFtZWR2aWV3NDEiCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIgogICAgIGJvcmRlcmNvbG9yPSIjMDAwMDAwIgogICAgIGJvcmRlcm9wYWNpdHk9IjAuMjUiCiAgICAgaW5rc2NhcGU6c2hvd3BhZ2VzaGFkb3c9IjIiCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCIKICAgICBpbmtzY2FwZTpwYWdlY2hlY2tlcmJvYXJkPSIwIgogICAgIGlua3NjYXBlOmRlc2tjb2xvcj0iI2QxZDFkMSIKICAgICBpbmtzY2FwZTp6b29tPSIxLjkzNjQ4OCIKICAgICBpbmtzY2FwZTpjeD0iMTk3Ljc4MDcyIgogICAgIGlua3NjYXBlOmN5PSI3OS4wMDkwMSIKICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjE5MjAiCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTAxNyIKICAgICBpbmtzY2FwZTp3aW5kb3cteD0iMCIKICAgICBpbmtzY2FwZTp3aW5kb3cteT0iMCIKICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIxIgogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQxIiAvPgogIDxzdHlsZQogICAgIGlkPSJzdHlsZTEiPjwhW0NEQVRBWy5Je2ZpbGw6I2ZmNzAwMH0uSntmaWxsOiNmZjQ5MDB9Lkt7ZmlsbDojZmZhMzAwfS5Me2ZpbGw6IzFjMWMxYiBpY2MtY29sb3IoYWRvYmUtcmdiLTE5OTgsIDAuMTMyOTk1NjEsIDAuMTMyOTk1NjEsIDAuMTI4OTk3OCl9XV0+PC9zdHlsZT4KICA8ZGVmcwogICAgIGlkPSJkZWZzMTAiPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iQSI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTIwNi4yNTEsLTE0MC4xMzkpIgogICAgICAgICBpZD0icGF0aDEiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iQiI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTI0Ny40MzYsLTEwNC44NjUpIgogICAgICAgICBpZD0icGF0aDIiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iQyI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTI4NS45MzgsLTEwMi4wODkpIgogICAgICAgICBpZD0icGF0aDMiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRCI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTMzNy43NjksLTEzMS44NzcpIgogICAgICAgICBpZD0icGF0aDQiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRSI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTM3Ny4yNDcsLTEzMi4zMTkpIgogICAgICAgICBpZD0icGF0aDUiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRiI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQxOC4xMDcsLTExNC42MzQpIgogICAgICAgICBpZD0icGF0aDYiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRyI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQ1MC4wMjMsLTE0MC4xMzkpIgogICAgICAgICBpZD0icGF0aDciIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iSCI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTIxNy42OTQsLTQ0Ljc5NCkiCiAgICAgICAgIGlkPSJwYXRoOCIgLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8Y2xpcFBhdGgKICAgICAgIGlkPSJJIj4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSAwLDE4NC4yNTIgSCA0ODEuODkgViAwIEggMCBaIgogICAgICAgICB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjQ3LjQzNiwtMzUuMDI1KSIKICAgICAgICAgaWQ9InBhdGg5IiAvPgogICAgPC9jbGlwUGF0aD4KICAgIDxjbGlwUGF0aAogICAgICAgaWQ9IkoiPgogICAgICA8cGF0aAogICAgICAgICBkPSJNIDAsMTg0LjI1MiBIIDQ4MS44OSBWIDAgSCAwIFoiCiAgICAgICAgIGlkPSJwYXRoMTAiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPHBhdGgKICAgICAgIGlkPSJLIgogICAgICAgZD0ibSAxNzMuOTg3LDEzNC4zNjIgaCAtMzcuNzk1IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IiAvPgogIDwvZGVmcz4KICA8ZwogICAgIHRyYW5zZm9ybT0ibWF0cml4KDEsMCwwLjI1NDUzNSwxLC01MS4zNjI3OTIsLTcuNDcyNTAwNykiCiAgICAgaWQ9ImczMiI+CiAgICA8ZwogICAgICAgY2xhc3M9IkwiCiAgICAgICBpZD0iZzIyIj4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSA5OC4zOTcsMTM0LjM2MiBIIDYwLjYwMiBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgxMSIgLz4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSAxMjYuNTU4LDE3Mi4xMzggSCA4OC43NjMgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTIiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMTM2LjE5MiwxMzQuMzYyIEggOTguMzk3IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgICBpZD0icGF0aDEzIiAvPgogICAgICA8dXNlCiAgICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgICBpZD0idXNlMTMiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMTA4LjAzMSw5Ni41ODUgSCA3MC4yMzYgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTQiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjkuNjMzOTk5OCIKICAgICAgICAgeT0iLTM3Ljc3NyIKICAgICAgICAgaWQ9InVzZTE0IiAvPgogICAgICA8cGF0aAogICAgICAgICBkPSJNIDYwLjYwMiwxMzQuMzYyIEggMjIuODA3IEwgMzIuNDQsOTYuNTg2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTUiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gNzAuMjM2LDk2LjU4NSBIIDMyLjQ0MSBMIDQyLjA3NCw1OC44MDkgSCA3OS44NyBaIgogICAgICAgICBpZD0icGF0aDE2IiAvPgogICAgICA8cGF0aAogICAgICAgICBkPSJNIDc5Ljg3LDU4LjgwOSBIIDQyLjA3NSBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgxNyIgLz4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iNTcuMDYzIgogICAgICAgICB5PSItNzUuNTUzMDAxIgogICAgICAgICBpZD0idXNlMTciIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gNTAuOTY4LDE3Mi4xMzggSCAxMy4xNzMgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTgiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gNDEuMzM0LDIwOS45MTUgSCAzLjUzOSBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgxOSIgLz4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iMzcuNzk0OTk4IgogICAgICAgICBpZD0idXNlMTkiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjQ3LjQyOTAwMSIKICAgICAgICAgeT0iLTM3Ljc3NyIKICAgICAgICAgaWQ9InVzZTIwIiAvPgogICAgICA8dXNlCiAgICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgICB4PSIyOC4xNjA5OTkiCiAgICAgICAgIHk9IjM3Ljc3NjAwMSIKICAgICAgICAgaWQ9InVzZTIxIiAvPgogICAgICA8dXNlCiAgICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgICB4PSIxOC41MjciCiAgICAgICAgIHk9Ijc1LjU1MzAwMSIKICAgICAgICAgaWQ9InVzZTIyIiAvPgogICAgPC9nPgogICAgPHBhdGgKICAgICAgIGQ9Ik0gMTE0LjExNSwxMzQuMzU5IEggNzYuMzIxIGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IkkiCiAgICAgICBpZD0icGF0aDIyIiAvPgogICAgPHVzZQogICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICB4PSItMzEuNzA5OTk5IgogICAgICAgeT0iMzcuNzcyOTk5IgogICAgICAgY2xhc3M9IkoiCiAgICAgICBpZD0idXNlMjMiIC8+CiAgICA8ZwogICAgICAgY2xhc3M9IkkiCiAgICAgICBpZD0iZzI1Ij4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iLTIyLjA3NiIKICAgICAgICAgeT0iLTAuMDAzIgogICAgICAgICBpZD0idXNlMjQiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjE1LjcxOSIKICAgICAgICAgeT0iLTAuMDAzIgogICAgICAgICBpZD0idXNlMjUiIC8+CiAgICA8L2c+CiAgICA8ZwogICAgICAgY2xhc3M9IksiCiAgICAgICBpZD0iZzI2Ij4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSAxMjMuNzQ5LDk2LjU4MiBIIDg1Ljk1NSBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgyNSIgLz4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iMjUuMzUzMDAxIgogICAgICAgICB5PSItMzcuNzc5OTk5IgogICAgICAgICBpZD0idXNlMjYiIC8+CiAgICA8L2c+CiAgICA8cGF0aAogICAgICAgZD0iTSA3Ni4zMiwxMzQuMzU5IEggMzguNTI2IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IkkiCiAgICAgICBpZD0icGF0aDI2IiAvPgogICAgPHBhdGgKICAgICAgIGQ9Ik0gODUuOTU0LDk2LjU4MiBIIDQ4LjE2IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IksiCiAgICAgICBpZD0icGF0aDI3IiAvPgogICAgPGcKICAgICAgIGZpbGw9IiNmZmNlMDAiCiAgICAgICBpZD0iZzI4Ij4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSA5NS41ODgsNTguODA2IEggNTcuNzk0IEwgNjcuNDI3LDIxLjAzIGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMjgiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjcyLjc4MTk5OCIKICAgICAgICAgeT0iLTc1LjU1NiIKICAgICAgICAgaWQ9InVzZTI4IiAvPgogICAgPC9nPgogICAgPHBhdGgKICAgICAgIGQ9Ik0gNjYuNjg2LDE3Mi4xMzUgSCAyOC44OTIgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICBjbGFzcz0iSiIKICAgICAgIGlkPSJwYXRoMjkiIC8+CiAgICA8cGF0aAogICAgICAgZD0iTSA1Ny4wNTIsMjA5LjkxMiBIIDE5LjI1OCBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgIGZpbGw9IiNmZjAxMDciCiAgICAgICBpZD0icGF0aDMwIiAvPgogICAgPHVzZQogICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICB4PSI1My41MTQiCiAgICAgICB5PSItMC4wMDMiCiAgICAgICBjbGFzcz0iSSIKICAgICAgIGlkPSJ1c2UzMCIgLz4KICAgIDxwYXRoCiAgICAgICBkPSJNIDIzNy4xMzUsOTYuNTgyIEggMTk5LjM0IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IksiCiAgICAgICBpZD0icGF0aDMxIiAvPgogICAgPHVzZQogICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICB4PSI0My44ODAwMDEiCiAgICAgICB5PSIzNy43NzI5OTkiCiAgICAgICBjbGFzcz0iSiIKICAgICAgIGlkPSJ1c2UzMSIgLz4KICAgIDx1c2UKICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgeD0iMzQuMjQ1OTk4IgogICAgICAgeT0iNzUuNTUwMDAzIgogICAgICAgZmlsbD0iI2ZmMDEwNyIKICAgICAgIGlkPSJ1c2UzMiIgLz4KICA8L2c+Cjwvc3ZnPgo="
+        },
+        "displayName": "Embeddings Mistral Cloud",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1245,
+        "icon": "file:mistral.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatmistralcloud/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Mistral Cloud Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8+CjxzdmcKICAgd2lkdGg9IjIxNiIKICAgaGVpZ2h0PSIyMTYiCiAgIHZlcnNpb249IjEuMSIKICAgaWQ9InN2ZzQxIgogICBzb2RpcG9kaTpkb2NuYW1lPSJtaXN0cmFsLnN2ZyIKICAgaW5rc2NhcGU6dmVyc2lvbj0iMS4zLjIgKDA5MWUyMGVmMGYsIDIwMjMtMTEtMjUsIGN1c3RvbSkiCiAgIHhtbG5zOmlua3NjYXBlPSJodHRwOi8vd3d3Lmlua3NjYXBlLm9yZy9uYW1lc3BhY2VzL2lua3NjYXBlIgogICB4bWxuczpzb2RpcG9kaT0iaHR0cDovL3NvZGlwb2RpLnNvdXJjZWZvcmdlLm5ldC9EVEQvc29kaXBvZGktMC5kdGQiCiAgIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIgogICB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciCiAgIHhtbG5zOnN2Zz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgogIDxzb2RpcG9kaTpuYW1lZHZpZXcKICAgICBpZD0ibmFtZWR2aWV3NDEiCiAgICAgcGFnZWNvbG9yPSIjZmZmZmZmIgogICAgIGJvcmRlcmNvbG9yPSIjMDAwMDAwIgogICAgIGJvcmRlcm9wYWNpdHk9IjAuMjUiCiAgICAgaW5rc2NhcGU6c2hvd3BhZ2VzaGFkb3c9IjIiCiAgICAgaW5rc2NhcGU6cGFnZW9wYWNpdHk9IjAuMCIKICAgICBpbmtzY2FwZTpwYWdlY2hlY2tlcmJvYXJkPSIwIgogICAgIGlua3NjYXBlOmRlc2tjb2xvcj0iI2QxZDFkMSIKICAgICBpbmtzY2FwZTp6b29tPSIxLjkzNjQ4OCIKICAgICBpbmtzY2FwZTpjeD0iMTk3Ljc4MDcyIgogICAgIGlua3NjYXBlOmN5PSI3OS4wMDkwMSIKICAgICBpbmtzY2FwZTp3aW5kb3ctd2lkdGg9IjE5MjAiCiAgICAgaW5rc2NhcGU6d2luZG93LWhlaWdodD0iMTAxNyIKICAgICBpbmtzY2FwZTp3aW5kb3cteD0iMCIKICAgICBpbmtzY2FwZTp3aW5kb3cteT0iMCIKICAgICBpbmtzY2FwZTp3aW5kb3ctbWF4aW1pemVkPSIxIgogICAgIGlua3NjYXBlOmN1cnJlbnQtbGF5ZXI9InN2ZzQxIiAvPgogIDxzdHlsZQogICAgIGlkPSJzdHlsZTEiPjwhW0NEQVRBWy5Je2ZpbGw6I2ZmNzAwMH0uSntmaWxsOiNmZjQ5MDB9Lkt7ZmlsbDojZmZhMzAwfS5Me2ZpbGw6IzFjMWMxYiBpY2MtY29sb3IoYWRvYmUtcmdiLTE5OTgsIDAuMTMyOTk1NjEsIDAuMTMyOTk1NjEsIDAuMTI4OTk3OCl9XV0+PC9zdHlsZT4KICA8ZGVmcwogICAgIGlkPSJkZWZzMTAiPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iQSI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTIwNi4yNTEsLTE0MC4xMzkpIgogICAgICAgICBpZD0icGF0aDEiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iQiI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTI0Ny40MzYsLTEwNC44NjUpIgogICAgICAgICBpZD0icGF0aDIiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iQyI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTI4NS45MzgsLTEwMi4wODkpIgogICAgICAgICBpZD0icGF0aDMiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRCI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTMzNy43NjksLTEzMS44NzcpIgogICAgICAgICBpZD0icGF0aDQiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRSI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTM3Ny4yNDcsLTEzMi4zMTkpIgogICAgICAgICBpZD0icGF0aDUiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRiI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQxOC4xMDcsLTExNC42MzQpIgogICAgICAgICBpZD0icGF0aDYiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iRyI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTQ1MC4wMjMsLTE0MC4xMzkpIgogICAgICAgICBpZD0icGF0aDciIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPGNsaXBQYXRoCiAgICAgICBpZD0iSCI+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMCwxODQuMjUyIEggNDgxLjg5IFYgMCBIIDAgWiIKICAgICAgICAgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTIxNy42OTQsLTQ0Ljc5NCkiCiAgICAgICAgIGlkPSJwYXRoOCIgLz4KICAgIDwvY2xpcFBhdGg+CiAgICA8Y2xpcFBhdGgKICAgICAgIGlkPSJJIj4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSAwLDE4NC4yNTIgSCA0ODEuODkgViAwIEggMCBaIgogICAgICAgICB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMjQ3LjQzNiwtMzUuMDI1KSIKICAgICAgICAgaWQ9InBhdGg5IiAvPgogICAgPC9jbGlwUGF0aD4KICAgIDxjbGlwUGF0aAogICAgICAgaWQ9IkoiPgogICAgICA8cGF0aAogICAgICAgICBkPSJNIDAsMTg0LjI1MiBIIDQ4MS44OSBWIDAgSCAwIFoiCiAgICAgICAgIGlkPSJwYXRoMTAiIC8+CiAgICA8L2NsaXBQYXRoPgogICAgPHBhdGgKICAgICAgIGlkPSJLIgogICAgICAgZD0ibSAxNzMuOTg3LDEzNC4zNjIgaCAtMzcuNzk1IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IiAvPgogIDwvZGVmcz4KICA8ZwogICAgIHRyYW5zZm9ybT0ibWF0cml4KDEsMCwwLjI1NDUzNSwxLC01MS4zNjI3OTIsLTcuNDcyNTAwNykiCiAgICAgaWQ9ImczMiI+CiAgICA8ZwogICAgICAgY2xhc3M9IkwiCiAgICAgICBpZD0iZzIyIj4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSA5OC4zOTcsMTM0LjM2MiBIIDYwLjYwMiBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgxMSIgLz4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSAxMjYuNTU4LDE3Mi4xMzggSCA4OC43NjMgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTIiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMTM2LjE5MiwxMzQuMzYyIEggOTguMzk3IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgICBpZD0icGF0aDEzIiAvPgogICAgICA8dXNlCiAgICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgICBpZD0idXNlMTMiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gMTA4LjAzMSw5Ni41ODUgSCA3MC4yMzYgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTQiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjkuNjMzOTk5OCIKICAgICAgICAgeT0iLTM3Ljc3NyIKICAgICAgICAgaWQ9InVzZTE0IiAvPgogICAgICA8cGF0aAogICAgICAgICBkPSJNIDYwLjYwMiwxMzQuMzYyIEggMjIuODA3IEwgMzIuNDQsOTYuNTg2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTUiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gNzAuMjM2LDk2LjU4NSBIIDMyLjQ0MSBMIDQyLjA3NCw1OC44MDkgSCA3OS44NyBaIgogICAgICAgICBpZD0icGF0aDE2IiAvPgogICAgICA8cGF0aAogICAgICAgICBkPSJNIDc5Ljg3LDU4LjgwOSBIIDQyLjA3NSBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgxNyIgLz4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iNTcuMDYzIgogICAgICAgICB5PSItNzUuNTUzMDAxIgogICAgICAgICBpZD0idXNlMTciIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gNTAuOTY4LDE3Mi4xMzggSCAxMy4xNzMgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMTgiIC8+CiAgICAgIDxwYXRoCiAgICAgICAgIGQ9Ik0gNDEuMzM0LDIwOS45MTUgSCAzLjUzOSBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgxOSIgLz4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iMzcuNzk0OTk4IgogICAgICAgICBpZD0idXNlMTkiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjQ3LjQyOTAwMSIKICAgICAgICAgeT0iLTM3Ljc3NyIKICAgICAgICAgaWQ9InVzZTIwIiAvPgogICAgICA8dXNlCiAgICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgICB4PSIyOC4xNjA5OTkiCiAgICAgICAgIHk9IjM3Ljc3NjAwMSIKICAgICAgICAgaWQ9InVzZTIxIiAvPgogICAgICA8dXNlCiAgICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgICB4PSIxOC41MjciCiAgICAgICAgIHk9Ijc1LjU1MzAwMSIKICAgICAgICAgaWQ9InVzZTIyIiAvPgogICAgPC9nPgogICAgPHBhdGgKICAgICAgIGQ9Ik0gMTE0LjExNSwxMzQuMzU5IEggNzYuMzIxIGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IkkiCiAgICAgICBpZD0icGF0aDIyIiAvPgogICAgPHVzZQogICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICB4PSItMzEuNzA5OTk5IgogICAgICAgeT0iMzcuNzcyOTk5IgogICAgICAgY2xhc3M9IkoiCiAgICAgICBpZD0idXNlMjMiIC8+CiAgICA8ZwogICAgICAgY2xhc3M9IkkiCiAgICAgICBpZD0iZzI1Ij4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iLTIyLjA3NiIKICAgICAgICAgeT0iLTAuMDAzIgogICAgICAgICBpZD0idXNlMjQiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjE1LjcxOSIKICAgICAgICAgeT0iLTAuMDAzIgogICAgICAgICBpZD0idXNlMjUiIC8+CiAgICA8L2c+CiAgICA8ZwogICAgICAgY2xhc3M9IksiCiAgICAgICBpZD0iZzI2Ij4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSAxMjMuNzQ5LDk2LjU4MiBIIDg1Ljk1NSBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgICAgaWQ9InBhdGgyNSIgLz4KICAgICAgPHVzZQogICAgICAgICB4bGluazpocmVmPSIjSyIKICAgICAgICAgeD0iMjUuMzUzMDAxIgogICAgICAgICB5PSItMzcuNzc5OTk5IgogICAgICAgICBpZD0idXNlMjYiIC8+CiAgICA8L2c+CiAgICA8cGF0aAogICAgICAgZD0iTSA3Ni4zMiwxMzQuMzU5IEggMzguNTI2IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IkkiCiAgICAgICBpZD0icGF0aDI2IiAvPgogICAgPHBhdGgKICAgICAgIGQ9Ik0gODUuOTU0LDk2LjU4MiBIIDQ4LjE2IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IksiCiAgICAgICBpZD0icGF0aDI3IiAvPgogICAgPGcKICAgICAgIGZpbGw9IiNmZmNlMDAiCiAgICAgICBpZD0iZzI4Ij4KICAgICAgPHBhdGgKICAgICAgICAgZD0iTSA5NS41ODgsNTguODA2IEggNTcuNzk0IEwgNjcuNDI3LDIxLjAzIGggMzcuNzk2IHoiCiAgICAgICAgIGlkPSJwYXRoMjgiIC8+CiAgICAgIDx1c2UKICAgICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICAgIHg9IjcyLjc4MTk5OCIKICAgICAgICAgeT0iLTc1LjU1NiIKICAgICAgICAgaWQ9InVzZTI4IiAvPgogICAgPC9nPgogICAgPHBhdGgKICAgICAgIGQ9Ik0gNjYuNjg2LDE3Mi4xMzUgSCAyOC44OTIgbCA5LjYzMywtMzcuNzc2IGggMzcuNzk2IHoiCiAgICAgICBjbGFzcz0iSiIKICAgICAgIGlkPSJwYXRoMjkiIC8+CiAgICA8cGF0aAogICAgICAgZD0iTSA1Ny4wNTIsMjA5LjkxMiBIIDE5LjI1OCBsIDkuNjMzLC0zNy43NzYgaCAzNy43OTYgeiIKICAgICAgIGZpbGw9IiNmZjAxMDciCiAgICAgICBpZD0icGF0aDMwIiAvPgogICAgPHVzZQogICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICB4PSI1My41MTQiCiAgICAgICB5PSItMC4wMDMiCiAgICAgICBjbGFzcz0iSSIKICAgICAgIGlkPSJ1c2UzMCIgLz4KICAgIDxwYXRoCiAgICAgICBkPSJNIDIzNy4xMzUsOTYuNTgyIEggMTk5LjM0IGwgOS42MzMsLTM3Ljc3NiBoIDM3Ljc5NiB6IgogICAgICAgY2xhc3M9IksiCiAgICAgICBpZD0icGF0aDMxIiAvPgogICAgPHVzZQogICAgICAgeGxpbms6aHJlZj0iI0siCiAgICAgICB4PSI0My44ODAwMDEiCiAgICAgICB5PSIzNy43NzI5OTkiCiAgICAgICBjbGFzcz0iSiIKICAgICAgIGlkPSJ1c2UzMSIgLz4KICAgIDx1c2UKICAgICAgIHhsaW5rOmhyZWY9IiNLIgogICAgICAgeD0iMzQuMjQ1OTk4IgogICAgICAgeT0iNzUuNTUwMDAzIgogICAgICAgZmlsbD0iI2ZmMDEwNyIKICAgICAgIGlkPSJ1c2UzMiIgLz4KICA8L2c+Cjwvc3ZnPgo="
+        },
+        "displayName": "Mistral Cloud Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1248,
+        "icon": "file:qdrant.svg",
+        "name": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Vector Stores",
+                "Tools",
+                "Root Nodes"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Qdrant Vector Store"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMjU2cHgiIGhlaWdodD0iMjk2cHgiIHZpZXdCb3g9IjAgMCAyNTYgMjk2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIj4KICAgIDx0aXRsZT5xZHJhbnQ8L3RpdGxlPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSI4MS41NjE5MDQ4JSIgeTE9IjQ0Ljg0MjEwNTMlIiB4Mj0iLTE4LjA4NTcxNDMlIiB5Mj0iNDQuODQyMTA1MyUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGMzM2NCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjQzkxNTQwIiBzdG9wLW9wYWNpdHk9IjAiIG9mZnNldD0iMTAwJSI+PC9zdG9wPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+CiAgICA8Zz4KICAgICAgICA8cG9seWdvbiBmaWxsPSIjMjQzODZDIiBwb2ludHM9IjIwMS4zMTcwNSAyNzEuNzIyNDI3IDE5NS40MjI3MTUgMTA5LjIxMjY3IDE4NC43NDc3ODEgNjYuMzY4MjM2OCAyNTYgNzMuOTExMjU0NSAyNTYgMjcwLjQ5MjUwOSAyMTIuNDc0NzU3IDI5NS42MTI2MjYiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWdvbiBmaWxsPSIjNzU4OUJFIiBwb2ludHM9IjI1NS45OTUxNTEgNzMuODk5ODEwNyAyMTIuNDY5OTA4IDk5LjAzNzM4NCAxMjIuNjQ5NjM0IDc5LjMzNDY0NzEgMTcuNTE2MDAwOCAxMjIuMTQwMjg4IDEuMTM3MDQ4NGUtMTQgNzMuODk5ODEwNyA2My45ODgzMTM3IDM2Ljk0OTkwNTMgMTI3Ljk5NjAyNCAwIDE5MS45ODYyNzcgMzYuOTQ5OTA1MyI+PC9wb2x5Z29uPgogICAgICAgIDxwb2x5bGluZSBmaWxsPSIjQjJCRkU4IiBwb2ludHM9IjAuMDAzMTAzNDA0MTIgNzMuODk5ODEwNyA0My41MjgzNDYyIDk5LjAzNzM4NCA2OC43NTkwMjE3IDE3NC4wNzM4MTYgMTUzLjk0OTQwNSAyNDIuMjM2MjA5IDEyOC4wMDEwNjcgMjk1LjU5OTI0MyA2My45OTMzNTY4IDI1OC42NDczOTggMC4wMDMxMDM0MDQxMiAyMjEuNjk3NDkyIDAuMDAzMTAzNDA0MTIgNzMuODk3ODcxIj48L3BvbHlsaW5lPgogICAgICAgIDxwb2x5bGluZSBmaWxsPSIjMjQzODZDIiBwb2ludHM9IjE1Ni44NTY5MDYgMjAyLjgwNzQ1OSAxMjguMDAxMDY3IDI0NS4zNDczNzEgMTI4LjAwMTA2NyAyOTUuNjAzMTIyIDE2OC45NDY2MDUgMjcxLjk3ODQ1OCAxOTAuMDQzOTM0IDI0MC40NzUwMjciPjwvcG9seWxpbmU+CiAgICAgICAgPHBvbHlnb24gZmlsbD0iIzc1ODlCRSIgcG9pbnRzPSIxMjguMDE4NTIzIDE5NS4xMDcxMzggODcuMDU1NTI4NyAxMjQuMTg0NjU2IDk1Ljg3ODcwMDUgMTAwLjY3ODMwOSAxMjkuNDIwNjggODQuNDE1Njk1NSAxNjguOTQ2NDExIDEyNC4xODU4MTkiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWxpbmUgZmlsbD0iI0IyQkZFOCIgcG9pbnRzPSI4Ny4wNTU1Mjg3IDEyNC4xNzg4MzcgMTI4LjAwMTA2NyAxNDcuODAzNTAxIDEyOC4wMDEwNjcgMTk1LjA5MTYyMSA5MC4xMzE3NzggMTk2LjcyMDkyNyA2Ny4yMjQ3NzYzIDE2Ny40NzEzNDQgODcuMDU1NTI4NyAxMjQuMTc4ODU2Ij48L3BvbHlsaW5lPgogICAgICAgIDxwb2x5Z29uIGZpbGw9IiMyNDM4NkMiIHBvaW50cz0iMTI4LjAwMTA2NyAxNDcuNzk5NjIxIDE2OC45NDY2MDUgMTI0LjE3Njg5NyAxOTYuODEzMjM0IDE3MC41NzY2NjggMTYzLjA5MDg2OSAxOTguNDM5NDE4IDEyOC4wMDEwNjcgMTk1LjA4OTI5MyI+PC9wb2x5Z29uPgogICAgICAgIDxwYXRoIGQ9Ik0xNjguOTQ2NjA1LDI3MS45NzQ1NzkgTDIxMi40NzE4NDgsMjk1LjYwMTE4MiBMMjEyLjQ3MTg0OCw5OS4wMzkzMjM3IEwxNzAuMjI2NzU5LDc0LjY1ODIwNSBMMTI4LjAwMTA2Nyw1MC4yNzcwODY0IEw4NS43NTU5NzgyLDc0LjY1ODIwNSBMNDMuNTMwMjg1OCw5OS4wMzkzMjM3IEw0My41MzAyODU4LDE5Ni41ODEyNTUgTDg1Ljc1NTk3ODIsMjIwLjk2MjM3MyBMMTI4LjAwMTA2NywyNDUuMzQ1NDMyIEwxNjguOTQ2NjA1LDIyMS42OTk0MzIgTDE2OC45NDY2MDUsMjcxLjk3NDU3OSBaIE0xNjguOTQ2NjA1LDE3MS40NDM2ODEgTDEyOC4wMDEwNjcsMTk1LjA4Nzc0MiBMODcuMDU1NTI4NywxNzEuNDQzNjgxIEw4Ny4wNTU1Mjg3LDEyNC4xNzQ5NTcgTDEyOC4wMDEwNjcsMTAwLjUzMDg5NyBMMTY4Ljk0NjYwNSwxMjQuMTc0OTU3IEwxNjguOTQ2NjA1LDE3MS40NDM2ODEiIGZpbGw9IiNEQzI0NEMiPjwvcGF0aD4KICAgICAgICA8cG9seWdvbiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIiBwb2ludHM9IjEyOC4wMTg1MjMgMjQ1LjM2Mjg4OCAxMjguMDE4NTIzIDE5NS4wOTkzNzkgODcuMjg2MzQ0MyAxNzEuNjU3MDQxIDg3LjI4NjM0NDMgMjIxLjgzNzE0NiI+PC9wb2x5Z29uPgogICAgPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "Qdrant Vector Store",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

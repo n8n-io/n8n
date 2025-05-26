@@ -1,0 +1,34 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.vonage/
+Scraped_At: 2025-05-20T18:52:34.933478
+
+Vonage node
+#
+Use the Vonage node to automate work in Vonage, and integrate Vonage with other applications. n8n supports sending SMS with Vonage.
+On this page, you'll find a list of operations the Vonage node supports and links to more resources.
+Credentials
+Refer to
+Vonage credentials
+for guidance on setting up authentication.
+Operations
+#
+SMS
+Send
+Templates and examples
+#
+Receive messages from a topic via Kafka and send an SMS
+by Harshil Agrawal
+View template details
+Receive messages from a queue via RabbitMQ and send an SMS
+by Harshil Agrawal
+View template details
+Get data from Hacker News and send to Airtable or via SMS
+by isa024787bel
+View template details
+Browse Vonage integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

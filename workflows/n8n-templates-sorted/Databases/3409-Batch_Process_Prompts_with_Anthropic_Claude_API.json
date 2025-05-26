@@ -1,0 +1,2386 @@
+{
+  "workflow": {
+    "id": 3409,
+    "name": "Batch Process Prompts with Anthropic Claude API",
+    "views": 351,
+    "recentViews": 7,
+    "totalViews": 351,
+    "createdAt": "2025-04-02T19:20:04.824Z",
+    "description": "This workflow template provides a robust solution for efficiently sending multiple prompts to Anthropic's Claude models in a single batch request and retrieving the results. It leverages the Anthropic Batch API endpoint (`/v1/messages/batches`) for optimized processing and outputs each result as a separate item.\n\n**Core Functionality & Example Usage Included**\n\nThis template includes:\n1.  **The Core Batch Processing Workflow:** Designed to be called by another n8n workflow.\n2.  **An Example Usage Workflow:** A separate branch demonstrating how to prepare data and trigger the core workflow, including examples using simple strings and n8n's [Langchain Chat Memory nodes](https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/).\n\n## Who is this for?\n\nThis template is designed for:\n\n* **Developers, data scientists, and researchers** who need to process large volumes of text prompts using Claude models via n8n.\n* **Content creators** looking to generate multiple pieces of content (e.g., summaries, Q&As, creative text) based on different inputs simultaneously.\n* **n8n users** who want to automate interactions with the Anthropic API beyond single requests, improve efficiency, and integrate batch processing into larger automation sequences.\n* Anyone needing to perform **bulk text generation or analysis** tasks with Claude programmatically.\n\n## What problem does this workflow solve?\n\nSending prompts to language models one by one can be slow and inefficient, especially when dealing with hundreds or thousands of requests. This workflow addresses that by:\n\n* **Batching:** Grouping multiple prompts into a single API call to Anthropic's dedicated batch endpoint (`/v1/messages/batches`).\n* **Efficiency:** Significantly reducing the time required compared to sequential processing.\n* **Scalability:** Handling large numbers of prompts (up to API limits) systematically.\n* **Automation:** Providing a ready-to-use, callable n8n structure for batch interactions with Claude.\n* **Structured Output:** Parsing the results and outputting each individual prompt's result as a separate n8n item.\n\n**Use Cases:**\n\n* Bulk content generation (e.g., product descriptions, summaries).\n* Large-scale question answering based on different contexts.\n* Sentiment analysis or data extraction across multiple text snippets.\n* Running the same prompt against many different inputs for research or testing.\n\n## What the Core Workflow does\n\n*(Triggered by the 'When Executed by Another Workflow' node)*\n\n1.  **Receive Input:** The workflow starts when called by another workflow (e.g., using the 'Execute Workflow' node). It expects input data containing:\n    * `anthropic-version` (string, e.g., \"2023-06-01\")\n    * `requests` (JSON array, where each object represents a single prompt request conforming to the Anthropic Batch API schema).\n2.  **Submit Batch Job:** Sends the formatted `requests` data via `POST` to the Anthropic API `/v1/messages/batches` endpoint to create a new batch job. Requires Anthropic credentials.\n3.  **Wait & Poll:** Enters a loop:\n    * Checks if the `processing_status` of the batch job is `ended`.\n    * If not `ended`, it waits for a set interval (**10 seconds** by default in the 'Batch Status Poll Interval' node).\n    * It then checks the batch job status again via `GET` to `/v1/messages/batches/{batch_id}`. Requires Anthropic credentials.\n    * This loop continues until the status is `ended`.\n4.  **Retrieve Results:** Once the batch job is complete, it fetches the results file by making a `GET` request to the `results_url` provided in the batch status response. Requires Anthropic credentials.\n5.  **Parse Results:** The results are typically returned in JSON Lines (`.jsonl`) format. The 'Parse response' Code node splits the response text by newlines and parses each line into a separate JSON object, storing them in an array field (e.g., `parsed`).\n6.  **Split Output:** The 'Split Out Parsed Results' node takes the array of parsed results and outputs each result object as an individual item from the workflow.\n\n## Prerequisites\n\n* An active **n8n instance** (Cloud or self-hosted).\n* An **Anthropic API account** with access granted to Claude models and the Batch API.\n* Your **Anthropic API Key**.\n* Basic understanding of n8n concepts (nodes, workflows, credentials, expressions, 'Execute Workflow' node).\n* Familiarity with JSON data structures for providing input prompts and understanding the output.\n* Understanding of the Anthropic Batch API request/response structure.\n* *(For Example Usage Branch)* Familiarity with n8n's Langchain nodes (`@n8n/n8n-nodes-langchain`) if you plan to adapt that part.\n\n## Setup\n\n1.  **Import Template:** Add this template to your n8n instance.\n2.  **Configure Credentials:**\n    * Navigate to the 'Credentials' section in your n8n instance.\n    * Click 'Add Credential'.\n    * Search for 'Anthropic' and select the Anthropic API credential type.\n    * Enter your Anthropic API Key and save the credential (e.g., name it \"Anthropic account\").\n3.  **Assign Credentials:** Open the workflow and locate the **three HTTP Request nodes** in the core workflow:\n    * `Submit batch`\n    * `Check batch status`\n    * `Get results`\n    In each of these nodes, select the Anthropic credential you just configured from the 'Credential for Anthropic API' dropdown.\n4.  **Review Input Format:** Understand the required input structure for the `When Executed by Another Workflow` trigger node. The primary inputs are `anthropic-version` (string) and `requests` (array). Refer to the **Sticky Notes** in the template and the [Anthropic Batch API documentation](https://docs.anthropic.com/en/api/batch) for the exact schema required within the `requests` array.\n5.  **Activate Workflow:** Save and activate the core workflow so it can be called by other workflows.\n\n**➡️ Quick Start & Input/Output Examples:** Look for the **Sticky Notes** within the workflow canvas! They provide crucial information, including examples of the required input JSON structure and the expected output format.\n\n## How to customize this workflow\n\n* **Input Source:** The core workflow is designed to be called. You will build *another* workflow that prepares the `anthropic-version` and `requests` array and then uses the 'Execute Workflow' node to trigger this template. The included example branch shows how to prepare this data.\n* **Model Selection & Parameters:** Model (`claude-3-opus-20240229`, etc.), `max_tokens`, `temperature`, and other parameters are defined *within each object* inside the `requests` array you pass to the workflow trigger. You configure these in the workflow *calling* this template.\n* **Polling Interval:** Modify the 'Wait' node ('Batch Status Poll Interval') duration if you need faster or slower status checks (default is 10 seconds). Be mindful of potential rate limits.\n* **Parsing Logic:** If Anthropic changes the result format or you have specific needs, modify the Javascript code within the 'Parse response' Code node.\n* **Error Handling:** Enhance the workflow with more specific error handling for API failures (e.g., using 'Error Trigger' or checking HTTP status codes) or batch processing issues (`batch.status === 'failed'`).\n* **Output Processing:** In the workflow that *calls* this template, add nodes after the 'Execute Workflow' node to process the individual result items returned (e.g., save to a database, spreadsheet, send notifications).\n\n## Example Usage Branch (Manual Trigger)\n\nThis template also contains a separate branch starting with the `Run example` Manual Trigger node.\n\n* **Purpose:** This branch demonstrates how to construct the necessary `anthropic-version` and `requests` array payload.\n* **Methods Shown:** It includes steps for:\n    * Creating a request object from a simple query string.\n    * Creating a request object using data from n8n's Langchain Chat Memory nodes (`@n8n/n8n-nodes-langchain`).\n* **Execution:** It merges these examples, constructs the final payload, and then uses the `Execute Workflow` node to call the main batch processing logic described above. It finishes by filtering the results for demonstration.\n* **Note:** This branch is for demonstration and testing. You would typically build your own data preparation logic in a separate workflow. The use of Langchain nodes is optional for the core batch functionality.\n\n## Notes\n\n* **API Limits:** According to the [Anthropic API documentation](https://docs.anthropic.com/en/api/creating-message-batches), batches can contain up to 100,000 requests and be up to 256 MB in total size. Ensure your n8n instance has sufficient resources for large batches.\n* **API Costs:** Using the Anthropic API, including the Batch API, incurs costs based on token usage. Monitor your usage via the Anthropic dashboard.\n* **Completion Time:** Batch processing time depends on the number and complexity of prompts and current API load. The polling mechanism accounts for this variability.\n* **Versioning:** Always include the `anthropic-version` header in your requests, as shown in the workflow and examples. Refer to [Anthropic API versioning documentation](https://docs.anthropic.com/en/api/versioning).\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "97d44c78f314fab340d7a5edaf7e2c274a7fbb8a7cd138f53cc742341e706fe7"
+      },
+      "nodes": [
+        {
+          "id": "fa4f8fd6-3272-4a93-8547-32d13873bbc1",
+          "name": "Submit batch",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            180,
+            40
+          ],
+          "parameters": {
+            "url": "https://api.anthropic.com/v1/messages/batches",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={ \"requests\": {{ JSON.stringify($json.requests) }} }",
+            "sendBody": true,
+            "sendQuery": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "anthropic-version",
+                  "value": "={{ $json[\"anthropic-version\"] }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "anthropicApi"
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "ub0zN7IP2V83OeTf",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "2916dc85-829d-491a-a7a8-de79d5356a53",
+          "name": "Check batch status",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            840,
+            115
+          ],
+          "parameters": {
+            "url": "=https://api.anthropic.com/v1/messages/batches/{{ $json.id }}",
+            "options": {},
+            "sendHeaders": true,
+            "authentication": "predefinedCredentialType",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "anthropic-version",
+                  "value": "={{ $('When Executed by Another Workflow').item.json[\"anthropic-version\"] }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "anthropicApi"
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "ub0zN7IP2V83OeTf",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "1552ec92-2f18-42f6-b67f-b6f131012b3c",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -40,
+            40
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "anthropic-version"
+                },
+                {
+                  "name": "requests",
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "4bd40f02-caf1-419d-8261-a149cd51a534",
+          "name": "Get results",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            620,
+            -160
+          ],
+          "parameters": {
+            "url": "={{ $json.results_url }}",
+            "options": {},
+            "sendHeaders": true,
+            "authentication": "predefinedCredentialType",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "anthropic-version",
+                  "value": "={{ $('When Executed by Another Workflow').item.json[\"anthropic-version\"] }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "anthropicApi"
+          },
+          "credentials": {
+            "anthropicApi": {
+              "id": "ub0zN7IP2V83OeTf",
+              "name": "Anthropic account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5df366af-a54d-4594-a1ab-7a9df968101e",
+          "name": "Parse response",
+          "type": "n8n-nodes-base.code",
+          "notes": "JSONL separated by newlines",
+          "position": [
+            840,
+            -160
+          ],
+          "parameters": {
+            "jsCode": "for (const item of $input.all()) {\n  if (item.json && item.json.data) {\n    // Split the string into individual JSON objects\n    const jsonStrings = item.json.data.split('\\n');\n\n    // Parse each JSON string and store them in an array\n    const parsedData = jsonStrings.filter(str => str.trim() !== '').map(str => JSON.parse(str));\n\n    // Replace the original json with the parsed array.\n    item.json.parsed = parsedData;\n  }\n}\n\nreturn $input.all();"
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "68aa4ee2-e925-4e30-a7ab-317d8df4d9bc",
+          "name": "If ended processing",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            400,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "9494c5a3-d093-49c5-837f-99cd700a2f13",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.processing_status }}",
+                  "rightValue": "ended"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "2b974e3b-495b-48af-8080-c7913d7a2ba8",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -200,
+            -720
+          ],
+          "parameters": {
+            "width": 1060,
+            "height": 520,
+            "content": "### This workflow automates sending batched prompts to Claude using the Anthropic API. It submits multiple prompts at once and retrieves the results.\n\n#### How to use\n\nCall this workflow with array of `requests`\n\n```json\n{\n    \"anthropic-version\": \"2023-06-01\",\n    \"requests\": [\n        {\n            \"custom_id\": \"first-prompt-in-my-batch\",\n            \"params\": {\n                \"max_tokens\": 100,\n                \"messages\": [\n                    {\n                        \"content\": \"Hey Claude, tell me a short fun fact about video games!\",\n                        \"role\": \"user\"\n                    }\n                ],\n                \"model\": \"claude-3-5-haiku-20241022\"\n            }\n        }\n    ]\n}\n```\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "928a30b5-5d90-4648-a82e-e4f1a01e47a5",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1200,
+            -720
+          ],
+          "parameters": {
+            "width": 980,
+            "height": 600,
+            "content": "#### Results\n\nThis workflow returns an array of results with custom_ids.\n\n```json\n[\n    {\n        \"custom_id\": \"first-prompt-in-my-batch\",\n        \"result\": {\n            \"message\": {\n                \"content\": [\n                    {\n                        \"text\": \"Did you know that the classic video game Tetris was...\",\n                        \"type\": \"text\"\n                    }\n                ],\n                \"id\": \"msg_01AiLiVZT18XnoBD4r2w9x2t\",\n                \"model\": \"claude-3-5-haiku-20241022\",\n                \"role\": \"assistant\",\n                \"stop_reason\": \"end_turn\",\n                \"stop_sequence\": null,\n                \"type\": \"message\",\n                \"usage\": {\n                    \"cache_creation_input_tokens\": 0,\n                    \"cache_read_input_tokens\": 0,\n                    \"input_tokens\": 45,\n                    \"output_tokens\": 83\n                }\n            },\n            \"type\": \"succeeded\"\n        }\n    }\n]\n```"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5dcb554e-32df-4883-b5a1-b40305756201",
+          "name": "Batch Status Poll Interval",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            620,
+            40
+          ],
+          "webhookId": "7efafe72-063a-45c6-8775-fcec14e1d263",
+          "parameters": {
+            "amount": 10
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "c25cfde5-ab83-4e5a-a66f-8cc9f23a01f6",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -160,
+            325
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 340,
+            "height": 620,
+            "content": "# Usage example"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6062ca7c-aa08-4805-9c96-65e5be8a38fd",
+          "name": "Run example",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -40,
+            625
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9878729a-123d-4460-a582-691ca8cedf98",
+          "name": "One query example",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            634,
+            775
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "1ea47ba2-64be-4d69-b3db-3447cde71645",
+                  "name": "query",
+                  "type": "string",
+                  "value": "Hey Claude, tell me a short fun fact about bees!"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "df06c209-8b6a-4b6d-8045-230ebdfcfbad",
+          "name": "Delete original properties",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1528,
+            775
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d238d62b-2e91-4242-b509-8cfc698d2252",
+                  "name": "custom_id",
+                  "type": "string",
+                  "value": "={{ $json.custom_id }}"
+                },
+                {
+                  "id": "21e07c09-92e3-41e7-8335-64653722e7e9",
+                  "name": "params",
+                  "type": "object",
+                  "value": "={{ $json.params }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "f66d6a89-ee33-4494-9476-46f408976b29",
+          "name": "Construct 'requests' array",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1968,
+            625
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "requests"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0f9eb605-d629-4cb7-b9cb-39702d201567",
+          "name": "Set desired 'anthropic-version'",
+          "type": "n8n-nodes-base.set",
+          "notes": "2023-06-01",
+          "position": [
+            2188,
+            625
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9f9e94a0-304b-487a-8762-d74421ef4cc0",
+                  "name": "anthropic-version",
+                  "type": "string",
+                  "value": "2023-06-01"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "f71f261c-f4ad-4c9f-bd72-42ab386a65e1",
+          "name": "Execute Workflow 'Process Multiple Prompts in Parallel with Anthropic Claude Batch API'",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "notes": "See above",
+          "position": [
+            2408,
+            625
+          ],
+          "parameters": {
+            "options": {
+              "waitForSubWorkflow": true
+            },
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "xQU4byMGhgFxnTIH",
+              "cachedResultName": "Process Multiple Prompts in Parallel with Anthropic Claude Batch API"
+            },
+            "workflowInputs": {
+              "value": {
+                "requests": "={{ $json.requests }}",
+                "anthropic-version": "={{ $json['anthropic-version'] }}"
+              },
+              "schema": [
+                {
+                  "id": "anthropic-version",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "anthropic-version",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "requests",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "requests",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "requests"
+              ],
+              "attemptToConvertTypes": true,
+              "convertFieldsToString": true
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1.2
+        },
+        {
+          "id": "bd27c1a6-572c-420d-84ab-4d8b7d14311b",
+          "name": "Build batch 'request' object for single query",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1308,
+            775
+          ],
+          "parameters": {
+            "jsCode": "// Loop over input items and modify them to match the response example, then return input.all()\nfor (const item of $input.all()) {\n  item.json.params = {\n    max_tokens: item.json.max_tokens,\n    messages: [\n      {\n        content: item.json.query,\n        role: \"user\"\n      }\n    ],\n    model: item.json.model\n  };\n}\n\nreturn $input.all();\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "fa342231-ea94-43ab-8808-18c8d04fdaf8",
+          "name": "Simple Memory Store",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            644,
+            595
+          ],
+          "parameters": {
+            "sessionKey": "\"Process Multiple Prompts in Parallel with Anthropic Claude Batch API example\"",
+            "sessionIdType": "customKey"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "67047fe6-8658-45ba-be61-52cf6115f4e4",
+          "name": "Fill Chat Memory with example data",
+          "type": "@n8n/n8n-nodes-langchain.memoryManager",
+          "position": [
+            556,
+            375
+          ],
+          "parameters": {
+            "mode": "insert",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "You are a helpful AI assistant"
+                },
+                {
+                  "type": "user",
+                  "message": "Hey Claude, tell me a short fun fact about video games!"
+                },
+                {
+                  "type": "ai",
+                  "message": "short fun fact about video games!"
+                },
+                {
+                  "type": "user",
+                  "message": "No, an actual fun fact"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "dbb295b8-01fd-445f-ab66-948442b6c71d",
+          "name": "Build batch 'request' object from Chat Memory and execution data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1528,
+            475
+          ],
+          "parameters": {
+            "jsCode": "const output = [];\n\nfor (const item of $input.all()) {\n  const inputMessages = item.json.messages;\n  const customId = item.json.custom_id;\n  const model = item.json.model;\n  const maxTokens = item.json.max_tokens;\n\n  if (inputMessages && inputMessages.length > 0) {\n    let systemMessageContent = undefined;\n    const transformedMessages = [];\n\n    // Process each message entry in sequence\n    for (const messageObj of inputMessages) {\n      // Extract system message if present\n      if ('system' in messageObj) {\n        systemMessageContent = messageObj.system;\n      }\n      \n      // Process human and AI messages in the order they appear in the object keys\n      // We need to determine what order the keys appear in the original object\n      const keys = Object.keys(messageObj);\n      \n      for (const key of keys) {\n        if (key === 'human') {\n          transformedMessages.push({\n            role: \"user\",\n            content: messageObj.human\n          });\n        } else if (key === 'ai') {\n          transformedMessages.push({\n            role: \"assistant\",\n            content: messageObj.ai\n          });\n        }\n        // Skip 'system' as we already processed it\n      }\n    }\n\n    const params = {\n      model: model,\n      max_tokens: maxTokens,\n      messages: transformedMessages\n    };\n\n    if (systemMessageContent !== undefined) {\n      params.system = systemMessageContent;\n    }\n\n    output.push({\n      custom_id: customId,\n      params: params\n    });\n  }\n}\n\nreturn output;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f9edb335-c33d-45fc-8f9b-12d7f37cc23e",
+          "name": "Load Chat Memory Data",
+          "type": "@n8n/n8n-nodes-langchain.memoryManager",
+          "position": [
+            932,
+            475
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "22399660-ebe5-4838-bad3-c542d6d921a3",
+          "name": "First Prompt Result",
+          "type": "n8n-nodes-base.executionData",
+          "position": [
+            2848,
+            525
+          ],
+          "parameters": {
+            "dataToSave": {
+              "values": [
+                {
+                  "key": "assistant_response",
+                  "value": "={{ $json.result.message.content[0].text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0e7f44f4-c931-4e0f-aebc-1b8f0327647f",
+          "name": "Second Prompt Result",
+          "type": "n8n-nodes-base.executionData",
+          "position": [
+            2848,
+            725
+          ],
+          "parameters": {
+            "dataToSave": {
+              "values": [
+                {
+                  "key": "assistant_response",
+                  "value": "={{ $json.result.message.content[0].text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e42b01e0-8fc5-42e1-aa45-aa85477e766b",
+          "name": "Split Out Parsed Results",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1060,
+            -160
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "parsed"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "343676b9-f147-4981-b555-8af570374e8c",
+          "name": "Filter Second Prompt Results",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            2628,
+            725
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "9e4b3524-7066-46cc-a365-8d23d08c1bda",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.custom_id }}",
+                  "rightValue": "={{ $('Append execution data for single query example').item.json.custom_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "c9f5f366-27c4-4401-965b-67c314036fb6",
+          "name": "Filter First Prompt Results",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            2628,
+            525
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "9e4b3524-7066-46cc-a365-8d23d08c1bda",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.custom_id }}",
+                  "rightValue": "={{ $('Append execution data for chat memory example').item.json.custom_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "0a5b9c3d-665b-4e35-be9e-c8297314969d",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            110,
+            -100
+          ],
+          "parameters": {
+            "height": 300,
+            "content": "## Submit batch request to Anthropic"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f19813a5-f669-45dd-a446-947a30b02b09",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            350,
+            -5
+          ],
+          "parameters": {
+            "width": 640,
+            "height": 300,
+            "content": "## Loop until processing status is 'ended'"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9f424fce-5610-4b85-9be6-4c2c403002db",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            500,
+            -200
+          ],
+          "parameters": {
+            "width": 280,
+            "height": 180,
+            "content": "### Retrieve Message Batch Results\n\n[User guide](https://docs.anthropic.com/en/docs/build-with-claude/batch-processing)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b87673b1-f08d-4c51-8ee5-4d54557cb382",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            900,
+            380
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 820,
+            "height": 340,
+            "content": "# Example usage with Chat History Node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d6d8ac02-7005-40a1-9950-9517e98e315c",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            720
+          ],
+          "parameters": {
+            "width": 1540,
+            "height": 220,
+            "content": "# Example usage with single query string"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0d63deb0-dece-4502-9020-d67c1f194466",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            320
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 660,
+            "height": 400,
+            "content": "# Environment setup\nFor Chat History Node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cab94e09-6b84-4a38-b854-670241744db5",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2120,
+            800
+          ],
+          "parameters": {
+            "height": 220,
+            "content": "## anthropic-version\n\n[Documentation](https://docs.anthropic.com/en/api/versioning)\n\nWhen making API requests, you must send an anthropic-version request header. For example, anthropic-version: `2023-06-01` (latest supported version)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ab0a51a1-3c84-4a88-968b-fd46ab07de85",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2560,
+            400
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 480,
+            "height": 300,
+            "content": "# Example usage with Chat History Node (result)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d91b9be7-ef32-48d6-b880-cab0e99ba9bc",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2560,
+            700
+          ],
+          "parameters": {
+            "width": 480,
+            "height": 300,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n# Example usage with single query string (result)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "341811e9-6677-42d9-be28-c388dbf68101",
+          "name": "Join two example requests into array",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1748,
+            625
+          ],
+          "parameters": {},
+          "typeVersion": 3.1
+        },
+        {
+          "id": "45a09f05-7610-4b0a-ab7f-0094c4b3f318",
+          "name": "Append execution data for single query example",
+          "type": "n8n-nodes-base.set",
+          "notes": "custom_id, model and max tokens",
+          "position": [
+            1010,
+            775
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8276602f-689f-45c2-bce0-5df8500912b6",
+                  "name": "custom_id",
+                  "type": "string",
+                  "value": "second-prompt-in-my-batch"
+                },
+                {
+                  "id": "2c513dc2-d8cb-4ba3-b3c1-ea79517b9434",
+                  "name": "model",
+                  "type": "string",
+                  "value": "claude-3-5-haiku-20241022"
+                },
+                {
+                  "id": "b052140b-1152-4327-9c5a-5030b78990b7",
+                  "name": "max_tokens",
+                  "type": "number",
+                  "value": 100
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c4e35349-840c-4c81-852c-0d8cd9331364",
+          "name": "Append execution data for chat memory example",
+          "type": "n8n-nodes-base.set",
+          "notes": "custom_id, model and max tokens",
+          "position": [
+            1308,
+            475
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8276602f-689f-45c2-bce0-5df8500912b6",
+                  "name": "custom_id",
+                  "type": "string",
+                  "value": "first-prompt-in-my-batch"
+                },
+                {
+                  "id": "2c513dc2-d8cb-4ba3-b3c1-ea79517b9434",
+                  "name": "model",
+                  "type": "string",
+                  "value": "claude-3-5-haiku-20241022"
+                },
+                {
+                  "id": "b052140b-1152-4327-9c5a-5030b78990b7",
+                  "name": "max_tokens",
+                  "type": "number",
+                  "value": 100
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "058aedb1-fdfe-4edc-8d51-3b93ec7d232d",
+          "name": "Truncate Chat Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryManager",
+          "notes": "ensure clean state",
+          "position": [
+            180,
+            475
+          ],
+          "parameters": {
+            "mode": "delete",
+            "deleteMode": "all"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1.1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Get results": {
+          "main": [
+            [
+              {
+                "node": "Parse response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Run example": {
+          "main": [
+            [
+              {
+                "node": "One query example",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Truncate Chat Memory",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Submit batch": {
+          "main": [
+            [
+              {
+                "node": "If ended processing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse response": {
+          "main": [
+            [
+              {
+                "node": "Split Out Parsed Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "One query example": {
+          "main": [
+            [
+              {
+                "node": "Append execution data for single query example",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check batch status": {
+          "main": [
+            [
+              {
+                "node": "If ended processing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If ended processing": {
+          "main": [
+            [
+              {
+                "node": "Get results",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Batch Status Poll Interval",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory Store": {
+          "ai_memory": [
+            [
+              {
+                "node": "Load Chat Memory Data",
+                "type": "ai_memory",
+                "index": 0
+              },
+              {
+                "node": "Fill Chat Memory with example data",
+                "type": "ai_memory",
+                "index": 0
+              },
+              {
+                "node": "Truncate Chat Memory",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Truncate Chat Memory": {
+          "main": [
+            [
+              {
+                "node": "Fill Chat Memory with example data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Load Chat Memory Data": {
+          "main": [
+            [
+              {
+                "node": "Append execution data for chat memory example",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Batch Status Poll Interval": {
+          "main": [
+            [
+              {
+                "node": "Check batch status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Construct 'requests' array": {
+          "main": [
+            [
+              {
+                "node": "Set desired 'anthropic-version'",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete original properties": {
+          "main": [
+            [
+              {
+                "node": "Join two example requests into array",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Filter First Prompt Results": {
+          "main": [
+            [
+              {
+                "node": "First Prompt Result",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Second Prompt Results": {
+          "main": [
+            [
+              {
+                "node": "Second Prompt Result",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set desired 'anthropic-version'": {
+          "main": [
+            [
+              {
+                "node": "Execute Workflow 'Process Multiple Prompts in Parallel with Anthropic Claude Batch API'",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "Submit batch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fill Chat Memory with example data": {
+          "main": [
+            [
+              {
+                "node": "Load Chat Memory Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Join two example requests into array": {
+          "main": [
+            [
+              {
+                "node": "Construct 'requests' array",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Append execution data for chat memory example": {
+          "main": [
+            [
+              {
+                "node": "Build batch 'request' object from Chat Memory and execution data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Build batch 'request' object for single query": {
+          "main": [
+            [
+              {
+                "node": "Delete original properties",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Append execution data for single query example": {
+          "main": [
+            [
+              {
+                "node": "Build batch 'request' object for single query",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Build batch 'request' object from Chat Memory and execution data": {
+          "main": [
+            [
+              {
+                "node": "Join two example requests into array",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow 'Process Multiple Prompts in Parallel with Anthropic Claude Batch API'": {
+          "main": [
+            [
+              {
+                "node": "Filter First Prompt Results",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Filter Second Prompt Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 39,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.code": {
+          "count": 3
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 12
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "n8n-nodes-base.executionData": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryManager": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Greg Evseev",
+      "username": "greg",
+      "bio": "15+ years in AI/ML development & integration. Now specializing in establishing ISO 42001-compliant AI management systems. Background includes AI/ML research, system development, AI governance, and ISO 42001 Lead Auditor training (in progress).\n\nHelping organizations:\n✓ Evaluate AI maturity & governance\n✓ Implement ISO 42001 systems\n✓ Bridge technical & regulatory requirements\n✓ Design practical AI governance frameworks\n\nExpertise: AI Risk Assessment, Compliance Strategy, Technical Due Diligence.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/aimsgreg"
+      ],
+      "avatar": "https://gravatar.com/avatar/a2532827cb048e2c6433b7d6c3bf075066d9fac93092eca13593902b502e75b1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 846,
+        "icon": "fa:tasks",
+        "name": "n8n-nodes-base.executionData",
+        "codex": {
+          "data": {
+            "alias": [
+              "Filter",
+              "_Set",
+              "Data"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Execution Data",
+          "color": "#29A568"
+        },
+        "iconData": {
+          "icon": "tasks",
+          "type": "icon"
+        },
+        "displayName": "Execution Data",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1246,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryManager",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorymanager/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Chat Memory Manager"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Chat Memory Manager",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

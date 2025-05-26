@@ -1,0 +1,2334 @@
+{
+  "workflow": {
+    "id": 2354,
+    "name": "Automate Competitor Research with Exa.ai, Notion and AI Agents",
+    "views": 19706,
+    "recentViews": 3,
+    "totalViews": 19706,
+    "createdAt": "2024-07-24T11:35:16.291Z",
+    "description": "This n8n workflow demonstrates a simple multi-agent setup to perform the task of competitor research. It showcases how using the HTTP request tool could reduce the number of nodes needed to achieve a workflow like this.\n\n## How it works\n* For this template, a source company is defined by the user which is sent to Exa.ai to find competitors.\n* Each competitor is then funnelled through 3 AI agents that will go out onto the internet and retrieve specific datapoints about the competitor; company overview, product offering and customer reviews.\n* Once the agents are finished, the results are compiled into a report which is then inserted in a notion database.\n\nCheck out an example output here: https://jimleuk.notion.site/2d1c3c726e8e42f3aecec6338fd24333?v=de020fa196f34cdeb676daaeae44e110&pvs=4\n\n## Requirements\n\n* An OpenAI account for the LLM.\n* Exa.ai account for access to their AI search engine.\n* SerpAPI account for Google search.\n* Firecrawl.dev account for webscraping.\n* Notion.com account for database to save final reports.\n\n## Customising the workflow\n\nAdd additional agents to gather more datapoints such as SEO keywords and metrics.\n\nNot using notion? Feel free to swap this out for your own database.",
+    "workflow": {
+      "meta": {
+        "instanceId": "26ba763460b97c249b82942b23b6384876dfeb9327513332e743c5f6219c2b8e"
+      },
+      "nodes": [
+        {
+          "id": "d26b0190-c683-45fc-ac5b-0654af78f080",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1000,
+            -620
+          ],
+          "parameters": {
+            "width": 377.7154173079816,
+            "height": 511.2813260861502,
+            "content": "## Try It Out!\n\n### This workflow builds a competitor research agent using Exa.ai as a starting point. The HTTP Request tool is used to demonstrate how you can build powerful agents with minimal effort.\n\n* Using Exa's findSimilar search, we ask it to look for similar companies ie. competitors, to our source company.\n* This list of competitors is sent to 3 agents to scour the internet to find company overview, product offering and customer reviews.\n* A report is then compiled from the output of all 3 agents into a notion table.\n\n### Need Help?\nJoin the [Discord](https://discord.com/invite/XPKeKXeB7d) or ask in the [Forum](https://community.n8n.io/)!\n\nHappy Hacking!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "747d2f04-1e9c-45bb-b2ad-68da81524f4f",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -520,
+            -420
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5cb5f5a1-bc2d-4557-aff4-1993d8dcb99b",
+          "name": "OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1020,
+            20
+          ],
+          "parameters": {
+            "model": "gpt-4o-mini",
+            "options": {
+              "temperature": 0
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "eafe20ab-0385-42e6-abbf-e15126bbb6fa",
+          "name": "Search Crunchbase",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1320,
+            20
+          ],
+          "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "fields": "markdown",
+            "method": "POST",
+            "sendBody": true,
+            "dataField": "data",
+            "authentication": "genericCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "url"
+                },
+                {
+                  "name": "pageOptions",
+                  "value": "={{ {\n  onlyMainContent: true,\n  replaceAllPathsWithAbsolutePaths: true,\n  removeTags: 'img,svg,video,audio'\n} }}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Call this tool to read the contents of a crunchbase profile.",
+            "optimizeResponse": true
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OUOnyTkL9vHZNorB",
+              "name": "Firecrawl API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "71729e21-a820-41a3-9cde-a52a63d1366d",
+          "name": "Search WellFound",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1180,
+            180
+          ],
+          "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "fields": "markdown",
+            "method": "POST",
+            "sendBody": true,
+            "dataField": "data",
+            "authentication": "genericCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "url"
+                },
+                {
+                  "name": "pageOptions",
+                  "value": "={{ {\n  onlyMainContent: true,\n  replaceAllPathsWithAbsolutePaths: true,\n  removeTags: 'img,svg,video,audio'\n} }}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Call this tool to read the contents of a wellfound profile.",
+            "optimizeResponse": true
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OUOnyTkL9vHZNorB",
+              "name": "Firecrawl API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ad5be9e0-14dc-40b2-b080-b079fb4c1d4b",
+          "name": "Search LinkedIn",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1320,
+            180
+          ],
+          "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "fields": "markdown",
+            "method": "POST",
+            "sendBody": true,
+            "dataField": "data",
+            "authentication": "genericCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "url"
+                },
+                {
+                  "name": "pageOptions",
+                  "value": "={{ {\n  onlyMainContent: true,\n  replaceAllPathsWithAbsolutePaths: true,\n  removeTags: 'img,svg,video,audio'\n} }}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Call this tool to read the contents of a linkedin company profile. You must pass in the the linkedin.com url.",
+            "optimizeResponse": true
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OUOnyTkL9vHZNorB",
+              "name": "Firecrawl API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "405fa211-436d-4601-bc3e-ad6e6d99886d",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            1600,
+            20
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"company_name\": \"\",\n  \"company_website\": \"\",\n  \"year_founded\": \"\",\n  \"founders\": [{ \"name\": \"\", \"linkedIn\": \"\" }],\n  \"ceo\": [{ \"name\": \"\", \"linkedIn\": \"\", \"twitter\": \"\" }],\n  \"key_people\": [{ \"name\": \"\", \"role\": \"\", \"linkedIn\": \"\", \"twitter\": \"\" }],\n  \"employees\": [{ \"name\": \"\", \"role\": \"\", \"linkedIn\": \"\", \"twitter\": \"\" }],\n  \"open_jobs\": [{ \"role\": \"\", \"description\": \"\", \"published\": \"\" }],\n  \"offices\": [{ \"address\": \"\", \"city\": \"\" }],\n  \"money_raised\": \"\",\n  \"funding_status\": \"\",\n  \"investors\": [{ \"name\": \"\", \"description\": \"\", \"linkedIn\": \"\" }],\n  \"customers\": [{ \"name\": \"\", \"url\": \"\" }],\n  \"yoy_customer_growth\": \"\",\n  \"annual_revenue\": \"\",\n  \"yoy_revenue_growth\": \"\",\n  \"latest_articles\": [{ \"title\": \"\", \"snippet\": \"\", \"url\": \"\", \"published_date\": \"\" }]\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e4955f40-6e8c-42d9-bb1e-d134485717f2",
+          "name": "Webscraper Tool1",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1460,
+            180
+          ],
+          "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "fields": "markdown",
+            "method": "POST",
+            "sendBody": true,
+            "dataField": "data",
+            "authentication": "genericCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "url"
+                },
+                {
+                  "name": "pageOptions",
+                  "value": "={{ {\n  onlyMainContent: true,\n  replaceAllPathsWithAbsolutePaths: true,\n  removeTags: 'img,svg,video,audio'\n} }}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Call this tool to fetch any additional webpage and its contents which may be helpful in gathering information for the data points.",
+            "optimizeResponse": true
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OUOnyTkL9vHZNorB",
+              "name": "Firecrawl API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4ddf8829-e11d-4002-ad96-1b3fcddebef7",
+          "name": "Remove Duplicates",
+          "type": "n8n-nodes-base.removeDuplicates",
+          "position": [
+            320,
+            -380
+          ],
+          "parameters": {
+            "compare": "selectedFields",
+            "options": {},
+            "fieldsToCompare": "url"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "06d7e6fb-9fe8-4c31-9042-fa375b63dd63",
+          "name": "Extract Domain",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            140,
+            -240
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d82bab07-3434-4db3-ba89-d722279e3c40",
+                  "name": "title",
+                  "type": "string",
+                  "value": "={{ $json.title }}"
+                },
+                {
+                  "id": "8a774c1d-c4b1-427a-aa4d-cda0071656ce",
+                  "name": "url",
+                  "type": "string",
+                  "value": "=https://{{ $json.url.extractDomain() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "991fbb7f-9ba5-4672-8573-6a28e77ed5fc",
+          "name": "Results to List",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            140,
+            -380
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "results"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f09112bc-65b5-4b6d-b568-eef95d064d45",
+          "name": "Check Company Profiles Exist",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1180,
+            20
+          ],
+          "parameters": {
+            "url": "https://serpapi.com/search",
+            "fields": "position,title,link,snippet,source",
+            "dataField": "organic_results",
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "q"
+                }
+              ]
+            },
+            "toolDescription": "Call this tool to check if a company profile exists in either crunchbase, wellfound or linkedin.\n* To check if a company has a crunchbase profile, use the query \"site: https://crunchbase.com/organizations (company)\"\n* To check if a company has a wellfound profile, use the query \"site: https://wellfound.com/company (company)\"\n* To check if a company has a linked company profile, use the query \"site: https://linkedin.com/company (company)\"",
+            "optimizeResponse": true,
+            "nodeCredentialType": "serpApi"
+          },
+          "credentials": {
+            "serpApi": {
+              "id": "aJCKjxx6U3K7ydDe",
+              "name": "SerpAPI account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5ac6eb04-7c94-443f-bdd3-52e5fc1f72ff",
+          "name": "Webscraper Tool",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2180,
+            -40
+          ],
+          "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "fields": "markdown",
+            "method": "POST",
+            "sendBody": true,
+            "dataField": "data",
+            "authentication": "genericCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "url"
+                },
+                {
+                  "name": "pageOptions",
+                  "value": "={{ {\n  onlyMainContent: true,\n  replaceAllPathsWithAbsolutePaths: true,\n  removeTags: 'img,svg,video,audio'\n} }}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Call this tool to fetch webpage contents. Pass in the url to fetch.",
+            "optimizeResponse": true
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OUOnyTkL9vHZNorB",
+              "name": "Firecrawl API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "082b8e76-30b8-48f2-a581-a04a6f05c20d",
+          "name": "Search Company Website",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2040,
+            -40
+          ],
+          "parameters": {
+            "url": "https://serpapi.com/search",
+            "fields": "position,title,link,snippet,source",
+            "dataField": "organic_results",
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "q"
+                }
+              ]
+            },
+            "toolDescription": "Call this tool to query the company's profile website.\nExamples could include \"(company) pricing\", \"(company) plans\", \"(company) features\" etc",
+            "optimizeResponse": true,
+            "nodeCredentialType": "serpApi"
+          },
+          "credentials": {
+            "serpApi": {
+              "id": "aJCKjxx6U3K7ydDe",
+              "name": "SerpAPI account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ca3140c5-b4ff-41d5-b0a1-b2595e1fc789",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            2320,
+            -40
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"features\": [{ \"name\": \"\", \"description\": \"\" }],\n  \"pricing_plans\": [{ \"name\": \"\", \"description\": \"\", \"tier\": \"\", \"price\": \"\", \"monthly_or_annually\": \"\" }],\n  \"factors_that_impact_price\": [{ \"factor\": \"\", \"description\": \"\" }],\n  \"discounts_promotions\": [{ \"offer\": \"\", \"start\": \"\", \"end\": \"\", \"description\": \"\" }],\n  \"custom_plans\": { \"is_available\": false, \"applicable_for\": \"\", \"price\": \"\", \"duration\": \"\", \"description\": \"\" },\n  \"free_trial\": { \"is_available\": false, \"applicable_for\": \"\", \"price\": \"\", \"duration\": \"\", \"description\": \"\" },\n  \"freemium_version\": { \"is_available\": false, \"applicable_for\": \"\", \"price\": \"\", \"duration\": \"\", \"description\": \"\" },\n  \"complementary_tools\": [{ \"name\": \"\", \"description\": \"\", \"price\": \"\" }],\n  \"techonology used\": [{ \"name\": \"\", \"description\": \"\", \"purpose\": \"\" }]\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "3c5493eb-6ca9-4909-997d-ddf3f3c88e2d",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1900,
+            -40
+          ],
+          "parameters": {
+            "model": "gpt-4o-mini",
+            "options": {
+              "temperature": 0
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "299920bb-194b-4a95-8822-c0f6d559dd15",
+          "name": "Search Product Review Sites",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2757,
+            20
+          ],
+          "parameters": {
+            "url": "https://serpapi.com/search",
+            "fields": "position,title,link,snippet,source",
+            "dataField": "organic_results",
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "fieldsToInclude": "selected",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "q",
+                  "value": "{company_or_product} reviews (site:trustpilot.com OR site:producthunt.com)",
+                  "valueProvider": "fieldValue"
+                },
+                {
+                  "name": "num",
+                  "value": "3",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "toolDescription": "Call this tool to search for customer reviews for the desired company or their product/service.",
+            "optimizeResponse": true,
+            "nodeCredentialType": "serpApi",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "company_or_product",
+                  "description": "the name of the company or their product to search for reviews for"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "serpApi": {
+              "id": "aJCKjxx6U3K7ydDe",
+              "name": "SerpAPI account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "216bc875-365c-4536-b3b4-90de29265cb5",
+          "name": "Webscraper Tool2",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2897,
+            20
+          ],
+          "parameters": {
+            "url": "https://api.firecrawl.dev/v0/scrape",
+            "fields": "markdown",
+            "method": "POST",
+            "sendBody": true,
+            "dataField": "data",
+            "authentication": "genericCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "url",
+                  "value": "{url_or_link}",
+                  "valueProvider": "fieldValue"
+                },
+                {
+                  "name": "pageOptions",
+                  "value": "={{ {\n  onlyMainContent: true,\n  replaceAllPathsWithAbsolutePaths: true,\n  removeTags: 'img,svg,video,audio'\n} }}",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "Call this tool to fetch webpage contents. Pass in the url to fetch.",
+            "optimizeResponse": true,
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "url_or_link",
+                  "description": "the url or lik to the review site webpage."
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "OUOnyTkL9vHZNorB",
+              "name": "Firecrawl API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c13f23fd-77b9-4f4c-bdc6-50120ed84cbd",
+          "name": "Structured Output Parser2",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            3037,
+            20
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"number_of_reviews\": 0,\n  \"positive_mentions_%\": \"\",\n  \"negative_mentions_%\": \"\",\n  \"top_pros\": [\"\"],\n  \"top_cons\": [\"\"],\n  \"top_countries\": [\"\"],\n  \"top_social_media_platforms\": [\"\"]\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "784202a0-4022-4941-8fcc-f1c05c9820a6",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            2617,
+            20
+          ],
+          "parameters": {
+            "model": "gpt-4o",
+            "options": {
+              "temperature": 0
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "8gccIjcuf3gvaoEr",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fbc2e1c1-7851-4fbb-b46c-9fa35eacd810",
+          "name": "Insert Into Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            3520,
+            -240
+          ],
+          "parameters": {
+            "title": "={{ $json.output.company_name }}",
+            "blockUi": {
+              "blockValues": [
+                {
+                  "type": "heading_1",
+                  "textContent": "={{ $json.output.company_name }}"
+                },
+                {
+                  "textContent": "=Report generated on {{ $now.format('dd MMM yyyy') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Company Overview"
+                },
+                {
+                  "textContent": "=Offices:\n{{ $json.output.offices.map(item => `${item.address}, ${item.city}`).join('\\n') }}\n\nYear Founded:\n{{ $json.output.year_founded }}\n\nFounders:\n{{ $json.output.founders.map(item => `${item.name} (${item.linkedIn})`).join('\\n') }}\n\nCEO:\n{{ $json.output.ceo.map(item => `${item.name} (${item.linkedIn})`).join('\\n') }}\n\nEmployees:\n{{ $json.output.employees.map(item => `${item.name} - ${item.role}, (${item.linkedIn})`).join('\\n') }}\n\nOpen Roles:\n{{ $json.output.open_jobs.map(item => `${item.role} (${item.published}), ${item.description}`).join('\\n') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Company Funding"
+                },
+                {
+                  "textContent": "=Money Raised:\n{{ $json.output.money_raised || 'unknown' }}\n\nFunding Status:\n{{ $json.output.funding_status }}\n\nYoY Customer Growth:\n{{ $json.output.yoy_customer_growth || 'unknown' }}\n\nAnnual Revenue:\n{{ $json.output.annual_revenue || 'unknown' }}\n\nYoY Revenue Growth:\n{{ $json.output.yoy_revenue_growth || 'unknown' }}\n\nInvestors:\n{{ $json.output.investors.map(item => `${item.name}, ${item.description} (${item.linkedIn})`).join('\\n') }}\n\nCustomers:\n{{ $json.output.customers.map(item => `${item.name} (${item.url})`).join('\\n') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Company News"
+                },
+                {
+                  "textContent": "={{  $json.output.latest_articles.length ? $json.output.latest_articles.map(item =>\n`**${item.title}**\n${item.url}\n${item.published_date} | ${item.snippet}\n`).join('\\n') : 'None Found' }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Product Offering"
+                },
+                {
+                  "textContent": "=Features:\n{{ $json.output.features.map(item => `${item.name} - ${item.description.split('.')[0]}.`).join('\\n') }}\n"
+                },
+                {
+                  "textContent": "=Pricing Plans:\n{{ $json.output.pricing_plans.map(item =>\n`${item.name} - ${item.price} (${item.tier})\n* ${item.description}`\n).join('\\n\\n') }}\n\nFactors that Impact Price:\n{{ $json.output.factors_that_impact_price.map(item => `${item.factor} - ${item.description}`).join('\\n') }}\n\nCurrent Discounts and/or Promotions:\n{{ $json.output.discounts_promotions.length ? $json.output.discounts_promotions.map(item =>\n  `${item.offer} (${item.start} - ${item.end})\n* ${item.description}`\n).join('\\n\\n') : '* None Found' }}\n\nCustom Plans:\n{{ $json.output.custom_plans.is_available ? (\n  `${$json.output.custom_plans.applicable_for} - ${$json.output.custom_plans.price}\n* ${$json.output.custom_plans.description}`\n) : 'Not applicable' }}\n\nFree Trials:\n{{ $json.output.free_trial.is_available ? (\n  `${$json.output.free_trial.applicable_for} - ${$json.output.free_trial.price}\n* ${$json.output.free_trial.description}`\n) : 'Not applicable' }}\n\nFreemium Version:\n{{ $json.output.freemium_version.is_available ? (\n  `${$json.output.freemium_version.applicable_for} - ${$json.output.freemium_version.price}\n* ${$json.output.freemium_version.description}`\n) : 'Not applicable' }}\n\nComplimentary Tools:\n{{ $json.output.complementary_tools.map(item =>\n  `${item.name} - ${item.price}\n* ${item.description}`\n).join('\\n\\n') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "=Product Reviews"
+                },
+                {
+                  "textContent": "=Number of Reviews: {{ $json.output.number_of_reviews }}\nPositive Mentions (%): {{ $json.output['positive_mentions_%'] }} \nNegative Mentions (%): {{ $json.output['negative_mentions_%'] }} \n\nTop Pros:\n{{ $json.output.top_pros.length ? $json.output.top_pros.map(item => `* ${item}`).join('\\n'): '* None Found' }}\n\nTop Cons:\n{{ $json.output.top_cons.length ? $json.output.top_cons.map(item => `* ${item}`).join('\\n') : '* None Found' }} \n\nTop Countries:\n{{ $json.output.top_countries.length ? $json.output.top_countries.map(item => `* ${item}`).join('\\n') : '* None Found' }}\n\nTop Social Media Platforms:\n{{ $json.output.top_social_media_platforms.length ? $json.output.top_social_media_platforms.map(item => `* ${item}`).join('\\n') : '* None Found' }}"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "2d1c3c72-6e8e-42f3-aece-c6338fd24333",
+              "cachedResultUrl": "https://www.notion.so/2d1c3c726e8e42f3aecec6338fd24333",
+              "cachedResultName": "n8n Competitor Analysis"
+            },
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Founded|rich_text",
+                  "textContent": "={{ $json.output.year_founded }}"
+                },
+                {
+                  "key": "Funding Status|rich_text",
+                  "textContent": "={{ $json.output.funding_status }}"
+                },
+                {
+                  "key": "Money Raised|rich_text",
+                  "textContent": "={{ $json.output.money_raised || ''}}"
+                },
+                {
+                  "key": "Positive Reviews (%)|rich_text",
+                  "textContent": "={{ $json.output['positive_mentions_%'] }}%"
+                },
+                {
+                  "key": "Pros|rich_text",
+                  "textContent": "={{ $json.output.top_pros.join(', ') }}"
+                },
+                {
+                  "key": "Cons|rich_text",
+                  "textContent": "={{ $json.output.top_cons.join(', ') }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "iHBHe7ypzz4mZExM",
+              "name": "Notion account"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ec6b578d-4808-4613-881b-67dbcf30f641",
+          "name": "Limit",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            320,
+            -240
+          ],
+          "parameters": {
+            "maxItems": 10
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2f25cf2e-86c6-4d23-a1ae-cc35134f0d8a",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            680,
+            -280
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "360000e3-bc07-4be9-91cf-169b85ed7ad5",
+          "name": "Competitor Search via Exa.ai",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -80,
+            -420
+          ],
+          "parameters": {
+            "url": "https://api.exa.ai/findSimilar",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "={{ $json.company_url }}"
+                },
+                {
+                  "name": "type",
+                  "value": "neural"
+                },
+                {
+                  "name": "useAutoprompt",
+                  "value": "true"
+                },
+                {
+                  "name": "contents",
+                  "value": "={{ { \"text\": false } }}"
+                },
+                {
+                  "name": "excludeDomains",
+                  "value": "={{ [$json.company_url, \"github.com\", \"linkedIn.com\"] }}"
+                }
+              ]
+            },
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "BWhPl6CgBKn3UJca",
+              "name": "Exa.ai"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "dae53670-bafb-4dff-95e7-cc94adf5f344",
+          "name": "Get Company News",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1460,
+            20
+          ],
+          "parameters": {
+            "url": "https://serpapi.com/search",
+            "fields": "position,title,link,snippet,source",
+            "sendBody": true,
+            "dataField": "organic_results",
+            "authentication": "predefinedCredentialType",
+            "parametersBody": {
+              "values": [
+                {
+                  "name": "q"
+                },
+                {
+                  "name": "engine",
+                  "value": "google_news",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            },
+            "fieldsToInclude": "selected",
+            "toolDescription": "Call this tool to search for the latest news articles of a company.",
+            "optimizeResponse": true,
+            "nodeCredentialType": "serpApi"
+          },
+          "credentials": {
+            "serpApi": {
+              "id": "aJCKjxx6U3K7ydDe",
+              "name": "SerpAPI account"
+            },
+            "httpHeaderAuth": {
+              "id": "BWhPl6CgBKn3UJca",
+              "name": "Exa.ai"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "84809359-06c8-41d9-8269-571cac716d17",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -589.9031441651332,
+            -613.6533489294407
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1128.870960716006,
+            "height": 582.8537144476434,
+            "content": "## Step 1. Get Competitors\n[Read more about using the HTTP Request node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest)\n\nExa.ai is a relatively new AI search engine startup with a specialised API for finding similar companies.\nThis is perfect for marketing research as we can easily find competitors to compare against."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d43e8b2a-53dd-41db-aacd-f3fdd29d8fe9",
+          "name": "Set Source Company",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -300,
+            -420
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3910089f-065d-4f05-a3b7-a5b848b91eb9",
+                  "name": "company_url",
+                  "type": "string",
+                  "value": "https://notion.so"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1c28b108-dc18-4304-aed9-275e719c4edd",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -340,
+            -440
+          ],
+          "parameters": {
+            "width": 181.85939799093455,
+            "height": 308.12010511833364,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n### 🚨Required!\nRemember to set your company here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5cb54393-795b-4738-aac2-cc9395456420",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            -525.6986144265638
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 332.87733508600377,
+            "height": 492.4668447935363,
+            "content": "## Step 2. Feed into Agent Pipeline\n[Learn more about loops](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches)\n\nA loop is used to ensure competitors are processed one at a time. This is ideal when we don't want errors to fail the entire pipeline."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4cdddfd1-8631-4d88-a65d-10a53daeaf78",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1800,
+            -420
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 687.9856526661888,
+            "height": 600.1548730999224,
+            "content": "## Step 4. Research Competitor Product Offering\n[Learn more about using AI Agents](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent)\n\nThis agent uses SERPAPI to discover the competitor's product pages. Once found, it will use the webscraping tool to fetch the page's contents to extract the necessary data points."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3a374ce6-0ae0-4f8e-ad6a-35ab2c8da211",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            920,
+            -400
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 849.3810544357925,
+            "height": 775.191233831828,
+            "content": "## Step 3. Discover Competitor Company and Funding Overview\n[Learn more about using AI Agents](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent)\n\nThis agent searches crunchbase.com, wellfound.com and linkedin.com for the competitor's company details, people data, funding activity and latest news."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa580430-d6c6-4d41-b0f9-c86ad89dc6ab",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2520,
+            -400
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 683.8444841203574,
+            "height": 633.9023021841829,
+            "content": "## Step 5. Capture Competitor Product Reviews\n[Learn more about using AI Agents](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent)\n\nThis agent uses SERPAPI to discover product reviews for the competitor's product or service and then summarises the pros and cons."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b050b11f-9b4f-4ed1-94b9-3ec69a1ceba7",
+          "name": "Collect Results",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3340,
+            -240
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3c58a9dd-28c5-4758-a362-d5b29f6a8204",
+                  "name": "output",
+                  "type": "object",
+                  "value": "={{\n {\n    ...$('Company Overview Agent').item.json.output,\n    ...$('Company Product Offering Agent').item.json.output,\n    ...$('Company Product Reviews Agent').item.json.output,\n }\n}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1fc6468e-8a89-4a37-a8d6-1fe94c274b3a",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3220,
+            -481.22655186925294
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 529.1065295866968,
+            "height": 572.5257167828777,
+            "content": "## Step 6. Collect Results and Send to Notion\n[Read more about using Notion](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion)\n\nFinally, once the agent's have completed their tasks successfully, we compiled a competitor report and insert it as a new row in our Notion table.\nYou can check out a copy of this table here: https://jimleuk.notion.site/2d1c3c726e8e42f3aecec6338fd24333?v=de020fa196f34cdeb676daaeae44e110&pvs=4"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "863c40c7-e56d-464f-8105-0cb151654715",
+          "name": "2sec",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            3680,
+            280
+          ],
+          "webhookId": "94b5b09f-0599-4585-b83b-f669726bc2ef",
+          "parameters": {
+            "amount": 2
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "c1a4b720-f56b-4c3a-aeca-a89f473132f4",
+          "name": "Company Overview Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1020,
+            -200
+          ],
+          "parameters": {
+            "text": "={{ $('Loop Over Items').item.json.url }}",
+            "options": {
+              "systemMessage": "Your role is a company researcher agent. Your goal is to research and discover the following information about a company:\n* Year founded\n* Founder(s)\n* CEO\n* Key people\n* Employees\n* Open jobs\n* Offices\n* Money raised\n* Funding status\n* Investors\n* Customers\n* YoY customer growth\n* Annual revenue\n* YoY revenue growth\n* Latest articles\n\n## Steps\n1. check if the company's crunchbase profile exists and if it does read the profile page to gather the required information. If you are able to satisfies all data points from the profile, then do not return your response.\n2. repeat step 1 for wellfound if there are missing data points on the crunchbase profile.\n3. repeat step 1 for linkedin if there are missing data points on the wellfound profile.\n4. If there are still missing datapoints after checking cruchbase, wellfound and linkedin then just give up and return your response.\n\nIf a data point is not found after completing all the above steps, do not use null values in your final response. Use either an empty array, object or string depending on the required schema for the data point.\nDo not retry any link that returns a 400,401,403 or 500 error code."
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "1070c7f0-544a-478b-bd97-df8f2c0d79fa",
+          "name": "Company Product Offering Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1900,
+            -240
+          ],
+          "parameters": {
+            "text": "={{ $('Loop Over Items').item.json.url }}",
+            "options": {
+              "systemMessage": "Your role is company product/service researcher. Your goal is to search and collect the following information:\n* features sets\n* number of pricing plans\n* Factors that impact price\n* Lowest-tier, Mid-tier and Highest-tier price\n* Custom plans if available\n* Discounts & promotions offered currently\n* whether a Free trial is offered\n* description of freemium version if available\n* Complementary tools offered\n* technology used\n\n# steps\n1. Search for the relevant webpage on the company's website. This search should return a url address.\n2. Use this url address with the webscraper tool to fetch the contents of the webpage.\n3. Use the contents of th webpage to populate the data points.\n\nIf a data point is not found after completing all the above steps, do not use null values in your final response. Use either an empty array, object or string depending on the required schema for the data point.\nDo not retry any link that returns a 400,401,403 or 500 error code."
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "5dec7033-5057-483f-930d-e950b6eabe05",
+          "name": "Company Product Reviews Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2617,
+            -200
+          ],
+          "parameters": {
+            "text": "={{ $('Loop Over Items').item.json.url }}",
+            "options": {
+              "systemMessage": "Your role is customer reviews agent. Your goal is to gather and collect online customer reviews for a company or their product or service.\n* number of reviews\n* Positive mentions, %\n* Negative mentions, %\n* Top pros\n* Top cons\n* Top countries\n* Top social media platforms\n\n## steps\n1. search for review sites that may have reviews for the company or product in question. retrieve the links or urls of the serch results where the reviews are found.\n2. Identify relevant items in the search result and and extract the urls from the search results.\n2. using the extracted urls from the search results, fetch the webpage of the review sites containing reviews for the company or product.\n3. extract the reviews from the fetched review sites to populate the required data points.\n\nIf a data point is not found after completing all the above steps, do not use null values in your final response. Use either an empty array, object or string depending on the required schema for the data point.\nDo not retry any link that returns a 400,401,403 or 500 error code."
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.6
+        },
+        {
+          "id": "787bb405-1744-43b7-8c47-1a2c23331e05",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3480,
+            -260
+          ],
+          "parameters": {
+            "width": 181.85939799093455,
+            "height": 308.12010511833364,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n### 🚨Required!\nRemember to set your Notion Database here."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "2sec": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Domain": {
+          "main": [
+            [
+              {
+                "node": "Remove Duplicates",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Collect Results": {
+          "main": [
+            [
+              {
+                "node": "Insert Into Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Results to List": {
+          "main": [
+            [
+              {
+                "node": "Extract Domain",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search LinkedIn": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webscraper Tool": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Product Offering Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Company News": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search WellFound": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webscraper Tool1": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webscraper Tool2": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Product Reviews Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Company Product Offering Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remove Duplicates": {
+          "main": [
+            [
+              {
+                "node": "Limit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Crunchbase": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Insert Into Notion": {
+          "main": [
+            [
+              {
+                "node": "2sec",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Company Product Reviews Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Source Company": {
+          "main": [
+            [
+              {
+                "node": "Competitor Search via Exa.ai",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Company Overview Agent": {
+          "main": [
+            [
+              {
+                "node": "Company Product Offering Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Company Website": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Product Offering Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Company Product Offering Agent",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser2": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Company Product Reviews Agent",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Product Review Sites": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Product Reviews Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Company Profiles Exist": {
+          "ai_tool": [
+            [
+              {
+                "node": "Company Overview Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Competitor Search via Exa.ai": {
+          "main": [
+            [
+              {
+                "node": "Results to List",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Company Product Reviews Agent": {
+          "main": [
+            [
+              {
+                "node": "Collect Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Company Product Offering Agent": {
+          "main": [
+            [
+              {
+                "node": "Company Product Reviews Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Set Source Company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 39,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.limit": {
+          "count": 1
+        },
+        "n8n-nodes-base.notion": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 3
+        },
+        "n8n-nodes-base.removeDuplicates": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 10
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Jimleuk",
+      "username": "jimleuk",
+      "bio": "Freelance consultant based in the UK specialising in AI-powered automations. I work with select clients tackling their most challenging projects. For business enquiries, send me an email at hello@jimle.uk\n\nLinkedIn: https://www.linkedin.com/in/jimleuk/\nX/Twitter: https://x.com/jimle_uk",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/4ab99e51473df76838beeaac908747f7928c625f869794815cabe34016967d51?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1237,
+        "icon": "file:limit.svg",
+        "name": "n8n-nodes-base.limit",
+        "codex": {
+          "data": {
+            "alias": [
+              "Limit",
+              "Remove",
+              "Slice",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Limit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjMkZCNjdDIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcGF0aD0idXJsKCNhKSIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNNTEyIDQ1OGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDEyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoNjhjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMTUyLTIyMmMtNi42MjcgMC0xMi01LjM3My0xMi0xMlYzMGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDI0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MTk0YzAgNi42MjctNS4zNzMgMTItMTIgMTJ6Ii8+PHBhdGggZD0iTTE0OS41NzcgMTQ2Ljk4MmM5LjM5OC05LjM0NiAyNC41OTQtOS4zMDQgMzMuOTQxLjA5NUwyNTYgMjE5Ljk2NGw3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMCAzNTBjMC02LjYyNyA1LjM3My0xMiAxMi0xMmg0ODhjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDEyYy02LjYyNyAwLTEyLTUuMzczLTEyLTEyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Limit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1238,
+        "icon": "file:removeDuplicates.svg",
+        "name": "n8n-nodes-base.removeDuplicates",
+        "codex": {
+          "data": {
+            "alias": [
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Remove",
+              "Unique",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.removeduplicates/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Remove Duplicates"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjNTRCOEM5IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGQ9Ik0xMzQuMDk3IDExMWgzOC44Mjl2MzIuNTA4SDEzOC4xNnYzNC42MzVoLTMyLjUwOHYtMzguNjk5YzAtMTUuNzA5IDEyLjczNS0yOC40NDQgMjguNDQ1LTI4LjQ0NG03Ny42NTggMzIuNTA4VjExMWg3Ny42NTd2MzIuNTA4em0xMTYuNDg2IDBWMTExaDc3LjY1OHYzMi41MDh6bTExNi40ODcgMFYxMTFoMzguODI5YzE1LjcxIDAgMjguNDQ1IDEyLjczNSAyOC40NDUgMjguNDQ0djM4LjY5OWgtMzIuNTA4di0zNC42MzV6bTM0Ljc2NiA3My4yMzhoMzIuNTA4djM4LjY5OGMwIDE1LjcxLTEyLjczNSAyOC40NDUtMjguNDQ1IDI4LjQ0NWgtMzguODI5di0zMi41MDhoMzQuNzY2ek0wIDI0NC41MzdDMCAyMjkuMzI5IDEyLjczNSAyMTcgMjguNDQ0IDIxN2gzNDkuNDYxYzE1LjcwOSAwIDI4LjQ0NCAxMi4zMjkgMjguNDQ0IDI3LjUzN3YxMjkuODE1YzAgMTUuMjA4LTEyLjczNSAyNy41MzctMjguNDQ0IDI3LjUzN0gyOC40NDVDMTIuNzM0IDQwMS44ODkgMCAzODkuNTYgMCAzNzQuMzUyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Remove Duplicates",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

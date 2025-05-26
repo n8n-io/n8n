@@ -1,0 +1,33 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.workflowtrigger/
+Scraped_At: 2025-05-20T18:56:59.995732
+
+Workflow Trigger node
+#
+The Workflow Trigger node gets triggered when a workflow is updated or activated.
+Deprecated
+n8n has deprecated the Workflow Trigger node and moved its functionality to the
+n8n Trigger node
+.
+Keep in mind
+If you want to use the Workflow Trigger node for a workflow, add the node to the workflow. You don't have to create a separate workflow.
+The Workflow Trigger node gets triggered for the workflow that it gets added to. You can use the Workflow Trigger node to trigger a workflow to notify the state of the workflow.
+Node parameters
+#
+The node includes a single parameter to identify the
+Events
+that should trigger it. Choose from these events:
+Active Workflow Updated
+: If you select this event, the node triggers when this workflow is updated.
+Workflow Activated
+: If you select this event, the node triggers when this workflow is activated.
+You can select one or both of these events.
+Templates and examples
+#
+Browse Workflow Trigger integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

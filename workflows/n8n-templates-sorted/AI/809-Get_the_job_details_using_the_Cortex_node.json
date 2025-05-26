@@ -1,0 +1,240 @@
+{
+  "workflow": {
+    "id": 809,
+    "name": "Get the job details using the Cortex node",
+    "views": 546,
+    "recentViews": 0,
+    "totalViews": 546,
+    "createdAt": "2020-12-03T12:54:59.077Z",
+    "description": "![workflow-screenshot](fileId:328)",
+    "workflow": {
+      "id": "160",
+      "name": "Analyze a URL and get the job details using the Cortex node",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            370,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Cortex",
+          "type": "n8n-nodes-base.cortex",
+          "position": [
+            570,
+            220
+          ],
+          "parameters": {
+            "analyzer": "f4abc1b633b80f45af165970793fd4fd::Abuse_Finder_3_0",
+            "observableType": "url",
+            "observableValue": "https://n8n.io",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "cortexApi": "cortex"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Cortex1",
+          "type": "n8n-nodes-base.cortex",
+          "position": [
+            770,
+            220
+          ],
+          "parameters": {
+            "jobId": "={{$node[\"Cortex\"].json[\"_id\"]}}",
+            "resource": "job"
+          },
+          "credentials": {
+            "cortexApi": "cortex"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Cortex": {
+          "main": [
+            [
+              {
+                "node": "Cortex1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Cortex",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.cortex": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 414,
+        "icon": "file:cortex.svg",
+        "name": "n8n-nodes-base.cortex",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cortex/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/cortex/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Cortex"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48ZGVmcz48c3R5bGU+LmNscy0ye2ZpbGw6I2ZmZn08L3N0eWxlPjwvZGVmcz48cGF0aCBmaWxsPSIjNTRjNGM0IiBkPSJNMjkwIDE1MEExNDAgMTQwIDAgMSAxIDE1MCAxMGExNDAgMTQwIDAgMCAxIDE0MCAxNDAiLz48cGF0aCBkPSJNMjMxLjE3IDE1OS4yOWMwLTEyLjg3LTYuNTEtMTQuMTctMTgtMTUuMzYtMTAuMTgtMS4wNi0yMS43MS0yLjI1LTI2LjczLTE2LjY1YTEuOSAxLjkgMCAwIDEgLjA4LTEuNDYgMS45MyAxLjkzIDAgMCAxIDMuNTUuMmM0LjIyIDEyLjA5IDE0IDEzLjEgMjMuNSAxNC4wOSA0LjY4LjQ4IDEwIDEgMTQuMTIgMy40YTEuNCAxLjQgMCAwIDAgMS40NSAwIDEuMzkgMS4zOSAwIDAgMCAuNjQtMS4zYy0yLjIzLTI1LjgyLTEzLjE2LTM4Ljc5LTIxLjk0LTQ1LjEyYTM1LjUgMzUuNSAwIDAgMC0xMi4wNy01LjggMS4zOSAxLjM5IDAgMCAwLTEuNTYgMiA0OS42IDQ5LjYgMCAwIDEgNCAxMWMyLjE4IDcuOTEgNC4wNiAxNC43NCAxMi42MiAxNi40NGExLjkzIDEuOTMgMCAwIDEgMS41MSAyLjI2IDEuOTMgMS45MyAwIDAgMS0xLjg4IDEuNTUgMS42IDEuNiAwIDAgMS0uMzggMGMtMTAuOS0yLjE2LTEzLjI4LTEwLjgyLTE1LjU5LTE5LjIzLTEuNTUtNS42MS0zLTEwLjkxLTctMTQuMi01LjYxLTQuNjUtMTUtNy43OC0yMy4zNy03Ljc4YTI5IDI5IDAgMCAwLTQuMDUuMjcgMTguNSAxOC41IDAgMCAwLTkuNjggNC4wNyAxLjQgMS40IDAgMCAwLS40NyAxIDEuMzggMS4zOCAwIDAgMCAuMzcgMSA3My45IDczLjkgMCAwIDEgMTEuMTMgMTYuODQgMS45MiAxLjkyIDAgMCAxLS44NSAyLjU4IDIgMiAwIDAgMS0yLjU5LS44NmMtMy44Ny03Ljc2LTguMTEtMTMuODYtMTIuNTgtMTguMTItNi4zMS02LTExLjk0LTcuMjUtMTUuNTYtNy4yNWExNC43IDE0LjcgMCAwIDAtMi44NS4yN2MtNS4xIDEtOC41IDQuMzUtOS41MSA3YTEuNDQgMS40NCAwIDAgMCAuMTIgMS4yMyAzMi42IDMyLjYgMCAwIDEgMi42MiA1Ljk0YzIuMzIgNi4zOCA0LjUxIDEyLjQgMTUuNDggMTIuOTFhMS44OCAxLjg4IDAgMCAxIDEuMzMuNjIgMS45IDEuOSAwIDAgMSAuNSAxLjM5IDEuODkgMS44OSAwIDAgMS0yIDEuODNjLTEzLjUzLS42Mi0xNi41Mi04Ljg0LTE4LjkxLTE1LjQ0YTI1LjYgMjUuNiAwIDAgMC0yLjYyLTUuNzUgMSAxIDAgMCAwLS4xNC0uMTYgMiAyIDAgMCAxLS4yNC0uMzIgMiAyIDAgMCAwLS4xNy0uMjIgNS44OCA1Ljg4IDAgMCAwLTQuNzYtMS45Yy00LjY5IDAtOC4yNiAxLjQ3LTEwLjYyIDQuNGExMy41IDEzLjUgMCAwIDAtMi4xMiAzLjg0IDIgMiAwIDAgMC0uMDcuMjYgMi4yIDIuMiAwIDAgMS0uMTUuNSAxIDEgMCAwIDAtLjA3LjE3IDI1Ljc1IDI1Ljc1IDAgMCAwLS4zIDEyLjI5YzEuNiA3LjQ4IDYuMjQgMTYuODkgMTkuMjcgMTkuMjVhMjIuNSAyMi41IDAgMCAwIDMuOTIuMzIgNzEgNzEgMCAwIDAgOS43Ny0xIDgzLjYgODMuNiAwIDAgMSAxMi0xLjEyIDMzLjczIDMzLjczIDAgMCAxIDE3IDQuMjEgMS40MyAxLjQzIDAgMCAwIDEuMTYuMSAxLjQgMS40IDAgMCAwIC44My0uODFjMi4zLTUuNzkgNS43NC05LjU1IDguNTEtMTIuNTcgNS41NS02LjA2IDkuNTYtMTAuNDQgMy43OS0yNS42OGExLjkyIDEuOTIgMCAwIDEgLjA1LTEuNDcgMS45IDEuOSAwIDAgMSAxLjA3LTEgMiAyIDAgMCAxIDIuMzQgMS4wNWM2LjYgMTcuNDUgMS40MyAyMy4xLTQuNTYgMjkuNjUtMyAzLjIzLTYuMzIgNi44OS04LjMxIDEyLjc5YTEuNCAxLjQgMCAwIDAgLjUxIDEuNThjMTMuNDcgOS43NCAyMC41MiAxMyAyNy45MiAxM2EyNSAyNSAwIDAgMCAyLjgzLS4xNiAxLjkzIDEuOTMgMCAwIDEgMS43IDMuMTIgMS44OCAxLjg4IDAgMCAxLTEuMjkuNyAzMCAzMCAwIDAgMS0zLjMzLjE5Yy04LjUgMC0xNi41OC0zLjgyLTMyLTE1LjE3YTI5LjM2IDI5LjM2IDAgMCAwLTE4LjIxLTUuOCA4MCA4MCAwIDAgMC0xMS41NSAxLjEgNzMgNzMgMCAwIDEtMTAuMyAxIDI2IDI2IDAgMCAxLTQuNjItLjM5Yy0xMS44LTIuMTQtMTkuNzQtMTAtMjIuMzYtMjIuMjJhMzMuNyAzMy43IDAgMCAxLS42OS02LjI2IDEuNDEgMS40MSAwIDAgMC0yLjM2LTFjLTExIDEwLjI1LTExLjY4IDIwLjM0LTExLjA5IDI1LjQ0LjkzIDguMjEgNS44NyAxNC4yNiAxMC4yNyAxNmExMyAxMyAwIDAgMCA0Ljg5Ljg0IDQ3IDQ3IDAgMCAwIDYuMTYtLjU4IDYxLjUgNjEuNSAwIDAgMSA4LjQ2LS43MmM4LjQxIDAgMTYuMTkgMi44NiAyNC41MSA5YTEuOTIgMS45MiAwIDAgMSAuNDIgMi42OCAyIDIgMCAwIDEtMi42OS40MmMtNy42My01LjYyLTE0LjY5LTguMjMtMjIuMjEtOC4yM2E1OCA1OCAwIDAgMC04IC42OSA1MSA1MSAwIDAgMS02LjY4LjYgMTYuOCAxNi44IDAgMCAxLTYuMjktMS4xYy01LjQyLTIuMTQtMTAuMTMtOC4yMi0xMi0xNS40OGExLjQgMS40IDAgMCAwLTEuMi0xLjAyIDEuMzggMS4zOCAwIDAgMC0xLjQxLjgxYy01LjI1IDExLjMzLTIuMyAyMi43NSAzIDI5YTE5IDE5IDAgMCAwIDE0LjkgNy4xNSAyNi40MyAyNi40MyAwIDAgMCAxMy0zLjggMS4zOCAxLjM4IDAgMCAwIC42Ny0uODggMjUuOCAyNS44IDAgMCAxIDIuODMtNyAyIDIgMCAwIDEgMi42NC0uNjUgMS45MyAxLjkzIDAgMCAxIC42NSAyLjY0Yy0zLjc0IDYuMTgtNC44IDE2Ljg4LjU4IDI0LjU1IDQuMTEgNS44NSAxMSA4LjgyIDIwLjU2IDguODIuODMgMCAxLjY4IDAgMi41NS0uMDdhMS40MiAxLjQyIDAgMCAwIDEuMi0uODJBMS4zNyAxLjM3IDAgMCAwIDEzNCAxOTJjLTQuOTEtNi40NC41LTEzLjM5IDUuNzQtMjAuMTFzMTAuNi0xMy42IDguNDgtMjEuMjNhMS45MiAxLjkyIDAgMCAxIDEuMzMtMi4zNiAxLjk0IDEuOTQgMCAwIDEgMi4zNyAxLjMzYzIuNjQgOS40OS0zLjkgMTcuODgtOS4xNSAyNC42Mi01Ljk0IDcuNjMtOS4xIDEyLjE1LTQuODUgMTYuNGE2Ljc3IDYuNzcgMCAwIDAgNSAyLjM1YzIuNzMgMCA1LjkyLTEuNjkgMTItNS40NiA1LjI0LTMuMjMgMTIuNDEtNy42NiAyMS42NC0xMC40MWExLjQxIDEuNDEgMCAwIDAgLjItMi42MSAxNi4yIDE2LjIgMCAwIDEtNi00LjUyYy0yLjM5LTMuMDYtMy02Ljg0LTEuOTEtMTEuMjRhMiAyIDAgMCAxIDIuMzMtMS4zOSAxLjkzIDEuOTMgMCAwIDEgMS40IDIuMzRjLS44MSAzLjE5LS40IDUuODYgMS4yMSA3LjkzIDIgMi42NCA3LjI4IDYgMjAuNyA2LjgyIDIuMjMgMCA0LjQxIDAgNi42OS4yYTU0LjIgNTQuMiAwIDAgMCAxOS4zNC0zLjUzIDEuNCAxLjQgMCAwIDAgLjUyLTIuMjNjLTEuMy0xLjQ1LTMuMTQtMi4zLTUuNTktMy4zNS0zLjgxLTEuNjEtOC41NC0zLjYyLTkuMTgtMTAuMTlhMS45MyAxLjkzIDAgMCAxIDEuNzMtMi4xMSAxLjkxIDEuOTEgMCAwIDEgMi4xIDEuNzNjLjQxIDQuMjkgMy4yNSA1LjUgNi44NiA3IDIuNTMgMS4wOCA1LjY4IDIuNDEgNy43MiA1LjNhMS40MSAxLjQxIDAgMCAwIDIgLjI4YzIuOTUtMi40IDQuNDUtNS4yMSA0LjQ1LTguMzQiIGNsYXNzPSJjbHMtMiIvPjxwYXRoIGQ9Ik0yMDAgMTc3LjRjLTEuMSAwLTIuMTUtLjA5LTMuMjktLjE1LTE3LjUyLjI4LTI5IDcuMzYtMzcuMzUgMTIuNTJhNjYgNjYgMCAwIDEtOC41MyA0LjY5IDEuNCAxLjQgMCAwIDAtLjIyIDIuNDcgMzcuNiAzNy42IDAgMCAwIDQuNjEgMi40MiAxOS44IDE5LjggMCAwIDAgNS42MyAxLjQ0YzUgLjc0IDkgMS4zMyAxMC43NyAxNS4yNmExLjQgMS40IDAgMCAwIDEuMzkgMS4yMmg5Ljg3YTEuNCAxLjQgMCAwIDAgMS4zOS0xLjZjLTEuOTMtMTMuOC0uMTctMTQuODEgMy43MS0xN2EyOCAyOCAwIDAgMCA0LjM3LTIuOTNjMy44My0zLjIzIDcuOC02LjU2IDktMTYuNzVhMS4zOCAxLjM4IDAgMCAwLS4zMy0xLjA4IDEuNCAxLjQgMCAwIDAtMS0uNDgiIGNsYXNzPSJjbHMtMiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Cortex",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 328,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/e28a2114aeae4e98b94c29d9f519a37f.png"
+      }
+    ]
+  }
+}

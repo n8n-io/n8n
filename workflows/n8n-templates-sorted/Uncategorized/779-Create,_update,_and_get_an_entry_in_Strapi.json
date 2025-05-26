@@ -1,0 +1,506 @@
+{
+  "workflow": {
+    "id": 779,
+    "name": "Create, update, and get an entry in Strapi",
+    "views": 2067,
+    "recentViews": 0,
+    "totalViews": 2067,
+    "createdAt": "2020-11-16T08:59:48.937Z",
+    "description": "![workflow-screenshot](fileId:305)",
+    "workflow": {
+      "id": "119",
+      "name": "Create, update, and get an entry in Strapi",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Strapi",
+          "type": "n8n-nodes-base.strapi",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "columns": "Title, Content, Description",
+            "operation": "create",
+            "contentType": "posts"
+          },
+          "credentials": {
+            "strapiApi": "strapi"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "Title",
+                  "value": "Automate Strapi with n8n"
+                },
+                {
+                  "name": "Content",
+                  "value": "Strapi is a headless CMS. We will use Strapi and n8n to automate our content creation workflows."
+                },
+                {
+                  "name": "Description",
+                  "value": "Learn how to automate Strapi with n8n."
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Strapi1",
+          "type": "n8n-nodes-base.strapi",
+          "position": [
+            1050,
+            300
+          ],
+          "parameters": {
+            "columns": "slug",
+            "operation": "update",
+            "contentType": "={{$node[\"Strapi\"].parameter[\"contentType\"]}}"
+          },
+          "credentials": {
+            "strapiApi": "strapi"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "id",
+                  "value": "={{$node[\"Strapi\"].json[\"id\"]}}"
+                },
+                {
+                  "name": "slug",
+                  "value": "automate-strapi-with-n8n"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Strapi2",
+          "type": "n8n-nodes-base.strapi",
+          "position": [
+            1250,
+            300
+          ],
+          "parameters": {
+            "entryId": "={{$node[\"Strapi1\"].json[\"id\"]}}",
+            "contentType": "={{$node[\"Strapi\"].parameter[\"contentType\"]}}"
+          },
+          "credentials": {
+            "strapiApi": "strapi"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Set": {
+          "main": [
+            [
+              {
+                "node": "Strapi",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set1": {
+          "main": [
+            [
+              {
+                "node": "Strapi1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Strapi": {
+          "main": [
+            [
+              {
+                "node": "Set1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Strapi1": {
+          "main": [
+            [
+              {
+                "node": "Strapi2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Set",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.strapi": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 403,
+        "icon": "file:strapi.svg",
+        "name": "n8n-nodes-base.strapi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.strapi/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/strapi/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Strapi"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDI1IiBoZWlnaHQ9IjEwMzIiIGZpbGw9Im5vbmUiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik0zNDEuMzI4IDB2MzQ0LjA2MWgzNDEuMzMzdjM0NC4wNmgzNDEuMzI5VjB6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTY4MyAzNDMuNzI1SDM0M3YzNDQuNzMyaDM0MHoiLz48cGF0aCBmaWxsPSJ1cmwoI2MpIiBkPSJNMzQxLjMzMyAzNDQuMDYxSDBMMzQxLjMzMyAweiIvPjxwYXRoIGZpbGw9InVybCgjZCkiIGQ9Ik02ODIuMzY3IDEwMzEuMThWNjg3LjQ1N2gzNDIuMDAzeiIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDM2NS4xNjIgMzE0LjY2MykiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSAzNzQuNTAyIDMxNC42NjMpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgMzgzLjg0MyAzMTQuNjYzKSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDM5My4xODQgMzE0LjY2MykiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSA0MDIuNTI1IDMxNC42NjMpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgNDExLjg2NiAzMTQuNjYzKSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDQyMS4yMDYgMzE0LjY2MykiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSA0MzAuNTQ2IDMxNC42NjMpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgNDM5Ljg4NyAzMTQuNjYzKSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDQ0OS4yMjggMzE0LjY2MykiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSA0NTguNTY5IDMxNC42NjMpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgMzY1LjE2MiAzMDYuMDQxKSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDM3NC41MDIgMzA2LjA0MSkiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSAzODMuODQzIDMwNi4wNDEpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgMzkzLjE4NCAzMDYuMDQxKSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDQwMi41MjUgMzA2LjA0MSkiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSA0MTEuODY2IDMwNi4wNDEpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgNDIxLjIwNiAzMDYuMDQxKSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDQzMC41NDYgMzA2LjA0MSkiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSAzNjUuMTYyIDI5Ny40MTkpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgMzc0LjUwMiAyOTcuNDE5KSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDM4My44NDMgMjk3LjQxOSkiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSAzOTMuMTg0IDI5Ny40MTkpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgNDAyLjUyNSAyOTcuNDE5KSIvPjxjaXJjbGUgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiIHRyYW5zZm9ybT0ibWF0cml4KDEgMCAwIC0xIDM2NS4xNjIgMjg4Ljc5NikiLz48Y2lyY2xlIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIiB0cmFuc2Zvcm09Im1hdHJpeCgxIDAgMCAtMSAzNzQuNTAyIDI4OC43OTcpIi8+PGNpcmNsZSByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIgdHJhbnNmb3JtPSJtYXRyaXgoMSAwIDAgLTEgMzgzLjg0MyAyODguNzk3KSIvPjxjaXJjbGUgY3g9IjcxNi4xNjIiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjcyNS41MDIiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjczNC44NDMiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc0NC4xODQiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc1My41MjUiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc2Mi44NjYiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc3Mi4yMDYiIGN5PSI2MzguNzk2IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjcxNi4xNjIiIGN5PSI2NDcuNDE5IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjcyNS41MDIiIGN5PSI2NDcuNDE5IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjczNC44NDMiIGN5PSI2NDcuNDE5IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc0NC4xODQiIGN5PSI2NDcuNDE5IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc1My41MjUiIGN5PSI2NDcuNDE5IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc2Mi44NjYiIGN5PSI2NDcuNDE5IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjcxNi4xNjIiIGN5PSI2NTYuMDQxIiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9IjcyNS41MDIiIGN5PSI2NTYuMDQiIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIi8+PGNpcmNsZSBjeD0iNzM0Ljg0MyIgY3k9IjY1Ni4wNCIgcj0iMS43OTYiIGZpbGw9IiM5NTZGRkYiLz48Y2lyY2xlIGN4PSI3NDQuMTg0IiBjeT0iNjU2LjA0IiByPSIxLjc5NiIgZmlsbD0iIzk1NkZGRiIvPjxjaXJjbGUgY3g9Ijc1My41MjUiIGN5PSI2NTYuMDQiIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIi8+PGNpcmNsZSBjeD0iNzE2LjE2MiIgY3k9IjY2NC42NjQiIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIi8+PGNpcmNsZSBjeD0iNzI1LjUwMiIgY3k9IjY2NC42NjMiIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIi8+PGNpcmNsZSBjeD0iNzM0Ljg0MyIgY3k9IjY2NC42NjMiIHI9IjEuNzk2IiBmaWxsPSIjOTU2RkZGIi8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMTA3Mi4zNiIgeDI9IjU1My4wMzEiIHkxPSItNTEuNDA3IiB5Mj0iNDQ2Ljk0NSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iLjAyMSIgc3RvcC1jb2xvcj0iIzk1NkZGRiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzFDMUI3RSIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iNjM0LjM2NSIgeDI9IjI3Ny4xNzciIHkxPSIzOTYuNSIgeTI9IjcxMi45MDEiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBzdG9wLWNvbG9yPSIjOTU2RkZGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMUEyNjcwIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImMiIHgxPSIxNzAuNjY3IiB4Mj0iMTcwLjY2NyIgeTE9IjAiIHkyPSIzNDQuMDYxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agb2Zmc2V0PSIuMDIxIiBzdG9wLWNvbG9yPSIjOTU2RkZGIi8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMUMxQjdFIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImQiIHgxPSIxMDg1LjE4IiB4Mj0iNjk1LjY1NCIgeTE9IjU1Ni4yMiIgeTI9Ijk2Ny4wNDIiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj48c3RvcCBzdG9wLWNvbG9yPSIjOTU2RkZGIi8+PHN0b3Agb2Zmc2V0PSIuODM5IiBzdG9wLWNvbG9yPSIjMUMxQjdFIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Strapi",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 305,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/b640fdd497d642b684163f846dfeab5d.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,34 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.woocommercetrigger/
+Scraped_At: 2025-05-20T19:08:07.238968
+
+WooCommerce Trigger node
+#
+WooCommerce
+is a customizable, open-source e-commerce plugin for WordPress.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+WooCommerce Trigger integrations
+page.
+Events
+#
+coupon.created
+coupon.updated
+coupon.deleted
+customer.created
+customer.updated
+customer.deleted
+order.created
+order.updated
+order.deleted
+product.created
+product.updated
+product.deleted
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

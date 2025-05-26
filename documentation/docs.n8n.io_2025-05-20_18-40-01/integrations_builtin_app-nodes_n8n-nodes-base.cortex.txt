@@ -1,0 +1,46 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cortex/
+Scraped_At: 2025-05-20T18:46:42.326289
+
+Cortex node
+#
+Use the Cortex node to automate work in Cortex, and integrate Cortex with other applications. n8n has built-in support for a wide range of Cortex features, including executing analyzers, and responders, as well as getting job details.
+On this page, you'll find a list of operations the Cortex node supports and links to more resources.
+Credentials
+Refer to
+Cortex credentials
+for guidance on setting up authentication.
+Operations
+#
+Analyzer
+Execute Analyzer
+Job
+Get job details
+Get job report
+Responder
+Execute Responder
+Templates and examples
+#
+Browse Cortex integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

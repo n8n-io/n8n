@@ -1,0 +1,51 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebookleadadstrigger/
+Scraped_At: 2025-05-20T19:06:00.764810
+
+Facebook Lead Ads Trigger node
+#
+Use the Facebook Lead Ads Trigger node to respond to events in
+Facebook Lead Ads
+and integrate Facebook Lead Ads with other applications. n8n has built-in support for responding to new leads.
+On this page, you'll find a list of events the Facebook Lead Ads Trigger node can respond to, and links to more resources.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Facebook Lead Ads Trigger integrations
+page.
+Events
+#
+New lead
+Related resources
+#
+View
+example workflows and related content
+on n8n's website.
+Refer to
+Facebook Lead Ads' documentation
+for details about their API.
+Common issues
+#
+Here are some common errors and issues with the Facebook Lead Ads Trigger node and steps to resolve or troubleshoot them.
+Workflow only works in testing or production
+#
+Facebook Lead Ads only allows you to register a single webhook per app. This means that every time you switch from using the testing URL to the production URL (and vice versa), Facebook Lead Ads overwrites the registered webhook URL.
+You may have trouble with this if you try to test a workflow that's also active in production. Facebook Lead Ads will only send events to one of the two webhook URLs, so the other will never receive event notifications.
+To work around this, you can disable your workflow when testing:
+Halts production traffic
+This workaround temporarily disables your production workflow for testing. Your workflow will no longer receive production traffic while it's deactivated.
+Go to your workflow page.
+Toggle the
+Active
+switch in the top panel to disable the workflow temporarily.
+Test your workflow using the test webhook URL.
+When you finish testing, toggle the
+Inactive
+toggle to enable the workflow again. The production webhook URL should resume working.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

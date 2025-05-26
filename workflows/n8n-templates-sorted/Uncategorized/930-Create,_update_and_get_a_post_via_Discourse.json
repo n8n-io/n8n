@@ -1,0 +1,261 @@
+{
+  "workflow": {
+    "id": 930,
+    "name": "Create, update and get a post via Discourse",
+    "views": 359,
+    "recentViews": 0,
+    "totalViews": 359,
+    "createdAt": "2021-02-08T12:04:02.222Z",
+    "description": "This workflow allows you to create, update and get a post using the Discourse node.\n\n![workflow-screenshot](fileId:408)\n\n**Discourse node:** This node creates a new post under a category. Based on your use-case, you can select a different category.\n\n**Discourse1 node:** This node updates the content of the post.\n\n**Discourse2 node:** This node fetches the node that we created using the **Discourse node**. \n\nBased on your use-case, you can add or remove nodes to connect Discourse to different services.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            270,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Discourse",
+          "type": "n8n-nodes-base.discourse",
+          "position": [
+            470,
+            300
+          ],
+          "parameters": {
+            "title": "[Created] Discourse node",
+            "content": "Thank you Ricardo for creating the Discourse node.",
+            "additionalFields": {
+              "category": 4
+            }
+          },
+          "credentials": {
+            "discourseApi": "n8n Discourse Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Discourse1",
+          "type": "n8n-nodes-base.discourse",
+          "position": [
+            670,
+            300
+          ],
+          "parameters": {
+            "postId": "={{$json[\"id\"]}}",
+            "content": "Thank you Ricardo for creating the Discourse node. We can now create, update and retrieve posts using n8n.",
+            "operation": "update",
+            "updateFields": {}
+          },
+          "credentials": {
+            "discourseApi": "n8n Discourse Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Discourse2",
+          "type": "n8n-nodes-base.discourse",
+          "position": [
+            870,
+            300
+          ],
+          "parameters": {
+            "postId": "={{$json[\"id\"]}}",
+            "operation": "get"
+          },
+          "credentials": {
+            "discourseApi": "n8n Discourse Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Discourse": {
+          "main": [
+            [
+              {
+                "node": "Discourse1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Discourse1": {
+          "main": [
+            [
+              {
+                "node": "Discourse2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Discourse",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.discourse": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 442,
+        "icon": "file:discourse.svg",
+        "name": "n8n-nodes-base.discourse",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.discourse/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/discourse/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Discourse"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgLTEgMTA0IDEwNiI+PGcgZGF0YS1uYW1lPSJMYXllciAyIj48ZyBkYXRhLW5hbWU9IkxheWVyIDMiPjxwYXRoIGZpbGw9IiMyMzFmMjAiIGQ9Ik01MS44NyAwQzIzLjcxIDAgMCAyMi44MyAwIDUxdjUyLjgxbDUxLjg2LS4wNWMyOC4xNiAwIDUxLTIzLjcxIDUxLTUxLjg3UzgwIDAgNTEuODcgMCIvPjxwYXRoIGZpbGw9IiNmZmY5YWUiIGQ9Ik01Mi4zNyAxOS43NGEzMS42MiAzMS42MiAwIDAgMC0yNy43OSA0Ni42N2wtNS43MiAxOC40IDIwLjU0LTQuNjRhMzEuNjEgMzEuNjEgMCAxIDAgMTMtNjAuNDN6Ii8+PHBhdGggZmlsbD0iIzAwYWVlZiIgZD0iTTc3LjQ1IDMyLjEyYTMxLjYgMzEuNiAwIDAgMS0zOC4wNSA0OGwtMjAuNTQgNC43IDIwLjkxLTIuNDdhMzEuNiAzMS42IDAgMCAwIDM3LjY4LTUwLjIzIi8+PHBhdGggZmlsbD0iIzAwYTk0ZiIgZD0iTTcxLjYzIDI2LjI5QTMxLjYgMzEuNiAwIDAgMSAzOC44IDc4bC0xOS45NCA2LjgyIDIwLjU0LTQuNjVhMzEuNiAzMS42IDAgMCAwIDMyLjIzLTUzLjg4Ii8+PHBhdGggZmlsbD0iI2YxNWQyMiIgZD0iTTI2LjQ3IDY3LjExYTMxLjYxIDMxLjYxIDAgMCAxIDUxLTM1IDMxLjYxIDMxLjYxIDAgMCAwLTUyLjg5IDM0LjNsLTUuNzIgMTguNHoiLz48cGF0aCBmaWxsPSIjZTMxYjIzIiBkPSJNMjQuNTggNjYuNDFhMzEuNjEgMzEuNjEgMCAwIDEgNDcuMDUtNDAuMTIgMzEuNjEgMzEuNjEgMCAwIDAtNDkgMzkuNjNsLTMuNzYgMTguOXoiLz48L2c+PC9nPjwvc3ZnPg=="
+        },
+        "displayName": "Discourse",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 408,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/9bfd985327a84ff3b9a33117c6647e07.png"
+      }
+    ]
+  }
+}

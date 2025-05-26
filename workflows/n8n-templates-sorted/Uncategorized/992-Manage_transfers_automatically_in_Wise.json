@@ -1,0 +1,205 @@
+{
+  "workflow": {
+    "id": 992,
+    "name": "Manage transfers automatically in Wise",
+    "views": 732,
+    "recentViews": 0,
+    "totalViews": 732,
+    "createdAt": "2021-03-18T15:16:53.179Z",
+    "description": "This workflow allows you to create a quote and a transfer, execute the transfer and get the information of the transfer using the Wise node.\n\n![workflow-screenshot](fileId:451)\n\n**Wise node:** This node will create a new quote in Wise.\n\n**Wise1 node:** This node will create a new transfer for the quote that we created in the previous node.\n\n**Wise2 node:** This node will execute the transfer that we created in the previous node.\n\n**Wise3 node:** This node will return the information of the transfer that we executed in the previous node.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Wise",
+          "type": "n8n-nodes-base.wise",
+          "position": [
+            470,
+            320
+          ],
+          "parameters": {
+            "amount": 500,
+            "resource": "quote",
+            "operation": "create",
+            "profileId": 16138858,
+            "sourceCurrency": "EUR",
+            "targetCurrency": "EUR",
+            "targetAccountId": 147767974
+          },
+          "credentials": {
+            "wiseApi": "Wise API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wise1",
+          "type": "n8n-nodes-base.wise",
+          "position": [
+            660,
+            320
+          ],
+          "parameters": {
+            "quoteId": "={{$json[\"id\"]}}",
+            "resource": "transfer",
+            "operation": "create",
+            "profileId": 16138858,
+            "targetAccountId": 147767974,
+            "additionalFields": {
+              "reference": "Thank you for the contribution"
+            }
+          },
+          "credentials": {
+            "wiseApi": "Wise API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wise2",
+          "type": "n8n-nodes-base.wise",
+          "position": [
+            870,
+            320
+          ],
+          "parameters": {
+            "resource": "transfer",
+            "operation": "execute",
+            "profileId": 16138858,
+            "transferId": "={{$json[\"id\"]}}"
+          },
+          "credentials": {
+            "wiseApi": "Wise API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wise3",
+          "type": "n8n-nodes-base.wise",
+          "position": [
+            1070,
+            320
+          ],
+          "parameters": {
+            "resource": "transfer",
+            "transferId": "={{$node[\"Wise1\"].json[\"id\"]}}"
+          },
+          "credentials": {
+            "wiseApi": "Wise API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Wise": {
+          "main": [
+            [
+              {
+                "node": "Wise1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wise1": {
+          "main": [
+            [
+              {
+                "node": "Wise2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wise2": {
+          "main": [
+            [
+              {
+                "node": "Wise3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.wise": {
+          "count": 4
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 467,
+        "icon": "file:wise.svg",
+        "name": "n8n-nodes-base.wise",
+        "codex": {
+          "data": {
+            "alias": [
+              "Currency"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wise/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wise/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Wise"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0yIC0zIDI1IDI2Ij48cGF0aCBmaWxsPSIjMDBjZGZmIiBkPSJtMi40NzEgMCAzLjI4MiA1LjQ5NkwwIDEwLjk4M2g5Ljk0N2wuOTM1LTIuMTk5SDUuMzk0bDMuMzItMy4zMDItMS45NC0zLjI4M2g5LjA1MUw3Ljg4IDIwLjk2NmgyLjcyMkwxOS40ODYgMHoiLz48L3N2Zz4="
+        },
+        "displayName": "Wise",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": [
+      {
+        "id": 451,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/ee9f5d94cf344cafb2603d01fe4d5f21.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,50 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlecalendartrigger/
+Scraped_At: 2025-05-20T19:06:41.572480
+
+Google Calendar Trigger node
+#
+Google Calendar
+is a time-management and scheduling calendar service developed by Google.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Google Calendar Trigger integrations
+page.
+Events
+#
+Event Cancelled
+Event Created
+Event Ended
+Event Started
+Event Updated
+AI Agent : Google calendar assistant using OpenAI
+by Dataki
+View template details
+Build an MCP Server with Google Calendar and Custom Functions
+by Solomon
+View template details
+Actioning Your Meeting Next Steps using Transcripts and AI
+by Jimleuk
+View template details
+Browse Google Calendar Trigger integration templates
+, or
+search all templates
+Related resources
+#
+n8n provides an app node for Google Calendar. You can find the node docs
+here
+.
+View
+example workflows and related content
+on n8n's website.
+Refer to
+Google Calendar's documentation
+for details about their API.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

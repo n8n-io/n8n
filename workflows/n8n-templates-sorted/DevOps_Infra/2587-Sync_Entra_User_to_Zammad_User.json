@@ -1,0 +1,1537 @@
+{
+  "workflow": {
+    "id": 2587,
+    "name": "Sync Entra User to Zammad User",
+    "views": 452,
+    "recentViews": 0,
+    "totalViews": 452,
+    "createdAt": "2024-11-29T09:59:23.069Z",
+    "description": "This workflow facilitates seamless synchronization between Entra (Microsoft Azure AD) and Zammad. It automates the following processes:\n\n1. **Fetch Entra Group Members**: Retrieves users from a designated Entra group. These users are candidates for synchronization.\n2. **Create Universal User Object**: Extracts key user information, such as email, phone, and name, and formats it for Zammad compatibility.\n3. **Synchronize with Zammad**:\n   - Identifies users in Zammad who need updates based on Entra data.\n   - Adds new users from Entra to Zammad.\n   - Deactivates users in Zammad if they are no longer in the Entra group.\n\n## Key Features\n\n- **Dynamic Matching**: Compares users from Entra with existing Zammad users based on email and updates records accordingly.\n- **Efficient Management**: Automatically creates, updates, or deactivates Zammad users based on their status in Entra.\n- **Custom Fields**: Supports custom field mapping, ensuring enriched user profiles in Zammad.\n\n## Setup Instructions\n\n1. **Microsoft Entra Integration**:\n   - Ensure proper API permissions for accessing Entra groups and members.\n   - Configure Microsoft OAuth2 credentials in n8n.\n\n2. **Zammad Integration**:\n   - Set up Zammad API credentials with appropriate access rights.\n   - Customize the workflow to include additional fields or map existing fields as needed.\n\n3. **Run Workflow**:\n   - Trigger the workflow manually or set up an automation schedule (e.g., daily sync).\n   - Review created/updated/deactivated users in Zammad.\n\n## Use Cases\n\n- **IT Administration**: Keep your support system in sync with the organization’s Entra data.\n- **User Onboarding**: Automatically onboard new hires into Zammad based on Entra groups.\n- **Access Management**: Ensure accurate and up-to-date user records in Zammad.\n\n## Prerequisites\n\n- Access to an Entra (Azure AD) environment with group data.\n- A Zammad instance with API credentials for user management.\n- A custom field in Zammad User Object (`entra_key`) of type `String`.\n\n![Bildschirmfoto 20241201 um 13.56.37.png](fileId:870)\n\n- A custom field in Zammad User Object (`entra_object_type`) of type `Single selection field with two key value pairs\n  -  user = User\n  -  contact = Contact`\n\n![Bildschirmfoto 20241201 um 13.57.17.png](fileId:869)\n\n\n---\n\nThis workflow is fully customizable and can be adapted to your organization’s specific needs. Save time and reduce manual errors by automating your user sync process with this template!\n\nIf you have found an error or have any suggestions, please report them here on [Github](https://github.com/Sirhexalot/n8n-Zammad-Sync-Entra-User-to-Zammad-User).",
+    "workflow": {
+      "id": "KKCfXEpBjjhp1LC8",
+      "meta": {
+        "instanceId": "494d0146a0f47676ad70a44a32086b466621f62da855e3eaf0ee51dee1f76753",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Entra User to Zammad User Sync",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "0007443e-b0d4-4f98-a613-3ec7c2842aa3",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -2140,
+            140
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2b285a4f-7e39-411b-88b9-cb55c5cf62e3",
+          "name": "Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1700,
+            380
+          ],
+          "parameters": {
+            "width": 1635.910561370123,
+            "height": 329.7269624573379,
+            "content": "## Select Entra Users in a named Entra Group that should be synced to Zammad\n\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "929e529e-a4a3-4663-b9dc-e2300a860fed",
+          "name": "Get Groups from Entra",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -1660,
+            480
+          ],
+          "parameters": {
+            "url": "https://graph.microsoft.com/v1.0/groups",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "microsoftOAuth2Api"
+          },
+          "credentials": {
+            "microsoftOAuth2Api": {
+              "id": "U2E5p3lreqSi8v1N",
+              "name": "ms365test.zammad.org"
+            },
+            "microsoftGraphSecurityOAuth2Api": {
+              "id": "b09tqOxzkl0P8UQD",
+              "name": "ms365test.zammad.org"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "3390b2ed-6070-429c-bc1a-f0ab324117c7",
+          "name": "Remove outer Array",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -1400,
+            480
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "value"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b0e9531a-7fc0-4de0-8ec5-4be476b18a26",
+          "name": "Select Entra Zammad default Group",
+          "type": "n8n-nodes-base.if",
+          "notes": "Please enter the Entra group name of users to be synchronized.",
+          "position": [
+            -1120,
+            480
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "2dbb2484-2424-4095-a5a2-76ab4e3aaae8",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.displayName }}",
+                  "rightValue": "ENTRA"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "1be2a745-aea3-46ec-ab84-be2e39358b95",
+          "name": "Remove outer Array from Entra User",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -700,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "value"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3b1fc962-7546-4bad-b637-e018649a0652",
+          "name": "Zammad Univeral User Object",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -240,
+            440
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "entra_key",
+                  "value": "={{ $json.id }}"
+                }
+              ],
+              "string": [
+                {
+                  "name": "email",
+                  "value": "={{ $json.userPrincipalName }}"
+                },
+                {
+                  "name": "lastname",
+                  "value": "={{ $json.surname }}"
+                },
+                {
+                  "name": "firstname",
+                  "value": "={{ $json.givenName }}"
+                },
+                {
+                  "name": "mobile",
+                  "value": "={{ $json.mobilePhone }}"
+                },
+                {
+                  "name": "phone",
+                  "value": "={{ $json.businessPhones[0] }}"
+                },
+                {},
+                {}
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9e36e6a9-cf56-4548-a1af-b1e33dbc61dd",
+          "name": "Get Zammad Users",
+          "type": "n8n-nodes-base.zammad",
+          "position": [
+            -1020,
+            140
+          ],
+          "parameters": {
+            "filters": {},
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "zammadTokenAuthApi": {
+              "id": "fj5GuzcJuNLQeMxz",
+              "name": "Zammad Token Auth account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c9a342b1-b5f2-4d31-9737-15f145dc7318",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            240,
+            140
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "fieldsToMatchString": "email"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a04ebfea-e5fe-4903-841a-8ef29d75ff1a",
+          "name": "Get Members of the default group",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -880,
+            460
+          ],
+          "parameters": {
+            "url": "=https://graph.microsoft.com/v1.0/groups/{{ $json.id }}/members ",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "microsoftOAuth2Api"
+          },
+          "credentials": {
+            "microsoftOAuth2Api": {
+              "id": "U2E5p3lreqSi8v1N",
+              "name": "ms365test.zammad.org"
+            },
+            "microsoftGraphSecurityOAuth2Api": {
+              "id": "b09tqOxzkl0P8UQD",
+              "name": "ms365test.zammad.org"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "2e68992e-3080-41fd-9aae-c44dc60dc3b0",
+          "name": "Find new Zammad Users",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            240,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "email",
+                  "field2": "email"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "86dc2c72-d54a-40a9-a64b-fc0bde9a2387",
+          "name": "Update Zammad User",
+          "type": "n8n-nodes-base.zammad",
+          "position": [
+            560,
+            140
+          ],
+          "parameters": {
+            "id": "={{ $json.id }}",
+            "operation": "update",
+            "updateFields": {
+              "phone": "={{ $json.phone }}",
+              "mobile": "={{ $json.mobile }}",
+              "lastname": "={{ $json.lastname }}",
+              "firstname": "={{ $json.firstname }}",
+              "customFieldsUi": {
+                "customFieldPairs": [
+                  {
+                    "name": "entra_key",
+                    "value": "={{ $json.entra_key }}"
+                  },
+                  {
+                    "name": "entra_object_type",
+                    "value": "user"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "zammadTokenAuthApi": {
+              "id": "fj5GuzcJuNLQeMxz",
+              "name": "Zammad Token Auth account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bc883c6d-ec53-4854-824a-bd76b28077d2",
+          "name": "Create Zammad User",
+          "type": "n8n-nodes-base.zammad",
+          "position": [
+            580,
+            540
+          ],
+          "parameters": {
+            "lastname": "={{ $json.lastname }}",
+            "firstname": "={{ $json.firstname }}",
+            "additionalFields": {
+              "email": "={{ $json.email }}",
+              "phone": "={{ $json.phone }}",
+              "mobile": "={{ $json.mobile }}",
+              "customFieldsUi": {
+                "customFieldPairs": [
+                  {
+                    "name": "entra_key",
+                    "value": "={{ $json.entra_key }}"
+                  },
+                  {
+                    "name": "entra_object_type",
+                    "value": "user"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "zammadTokenAuthApi": {
+              "id": "fj5GuzcJuNLQeMxz",
+              "name": "Zammad Token Auth account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3b57e278-e755-407c-b261-7fe76ce82bb5",
+          "name": "Deactivate Zammad User",
+          "type": "n8n-nodes-base.zammad",
+          "position": [
+            600,
+            840
+          ],
+          "parameters": {
+            "id": "={{ $json.id }}",
+            "operation": "update",
+            "updateFields": {
+              "phone": "={{ $json.phone }}",
+              "active": false,
+              "mobile": "={{ $json.mobile }}",
+              "lastname": "={{ $json.lastname }}",
+              "firstname": "={{ $json.firstname }}",
+              "customFieldsUi": {
+                "customFieldPairs": [
+                  {
+                    "name": "entra_key",
+                    "value": "={{ $json.entra_key }}"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "zammadTokenAuthApi": {
+              "id": "fj5GuzcJuNLQeMxz",
+              "name": "Zammad Token Auth account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cdaf8b51-9b4c-4ad0-b8f0-c6921849ed4c",
+          "name": "Find removed Users",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            240,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "resolve": "preferInput1",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "entra_key",
+                  "field2": "entra_key"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "9b37b75e-d694-441e-b5a5-8abeccbf4ed7",
+          "name": "If",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -500,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "15da9b4f-46fa-4e9b-bd33-40ae79b88cd5",
+                  "operator": {
+                    "type": "object",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "13ac19a6-6689-4e75-86d4-02ec1c0c64cd",
+          "name": "Select only active Users and entra_obect_type=\"user\"",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -220,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1c9ca19d-18e3-470e-84cd-593794613c59",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.entra_object_type }}",
+                  "rightValue": "user"
+                },
+                {
+                  "id": "9187eea8-48ec-4488-9bc9-45235ff88114",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.active }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "b726c830-9d26-4289-8f66-485850762df7",
+      "connections": {
+        "If": {
+          "main": [
+            [
+              {
+                "node": "Zammad Univeral User Object",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Update Zammad User",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Zammad Users": {
+          "main": [
+            [
+              {
+                "node": "Select only active Users and entra_obect_type=\"user\"",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find removed Users": {
+          "main": [
+            [
+              {
+                "node": "Deactivate Zammad User",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [],
+            []
+          ]
+        },
+        "Remove outer Array": {
+          "main": [
+            [
+              {
+                "node": "Select Entra Zammad default Group",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find new Zammad Users": {
+          "main": [
+            [],
+            [],
+            [],
+            [
+              {
+                "node": "Create Zammad User",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Groups from Entra": {
+          "main": [
+            [
+              {
+                "node": "Remove outer Array",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Zammad Univeral User Object": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              },
+              {
+                "node": "Find new Zammad Users",
+                "type": "main",
+                "index": 1
+              },
+              {
+                "node": "Find removed Users",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Get Members of the default group": {
+          "main": [
+            [
+              {
+                "node": "Remove outer Array from Entra User",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Select Entra Zammad default Group": {
+          "main": [
+            [
+              {
+                "node": "Get Members of the default group",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Get Zammad Users",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get Groups from Entra",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remove outer Array from Entra User": {
+          "main": [
+            [
+              {
+                "node": "If",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Select only active Users and entra_obect_type=\"user\"": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Find new Zammad Users",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Find removed Users",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.zammad": {
+          "count": 4
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.compareDatasets": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Sirhexalot",
+      "username": "sirhexalot",
+      "bio": "Open source enthusiast and Zammad user with a passion for sharing knowledge and building simple, effective automation solutions with n8n.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/c83a308119f1aadd64ec0d79a2c26eac616d6ffa916ab89db0e1aa324466be43?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 552,
+        "icon": "file:zammad.svg",
+        "name": "n8n-nodes-base.zammad",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zammad/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/zammad/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Zammad"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHZpZXdCb3g9IjE0MCAyMTAgMTQwIDE0MCI+PHBhdGggZmlsbD0iI0NBMjMxNyIgZD0ibTIzMC41IDI1MCA0MS43LTEyLjgtMjQuNyAxNS43eiIvPjxwYXRoIGZpbGw9IiNFODRGODMiIGQ9Im0yNTUuOSAyODEuMi04LjQtMjguMyAyNC43LTE1LjctNy40IDI1LjR6Ii8+PHBhdGggZmlsbD0iI0NBMjMxNyIgZD0ibTI4NC40IDIyOS41LTQuNiA3LjctMTUgMjUuNCA3LjQtMjUuNHoiLz48cGF0aCBmaWxsPSIjRTU0MDExIiBkPSJtMjg1LjkgMjM0LjUtMTEuNiAxMS45IDUuNS05LjJ6bS01Mi45IDcuNiAzNC4xLTMuNC0yMy43IDcuM3oiLz48cGF0aCBmaWxsPSIjQ0EyMzE3IiBkPSJtMjM0LjMgMjYxLjQgMTMuMi04LjUgOC40IDI4LjMtNC40IDl6Ii8+PHBhdGggZmlsbD0iI0I3REZGMiIgZD0ibTIxNC42IDI5NS02LjMtNzcgNDMuMiA3Mi4yeiIvPjxwYXRoIGZpbGw9IiNFNTQwMTEiIGQ9Im0xOTYuNyAzMTQuNyAxNy45LTE5LjcgMzYuOS00Ljh6Ii8+PHBhdGggZmlsbD0iI0ZGQ0UzMyIgZD0ibTEwOS43IDM1My40IDg3LTM4LjcgMTcuOS0xOS43LTI4LjQtMi45eiIvPjxwYXRoIGZpbGw9IiNENkIxMkQiIGQ9Im0xMTMgMzIxLjggNDQuNy02LjggMTMuOS0xMS4yLTYuOC0zeiIvPjxwYXRoIGZpbGw9IiNGRkRFODUiIGQ9Im0xMjkuMSAyODUuMyA0Mi41IDE4LjUgMTQuNi0xMS43eiIvPjxwYXRoIGZpbGw9IiMwMDlFQzYiIGQ9Im0yMDUuMSAyNDUuOS01LjQuOS0xMy41IDQ1LjMgMTQuNi05LjJ6Ii8+PHBhdGggZmlsbD0iIzVFQUZDRSIgZD0ibTIxMyAyNzUuMS0xMi4yIDcuOCA3LjUtNjQuOXoiLz48cGF0aCBmaWxsPSIjMDQ1OTcyIiBkPSJtMTY2LjkgMjUyIDM4LjItNi4xIDEuNy0xNS4xeiIvPjxwYXRoIGZpbGw9IiM1QTg1OTEiIGQ9Im0xNjIuOCAyMTYuNiAzMy4yIDIwIDEwLjgtNS44LjMtMi4xeiIvPjxwYXRoIGZpbGw9IiMwMDlFQzYiIGQ9Im0xNjkuMyAxOTQuOCAzMC4yIDMxLjggNy42IDIuMSAxLjItMTAuN3oiLz48cGF0aCBmaWxsPSIjRjM5ODA0IiBkPSJtMTg2LjIgMjkyLjEgMjYuOC0xNyAxLjYgMTkuOXoiLz48L3N2Zz4="
+        },
+        "displayName": "Zammad",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 836,
+        "icon": "file:compare.svg",
+        "name": "n8n-nodes-base.compareDatasets",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Compare",
+              "Dataset",
+              "Split",
+              "Sync",
+              "Syncing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Compare Datasets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzODQiIGhlaWdodD0iNTEyIj48cGF0aCBmaWxsPSIjZWQyMzBkIiBkPSJNMzUyIDQ0OEgzMmMtMTcuNjkgMC0zMiAxNC4zMS0zMiAzMnMxNC4zMSAzMS4xIDMyIDMxLjFoMzIwYzE3LjY5IDAgMzItMTQuMzEgMzItMzEuMXMtMTQuMy0zMi0zMi0zMiIvPjxwYXRoIGZpbGw9IiM2MmY3MzAiIGQ9Ik00OCAyMDhoMTEydjExMS4xYzAgMTcuNjkgMTQuMzEgMzEuMSAzMiAzMS4xczMyLTE0LjMxIDMyLTMxLjFWMjA4aDExMmMxNy42OSAwIDMyLTE0LjMyIDMyLTMyLjAxUzM1My42OSAxNDQgMzM2IDE0NEgyMjRWMzJjMC0xNy42OS0xNC4zMS0zMi4wMS0zMi0zMi4wMXMtMzIgMTQuMzQtMzIgMzIuMDJ2MTEySDQ4Yy0xNy42OSAwLTMyIDE0LjMxLTMyIDMxLjk5czE0LjMxIDMyIDMyIDMyIi8+PC9zdmc+"
+        },
+        "displayName": "Compare Datasets",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 13,
+        "name": "Support"
+      },
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 869,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Bildschirmfoto_2024_12_01_um_13_57_17_f41b4c1ff4.png"
+      },
+      {
+        "id": 870,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Bildschirmfoto_2024_12_01_um_13_56_37_a11824383c.png"
+      }
+    ]
+  }
+}

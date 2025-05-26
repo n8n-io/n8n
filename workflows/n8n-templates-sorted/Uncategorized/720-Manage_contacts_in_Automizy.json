@@ -1,0 +1,306 @@
+{
+  "workflow": {
+    "id": 720,
+    "name": "Manage contacts in Automizy",
+    "views": 264,
+    "recentViews": 0,
+    "totalViews": 264,
+    "createdAt": "2020-10-15T11:12:08.839Z",
+    "description": "![workflow-screenshot](fileId:276)",
+    "workflow": {
+      "id": "82",
+      "name": "Create a new list, add a new contact to the list, update the contact, and get all contacts in the list",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            290,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Automizy",
+          "type": "n8n-nodes-base.automizy",
+          "position": [
+            490,
+            260
+          ],
+          "parameters": {
+            "name": "n8n-docs",
+            "resource": "list"
+          },
+          "credentials": {
+            "automizyApi": "automizy"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Automizy1",
+          "type": "n8n-nodes-base.automizy",
+          "position": [
+            690,
+            260
+          ],
+          "parameters": {
+            "email": "example@n8n.io",
+            "listId": "={{$node[\"Automizy\"].json[\"id\"]}}",
+            "additionalFields": {
+              "status": "ACTIVE"
+            }
+          },
+          "credentials": {
+            "automizyApi": "automizy"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Automizy2",
+          "type": "n8n-nodes-base.automizy",
+          "position": [
+            890,
+            260
+          ],
+          "parameters": {
+            "email": "={{$node[\"Automizy1\"].json[\"email\"]}}",
+            "operation": "update",
+            "updateFields": {
+              "tags": [
+                "reviewer"
+              ]
+            }
+          },
+          "credentials": {
+            "automizyApi": "automizy"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Automizy3",
+          "type": "n8n-nodes-base.automizy",
+          "position": [
+            1090,
+            260
+          ],
+          "parameters": {
+            "listId": "={{$node[\"Automizy\"].json[\"id\"]}}",
+            "operation": "getAll",
+            "returnAll": true,
+            "additionalFields": {}
+          },
+          "credentials": {
+            "automizyApi": "automizy"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Automizy": {
+          "main": [
+            [
+              {
+                "node": "Automizy1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Automizy1": {
+          "main": [
+            [
+              {
+                "node": "Automizy2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Automizy2": {
+          "main": [
+            [
+              {
+                "node": "Automizy3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Automizy",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.automizy": {
+          "count": 4
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 376,
+        "icon": "file:automizy.png",
+        "name": "n8n-nodes-base.automizy",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.automizy/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/automizy/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Automizy"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAACdlBMVEUAAAD4giL3giH3gyL868n1gyPzrXP34bv85sD1ii/zmkv96ML35sj+7c31gB71gyP1hCX0hyr1kTv1lEH1mUn1plz2n1H3ypv5z5361Kr54br737b95cL41qv0gSD2hij2hyr0ii/0ii/1jDbzjTj0nE30m0r2n1H0nVD1olb0qWTys3b0rWv5tHH3uHn4v4L2xYz3sG71voP5xpD5xYr71aX70qP5xY773LH66cf3giL0ijHyhyzyijH0gyTzjjj0jTXzkT3zjTT1kj71n0/1mkn0oVbxlEH1nU/4hybznEv0nlD1p1/yqGT1sWr2rWX0m074rmjztnj3snD2uHnwrXT1snL3tnn3vX/6iiz0qF72tXf2o1X3v4L4vYD4t3fyvIj2zJj6w4v2uXrzy5v1w4/zvIT40KD0x5r5uXv61qP3x5T51qb4yJH72K37zpz516j73q/8wor74LT82rT858H2von7xov1gyHziC/1iS31gyb0hCH5giH0jzH2kz3wnUfyjjjzkD/zl0X0lEHzkjn6iiv6jC/woFH5ljz1plz5m0T2o1jynVP1pV3wqFr2qmLxqWn4sG3ypWTwpGD0qGX1qWb2sGX4v4X0rG73sG72tmn7jTX8izD2zJv4wor6xo32sHP5u3Ttq3b4u37owZ72tG781Y32giH3giD2fhr2fRr2gyP4gh/2gR/3gB33fRb2fxz3fRj4giH3gR/1gB/2fx70fx32fRj2fxr4fhr1eRP2fBj1fBb0gSP4fRr2exb4giP3fhn4fBbzgCD2gB35gBz5fhj5gR/3gB/zfh30fRv4fBj0fBf3eRL4exXyhSX5fRsKQIBTAAAAqHRSTlMA7e3tC/6JCAPqvBMGAvz7+fPc0cuurkMuIB0aDw379/Xu5eLdzcPAuaiblJCBfHZyb2JhWD0qJRYE+/Hr6ejn5uPY1sbFxMS+vbatp6WdnJyVjYuIhoaBfn54d3ZuaWZlXV1dVVNPTk5MSUhDQD47NjEsKiUhFhL98PDt7e3i3dPT0M/OzsbDwru2tq+ooZuXlpSQkIyEfHp2dHJycnBqaGNfWFFEJR/n2JymAAADj0lEQVRIx+2VZXcUMRSGW9ilbKFu0FIqVClQKpTi7u7u7u7u7u4OmYztzI6tb3frBvwjtk0GO5lSPsLp++m9SZ4k5+YmCelQh/41DS6ePfHk8WOZubNXD/47MuxdYpqq0jzLVtOqEJ1X0r397OY42sFy9ipotwuVDp6l689vaieakljvYEU+68by9R+SNiydmqk4KOi51as97J6splrBk7cxVW84VDxJ5qjApJ5/ZrcP9wN3zqBfG9+PtTL+rP1/YvdZHJIyN+z35vIEmqo5k9w22y3Wy3rWkXoKXJSYHdYmPMsNlBJy10wfaBzQFruzknX3M+jretnK9d5tzA6ZUAPjTXqUXDRtypT8N6nf40wehhvDSSpQtuoTLRsuQDPwwrGr9e6nsDZykCHcN0CPj8CZm0rzgKEa1Epfw1zcbRpXpSUYVnQfTnyNfYKPsjGcnFhamu9x6nlaYeVijEplh1x9JAXZVxoANhA5sMWvj9TzVB4juQoN4CIo5uINjoEMAHacnqvOyXjEdQ3GdyXDt+lGfE4b/MF1KwILUbRFkJOQ26iy8i4yfEVxLEeuP01RoIJ+gHMR65yjuyqtLxm+CKgXyN0TAQCMcMqE53KOwhdygKt2WAoRvsRRz5Hr1wLbgLIZhT087rXYRVHiWiJ8TXEsRe5x8KCCOJ2AKzPemYfHhPu9k4nwPK84C7ldHKgIwpLlEIpX0UPLkCvRQHQZCV5l9+ODiMgWGRCUqxjXW4azELvRPHxIgvdG8dH78PWKrGuB1Ql64TbH4fO96+JHp5Iu3Vme7o/94oa6lo337oHCbaqwDbmtlZKQRFp6sVvu0wv7Z+YAawPu+SjqHts8B7s4uzefBJdFs9rA75U+LV0G9jH4qBc59WmLIJdOvB03rXLGgR8/ztslS9bhv2J/mvslcp+G8fARCT5gcWg55K8ltzkcu8SvQlwEaciKJsZ6hwivhFE4eWsUaSjxQYmY7gSu6SZCz8cocRlyKemcayZxAVOOj6LH7yEUwWH7OLTZnmksbzF49sN9lBazsPz39vlWVi5tdYWQYZkQslJn1FdLgVH3txz8+VFeEyPZ+BHbg3ZTBmdDMDk3IzSKq/FYLsxY0KVVCwpOq3Vmhqn+MrEgu0qhbMLREEMlzxtJC2aOb6yxIn32SmYAzAwHP0OKqZCacCmRdfDJuc6dQkNDT4S2qjNSJ6yRi0I61KH/Xd8AQx5SCLUxKrkAAAAASUVORK5CYII="
+        },
+        "displayName": "Automizy",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 276,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6908b03d7af74b1da31e9d3f6faf4cd0.png"
+      }
+    ]
+  }
+}

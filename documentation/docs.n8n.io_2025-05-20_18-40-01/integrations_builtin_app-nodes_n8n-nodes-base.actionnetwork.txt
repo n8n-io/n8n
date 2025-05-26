@@ -1,0 +1,73 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.actionnetwork/
+Scraped_At: 2025-05-20T18:45:24.466674
+
+Action Network node
+#
+Use the Action Network node to automate work in Action Network, and integrate Action Network with other applications. n8n has built-in support for a wide range of Action Network features, including creating, updating, and deleting events, people, tags, and signatures.
+On this page, you'll find a list of operations the Action Network node supports, and links to more resources.
+Credentials
+Refer to
+Action Network credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Attendance
+Create
+Get
+Get All
+Event
+Create
+Get
+Get All
+Person
+Create
+Get
+Get All
+Update
+Person Tag
+Add
+Remove
+Petition
+Create
+Get
+Get All
+Update
+Signature
+Create
+Get
+Get All
+Update
+Tag
+Create
+Get
+Get All
+Templates and examples
+#
+Browse Action Network integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

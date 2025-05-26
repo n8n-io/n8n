@@ -1,0 +1,115 @@
+{
+  "workflow": {
+    "id": 491,
+    "name": "Receive updates for changes in the specified list in Trello",
+    "views": 1705,
+    "recentViews": 0,
+    "totalViews": 1705,
+    "createdAt": "2020-07-12T09:30:44.535Z",
+    "description": "![workflow-screenshot](fileId:90)",
+    "workflow": {
+      "id": "117",
+      "name": "Receive updates for changes in the specified list in Trello",
+      "nodes": [
+        {
+          "name": "Trello Trigger",
+          "type": "n8n-nodes-base.trelloTrigger",
+          "position": [
+            700,
+            250
+          ],
+          "parameters": {
+            "id": ""
+          },
+          "credentials": {
+            "trelloApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.trelloTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 44,
+        "icon": "file:trello.svg",
+        "name": "n8n-nodes-base.trelloTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.trellotrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/trello/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Trello Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjMDA3OUJGIiByeD0iMjUiLz48cmVjdCB3aWR0aD0iNjEiIGhlaWdodD0iODcuNSIgeD0iMTEzIiB5PSIyNiIgZmlsbD0iI0ZGRiIgcng9IjEyIi8+PHJlY3Qgd2lkdGg9IjYxIiBoZWlnaHQ9IjEzNy41IiB4PSIyNiIgeT0iMjYiIGZpbGw9IiNGRkYiIHJ4PSIxMiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Trello Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 90,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/2a5a12c9cd4947f3bb46b54db2996f31.png"
+      }
+    ]
+  }
+}

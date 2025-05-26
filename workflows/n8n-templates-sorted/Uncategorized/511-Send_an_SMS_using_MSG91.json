@@ -1,0 +1,211 @@
+{
+  "workflow": {
+    "id": 511,
+    "name": "Send an SMS using MSG91",
+    "views": 315,
+    "recentViews": 0,
+    "totalViews": 315,
+    "createdAt": "2020-07-14T10:35:57.628Z",
+    "description": "![workflow-screenshot](fileId:110) Sending an SMS using MSG91",
+    "workflow": {
+      "name": "Send an SMS using MSG91",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Msg91",
+          "type": "n8n-nodes-base.msg91",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "to": "",
+            "from": "",
+            "message": ""
+          },
+          "credentials": {
+            "msg91Api": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Msg91",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.msg91": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Max Tkacz",
+      "username": "maxt",
+      "bio": "Design @ n8n",
+      "verified": true,
+      "links": [
+        "https://n8n.io"
+      ],
+      "avatar": "https://gravatar.com/avatar/4eca9c29591ed5132a4c192e7447d9a42f5ae70f6ca2dbf89c15113e195a810b?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 121,
+        "icon": "file:msg91.svg",
+        "name": "n8n-nodes-base.msg91",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.msg91/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/msg91/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "MSG91"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAuMTc3NzIzIDE1LjgwOUwzOS43MDc2IDIuMDExMjFDMzkuNzYzIDEuOTkzIDM5LjgyMzEgMS45OTcxIDM5Ljg3NTUgMi4wMjI2NEMzOS45Mjc4IDIuMDQ4MTggMzkuOTY4IDIuMDkzMTMgMzkuOTg3NiAyLjE0NzlDMzkuOTk1OCAyLjE3MTYgNDAgMi4xOTY0OSA0MCAyLjIyMTU3VjM3LjcwNDVDNDAgMzcuNzYzNSAzOS45NzY2IDM3LjgyMDEgMzkuOTM0NyAzNy44NjE5QzM5Ljg5MjggMzcuOTAzOCAzOS44MzYyIDM3LjkyNzIgMzkuNzc3IDM3LjkyNzJIMzkuNzQ3N0wwLjIxMTQ5IDM2LjAwMTFDMC4xNTQzNiAzNS45OTgyIDAuMTAwNTUzIDM1Ljk3MzQgMC4wNjExOTE4IDM1LjkzMTlDMC4wMjE4MzAyIDM1Ljg5MDQgLTcuNjU3NTZlLTA1IDM1LjgzNTQgMi4wMTEyOWUtMDcgMzUuNzc4M1YxNi4wMjY0QzIuNzExMjJlLTA1IDE1Ljk3NTQgMC4wMTc3NDM1IDE1LjkyNTkgMC4wNTAxNDA1IDE1Ljg4NjVDMC4wODI1Mzc0IDE1Ljg0NyAwLjEyNzYxNyAxNS44MTkgMC4xNzc3MjMgMTUuODA5Wk00LjQ5MzcyIDE5LjYwODhDNC4yOTgwOCAxOS41NzE0IDQuMDk1NDkgMTkuNjA4MiAzLjkyNTU5IDE5LjcxMjFDMy43NTU3IDE5LjgxNTkgMy42MzA3NCAxOS45Nzk0IDMuNTc1MTYgMjAuMTcwNUMzLjUxOTU5IDIwLjM2MTYgMy41Mzc0IDIwLjU2NjYgMy42MjUxMiAyMC43NDUyQzMuNzEyODMgMjAuOTIzOCAzLjg2NDEzIDIxLjA2MzMgNC4wNDk0MSAyMS4xMzY0TDE4LjQ5MiAyNS4zMDgxTDE4LjgxNDYgMjUuMDQxOEwzMy4xOTY4IDEzLjE4OTdDMzMuMjg5OCAxMy4xMjc3IDMzLjM2ODYgMTMuMDQ3IDMzLjQyODUgMTIuOTUyN0MzMy40ODgzIDEyLjg1ODQgMzMuNTI3NiAxMi43NTI2IDMzLjU0NCAxMi42NDIyQzMzLjU2MDMgMTIuNTMxNyAzMy41NTMzIDEyLjQxOTEgMzMuNTIzNCAxMi4zMTE2QzMzLjQ5MzUgMTIuMjA0IDMzLjQ0MTQgMTIuMTAzOSAzMy4zNzA0IDEyLjAxNzdDMzMuMjk5NCAxMS45MzE0IDMzLjIxMSAxMS44NjExIDMzLjExMTEgMTEuODExMUMzMy4wMTEzIDExLjc2MTEgMzIuOTAyIDExLjczMjUgMzIuNzkwMyAxMS43MjczQzMyLjY3ODcgMTEuNzIyMSAzMi41NjcyIDExLjc0MDIgMzIuNDYzIDExLjc4MDdDMzIuMzU4OCAxMS44MjEyIDMyLjI2NDMgMTEuODgyOSAzMi4xODU2IDExLjk2MjJMMTguMTI3NyAyMy41NTA3TDQuNDkzNzIgMTkuNjA4OFoiIGZpbGw9IiMxRTc1QkEiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "MSG91",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 110,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/9fa4ca44b528436bb7f2f20a575ea4a6.png"
+      }
+    ]
+  }
+}

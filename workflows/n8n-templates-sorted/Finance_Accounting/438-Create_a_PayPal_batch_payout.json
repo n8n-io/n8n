@@ -1,0 +1,208 @@
+{
+  "workflow": {
+    "id": 438,
+    "name": "Create a PayPal batch payout",
+    "views": 883,
+    "recentViews": 0,
+    "totalViews": 883,
+    "createdAt": "2020-06-30T13:56:54.734Z",
+    "description": "![workflow-screenshot](fileId:49)\n                                                                  ",
+    "workflow": {
+      "name": "",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            540,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "PayPal",
+          "type": "n8n-nodes-base.payPal",
+          "position": [
+            730,
+            240
+          ],
+          "parameters": {
+            "senderBatchId": "123",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "payPalApi": "paypal-credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "PayPal",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.payPal": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "ivov",
+      "username": "ivov",
+      "bio": null,
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/295845dcef2f47d9aa1059793f23f36ceb739f1772ac1b487f11a1094e733655?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 72,
+        "icon": "file:paypal.svg",
+        "name": "n8n-nodes-base.payPal",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.paypal/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/payPal/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "PayPal"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMwMDlDREUiIGQ9Ik01OS40NDQgMjEuNzQyYzAgNi4xOTEtMi41NzQgMTEuMTkyLTcuNzEgMTQuOTlzLTEyLjMxNSA1LjY5Mi0yMS41NDUgNS42OTJoLTUuMTAybC0zLjkxMyAxNi45NjNINy42OUwyMC4xNCA3LjM2MWgxOC4yNThjMy40MSAwIDYuMzYuMjM4IDguOTAxLjcwMyAyLjUyOS40NjUgNC43MTggMS4yNyA2LjU0NiAyLjQxNiAxLjgxNCAxLjE0NSAzLjIwOCAyLjYzIDQuMTYxIDQuNDU2Ljk1MiAxLjgxNCAxLjQyOSA0LjA5MyAxLjQyOSA2LjgxNXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMjEuNjI3IDU5Ljk0NUg2Ljk4N0wxOS43MSA2Ljc5NWgxOC42ODdjMy40MTMgMCA2LjQ0MS4yMzkgOC45OTIuNzA0IDIuNTg2LjQ3NyA0Ljg1NCAxLjMxNiA2Ljc0OCAyLjQ4NCAxLjg5MyAxLjE5IDMuMzY4IDIuNzY1IDQuMzY2IDQuNjcyQzU5LjUgMTYuNTYgNjAgMTguOTQ5IDYwIDIxLjc0MmMwIDYuMzUtMi42NzMgMTEuNTU1LTcuOTI4IDE1LjQ0NC01LjIxNiAzLjg1Ni0xMi41NzUgNS44MDYtMjEuODg1IDUuODA2aC00LjY2MXpNOC40MDQgNTguODMzSDIwLjczbDMuOTEyLTE2Ljk2M2g1LjU0NWM5LjA2IDAgMTYuMjA1LTEuODgyIDIxLjIxNy01LjU5IDIuNDgzLTEuODM3IDQuMzc3LTMuOTkyIDUuNjIzLTYuMzk2czEuODYtNS4xNDggMS44Ni04LjE0MmMwLTIuNjE4LS40NjUtNC44My0xLjM3Mi02LjU3Ni0uOTA3LTEuNzM1LTIuMjM0LTMuMTUzLTMuOTU4LTQuMjQxLTEuNzctMS4xLTMuOTEyLTEuODgzLTYuMzYtMi4zMzYtMi40ODQtLjQ1NC01LjQ0NC0uNjkyLTguOC0uNjkySDIwLjU4M3oiLz48cGF0aCBmaWxsPSIjMEYzNTcyIiBkPSJNNTMuNDU3IDE1Ljk1N2MwIDYuMTkyLTIuNTczIDExLjE5Mi03LjcxIDE0Ljk5UzMzLjQzMiAzNi42NCAyNC4yMDQgMzYuNjRIMTkuMWwtMy45MDQgMTYuOTUzSDEuNzAzTDEzLjcyMiAxLjU1NmgxOC43YzMuNDEgMCA2LjM2LjIzOCA4LjkuNzAzIDIuNTMuNDY1IDQuNzE4IDEuMjcgNi41NDYgMi40MTYgMS44MTQgMS4xNDUgMy4yMDggMi42MyA0LjE2MSA0LjQ1Ni45NTMgMS44MTQgMS40MyA0LjA5MyAxLjQzIDYuODI2eiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNS42MjggNTQuMTVIMUwxMy4yNTggMWgxOS4xNTNjMy40MTMgMCA2LjQ0MS4yMzggOC45OTIuNzAzIDIuNTg2LjQ3NyA0Ljg1NCAxLjMxNiA2Ljc0OCAyLjQ4NCAxLjg5NCAxLjE5MSAzLjM2OCAyLjc2NiA0LjM2NiA0LjY3Mi45OTkgMS45MDYgMS40OTcgNC4yODcgMS40OTcgNy4wODcgMCA2LjM1LTIuNjczIDExLjU1NS03LjkyOCAxNS40NDUtNS4yMTYgMy44NTUtMTIuNTc0IDUuODA2LTIxLjg4NSA1LjgwNkgxOS41M3pNMi40MDYgNTMuMDI3aDEyLjMzN2wzLjkxMy0xNi45NjNIMjQuMmM5LjA2IDAgMTYuMjA1LTEuODgyIDIxLjIxNi01LjU5IDIuNDgzLTEuODM3IDQuMzc3LTMuOTkyIDUuNjIzLTYuMzk2czEuODYtNS4xNDggMS44Ni04LjE0MmMwLTIuNjE4LS40NjUtNC44My0xLjM3Mi02LjU3Ni0uOTA3LTEuNzM1LTIuMjM0LTMuMTUzLTMuOTU4LTQuMjQxLTEuNzctMS4xLTMuOTEyLTEuODgzLTYuMzYtMi4zMzYtMi40ODQtLjQ1NC01LjQ0My0uNjkyLTguOC0uNjkySDE0LjE0MnptMzcuMTkzLTM1LjIyMWMtLjA5MiAxLjU4Ny0uNDIgMi43NjUtMS4zOTUgNC4xMDUtLjk2NCAxLjM1LTIuMDk4IDIuMjEyLTMuNjE3IDIuOTQ4YTkuOCA5LjggMCAwIDEtMi44Ny44NWMtLjk5Ny4xMzctMi4xODguMjE3LTMuNTgzLjIxN2gtNi43MDJsMy43NTItMTMuNDZoNi4wOWMxLjU1MyAwIDIuOC4wMjMgMy43NDIuMjM4Ljk0LjIwMyAxLjcxMi40ODkgMi4yOTEuODMuODA1LjQ3NiAxLjQ1MSAxLjA1NCAxLjgyNSAxLjc5MS40NjUuODYyLjUyMiAxLjQxOC40NjUgMi40NjF6Ii8+PC9nPjwvc3ZnPg=="
+        },
+        "displayName": "PayPal",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": [
+      {
+        "id": 49,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/eb5fcaf50ede423f83a9fb0ed582f5fa.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,45 @@
+URL: https://docs.n8n.io/data/
+Scraped_At: 2025-05-20T18:42:22.175359
+
+Data
+#
+Data is the information that n8n nodes receive and process. For basic usage of n8n you don't need to understand data structures and manipulation. However, it becomes important if you want to:
+Create your own node
+Write custom
+expressions
+Use the Function or Function Item node
+This section covers:
+Data structure
+Data flow within nodes
+Transforming data
+Process data using code
+Pinning
+and
+editing
+data during workflow development.
+Data mapping
+and
+Item linking
+: how data items link to each other.
+Related resources
+#
+Data transformation nodes
+#
+n8n provides a collection of nodes to transform data:
+Aggregate
+: take separate items, or portions of them, and group them together into individual items.
+Limit
+: remove items beyond a defined maximum number.
+Remove Duplicates
+: identify and delete items that are identical across all fields or a subset of fields.
+Sort
+: organize lists of in a desired ordering, or generate a random selection.
+Split Out
+: separate a single data item containing a list into multiple items.
+Summarize
+: aggregate items together, in a manner similar to Excel pivot tables.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

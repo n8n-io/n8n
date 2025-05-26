@@ -1,0 +1,841 @@
+{
+  "workflow": {
+    "id": 3630,
+    "name": "Build your own FileSystem MCP server",
+    "views": 253,
+    "recentViews": 97,
+    "totalViews": 253,
+    "createdAt": "2025-04-21T10:07:32.061Z",
+    "description": "**This template is for self-hosted n8n instances only.**\n### This n8n demonstrates how to build a simple FileSystem MCP server. Connecting to this server allows MCP clients and agents to list, read and create directories and files on the local machine or remote server.\n\nThis MCP example is based off an official MCP reference implementation which can be found here -[https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem](https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem)\n\n### How it works\n* A MCP server trigger is used and connected to 5 tools: 3 Execute Command tools and 2 custom workflow tools.\n* The 3 Execute Command tools allow for listing, searching and creating directories. \n* The 2 custom workflow tools are for reading and writing files to disk.\n* Special care has been to not allow the MCP agent to execute arbitrary linux commands on the target server. This is achieved by only allowing the agent to provide parameters such as filenames and paths rather than raw commands. \n\n### How to use\n* This Filesystem MCP server will write to the server which hosts the n8n instance - this can be your local machine or a remove server. If your target filesystem is on neither, then modify the commands to connect to the desired server.\n* Connect your MCP client by following the n8n guidelines here - https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/#integrating-with-claude-desktop\n* Try the following queries in your MCP client:\n  * \"Please help me list all folders under the project directory.\"\n  * \"Help me create a bash script to send a notification to Slack.\"\n  * \"Search for the log file on the 22nd April and read its contents. What was the cause of the outage?\"\n\n### Requirements\n* Linux file system for this example template. Feel free to modify if working on Windows.\n* MCP Client or Agent for usage such as Claude Desktop - https://claude.ai/download\n\n### Customising this workflow\n* Implement the moving and renaming of files by adding more custom workflow tools to the MCP server.\n* Remember to set the MCP server to require credentials before going to production and sharing this MCP server with others!",
+    "workflow": {
+      "meta": {
+        "instanceId": "408f9fb9940c3cb18ffdef0e0150fe342d6e655c3a9fac21f0f644e8bedabcd9"
+      },
+      "nodes": [
+        {
+          "id": "24be8907-684e-4b57-9642-6f4a45ca7af3",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -380,
+            -280
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 680,
+            "height": 660,
+            "content": "## 1. Set up an MCP Server Trigger\n[Read more about the MCP Server Trigger](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d5845d0a-648f-4bc1-b087-bc0d17506ed3",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -380,
+            -400
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 380,
+            "height": 100,
+            "content": "### Always Authenticate Your Server!\nBefore going to production, it's always advised to enable authentication on your MCP server trigger."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fe9f1c8e-8334-4732-be3a-5ee49036e11e",
+          "name": "FileSystem MCP Server",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            -180,
+            -140
+          ],
+          "webhookId": "0d93cfd5-2fbf-457e-9535-5bfc9a73ba9e",
+          "parameters": {
+            "path": "0d93cfd5-2fbf-457e-9535-5bfc9a73ba9e"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fb49782f-d8de-480b-a470-e37adb2e3036",
+          "name": "ListDirectory",
+          "type": "n8n-nodes-base.executeCommandTool",
+          "position": [
+            -300,
+            60
+          ],
+          "parameters": {
+            "command": "=ls /home/node/{{ $fromAI('path', 'optional, leave blank for project root directory.') }}",
+            "toolDescription": "List directories under the project root folder. The project root directory is /home/node/"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8fa93054-bcf5-4fbc-9825-df16be063eb2",
+          "name": "CreateDirectory",
+          "type": "n8n-nodes-base.executeCommandTool",
+          "position": [
+            -200,
+            160
+          ],
+          "parameters": {
+            "command": "=mkdir -p /home/node/{{ $fromAI('filename', 'name of directory. Will be scoped under the /home/node/ project root directory. Optionally use path to create within subdirectories') }}",
+            "toolDescription": "Create directories under the project root folder. The project root folder is /home/node."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aafe884d-0e6e-476a-92fe-b2111f624417",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            400,
+            40
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "operation"
+                },
+                {
+                  "name": "filenames",
+                  "type": "array"
+                },
+                {
+                  "name": "contents",
+                  "type": "array"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d85925b6-d58d-43b5-a6ca-3e43cbc81121",
+          "name": "Operation",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            580,
+            40
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "writeOneOrMultipleFiles",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "c1da2138-e2df-46d4-b1f4-97525c05e778",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "writeOneOrMultipleFiles"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "readOneOrMultipleFiles",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "cc02a5a2-609c-4dbe-bdb6-45f145947e47",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.operation }}",
+                        "rightValue": "readOneOrMultipleFiles"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "e9ec2928-5e33-4213-a53a-92b7d840d49e",
+          "name": "readOneOrMultipleFiles",
+          "type": "n8n-nodes-base.executeCommand",
+          "position": [
+            840,
+            140
+          ],
+          "parameters": {
+            "command": "=cat {{ $json.filenames.join(' ') }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "77ba2a48-b4b9-4a23-818d-e028a7762514",
+          "name": "ReadFiles",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            40,
+            160
+          ],
+          "parameters": {
+            "name": "readFil",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "=Call this tool to read the contents of a file. Include file extension.",
+            "workflowInputs": {
+              "value": {
+                "contents": "[]",
+                "filenames": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('filenames', `An array of filenames`, 'string') }}",
+                "operation": "readOneOrMultipleFiles"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "filenames",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "filenames",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "contents",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "contents",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "2ddf9a9a-cade-41c0-a068-482345452d4b",
+          "name": "WriteFiles",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            140,
+            60
+          ],
+          "parameters": {
+            "name": "write_file",
+            "workflowId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $workflow.id }}"
+            },
+            "description": "Call this tool to write contents to one or more files. Filenames and Contents are matched by their respective Array Indexes. Eg. To write to a single file, use { filenames: [<filename1>,<filename2>], contents: [<content1>,<content2>] } ",
+            "workflowInputs": {
+              "value": {
+                "contents": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('contents', `An array of strings for content to be written`, 'string') }}",
+                "filenames": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('filenames', `An array of strings for filenames`, 'string') }}",
+                "operation": "writeOneOrMultipleFiles"
+              },
+              "schema": [
+                {
+                  "id": "operation",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "operation",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "filenames",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "filenames",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "contents",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "contents",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a5d9e11b-0583-4c67-b30b-be1d4185b891",
+          "name": "writeOneOrMultipleFiles",
+          "type": "n8n-nodes-base.executeCommand",
+          "position": [
+            840,
+            -60
+          ],
+          "parameters": {
+            "command": "={{\n$json.filenames.map((filename,idx) =>\n  `echo \"${$json.contents[idx] ?? ''}\" > /home/node/${filename}`\n).join('\\n')\n}}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "de2f715c-b6d1-4702-9d39-2527108b5706",
+          "name": "SearchDirectory",
+          "type": "n8n-nodes-base.executeCommandTool",
+          "position": [
+            -80,
+            240
+          ],
+          "parameters": {
+            "command": "=find /home/node/ -name \"{{ $fromAI('filename', 'A name search paramter for the linux find tool') }}\"\n",
+            "toolDescription": "Search the project folder for a file by name. The project root directory is /home/node/"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a4918bb1-8882-45c8-a05c-a3e22912cc0f",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            320,
+            -280
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 740,
+            "height": 660,
+            "content": "## 2. Use Custom Workflow Tool for More Complex Commands\n[Learn more about the Execute Command tool](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/)\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ebf6c15b-e4e0-4db0-bb4e-36e204fb6a47",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -880,
+            -740
+          ],
+          "parameters": {
+            "width": 460,
+            "height": 1120,
+            "content": "## Try It Out!\n### This n8n demonstrates how to build a simple FileSystem MCP server. Connecting to this server allows MCP clients and agents to list, read and create directories and files on the local machine or remote server.\n\nThis MCP example is based off an official MCP reference implementation which can be found here -https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem\n\n### How it works\n* A MCP server trigger is used and connected to 5 tools: 3 Execute Command tools and 2 custom workflow tools.\n* The 3 Execute Command tools allow for listing, searching and creating directories. \n* The 2 custom workflow tools are for reading and writing files to disk.\n* Special care has been to not allow the MCP agent to execute arbitrary linux commands on the target server. This is achieved by only allowing the agent to provide parameters such as filenames and paths rather than raw commands. \n\n### How to use\n* This Filesystem MCP server will write to the server which hosts the n8n instance - this can be your local machine or a remove server. If your target filesystem is on neither, then modify the commands to connect to the desired server.\n* Connect your MCP client by following the n8n guidelines here - https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/#integrating-with-claude-desktop\n* Try the following queries in your MCP client:\n  * \"Please help me list all folders under the project directory.\"\n  * \"Help me create a bash script to send a notification to Slack.\"\n  * \"Search for the log file on the 22nd April and read its contents. What was the cause of the outage?\"\n\n### Requirements\n* Linux file system for this example template. Feel free to modify if working on Windows.\n* MCP Client or Agent for usage such as Claude Desktop - https://claude.ai/download\n\n### Customising this workflow\n* Implement the moving and renaming of files by adding more custom workflow tools to the MCP server.\n* Remember to set the MCP server to require credentials before going to production and sharing this MCP server with others!"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Operation": {
+          "main": [
+            [
+              {
+                "node": "writeOneOrMultipleFiles",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "readOneOrMultipleFiles",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ReadFiles": {
+          "ai_tool": [
+            [
+              {
+                "node": "FileSystem MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "WriteFiles": {
+          "ai_tool": [
+            [
+              {
+                "node": "FileSystem MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ListDirectory": {
+          "ai_tool": [
+            [
+              {
+                "node": "FileSystem MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CreateDirectory": {
+          "ai_tool": [
+            [
+              {
+                "node": "FileSystem MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SearchDirectory": {
+          "ai_tool": [
+            [
+              {
+                "node": "FileSystem MCP Server",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "Operation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 51,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.executeCommand": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeCommandTool": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Jimleuk",
+      "username": "jimleuk",
+      "bio": "Freelance consultant based in the UK specialising in AI-powered automations. I work with select clients tackling their most challenging projects. For business enquiries, send me an email at hello@jimle.uk\n\nLinkedIn: https://www.linkedin.com/in/jimleuk/\nX/Twitter: https://x.com/jimle_uk",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/4ab99e51473df76838beeaac908747f7928c625f869794815cabe34016967d51?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 13,
+        "icon": "fa:terminal",
+        "name": "n8n-nodes-base.executeCommand",
+        "codex": {
+          "data": {
+            "alias": [
+              "Shell",
+              "Command",
+              "OS",
+              "Bash"
+            ],
+            "details": "Execute command allows you to run terminal commands on the computer/server hosting your n8n instance. Useful for executing a shell script or interacting with your n8n instance programmatically via the CLI.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executecommand/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Command",
+          "color": "#886644"
+        },
+        "iconData": {
+          "icon": "terminal",
+          "type": "icon"
+        },
+        "displayName": "Execute Command",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": []
+  }
+}

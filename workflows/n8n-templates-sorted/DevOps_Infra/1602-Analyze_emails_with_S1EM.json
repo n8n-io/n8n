@@ -1,0 +1,984 @@
+{
+  "workflow": {
+    "id": 1602,
+    "name": "Analyze emails with S1EM",
+    "views": 6423,
+    "recentViews": 0,
+    "totalViews": 6423,
+    "createdAt": "2022-04-18T13:41:57.225Z",
+    "description": "With workflow, you analyze Email with TheHive/Cortex \n\nhttps://github.com/V1D1AN/S1EM/wiki/Soar-guide\n\n![workflow-screenshot](https://user-images.githubusercontent.com/18678787/163814250-c3a7f60f-0a90-47df-b08f-1af8f5538bb9.png)",
+    "workflow": {
+      "id": 4,
+      "name": "Email",
+      "nodes": [
+        {
+          "name": "IMAP Email",
+          "type": "n8n-nodes-base.emailReadImap",
+          "position": [
+            -300,
+            200
+          ],
+          "parameters": {
+            "format": "resolved",
+            "options": {}
+          },
+          "credentials": {
+            "imap": {
+              "id": "5",
+              "name": "IMAP account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "TheHive",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            -20,
+            200
+          ],
+          "parameters": {
+            "tags": "Email",
+            "type": "Email",
+            "title": "={{$node[\"IMAP Email\"].binary.attachment_0.fileName}}",
+            "source": "Outlook",
+            "sourceRef": "={{$node[\"IMAP Email\"].json[\"messageId\"]}}",
+            "artifactUi": {
+              "artifactValues": [
+                {
+                  "dataType": "file",
+                  "binaryProperty": "attachment_0"
+                }
+              ]
+            },
+            "description": "={{$node[\"IMAP Email\"].binary.attachment_0.fileName}}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Create Case",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            280,
+            200
+          ],
+          "parameters": {
+            "id": "={{$node[\"TheHive\"].json[\"_id\"]}}",
+            "operation": "promote",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Case",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            540,
+            200
+          ],
+          "parameters": {
+            "id": "={{$node[\"Create Case\"].json[\"_id\"]}}",
+            "resource": "case",
+            "operation": "get"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Observable",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            1060,
+            200
+          ],
+          "parameters": {
+            "caseId": "={{$node[\"Case\"].json[\"_id\"]}}",
+            "options": {},
+            "resource": "observable",
+            "returnAll": true
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Analyzer Email",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            1340,
+            200
+          ],
+          "parameters": {
+            "id": "={{$node[\"Observable\"].json[\"_id\"]}}",
+            "dataType": "file",
+            "resource": "observable",
+            "analyzers": [
+              "24a64a086a410e1c7d7ace74003c4480::CORTEX"
+            ],
+            "operation": "executeAnalyzer"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Cortex",
+          "type": "n8n-nodes-base.cortex",
+          "position": [
+            1560,
+            200
+          ],
+          "parameters": {
+            "jobId": "={{$node[\"Analyzer Email\"].json[\"cortexJobId\"]}}",
+            "resource": "job",
+            "operation": "report"
+          },
+          "credentials": {
+            "cortexApi": {
+              "id": "2",
+              "name": "Cortex account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "IF",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -20,
+            600
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{$node[\"Cortex\"].json[\"report\"][\"full\"][\"iocs\"][\"domain\"].length}}",
+                  "operation": "larger"
+                },
+                {
+                  "value1": "={{$node[\"Cortex\"].json[\"report\"][\"full\"][\"iocs\"][\"email\"].length}}",
+                  "operation": "larger"
+                },
+                {
+                  "value1": "={{$node[\"Cortex\"].json[\"report\"][\"full\"][\"iocs\"][\"ip\"].length}}",
+                  "operation": "larger"
+                }
+              ]
+            },
+            "combineOperation": "any"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Update Case Domain",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            420,
+            480
+          ],
+          "parameters": {
+            "ioc": true,
+            "data": "={{$node[\"Cortex\"].json[\"report\"][\"full\"][\"iocs\"][\"domain\"]}}",
+            "caseId": "={{$node[\"Case\"].json[\"_id\"]}}",
+            "status": "Ok",
+            "message": "={{$node[\"Cortex\"].json[\"analyzerName\"]}}",
+            "options": {
+              "tags": "Domain"
+            },
+            "dataType": "domain",
+            "resource": "observable",
+            "operation": "create"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Update Case Email",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            420,
+            620
+          ],
+          "parameters": {
+            "ioc": true,
+            "data": "={{$node[\"Cortex\"].json[\"report\"][\"full\"][\"iocs\"][\"email\"]}}",
+            "caseId": "={{$node[\"Case\"].json[\"_id\"]}}",
+            "status": "Ok",
+            "message": "={{$node[\"Cortex\"].json[\"analyzerName\"]}}",
+            "options": {
+              "tags": "Domain"
+            },
+            "dataType": "mail",
+            "resource": "observable",
+            "operation": "create"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Update Case Ip",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            420,
+            760
+          ],
+          "parameters": {
+            "ioc": true,
+            "data": "={{$node[\"Cortex\"].json[\"report\"][\"full\"][\"iocs\"][\"ip\"]}}",
+            "caseId": "={{$node[\"Case\"].json[\"_id\"]}}",
+            "status": "Ok",
+            "message": "={{$node[\"Cortex\"].json[\"analyzerName\"]}}",
+            "options": {
+              "tags": "Domain"
+            },
+            "dataType": "ip",
+            "resource": "observable",
+            "operation": "create"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wait",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            800,
+            200
+          ],
+          "webhookId": "ecada1d5-a671-44fc-906e-c64c6f05e760",
+          "parameters": {
+            "unit": "seconds",
+            "amount": 5
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Email Reputation",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            640,
+            620
+          ],
+          "parameters": {
+            "id": "={{$node[\"Update Case Email\"].json[\"id\"]}}",
+            "dataType": "mail",
+            "resource": "observable",
+            "analyzers": [
+              "9902b4e5c58015184b177de13f2151c7::CORTEX"
+            ],
+            "operation": "executeAnalyzer"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "OTX IP",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            640,
+            760
+          ],
+          "parameters": {
+            "id": "={{$node[\"Update Case Ip\"].json[\"id\"]}}",
+            "dataType": "ip",
+            "resource": "observable",
+            "analyzers": [
+              "b084bf78d1aea92966b6ef6a4f6193a5::CORTEX"
+            ],
+            "operation": "executeAnalyzer"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "OTX DOMAIN",
+          "type": "n8n-nodes-base.theHive",
+          "position": [
+            640,
+            480
+          ],
+          "parameters": {
+            "id": "={{$node[\"Update Case Domain\"].json[\"id\"]}}",
+            "dataType": "domain",
+            "resource": "observable",
+            "analyzers": [
+              "b084bf78d1aea92966b6ef6a4f6193a5::CORTEX"
+            ],
+            "operation": "executeAnalyzer"
+          },
+          "credentials": {
+            "theHiveApi": {
+              "id": "1",
+              "name": "The Hive account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "settings": {},
+      "connections": {
+        "IF": {
+          "main": [
+            [
+              {
+                "node": "Update Case Domain",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Update Case Email",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Update Case Ip",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Case": {
+          "main": [
+            [
+              {
+                "node": "Wait",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait": {
+          "main": [
+            [
+              {
+                "node": "Observable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Cortex": {
+          "main": [
+            [
+              {
+                "node": "IF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "TheHive": {
+          "main": [
+            [
+              {
+                "node": "Create Case",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IMAP Email": {
+          "main": [
+            [
+              {
+                "node": "TheHive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Observable": {
+          "main": [
+            [
+              {
+                "node": "Analyzer Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Case": {
+          "main": [
+            [
+              {
+                "node": "Case",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analyzer Email": {
+          "main": [
+            [
+              {
+                "node": "Cortex",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Case Ip": {
+          "main": [
+            [
+              {
+                "node": "OTX IP",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Case Email": {
+          "main": [
+            [
+              {
+                "node": "Email Reputation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Case Domain": {
+          "main": [
+            [
+              {
+                "node": "OTX DOMAIN",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 12,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.cortex": {
+          "count": 1
+        },
+        "n8n-nodes-base.theHive": {
+          "count": 11
+        },
+        "n8n-nodes-base.emailReadImap": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "v1d1an",
+      "username": "v1d1an",
+      "bio": null,
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f4911e4d79449d67822bda228ed2553e6082bde8c96f8cfc16afa10b23e54f03?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 10,
+        "icon": "fa:inbox",
+        "name": "n8n-nodes-base.emailReadImap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/imap/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Email Trigger (IMAP)",
+          "color": "#44AA22"
+        },
+        "iconData": {
+          "icon": "inbox",
+          "type": "icon"
+        },
+        "displayName": "Email Trigger (IMAP)",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 414,
+        "icon": "file:cortex.svg",
+        "name": "n8n-nodes-base.cortex",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.cortex/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/cortex/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Cortex"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48ZGVmcz48c3R5bGU+LmNscy0ye2ZpbGw6I2ZmZn08L3N0eWxlPjwvZGVmcz48cGF0aCBmaWxsPSIjNTRjNGM0IiBkPSJNMjkwIDE1MEExNDAgMTQwIDAgMSAxIDE1MCAxMGExNDAgMTQwIDAgMCAxIDE0MCAxNDAiLz48cGF0aCBkPSJNMjMxLjE3IDE1OS4yOWMwLTEyLjg3LTYuNTEtMTQuMTctMTgtMTUuMzYtMTAuMTgtMS4wNi0yMS43MS0yLjI1LTI2LjczLTE2LjY1YTEuOSAxLjkgMCAwIDEgLjA4LTEuNDYgMS45MyAxLjkzIDAgMCAxIDMuNTUuMmM0LjIyIDEyLjA5IDE0IDEzLjEgMjMuNSAxNC4wOSA0LjY4LjQ4IDEwIDEgMTQuMTIgMy40YTEuNCAxLjQgMCAwIDAgMS40NSAwIDEuMzkgMS4zOSAwIDAgMCAuNjQtMS4zYy0yLjIzLTI1LjgyLTEzLjE2LTM4Ljc5LTIxLjk0LTQ1LjEyYTM1LjUgMzUuNSAwIDAgMC0xMi4wNy01LjggMS4zOSAxLjM5IDAgMCAwLTEuNTYgMiA0OS42IDQ5LjYgMCAwIDEgNCAxMWMyLjE4IDcuOTEgNC4wNiAxNC43NCAxMi42MiAxNi40NGExLjkzIDEuOTMgMCAwIDEgMS41MSAyLjI2IDEuOTMgMS45MyAwIDAgMS0xLjg4IDEuNTUgMS42IDEuNiAwIDAgMS0uMzggMGMtMTAuOS0yLjE2LTEzLjI4LTEwLjgyLTE1LjU5LTE5LjIzLTEuNTUtNS42MS0zLTEwLjkxLTctMTQuMi01LjYxLTQuNjUtMTUtNy43OC0yMy4zNy03Ljc4YTI5IDI5IDAgMCAwLTQuMDUuMjcgMTguNSAxOC41IDAgMCAwLTkuNjggNC4wNyAxLjQgMS40IDAgMCAwLS40NyAxIDEuMzggMS4zOCAwIDAgMCAuMzcgMSA3My45IDczLjkgMCAwIDEgMTEuMTMgMTYuODQgMS45MiAxLjkyIDAgMCAxLS44NSAyLjU4IDIgMiAwIDAgMS0yLjU5LS44NmMtMy44Ny03Ljc2LTguMTEtMTMuODYtMTIuNTgtMTguMTItNi4zMS02LTExLjk0LTcuMjUtMTUuNTYtNy4yNWExNC43IDE0LjcgMCAwIDAtMi44NS4yN2MtNS4xIDEtOC41IDQuMzUtOS41MSA3YTEuNDQgMS40NCAwIDAgMCAuMTIgMS4yMyAzMi42IDMyLjYgMCAwIDEgMi42MiA1Ljk0YzIuMzIgNi4zOCA0LjUxIDEyLjQgMTUuNDggMTIuOTFhMS44OCAxLjg4IDAgMCAxIDEuMzMuNjIgMS45IDEuOSAwIDAgMSAuNSAxLjM5IDEuODkgMS44OSAwIDAgMS0yIDEuODNjLTEzLjUzLS42Mi0xNi41Mi04Ljg0LTE4LjkxLTE1LjQ0YTI1LjYgMjUuNiAwIDAgMC0yLjYyLTUuNzUgMSAxIDAgMCAwLS4xNC0uMTYgMiAyIDAgMCAxLS4yNC0uMzIgMiAyIDAgMCAwLS4xNy0uMjIgNS44OCA1Ljg4IDAgMCAwLTQuNzYtMS45Yy00LjY5IDAtOC4yNiAxLjQ3LTEwLjYyIDQuNGExMy41IDEzLjUgMCAwIDAtMi4xMiAzLjg0IDIgMiAwIDAgMC0uMDcuMjYgMi4yIDIuMiAwIDAgMS0uMTUuNSAxIDEgMCAwIDAtLjA3LjE3IDI1Ljc1IDI1Ljc1IDAgMCAwLS4zIDEyLjI5YzEuNiA3LjQ4IDYuMjQgMTYuODkgMTkuMjcgMTkuMjVhMjIuNSAyMi41IDAgMCAwIDMuOTIuMzIgNzEgNzEgMCAwIDAgOS43Ny0xIDgzLjYgODMuNiAwIDAgMSAxMi0xLjEyIDMzLjczIDMzLjczIDAgMCAxIDE3IDQuMjEgMS40MyAxLjQzIDAgMCAwIDEuMTYuMSAxLjQgMS40IDAgMCAwIC44My0uODFjMi4zLTUuNzkgNS43NC05LjU1IDguNTEtMTIuNTcgNS41NS02LjA2IDkuNTYtMTAuNDQgMy43OS0yNS42OGExLjkyIDEuOTIgMCAwIDEgLjA1LTEuNDcgMS45IDEuOSAwIDAgMSAxLjA3LTEgMiAyIDAgMCAxIDIuMzQgMS4wNWM2LjYgMTcuNDUgMS40MyAyMy4xLTQuNTYgMjkuNjUtMyAzLjIzLTYuMzIgNi44OS04LjMxIDEyLjc5YTEuNCAxLjQgMCAwIDAgLjUxIDEuNThjMTMuNDcgOS43NCAyMC41MiAxMyAyNy45MiAxM2EyNSAyNSAwIDAgMCAyLjgzLS4xNiAxLjkzIDEuOTMgMCAwIDEgMS43IDMuMTIgMS44OCAxLjg4IDAgMCAxLTEuMjkuNyAzMCAzMCAwIDAgMS0zLjMzLjE5Yy04LjUgMC0xNi41OC0zLjgyLTMyLTE1LjE3YTI5LjM2IDI5LjM2IDAgMCAwLTE4LjIxLTUuOCA4MCA4MCAwIDAgMC0xMS41NSAxLjEgNzMgNzMgMCAwIDEtMTAuMyAxIDI2IDI2IDAgMCAxLTQuNjItLjM5Yy0xMS44LTIuMTQtMTkuNzQtMTAtMjIuMzYtMjIuMjJhMzMuNyAzMy43IDAgMCAxLS42OS02LjI2IDEuNDEgMS40MSAwIDAgMC0yLjM2LTFjLTExIDEwLjI1LTExLjY4IDIwLjM0LTExLjA5IDI1LjQ0LjkzIDguMjEgNS44NyAxNC4yNiAxMC4yNyAxNmExMyAxMyAwIDAgMCA0Ljg5Ljg0IDQ3IDQ3IDAgMCAwIDYuMTYtLjU4IDYxLjUgNjEuNSAwIDAgMSA4LjQ2LS43MmM4LjQxIDAgMTYuMTkgMi44NiAyNC41MSA5YTEuOTIgMS45MiAwIDAgMSAuNDIgMi42OCAyIDIgMCAwIDEtMi42OS40MmMtNy42My01LjYyLTE0LjY5LTguMjMtMjIuMjEtOC4yM2E1OCA1OCAwIDAgMC04IC42OSA1MSA1MSAwIDAgMS02LjY4LjYgMTYuOCAxNi44IDAgMCAxLTYuMjktMS4xYy01LjQyLTIuMTQtMTAuMTMtOC4yMi0xMi0xNS40OGExLjQgMS40IDAgMCAwLTEuMi0xLjAyIDEuMzggMS4zOCAwIDAgMC0xLjQxLjgxYy01LjI1IDExLjMzLTIuMyAyMi43NSAzIDI5YTE5IDE5IDAgMCAwIDE0LjkgNy4xNSAyNi40MyAyNi40MyAwIDAgMCAxMy0zLjggMS4zOCAxLjM4IDAgMCAwIC42Ny0uODggMjUuOCAyNS44IDAgMCAxIDIuODMtNyAyIDIgMCAwIDEgMi42NC0uNjUgMS45MyAxLjkzIDAgMCAxIC42NSAyLjY0Yy0zLjc0IDYuMTgtNC44IDE2Ljg4LjU4IDI0LjU1IDQuMTEgNS44NSAxMSA4LjgyIDIwLjU2IDguODIuODMgMCAxLjY4IDAgMi41NS0uMDdhMS40MiAxLjQyIDAgMCAwIDEuMi0uODJBMS4zNyAxLjM3IDAgMCAwIDEzNCAxOTJjLTQuOTEtNi40NC41LTEzLjM5IDUuNzQtMjAuMTFzMTAuNi0xMy42IDguNDgtMjEuMjNhMS45MiAxLjkyIDAgMCAxIDEuMzMtMi4zNiAxLjk0IDEuOTQgMCAwIDEgMi4zNyAxLjMzYzIuNjQgOS40OS0zLjkgMTcuODgtOS4xNSAyNC42Mi01Ljk0IDcuNjMtOS4xIDEyLjE1LTQuODUgMTYuNGE2Ljc3IDYuNzcgMCAwIDAgNSAyLjM1YzIuNzMgMCA1LjkyLTEuNjkgMTItNS40NiA1LjI0LTMuMjMgMTIuNDEtNy42NiAyMS42NC0xMC40MWExLjQxIDEuNDEgMCAwIDAgLjItMi42MSAxNi4yIDE2LjIgMCAwIDEtNi00LjUyYy0yLjM5LTMuMDYtMy02Ljg0LTEuOTEtMTEuMjRhMiAyIDAgMCAxIDIuMzMtMS4zOSAxLjkzIDEuOTMgMCAwIDEgMS40IDIuMzRjLS44MSAzLjE5LS40IDUuODYgMS4yMSA3LjkzIDIgMi42NCA3LjI4IDYgMjAuNyA2LjgyIDIuMjMgMCA0LjQxIDAgNi42OS4yYTU0LjIgNTQuMiAwIDAgMCAxOS4zNC0zLjUzIDEuNCAxLjQgMCAwIDAgLjUyLTIuMjNjLTEuMy0xLjQ1LTMuMTQtMi4zLTUuNTktMy4zNS0zLjgxLTEuNjEtOC41NC0zLjYyLTkuMTgtMTAuMTlhMS45MyAxLjkzIDAgMCAxIDEuNzMtMi4xMSAxLjkxIDEuOTEgMCAwIDEgMi4xIDEuNzNjLjQxIDQuMjkgMy4yNSA1LjUgNi44NiA3IDIuNTMgMS4wOCA1LjY4IDIuNDEgNy43MiA1LjNhMS40MSAxLjQxIDAgMCAwIDIgLjI4YzIuOTUtMi40IDQuNDUtNS4yMSA0LjQ1LTguMzQiIGNsYXNzPSJjbHMtMiIvPjxwYXRoIGQ9Ik0yMDAgMTc3LjRjLTEuMSAwLTIuMTUtLjA5LTMuMjktLjE1LTE3LjUyLjI4LTI5IDcuMzYtMzcuMzUgMTIuNTJhNjYgNjYgMCAwIDEtOC41MyA0LjY5IDEuNCAxLjQgMCAwIDAtLjIyIDIuNDcgMzcuNiAzNy42IDAgMCAwIDQuNjEgMi40MiAxOS44IDE5LjggMCAwIDAgNS42MyAxLjQ0YzUgLjc0IDkgMS4zMyAxMC43NyAxNS4yNmExLjQgMS40IDAgMCAwIDEuMzkgMS4yMmg5Ljg3YTEuNCAxLjQgMCAwIDAgMS4zOS0xLjZjLTEuOTMtMTMuOC0uMTctMTQuODEgMy43MS0xN2EyOCAyOCAwIDAgMCA0LjM3LTIuOTNjMy44My0zLjIzIDcuOC02LjU2IDktMTYuNzVhMS4zOCAxLjM4IDAgMCAwLS4zMy0xLjA4IDEuNCAxLjQgMCAwIDAtMS0uNDgiIGNsYXNzPSJjbHMtMiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Cortex",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      },
+      {
+        "id": 417,
+        "icon": "file:thehive.svg",
+        "name": "n8n-nodes-base.theHive",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.thehive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/thehive/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "TheHive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48ZGVmcz48c3R5bGU+LmNscy0ye2ZpbGw6I2ZmZn08L3N0eWxlPjwvZGVmcz48cGF0aCBmaWxsPSIjZjNkMDJmIiBkPSJNMjkwIDE1MEExNDAgMTQwIDAgMSAxIDE1MCAxMGExNDAgMTQwIDAgMCAxIDE0MCAxNDAiLz48cGF0aCBkPSJNMjA0LjYyIDIxMC42YTE1LjEgMTUuMSAwIDAgMS02LjY4IDEuMzggMTcuNDkgMTcuNDkgMCAwIDEtMTYuMTEtMTAuOTNsLTQuODMtMTEuNi03LjMxLTE4LjI4YTUuMDUgNS4wNSAwIDAgMC0uNy0yLjEybC0xMC4xLTI1LjMxYzE2LjE1IDIuODYgNDUuOTMgMjAuMTYgNTUuNjggNDMuNzIgMy40OCA5LjQ5LS43NiAxOS42Ni05LjkgMjMuMTRtLTU0Ljg3IDI3LjIxYy0xMS41OCAwLTIxLTguNS0yNC44NS0yMS41bDQ5Ljg1LjE2Yy0zLjkgMTMuMzMtMTMuNDEgMjEuMzgtMjUgMjEuMzRtLTQ4LTI2LjE0YTE0LjMgMTQuMyAwIDAgMS02LjY3LTEuNDNjLTguNzYtMy44OS0xMy4yOS0xNC4wOS05LjQtMjIuODUgOS45MS0yMy44NSAzOS44MS00MC45NSA1Ni00My4zNkwxMzEgMTcwbC03Ljc5IDE5LjI5LTUgMTEuNTdhMTguMzQgMTguMzQgMCAwIDEtMTYuNTMgMTAuODNtNDIuNjMtNDUuMTYgNS42OS0xMy42OSA1LjU3IDEzLjcxem0tNy43OSAxOS4yOSAzLjE5LTguMDYgMjAuMzcuMDcgMy4xMyA4LjA4em0tNSAxMS41NyAzNi4xNy4xMiAzLjEzIDguMDktNDIuNDgtLjE1em0xOC41Ni05MC44N2M5LjQ4IDAgMTcuNTMgOS4xOCAxNy41IDE2LjU2IDAgOC43Ny0xNC40MyA5LjQzLTE3LjIzIDkuNDEtMy4xNiAwLTE3LjIxLS40LTE3LjE4LTkuNTMtLjY3LTcuMzggNy40My0xNi40OCAxNi45MS0xNi40NG0tMTMuMi0uNDJhMy43NSAzLjc1IDAgMCAxLTMuMzktMi4xNWwtNS44MS0xMi4zNGEzLjc0IDMuNzQgMCAxIDEgNi43Ny0zLjE5bDUuODEgMTIuMzRhMy43NCAzLjc0IDAgMCAxLTEuNzkgNSAzLjggMy44IDAgMCAxLTEuNTkuMzZtMjYuMjQtLjAyYTMuOCAzLjggMCAwIDEtMS41OS0uMzYgMy43NCAzLjc0IDAgMCAxLTEuNzktNWw1LjgyLTEyLjM1YTMuNzQgMy43NCAwIDEgMSA2Ljc3IDMuMkwxNjYuNTEgMTA0YTMuNzUgMy43NSAwIDAgMS0zLjM5IDIuMTUiIGNsYXNzPSJjbHMtMiIvPjxwYXRoIGQ9Ik0yMDQuMzYgMTU3LjgxYTMuNzQgMy43NCAwIDAgMS0zLjI2LTUuNTZsMTQuNDEtMjUuODctMzIuODctNTYuN2gtNjUuMjhMODQuNTQgMTI2LjNsMTUuNjYgMjUuODNhMy43NCAzLjc0IDAgMCAxLTYuNCAzLjg3TDc3IDEyOC4yOGEzLjcyIDMuNzIgMCAwIDEgMC0zLjgxbDM1LTYwLjQxYTMuNzcgMy43NyAwIDAgMSAzLjI0LTEuODdoNjkuNmEzLjc1IDMuNzUgMCAwIDEgMy4xNiAxLjg3bDM1IDYwLjQxYTMuNzMgMy43MyAwIDAgMSAwIDMuN2wtMTUuNDQgMjcuNzJhMy43NSAzLjc1IDAgMCAxLTMuMjggMS45MiIgY2xhc3M9ImNscy0yIi8+PC9zdmc+"
+        },
+        "displayName": "TheHive",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

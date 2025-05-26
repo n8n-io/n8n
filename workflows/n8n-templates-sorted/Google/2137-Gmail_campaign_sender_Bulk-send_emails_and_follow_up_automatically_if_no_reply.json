@@ -1,0 +1,1957 @@
+{
+  "workflow": {
+    "id": 2137,
+    "name": "Gmail campaign sender: Bulk-send emails and follow up automatically if no reply",
+    "views": 14147,
+    "recentViews": 1,
+    "totalViews": 14147,
+    "createdAt": "2024-02-28T12:40:23.201Z",
+    "description": "This workflow allows you to send multi-step email campaigns using n8n, Gmail and Google Sheets.\n\nYou define a sequence of emails, and a list of email addresses to send them to. The first email is sent to everyone, but the later emails in the sequence are only sent if no-one has replied to the thread yet.\n\nThis means you only need to worry about replying to people who respond to your email, not chasing people who don’t.\n\n### Requirements\n\n1. A list of emails in a Google sheet. You can define extra info that will be available to your email templates (e.g. name, company, etc.)\n\n![table.png](fileId:750)\n\n2. A sequence of emails to send, plus how long to wait to send each one, e.g.\n\n- **On day 0:** “Hi, {name} — nice to meet you at the conference. Was wondering whether {company} would be interested in a quick call about X?”\n- **On day 3:** “Hi, {name}, just wanted to check in on this. Let me know if there’s any interest!”\n- **On day 7:** “{name}, just wanted to give this one last try”\n\n3. A Gmail account (although you could also swap out that part for any other email service)\n\n### How it works\n\nWhen sending the emails, n8n inserts a hidden attribute in each one that tags it as being part of the email campaign. It then regularly looks through the email threads with that tag and checks whether:\n\n1. No-one has replied yet\n2. It’s time to send the next message\n\nThe workflow doesn’t send emails on weekends.\n\n### Notes\n\n- This workflow is not intended for spam! Please use responsibly\n- You can use this workflow for multiple different campaigns by making copies of the workflow and changing the sequence / Google Sheet that it uses",
+    "workflow": {
+      "meta": {
+        "instanceId": "cb484ba7b742928a2048bf8829668bed5b5ad9787579adea888f05980292a4a7"
+      },
+      "nodes": [
+        {
+          "id": "8565747a-4108-4467-98e4-f57d441f66af",
+          "name": "Update last contacted time",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            2380,
+            140
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "row_number": "={{ $('To email?').item.json.row_number }}",
+                "first_emailed": "={{ $now.format('yyyy-MM-dd') }}"
+              },
+              "schema": [
+                {
+                  "id": "email",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "email",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "first_emailed",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "first_emailed",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "name",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "company",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "company",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "row_number",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "row_number",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "row_number"
+              ]
+            },
+            "options": {},
+            "operation": "update",
+            "sheetName": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Settings').item.json.sheet_url }}"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Settings').item.json.sheet_url }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "196",
+              "name": "Google Sheets account (David)"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5f079ac7-1bef-4bb8-8efe-1f3803357fb1",
+          "name": "Set message template",
+          "type": "n8n-nodes-base.set",
+          "disabled": true,
+          "position": [
+            1500,
+            1120
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "message_template",
+                  "stringValue": "={{ $('Email sequence').first().json.emails[0].message }}"
+                },
+                {
+                  "name": "email",
+                  "stringValue": "david@thedavid.co.uk"
+                },
+                {
+                  "name": "name",
+                  "stringValue": "Daffyd"
+                },
+                {
+                  "name": "company",
+                  "stringValue": "Davey Enterprises"
+                },
+                {
+                  "name": "subject",
+                  "stringValue": "={{ $('Settings').item.json.subject }}"
+                },
+                {
+                  "name": "sender_name",
+                  "stringValue": "={{ $('Settings').item.json.sender_name }}"
+                },
+                {
+                  "name": "mail_id",
+                  "stringValue": "={{ $('Settings').item.json.mail_id }}"
+                },
+                {
+                  "name": "mail_seq",
+                  "stringValue": "0"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "7ff4eabc-f49a-4adc-9a4b-750585b72070",
+          "name": "Email sequence",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1000,
+            140
+          ],
+          "parameters": {
+            "mode": "raw",
+            "options": {},
+            "jsonOutput": "{\n  \"emails\": [\n    {\n      \"message\": \"Hi {name}, hope you're well!<br />\\n<br />\\nYou're doing some great things at {company}, and I wanted to touch base to see if you wanted to chat.<br />\\n<br />\\nWould it make sense to jump on a quick call?<br />\\n<br />\\nRegards,<br />\\n<br />\\nNathan<br />\\n\",\n      \"send_on_day\": 0\n    },\n    {\n      \"message\": \"Hi {name},<br />\\n<br />\\nJust wanted to follow up on this, since it would be great to talk.<br />\\n<br />\\nRegards,<br />\\n<br />\\nNathan<br />\\n\",\n      \"send_on_day\": 3\n    },\n    {\n      \"message\": \"Just thought I'd give this one last try :)<br />\\n<br />\\nNathan\\n\",\n      \"send_on_day\": 8\n    }\n  ]\n}\n"
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "7b038199-cf02-4536-a351-b86d51b0d367",
+          "name": "Fill message placeholders",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1720,
+            1120
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "function extractPlaceholders(str) {\n    // Regular expression to match placeholders\n    // It matches any alphanumeric character including dashes and underscores between {}\n    const regex = /\\{([a-zA-Z0-9_-]+)\\}/g;\n    \n    // Set to store unique placeholders\n    const uniquePlaceholders = new Set();\n\n    // Extract and store unique placeholders\n    let match;\n    while ((match = regex.exec(str)) !== null) {\n        uniquePlaceholders.add(match[1]);\n    }\n\n    // Convert the Set to an array and return\n    return Array.from(uniquePlaceholders);\n}\n\nlet placeholders = Object.keys(item.json.placeholders)\nconsole.log(placeholders)\n\n// Substitute all the placeholders in the message\n  item.json.message = item.json.message_template\n  for (let key of extractPlaceholders(item.json.message_template)) {\n    if(!placeholders.includes(key)) throw new Error(`Missing data for placeholder '{${key}}'`)\n    const regex = new RegExp(`\\\\{${key}\\\\}`, 'g'); // Create a regex to match the exact word surrounded by {}\n    item.json.message = item.json.message.replaceAll(regex, item.json.placeholders[key]);\n  }\n\nreturn item"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "42fe4448-1a44-47aa-a04b-927d441b265a",
+          "name": "Compose message",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1940,
+            1120
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "message",
+                  "stringValue": "=<span data-cam='{{ $json.mail_id }}' data-seq='{{ $json.mail_seq }}' data-ph='{{ JSON.stringify($json.placeholders) }}'></span>{{ $json.message }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "bccf2e89-852e-49b4-ad98-194008c47760",
+          "name": "Get previous message threads",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1280,
+            620
+          ],
+          "parameters": {
+            "filters": {
+              "q": "=subject:{{ $json.subject }} after:{{ $now.minus({'days': $json.emails.last().send_on_day+1}).toSQL().substr(0, 10) }}"
+            },
+            "resource": "thread",
+            "returnAll": true
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "198",
+              "name": "Gmail account (David)"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "3ce6c45f-a257-4270-a84d-6a19ec35b2eb",
+          "name": "Get thread details",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1500,
+            620
+          ],
+          "parameters": {
+            "simple": false,
+            "options": {},
+            "resource": "thread",
+            "threadId": "={{ $json.id }}",
+            "operation": "get"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "198",
+              "name": "Gmail account (David)"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9224bb16-fbc2-45b5-a2cb-f63cb440f46f",
+          "name": "Classify threads",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1940,
+            620
+          ],
+          "parameters": {
+            "jsCode": "// Because emails are sent slightly after the schedule trigger runs, we'll end up waiting an extra day to send unless we take into account the execution time of the workflow\nlet buffer_mins = 20\n\nlet templates = $('Email sequence').first().json.emails\n\nfunction next_sequence_number(messages, mail_id, sender_name) {\n  for (let i = 0; i < messages.length; i++) {\n    if(!('html' in messages[i])) return -1;\n    let in_campaign = messages[i].html.includes(\"data-cam='\"+mail_id+\"'\")\n    let valid_seq = messages[i].html.includes(\"data-seq='\"+i+\"'\")\n    let from_us = messages[i].From.includes(sender_name)\n    console.log(in_campaign + \", \" + valid_seq + \", \" + from_us)\n    if(!(from_us && in_campaign && valid_seq)) {\n      return -1;\n    }\n  }\n  return messages.length;\n}\n\n\nfor (const item of $input.all()) {\n  item.json.first_message_at = DateTime.fromMillis($('Get thread details').item.json.messages[0].internalDate*1)\n  item.json.days_since_first_message = DateTime.now().diff(item.json.first_message_at, 'days').days\n  item.json.next_sequence_number = next_sequence_number(\n    item.json.messages,\n    $('Settings').first().json.mail_id,\n    $('Settings').first().json.sender_name\n  );\n  item.json.next_message_due = (\n    item.json.next_sequence_number > 0\n    && item.json.next_sequence_number < templates.length\n    && templates[item.json.next_sequence_number].send_on_day <= item.json.days_since_first_message + (buffer_mins/60/24)\n  )\n\n  // Retrieve the placeholder values from the snippet, for use in future messages\n  const ph_matches = item.json.messages[0].snippet.match(/data-ph='([^']*)'/)\n  if(ph_matches?.length > 1) {\n    const placeholders = JSON.parse(ph_matches[1])\n    for(key of placeholders.keys()) {\n      item.json[key] = placeholders[key]\n    }\n  }\n\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "776cb743-339d-49f6-af3c-9ae2b464d01a",
+          "name": "Next message due?",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            2160,
+            620
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "00cf6401-f45a-4496-803c-70a5b2d7daf5",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.next_message_due }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "2ecf68b5-f5bf-4961-a849-7c0d29940387",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1906,
+            427
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 181.66573318934627,
+            "height": 344.96230939963334,
+            "content": "Follow-up is due if:\n- All the messages in the thread are automated (no-one has replied yet)\n- Enough time has passed for the next message to be sent"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3a78abb-0691-4152-a349-658b8286df2f",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            1280,
+            1120
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "a62bff23-2742-4a5e-8896-e1a3be5915fd",
+          "name": "Replying?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2160,
+            1120
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "dc8ec88f-daef-46be-b3da-1407d5e1c0b1",
+                  "operator": {
+                    "type": "string",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.reply_message_id }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "76d25df2-4472-40a6-80c6-f2e3dc8702a3",
+          "name": "Send new message",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            2380,
+            1240
+          ],
+          "parameters": {
+            "sendTo": "={{ $json.to_email }}",
+            "message": "={{ $json.message }}",
+            "options": {
+              "senderName": "={{ $json.sender_name }}",
+              "appendAttribution": false
+            },
+            "subject": "={{ $json.subject }}"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "198",
+              "name": "Gmail account (David)"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "ceefaf78-28b8-4711-b50e-b5487862dba6",
+          "name": "Call message send sub-workflow",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            2820,
+            620
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": "={{ $workflow.id }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "809e9df8-881a-4b32-a3c0-e55c669bd8d1",
+          "name": "Prepare reply params",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2380,
+            620
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "message_template",
+                  "stringValue": "={{ $('Email sequence').first().json.emails[$json.next_sequence_number].message }}"
+                },
+                {
+                  "name": "reply_message_id",
+                  "stringValue": "={{ $json.messages.last().id }}"
+                },
+                {
+                  "name": "sender_name",
+                  "stringValue": "={{ $('Settings').item.json.sender_name }}"
+                },
+                {
+                  "name": "mail_id",
+                  "stringValue": "={{ $('Settings').item.json.mail_id }}"
+                },
+                {
+                  "name": "mail_seq",
+                  "stringValue": "={{ $json.next_sequence_number }}"
+                },
+                {
+                  "name": "to",
+                  "stringValue": "={{ $json.messages[0].To }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "cdda96f1-e0a2-4ce8-bc78-da8e80f7029f",
+          "name": "Prepare first message params",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1720,
+            140
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "message_template",
+                  "stringValue": "={{ $('Email sequence').first().json.emails[0].message }}"
+                },
+                {
+                  "name": "to_email",
+                  "stringValue": "={{ $('Get emails').item.json[$('Settings').item.json.email_column_name] }}"
+                },
+                {
+                  "name": "subject",
+                  "stringValue": "={{ $('Settings').item.json.subject }}"
+                },
+                {
+                  "name": "sender_name",
+                  "stringValue": "={{ $('Settings').item.json.sender_name }}"
+                },
+                {
+                  "name": "mail_id",
+                  "stringValue": "={{ $('Settings').item.json.mail_id }}"
+                },
+                {
+                  "name": "mail_seq",
+                  "stringValue": "0"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "c2d9869e-0608-472a-a124-26e9e6f1820a",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1240,
+            -100
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 181.66573318934627,
+            "height": 410.4105111871959,
+            "content": "Columns the sheet needs\n- email\n- first_emailed (leave blank - will be filled in automatically)\n- Other columns matching placeholders in email sequence"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "26bc2c58-fea5-4ee0-b9ea-264ad00e8d32",
+          "name": "Call message send sub-workflow1",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            2160,
+            140
+          ],
+          "parameters": {
+            "mode": "each",
+            "options": {},
+            "workflowId": "={{ $workflow.id }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e7e7d9bd-79c6-4534-b88d-b54cc695c7bf",
+          "name": "To email?",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1500,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "eeec5901-5ff0-47b1-926b-e93097d64434",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.first_emailed.isEmpty() }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "db4b6481-5fdb-4bc3-a10f-b6ccfb5b0bf0",
+          "name": "Decode messages",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1720,
+            620
+          ],
+          "parameters": {
+            "jsCode": "// TODO: Some messages have an empty payload and a parts field instead (containing an array)\n\nfor (const item of $input.all()) {\n  for (const message of item.json.messages) {\n    console.log('message', message.payload.body.data || \"\")\n    let buffer = Buffer.from(message.payload.body.data || \"\", \"base64\");\n    message.html = buffer.toString(\"utf8\")\n  }\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "fc4868f0-845d-4f76-a566-b0db3d2676f8",
+          "name": "Decode placeholder values",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            2600,
+            620
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "const html = $('Decode messages').item.json.messages[0].html\nconst matches = html.match(/data-ph='([^']*)'/)\nlet placeholders = {}\nif(matches?.length > 0) {\n  ph = JSON.parse(matches[1])\n  for(k of Object.keys(ph)) {\n    placeholders[k] = ph[k]\n  }\n}\nitem.json.placeholders = placeholders\n\nreturn item;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5af9b08e-6c5d-4701-a44a-794e96216948",
+          "name": "Package placeholder values",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1940,
+            140
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "function extractPlaceholders(str) {\n    // Regular expression to match placeholders\n    // It matches any alphanumeric character including dashes and underscores between {}\n    const regex = /\\{([a-zA-Z0-9_-]+)\\}/g;\n    \n    // Set to store unique placeholders\n    const uniquePlaceholders = new Set();\n\n    // Extract and store unique placeholders\n    let match;\n    while ((match = regex.exec(str)) !== null) {\n        uniquePlaceholders.add(match[1]);\n    }\n\n    // Convert the Set to an array and return\n    return Array.from(uniquePlaceholders);\n}\n\n\n// Gather all the placeholder values for passing on\nconst all_ph_raw = $('Email sequence').first().json.emails.flatMap(e => extractPlaceholders(e.message))\nconst all_ph = [...new Set(all_ph_raw)];\nlet placeholders = {}\nfor(ph of all_ph) {\n  if($('Get emails').item.json[ph] == undefined) throw new Error(`Message placeholder '{${ph}}' requires a column called '${ph}' in the Google Sheet`)\n  placeholders[ph] = $('Get emails').item.json[ph]\n}\n\nitem.json.placeholders = placeholders\n\nreturn item;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e655a9c2-617b-4119-9582-45f1db2cc6d2",
+          "name": "Settings",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            780,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "5e327a1d-3f2e-40f1-aaa1-9ce888349eb0",
+                  "name": "sheet_url",
+                  "type": "string",
+                  "value": "https://docs.google.com/spreadsheets/d/12dsbRpvtVFDdPmyZ7-39vuHuFpM1eMyfOqGGGdsnrtc/edit#gid=0"
+                },
+                {
+                  "id": "3255270a-3ac2-4c59-8215-ea79256b55cc",
+                  "name": "subject",
+                  "type": "string",
+                  "value": "My amazing campaign"
+                },
+                {
+                  "id": "76b40b74-acef-49f1-a0e2-0be9a461319a",
+                  "name": "sender_name",
+                  "type": "string",
+                  "value": "Nathan Automat"
+                },
+                {
+                  "id": "4532eb84-5ebc-4011-8c65-d97aeae21256",
+                  "name": "email_column_name",
+                  "type": "string",
+                  "value": "email"
+                },
+                {
+                  "id": "83de0ceb-39ec-426a-afba-13d66bce101d",
+                  "name": "mail_id",
+                  "type": "string",
+                  "value": "123456"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "a8975f91-6413-448b-bc3f-1084959b8b31",
+          "name": "Reply to message",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            2380,
+            1020
+          ],
+          "parameters": {
+            "message": "={{ $json.message }}",
+            "options": {
+              "senderName": "David Roberts"
+            },
+            "messageId": "={{ $json.reply_message_id }}",
+            "operation": "reply"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "198",
+              "name": "Gmail account (David)"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d453661e-25f7-471c-90dc-633270f14396",
+          "name": "Get emails",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1280,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "sheetName": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Settings').item.json.sheet_url }}"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Settings').item.json.sheet_url }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "196",
+              "name": "Google Sheets account (David)"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "7a838728-38e1-45f9-8bac-19c6ad005a38",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1220,
+            -180
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1790.5345476157208,
+            "height": 515.1374038700677,
+            "content": "## Send initial emails"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5d8823c1-00a7-43a2-963d-90e971167ef8",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1220,
+            360
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1797.4980261229769,
+            "height": 515.1374038700677,
+            "content": "## Send follow-up emails if appropriate"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fd2bb0b2-a313-45ed-ad58-935d803237e5",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1220,
+            920
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1797.4980261229769,
+            "height": 515.1374038700677,
+            "content": "## Sub-workflow for sending the emails\nThis is called by the sections above - you shouldn't need to touch it"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "be4a4bbb-1e10-4c9e-afb9-cc4a46a78113",
+          "name": "Every hour",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            320,
+            140
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "hours",
+                  "triggerAtMinute": 12
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "be582e38-6da2-4c64-8804-981936f71d88",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2120,
+            958
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 181.66573318934627,
+            "height": 306.5470605243249,
+            "content": "If reply_message_id is set, will reply to that message.\n\nOtherwise, will send a new message to the user in the 'email' field"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "88e9ff03-62f0-4dcf-9e28-62c95386df66",
+          "name": "Don't email on weekends",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            540,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "195ce0cf-9d25-4e02-9f20-aa6edbc2d561",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "false",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $now.isWeekend() }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7a5822f3-b2ea-42d7-8034-21a92e283112",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            740,
+            -120
+          ],
+          "parameters": {
+            "width": 404.04123613412946,
+            "height": 418.96364526464185,
+            "content": "# Try me out\n1. Clone [this Google worksheet](https://docs.google.com/spreadsheets/d/12dsbRpvtVFDdPmyZ7-39vuHuFpM1eMyfOqGGGdsnrtc/edit#gid=0) and update the 'Settings' node with its URL (plus change any other settings there you need to)\n2. Adjust the sequence of emails you want to send in the 'Email Sequence' node\n\nMake sure you set how many days after the previous email to wait before sending, and note that the emails are in HTML format."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Settings": {
+          "main": [
+            [
+              {
+                "node": "Email sequence",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Replying?": {
+          "main": [
+            [
+              {
+                "node": "Reply to message",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Send new message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "To email?": {
+          "main": [
+            [
+              {
+                "node": "Prepare first message params",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Every hour": {
+          "main": [
+            [
+              {
+                "node": "Don't email on weekends",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get emails": {
+          "main": [
+            [
+              {
+                "node": "To email?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email sequence": {
+          "main": [
+            [
+              {
+                "node": "Get previous message threads",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get emails",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Compose message": {
+          "main": [
+            [
+              {
+                "node": "Replying?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Decode messages": {
+          "main": [
+            [
+              {
+                "node": "Classify threads",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Classify threads": {
+          "main": [
+            [
+              {
+                "node": "Next message due?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Next message due?": {
+          "main": [
+            [
+              {
+                "node": "Prepare reply params",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get thread details": {
+          "main": [
+            [
+              {
+                "node": "Decode messages",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare reply params": {
+          "main": [
+            [
+              {
+                "node": "Decode placeholder values",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set message template": {
+          "main": [
+            [
+              {
+                "node": "Fill message placeholders",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Don't email on weekends": {
+          "main": [
+            [
+              {
+                "node": "Settings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Set message template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Decode placeholder values": {
+          "main": [
+            [
+              {
+                "node": "Call message send sub-workflow",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fill message placeholders": {
+          "main": [
+            [
+              {
+                "node": "Compose message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Package placeholder values": {
+          "main": [
+            [
+              {
+                "node": "Call message send sub-workflow1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get previous message threads": {
+          "main": [
+            [
+              {
+                "node": "Get thread details",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare first message params": {
+          "main": [
+            [
+              {
+                "node": "Package placeholder values",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call message send sub-workflow1": {
+          "main": [
+            [
+              {
+                "node": "Update last contacted time",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 32,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 6
+        },
+        "n8n-nodes-base.code": {
+          "count": 5
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 4
+        },
+        "n8n-nodes-base.filter": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "David Roberts",
+      "username": "davidn8n",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/4cda9c7c1c24fdb61896cac588296d1dad03655a439ab71ef34f4c62c0ba8524?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 750,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/table_c0eaab8e13.png"
+      }
+    ]
+  }
+}

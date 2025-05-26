@@ -1,0 +1,82 @@
+URL: https://docs.n8n.io/learning-path/
+Scraped_At: 2025-05-20T19:09:22.399843
+
+Learning path
+This guide outlines a series of tutorials and resources designed to get you started with n8n.
+It's not necessary to complete all items listed to start using n8n. Use this as a reference to navigate to the most relevant parts of the documentation and other resources according to your needs.
+Join the community
+#
+n8n has an active community where you can get and offer help. Connect, share, and learn with other n8n users:
+Ask questions
+and
+make feature requests
+in the Community Forum.
+Report bugs
+and
+contribute
+on GitHub.
+Set up your n8n
+#
+If you don't have an account yet, sign up to a
+free trial on n8n Cloud
+or install n8n's community edition with
+Docker
+(recommended) or
+npm
+. See
+Choose your n8n
+for more details.
+Try it out
+#
+Start with the quickstart guides to help you get up and running with building basic workflows.
+A very quick quickstart
+A longer introduction
+Build an AI workflow in n8n
+Structured Courses
+#
+n8n offers two sets of courses.
+Video courses
+#
+Learn key concepts and n8n features, while building examples as you go.
+The
+Beginner
+course covers the basics of n8n.
+The
+Advanced
+course covers more complex workflows, more technical nodes, and enterprise features
+Text courses
+#
+Build more complex workflows while learning key concepts along the way. Earn a badge and an avatar in your community profile.
+Level 1: Beginner Course
+Level 2: Intermediate Course
+Self-hosting n8n
+#
+Explore various
+self-hosting options in n8n
+. If you’re not sure where to start, these are two popular options:
+Hosting n8n on DigitalOcean
+Hosting n8n on Amazon Web Services
+Build a node
+#
+If you can't find a node for a specific app or a service, you can build a node yourself and share with the community. See what others have built on
+npm website
+.
+Build a declarative-style node
+Learn how to build your own n8n nodes (Youtube Video)
+Stay updated
+#
+Follow new features and bug fixes in the
+Release Notes
+Follow n8n on socials:
+Twitter/X
+,
+Discord
+,
+LinkedIn
+,
+YouTube
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

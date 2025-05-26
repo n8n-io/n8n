@@ -1,0 +1,213 @@
+{
+  "workflow": {
+    "id": 462,
+    "name": "Post a message to a channel in RocketChat",
+    "views": 1376,
+    "recentViews": 0,
+    "totalViews": 1376,
+    "createdAt": "2020-07-09T10:07:39.765Z",
+    "description": "![workflow-screenshot](fileId:69)",
+    "workflow": {
+      "id": "90",
+      "name": "Post a message to a channel in RocketChat",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Rocketchat",
+          "type": "n8n-nodes-base.rocketchat",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "text": "Hello everyone",
+            "channel": "#general",
+            "options": {},
+            "attachments": []
+          },
+          "credentials": {
+            "rocketchatApi": "Rocket"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Rocketchat",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.rocketchat": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 67,
+        "icon": "file:rocketchat.svg",
+        "name": "n8n-nodes-base.rocketchat",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rocketchat/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/rocketchat/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "RocketChat"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjIxMzkiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIiB2aWV3Qm94PSIwIDAgMjU2IDIxOSI+PHBhdGggZmlsbD0iI0MxMjcyRCIgZD0iTTI1NS45NSAxMDkuMzA3YzAtMTIuODUzLTMuODQ0LTI1LjE3My0xMS40My0zNi42My02LjgxLTEwLjI4My0xNi4zNTEtMTkuMzg1LTI4LjM1NS0yNy4wNTctMjMuMTgtMTQuODA2LTUzLjY0Ny0yMi45NjMtODUuNzgyLTIyLjk2My0xMC43MzQgMC0yMS4zMTUuOTA3LTMxLjU3NyAyLjcwNS02LjM2Ni01Ljk2LTEzLjgyLTExLjMyMi0yMS43MDctMTUuNTZDMzQuOTY0LTEwLjYyLjAyMiA5LjMyMi4wMjIgOS4zMjJzMzIuNDg3IDI2LjY4OCAyNy4yMDQgNTAuMDhDMTIuNjkzIDczLjgyMSA0LjgxNCA5MS4yMDcgNC44MTQgMTA5LjMwN2wuMDAzLjE3My0uMDAzLjE3NGMwIDE4LjEgNy44NzYgMzUuNDg2IDIyLjQxMiA0OS45MDJDMzIuNTA5IDE4Mi45NS4wMjIgMjA5LjYzOS4wMjIgMjA5LjYzOXMzNC45NDIgMTkuOTM5IDc3LjA3Ny0uNDhjNy44ODYtNC4yMzggMTUuMzM4LTkuNjAzIDIxLjcwNy0xNS41NiAxMC4yNjQgMS43OTYgMjAuODQzIDIuNzAyIDMxLjU3NyAyLjcwMiAzMi4xMzcgMCA2Mi42MDEtOC4xNTEgODUuNzgyLTIyLjk1OCAxMi4wMDQtNy42NzEgMjEuNTQ1LTE2Ljc3IDI4LjM1Ni0yNy4wNTggNy41ODUtMTEuNDU1IDExLjQzLTIzLjc4MSAxMS40My0zNi42MjggMC0uMDYtLjAwMy0uMTE1LS4wMDMtLjE3NHoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTMwLjM4MyA0MC44MjhjNTkuNTA1IDAgMTA3Ljc0NiAzMC44MTQgMTA3Ljc0NiA2OC44MjQgMCAzOC4wMDctNDguMjQxIDY4LjgyMy0xMDcuNzQ2IDY4LjgyMy0xMy4yNSAwLTI1Ljk0LTEuNTMyLTM3LjY2Mi00LjMyNS0xMS45MTUgMTQuMzMyLTM4LjEyNSAzNC4yNi02My41ODcgMjcuODIgOC4yODItOC44OTUgMjAuNTUyLTIzLjkyNiAxNy45MjYtNDguNjg2LTE1LjI2Mi0xMS44NzMtMjQuNDIyLTI3LjA3LTI0LjQyMi00My42MzItLjAwMy0zOC4wMTMgNDguMjM4LTY4LjgyNCAxMDcuNzQ1LTY4LjgyNCIvPjxwYXRoIGZpbGw9IiNDMTI3MkQiIGQ9Ik0xMzAuMzgzIDEyNi4xOGM3LjkwNiAwIDE0LjMxNC02LjQwOCAxNC4zMTQtMTQuMzE0cy02LjQwOC0xNC4zMTMtMTQuMzE0LTE0LjMxMy0xNC4zMTMgNi40MDgtMTQuMzEzIDE0LjMxMyA2LjQwOCAxNC4zMTQgMTQuMzEzIDE0LjMxNG00OS43NjQgMGM3LjkwNSAwIDE0LjMxNC02LjQwOCAxNC4zMTQtMTQuMzE0cy02LjQwOS0xNC4zMTMtMTQuMzE0LTE0LjMxMy0xNC4zMTMgNi40MDgtMTQuMzEzIDE0LjMxMyA2LjQwOCAxNC4zMTQgMTQuMzEzIDE0LjMxNG0tOTkuNTMtLjAwM2M3LjkwNCAwIDE0LjMxMS02LjQwNyAxNC4zMTEtMTQuMzFzLTYuNDA3LTE0LjMxMi0xNC4zMS0xNC4zMTJjLTcuOTA1IDAtMTQuMzEyIDYuNDA4LTE0LjMxMiAxNC4zMTEgMCA3LjkwNCA2LjQwNyAxNC4zMTEgMTQuMzExIDE0LjMxMSIvPjxwYXRoIGZpbGw9IiNDQ0MiIGQ9Ik0xMzAuMzgzIDE2OS40MmMtMTMuMjUgMC0yNS45NC0xLjMzLTM3LjY2Mi0zLjc1LTEwLjUyIDEwLjk2OS0zMi4xODggMjUuNzE0LTU0LjY0MyAyNS4xNzItMi45NTkgNC40ODQtNi4xNzUgOC4xNS04Ljk0NCAxMS4xMjYgMjUuNDYyIDYuNDQgNTEuNjcyLTEzLjQ4NiA2My41ODctMjcuODIgMTEuNzIzIDIuNzk1IDI0LjQxNCA0LjMyNSAzNy42NjIgNC4zMjUgNTkuMDI3IDAgMTA2Ljk2Mi0zMC4zMjYgMTA3LjcyNi02Ny45MTUtLjc2NCAzMi41ODItNDguNjk5IDU4Ljg2MS0xMDcuNzI2IDU4Ljg2MXoiLz48L3N2Zz4="
+        },
+        "displayName": "RocketChat",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 69,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/4730490bb5f34dfa957cc05af612ccdc.png"
+      }
+    ]
+  }
+}

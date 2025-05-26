@@ -1,0 +1,283 @@
+{
+  "workflow": {
+    "id": 1115,
+    "name": "Manage changes using the Git node",
+    "views": 877,
+    "recentViews": 0,
+    "totalViews": 877,
+    "createdAt": "2021-06-08T08:59:03.825Z",
+    "description": "This workflow allows you to add, commit, and push changes to a git repository.\n\n![workflow-screenshot](fileId:508)\n\n**Git node:** This node will add the `README.md` file to the staging area. If you want to add a different file, enter the path of that file instead.\n\n**Git1 node:** This node will commit all the changes that were added to the staging area by the previous node.\n\n**Git2 node:** This node will return the commit logs of your repository.\n\n**Git3 node:** This node will push the changes to a cloud repository.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            230,
+            320
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Git",
+          "type": "n8n-nodes-base.git",
+          "position": [
+            430,
+            320
+          ],
+          "parameters": {
+            "operation": "add",
+            "pathsToAdd": "README.md"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Git1",
+          "type": "n8n-nodes-base.git",
+          "position": [
+            630,
+            320
+          ],
+          "parameters": {
+            "message": "✨ First commit from n8n",
+            "options": {},
+            "operation": "commit",
+            "repositoryPath": "={{$node[\"Git\"].parameter[\"repositoryPath\"]}}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Git2",
+          "type": "n8n-nodes-base.git",
+          "position": [
+            830,
+            320
+          ],
+          "parameters": {
+            "options": {},
+            "repositoryPath": "={{$node[\"Git\"].parameter[\"repositoryPath\"]}}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Git3",
+          "type": "n8n-nodes-base.git",
+          "position": [
+            1030,
+            320
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "push",
+            "repositoryPath": "={{$node[\"Git\"].parameter[\"repositoryPath\"]}}"
+          },
+          "executeOnce": false,
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Git": {
+          "main": [
+            [
+              {
+                "node": "Git1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Git1": {
+          "main": [
+            [
+              {
+                "node": "Git2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Git2": {
+          "main": [
+            [
+              {
+                "node": "Git3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Git",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.git": {
+          "count": 4
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 492,
+        "icon": "file:git.svg",
+        "name": "n8n-nodes-base.git",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.git/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/git/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": [
+              "Helpers"
+            ]
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Git"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NyIgaGVpZ2h0PSI5NyI+PHBhdGggZmlsbD0iI0YwNTEzMyIgZD0iTTkyLjcxIDQ0LjQwOCA1Mi41OTEgNC4yOTFhNS45MiA1LjkyIDAgMCAwLTguMzY5IDBsLTguMzMgOC4zMzJMNDYuNDU5IDIzLjE5YTcuMDIgNy4wMiAwIDAgMSA3LjIyOSAxLjY4NSA3LjAzIDcuMDMgMCAwIDEgMS42NyA3LjI3NWwxMC4xODYgMTAuMTg1YTcuMDMgNy4wMyAwIDAgMSA3LjI3NSAxLjY3MSA3LjA0MyA3LjA0MyAwIDAgMS05Ljk2MSA5Ljk1OCA3LjA0IDcuMDQgMCAwIDEtMS41MzEtNy42NThsLTkuNS05LjQ5OXYyNC45OTdhNy4wNDIgNy4wNDIgMCAxIDEtOC4wOTYgMTEuMjkxIDcuMDQyIDcuMDQyIDAgMCAxIDIuMzA3LTExLjQ5NnYtMjUuMjNhNy4wNCA3LjA0IDAgMCAxLTMuODIzLTkuMjM1TDMxLjc5OCAxNi43MTUgNC4yODggNDQuMjIyYTUuOTIgNS45MiAwIDAgMCAwIDguMzcxbDQwLjEyMSA0MC4xMThhNS45MiA1LjkyIDAgMCAwIDguMzY5IDBMOTIuNzEgNTIuNzc5YTUuOTIgNS45MiAwIDAgMCAwLTguMzcxIi8+PC9zdmc+"
+        },
+        "displayName": "Git",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 508,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/5d393446880b4914ae438e131529cf69.png"
+      }
+    ]
+  }
+}

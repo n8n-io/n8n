@@ -1,0 +1,58 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.hubspottrigger/
+Scraped_At: 2025-05-20T19:06:52.432305
+
+HubSpot Trigger node
+#
+HubSpot
+provides tools for social media marketing, content management, web analytics, landing pages, customer support, and search engine optimization.
+Webhooks
+If you activate a second trigger, the previous trigger stops working. This is because the trigger registers a new webhook with HubSpot when activated. HubSpot only allows one webhook at a time.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+HubSpot Trigger integrations
+page.
+Events
+#
+Company
+Created
+Deleted
+Property changed
+Contact
+Created
+Deleted
+Privacy deleted
+Property changed
+Conversation
+Created
+Deleted
+New message
+Privacy deletion
+Property changed
+Deal
+Created
+Deleted
+Property changed
+Ticket
+Created
+Deleted
+Property changed
+Related resources
+#
+n8n provides an app node for HubSpot. You can find the node docs
+here
+.
+View
+example workflows and related content
+on n8n's website.
+Refer to
+HubSpot's documentation
+for details about their API.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,947 @@
+{
+  "workflow": {
+    "id": 2963,
+    "name": "Automate WooCommerce SEO with Yoast & AI-Powered Meta Tag Generation for FREE",
+    "views": 3473,
+    "recentViews": 8,
+    "totalViews": 3473,
+    "createdAt": "2025-02-21T15:28:26.052Z",
+    "description": "This workflow is designed to automate the generation and updating of SEO meta titles and descriptions for WooCommerce products using n8n. It leverages Google Sheets for data input, a FREE language model (Gemini 2.0 Flash Exp. via OpenRouter) for generating SEO-optimized meta tags, and WooCommerce for updating product details.\n\n#### How It Works:\n1. **Trigger**: The workflow can be triggered manually or on a schedule. The manual trigger allows for testing, while the schedule trigger can be set to run at regular intervals (e.g., every few minutes) to process new products.\n   \n2. **Data Retrieval**: \n   - The workflow starts by retrieving product IDs from a Google Sheets document. It looks for products that do not yet have meta titles or descriptions.\n   - Using the retrieved product ID, the workflow fetches the corresponding product details from WooCommerce, including the product name, description, short description, and categories.\n\n3. **Meta Tag Generation**:\n   - The product details are passed to a language model (Gemini 2.0 Flash Exp) via OpenRouter. The model generates SEO-optimized meta titles and descriptions based on the provided content.\n   - The generated meta tags are structured and validated to ensure they meet SEO best practices, such as character limits and keyword inclusion.\n\n4. **Update WooCommerce**:\n   - The generated meta title and description are then updated in the WooCommerce product metadata using the Yoast SEO fields.\n\n5. **Update Google Sheets**:\n   - Finally, the workflow updates the Google Sheets document with the newly generated meta tags, along with the product URL, title, and the timestamp of the update.\n\n#### Set Up Steps:\n1. **Google Sheets Setup**:\n   - Create a copy of the provided Google Sheets template and insert WooCommerce product IDs in column \"B\".\n   - Ensure the Google Sheets document has columns for `METATITLE`, `METADESCRIPTION`, `URL`, `TITLE POST`, and `DATA` (timestamp).\n\n2. **n8n Workflow Configuration**:\n   - **Google Sheets Node**: Configure the \"Get product ID\" node to connect to your Google Sheets document. Use OAuth2 for authentication.\n   - **WooCommerce Node**: Set up the WooCommerce nodes to connect to your WooCommerce store using the WooCommerce API credentials.\n   - **OpenRouter Node**: Configure the \"Gemini 2.0 Flash Exp\" node with your OpenRouter API credentials to access the language model.\n   - **Structured Output Parser**: Ensure the output parser is set to handle the structured data format for meta titles and descriptions.\n\n3. **Workflow Execution**:\n   - Trigger the workflow manually to test the process or set up a schedule trigger to automate the workflow at regular intervals.\n   - Monitor the workflow execution to ensure that meta tags are generated and updated correctly in both WooCommerce and Google Sheets.\n\n4. **Validation**:\n   - After the workflow runs, verify that the meta titles and descriptions in WooCommerce are correctly updated and that the Google Sheets document reflects the changes.\n\nThis workflow streamlines the process of optimizing WooCommerce product pages for SEO, saving time and ensuring consistency in meta tag generation.",
+    "workflow": {
+      "id": "JCp6tMYrzFDSOQ1C",
+      "meta": {
+        "instanceId": "a4bfc93e975ca233ac45ed7c9227d84cf5a2329310525917adaf3312e10d5462",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "WooCommerce SEO Yoast Meta Tag Generation",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "02c4abf8-64f5-45e5-934f-0f1db4484c78",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            120,
+            -480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d545f0e0-76dd-490b-85b6-7a83b65eb8f6",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            920,
+            -280
+          ],
+          "parameters": {
+            "schemaType": "manual",
+            "inputSchema": "{\n\t\"type\": \"object\",\n\t\"properties\": {\n\t\t\"metatitle\": {\n\t\t\t\"type\": \"string\"\n\t\t},\n\t\t\"metadescription\": {\n\t\t\t\"type\": \"string\"\n\t\t}\n\t}\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a9873f0e-8325-4434-9219-45c711a7afad",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            120,
+            -660
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "minutes"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "9a232d7e-97e7-4e47-85ab-5069108d53ab",
+          "name": "Get product ID",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            320,
+            -480
+          ],
+          "parameters": {
+            "options": {
+              "returnFirstMatch": true
+            },
+            "filtersUI": {
+              "values": [
+                {
+                  "lookupColumn": "METATITLE"
+                }
+              ]
+            },
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17eYoKhtUupkye9Bmv13BjfP2jyymBUW4UYQGWU6V2cs/edit#gid=0",
+              "cachedResultName": "Foglio1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "17eYoKhtUupkye9Bmv13BjfP2jyymBUW4UYQGWU6V2cs",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17eYoKhtUupkye9Bmv13BjfP2jyymBUW4UYQGWU6V2cs/edit?usp=drivesdk",
+              "cachedResultName": "Metatitle and Metadescription WooCommerce"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "JYR6a64Qecd6t8Hb",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "b4324a6a-7c53-460e-9966-37a8df4d0ae9",
+          "name": "Get product",
+          "type": "n8n-nodes-base.wooCommerce",
+          "position": [
+            520,
+            -480
+          ],
+          "parameters": {
+            "operation": "get",
+            "productId": "={{ $json['ID POST'] }}"
+          },
+          "credentials": {
+            "wooCommerceApi": {
+              "id": "vYYrjB5kgHQ0XByZ",
+              "name": "WooCommerce (wp.test.7hype.com)"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "28a911b7-0d74-4686-a349-f727b0ee9641",
+          "name": "Generate metatitle e metadescription",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            740,
+            -480
+          ],
+          "parameters": {
+            "text": "=Create metatitle and metadescription in the language of the following product:\n- Title: {{ $json.name }}\n- Description: {{ $json.description }}\n- Short description: {{ $json.short_description }}\n- Product category: {{ (JSON.stringify($json.categories)) }},",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are a SEO expert specialized in creating optimized meta tags. Your task is to analyze the provided content and generate:\n\n1. A meta title of maximum 60 characters that:\n   - Includes the main keyword in a strategic position\n   - Is engaging and encourages clicks\n   - Accurately reflects the page content\n   - Uses clear and direct language\n   - Avoids keyword stuffing\n\n2. A meta description of maximum 160 characters that:\n   - Provides an engaging summary of the content\n   - Includes an appropriate call-to-action\n   - Contains the main keyword and relevant variations\n   - Is grammatically correct and flows well\n   - Maintains consistency with the meta title\n\nANALYSIS PROCESS:\n1. Carefully read the provided content\n2. Identify:\n   - Main topic\n   - Primary and related keywords\n   - Search intent\n   - Unique selling proposition\n   - Target audience\n\n3. Formulate meta tags that:\n   - Maximize CTR\n   - Respect character limits\n   - Are SEO optimized\n   - Reflect the content\n   - Don't insert placeholder\n\nREQUIRED OUTPUT:\nProvide meta tags in the required format\n\nVALIDATION CRITERIA:\n- Verify that the meta title doesn't exceed 60 characters\n- Verify that the meta description doesn't exceed 160 characters\n- Check that both contain the main keyword\n- Ensure the language is persuasive and action-oriented\n- Confirm that meta tags are consistent with the content\n\nIMPORTANT:\n- Don't use excessive punctuation\n- Avoid using special characters unless necessary\n- Don't duplicate information between title and description\n- Maintain a professional yet accessible tone\n- Ensure content is unique and not duplicated\n\nRemember: the goal is to create meta tags that effectively balance SEO optimization and user appeal, maximizing the potential click-through rate in search results."
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "0c995efc-e28e-467d-9b17-d22e792ff0d3",
+          "name": "Update product",
+          "type": "n8n-nodes-base.wooCommerce",
+          "position": [
+            1120,
+            -480
+          ],
+          "parameters": {
+            "imagesUi": {},
+            "resource": "product",
+            "operation": "update",
+            "productId": "={{ $('Get product ID').item.json['ID POST'] }}",
+            "metadataUi": {
+              "metadataValues": [
+                {
+                  "key": "_yoast_wpseo_title",
+                  "value": "={{ $json.output.metatitle }}"
+                },
+                {
+                  "key": "_yoast_wpseo_metadesc",
+                  "value": "={{ $json.output.metadescription }}"
+                }
+              ]
+            },
+            "dimensionsUi": {},
+            "updateFields": {}
+          },
+          "credentials": {
+            "wooCommerceApi": {
+              "id": "vYYrjB5kgHQ0XByZ",
+              "name": "WooCommerce (wp.test.7hype.com)"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e1850ecf-792a-4b78-addb-f433732a215c",
+          "name": "Update Sheet",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1320,
+            -480
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "URL": "={{ $('Get product').item.json.permalink }}",
+                "DATA": "={{ $now.format('dd/LL/yyyy HH:ii') }}",
+                "METATITLE": "={{ $('Generate metatitle e metadescription').item.json.output.metatitle }}",
+                "TITLE POST": "={{ $('Get product').item.json.name }}",
+                "row_number": "={{ $('Get product ID').item.json.row_number }}",
+                "METADESCRIPTION": "={{ $('Generate metatitle e metadescription').item.json.output.metadescription }}"
+              },
+              "schema": [
+                {
+                  "id": "DATA",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "DATA",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "ID POST",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "ID POST",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "TYPE POST",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "TYPE POST",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "URL",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "URL",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "TITLE POST",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "TITLE POST",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "METATITLE",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "METATITLE",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "METADESCRIPTION",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "METADESCRIPTION",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "row_number",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "row_number",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "row_number"
+              ],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "update",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1-eCFzNDrs1CiLJ4K5CSIaLeYt5Xf5PdubFNDvKWL-dA/edit#gid=0",
+              "cachedResultName": "Foglio1"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "17eYoKhtUupkye9Bmv13BjfP2jyymBUW4UYQGWU6V2cs",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17eYoKhtUupkye9Bmv13BjfP2jyymBUW4UYQGWU6V2cs/edit?usp=drivesdk",
+              "cachedResultName": "Metatitle and Metadescription WooCommerce"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "JYR6a64Qecd6t8Hb",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "a095dc5b-d234-40c5-9486-e34f24c1b1eb",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            280,
+            -560
+          ],
+          "parameters": {
+            "width": 180,
+            "height": 240,
+            "content": "Get the product ID that does not have metatitle or metadescription yet"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bac079f9-890e-49e4-811e-31cf0cfb5d1b",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            480,
+            -560
+          ],
+          "parameters": {
+            "width": 180,
+            "height": 240,
+            "content": "Get all the product details starting from the product ID"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c9c3d53a-a591-4ab4-8f81-c93edd3c5b9f",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            -560
+          ],
+          "parameters": {
+            "width": 380,
+            "height": 240,
+            "content": "Based on the content of the product generates the metatitle and metadescription. In this example we use Gemini Think 2.0 which is FREE with OpenRouter"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "521240e4-fc75-45cc-a965-95d7d17dc727",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1080,
+            -560
+          ],
+          "parameters": {
+            "width": 180,
+            "height": 240,
+            "content": "Insert the generated data into WooCommerce"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e8643582-c30a-4b16-8e15-15acc969a032",
+          "name": "Gemini 2.0 Flash Exp",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+          "position": [
+            740,
+            -280
+          ],
+          "parameters": {
+            "model": "google/gemini-2.0-flash-exp:free",
+            "options": {}
+          },
+          "credentials": {
+            "openRouterApi": {
+              "id": "pb06rfB4xmxzVe3Q",
+              "name": "OpenRouter"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "be9042a1-e2f8-4ed0-850d-269cf6fc55e8",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            280,
+            -820
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 980,
+            "content": "WooCommerce SEO Yoast Meta Tag Generation for FREE\n\nThis workflow streamlines the process of optimizing WooCommerce product pages for SEO, saving time and ensuring consistency in meta tag generation.\n\nCreate a copy of [this Sheet](https://docs.google.com/spreadsheets/d/17eYoKhtUupkye9Bmv13BjfP2jyymBUW4UYQGWU6V2cs/edit?usp=sharing) and insert only the WooCommerce product ID in the column \"B\"."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "aa239f84-430a-4e3f-a33f-3552834e635e",
+      "connections": {
+        "Get product": {
+          "main": [
+            [
+              {
+                "node": "Generate metatitle e metadescription",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Sheet": {
+          "main": [
+            []
+          ]
+        },
+        "Get product ID": {
+          "main": [
+            [
+              {
+                "node": "Get product",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update product": {
+          "main": [
+            [
+              {
+                "node": "Update Sheet",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gemini 2.0 Flash Exp": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Generate metatitle e metadescription",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Generate metatitle e metadescription",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Get product ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate metatitle e metadescription": {
+          "main": [
+            [
+              {
+                "node": "Update product",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.wooCommerce": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenRouter": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Davide",
+      "username": "n3witalia",
+      "bio": "Full-stack Web Developer based in Italy specialising in Marketing & AI-powered automations. For business enquiries, send me an email at info@n3w.it or add me on Linkedin.com/in/davideboizza",
+      "verified": true,
+      "links": [
+        "https://n3w.it"
+      ],
+      "avatar": "https://gravatar.com/avatar/d41b8a0aa81139243509c58870f5b4be292824a507ab57d10ed066d8628ed8da?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 298,
+        "icon": "file:wooCommerce.svg",
+        "name": "n8n-nodes-base.wooCommerce",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.woocommerce/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wooCommerce/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "WooCommerce"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIiB2aWV3Qm94PSIwIC01MCAyNTYgMjUzIj48cGF0aCBmaWxsPSIjN2Y1NGIzIiBkPSJNMjMuNzU5IDBoMjA4LjM4YzEzLjE4NyAwIDIzLjg2MyAxMC42NzUgMjMuODYzIDIzLjg2M3Y3OS41NDJjMCAxMy4xODctMTAuNjc1IDIzLjg2My0yMy44NjMgMjMuODYzaC03NC43MjdsMTAuMjU3IDI1LjExOC00NS4xMDktMjUuMTE4SDIzLjg2NWMtMTMuMTg3IDAtMjMuODYzLTEwLjY3NS0yMy44NjMtMjMuODYzVjIzLjg2M0MtLjEwMyAxMC43OCAxMC41NzMgMCAyMy43NiAweiIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0xNC41NzggMjEuNzVjMS40NTctMS45NzcgMy42NDItMy4wMTggNi41NTYtMy4yMjZxNy45Ni0uNjI1IDkuMDU0IDcuNDkzYzMuMjI2IDIxLjc1IDYuNzY0IDQwLjE2OSAxMC41MSA1NS4yNTlsMjIuNzktNDMuMzk1cTMuMTIzLTUuOTMyIDcuODA2LTYuMjQ0YzQuNTc5LS4zMTIgNy4zODggMi42MDEgOC41MzMgOC43NDEgMi42MDIgMTMuODQxIDUuOTMyIDI1LjYgOS44ODYgMzUuNTkgMi43MDYtMjYuNDMzIDcuMjg1LTQ1LjQ3NiAxMy43MzctNTcuMjM2IDEuNTYxLTIuOTEzIDMuODUtNC4zNyA2Ljg2OC00LjU3OSAyLjM5NC0uMjA4IDQuNTguNTIgNi41NTcgMi4wODIgMS45NzcgMS41NiAzLjAxOCAzLjUzOCAzLjIyNiA1LjkzMS4xMDQgMS44NzQtLjIwOSAzLjQzNC0xLjA0MSA0Ljk5NS00LjA1OSA3LjQ5My03LjM4OSAyMC4wODYtMTAuMDk0IDM3LjU2Ny0yLjYwMiAxNi45NjQtMy41MzggMzAuMTgtMi45MTQgMzkuNjVxLjMxMiAzLjkwMS0xLjI0OSA2Ljg2OGMtMS4yNDggMi4yOS0zLjEyMiAzLjUzOC01LjUxNSAzLjc0Ni0yLjcwNi4yMDgtNS41MTUtMS4wNC04LjIyMS0zLjg1LTkuNjc4LTkuODg2LTE3LjM4LTI0LjY2My0yMi45OTgtNDQuMzMyUTU3LjkyMiA4Ni43OSA1My4wODQgOTYuNzhjLTYuMTQgMTEuNzYtMTEuMzQzIDE3Ljc5Ni0xNS43MTQgMTguMTA4LTIuODEuMjA4LTUuMjAzLTIuMTg2LTcuMjg1LTcuMThxLTcuOTYtMjAuNDUtMTcuMTctNzguOTg2Yy0uNDE3LTIuNzA1LjIwNy01LjA5OSAxLjY2NC02Ljk3MnptMjIzLjY0IDE2LjMzOGMtMy43NDYtNi41NTYtOS4yNjItMTAuNTExLTE2LjY1LTEyLjA3MnEtMi45NjUtLjYyNC01LjYyLS42MjRjLTkuOTkgMC0xOC4xMDcgNS4yMDMtMjQuNDU1IDE1LjYxcS04LjExNiAxMy4yNjgtOC4xMTcgMjkuMzQ2IDAgMTIuMDE4IDQuOTk1IDIwLjYwNWMzLjc0NyA2LjU1NiA5LjI2MiAxMC41MSAxNi42NSAxMi4wNzJxMi45NjYuNjI0IDUuNjIuNjI0YzEwLjA5NCAwIDE4LjIxMS01LjIwMyAyNC40NTUtMTUuNjEgNS40MTEtOC45NSA4LjExNy0xOC43MzIgOC4xMTctMjkuNDUuMTA0LTguMTE3LTEuNjY1LTE0Ljg4MS00Ljk5NS0yMC41MDFtLTEzLjExMiAyOC44MjZjLTEuNDU3IDYuODY4LTQuMDU5IDExLjk2Ny03LjkwOSAxNS40MDItMy4wMTggMi43MDYtNS44MjcgMy44NS04LjQzIDMuMzMtMi40OTctLjUyLTQuNTc4LTIuNzA2LTYuMTM5LTYuNzY0LTEuMjQ5LTMuMjI2LTEuODczLTYuNDUyLTEuODczLTkuNDcgMC0yLjYwMi4yMDgtNS4yMDMuNzI4LTcuNTk3LjkzNy00LjI2NiAyLjcwNi04LjQyOSA1LjUxNi0xMi4zODQgMy40MzQtNS4wOTkgNy4wNzYtNy4xOCAxMC44MjMtNi40NTIgMi40OTcuNTIgNC41NzkgMi43MDYgNi4xNCA2Ljc2NSAxLjI0OCAzLjIyNiAxLjg3MyA2LjQ1MiAxLjg3MyA5LjQ3IDAgMi43MDUtLjIwOCA1LjMwNy0uNzI5IDcuN3ptLTUyLjAzMy0yOC44MjZjLTMuNzQ2LTYuNTU2LTkuMzY2LTEwLjUxMS0xNi42NS0xMi4wNzJxLTIuOTY1LS42MjQtNS42Mi0uNjI0Yy05Ljk5IDAtMTguMTA3IDUuMjAzLTI0LjQ1NSAxNS42MXEtOC4xMTYgMTMuMjY4LTguMTE3IDI5LjM0NiAwIDEyLjAxOCA0Ljk5NSAyMC42MDVjMy43NDcgNi41NTYgOS4yNjIgMTAuNTEgMTYuNjUgMTIuMDcycTIuOTY2LjYyNCA1LjYyLjYyNGMxMC4wOTQgMCAxOC4yMTEtNS4yMDMgMjQuNDU1LTE1LjYxIDUuNDExLTguOTUgOC4xMTctMTguNzMyIDguMTE3LTI5LjQ1IDAtOC4xMTctMS42NjUtMTQuODgxLTQuOTk1LTIwLjUwMW0tMTMuMjE2IDI4LjgyNmMtMS40NTcgNi44NjgtNC4wNTkgMTEuOTY3LTcuOTA5IDE1LjQwMi0zLjAxOCAyLjcwNi01LjgyOCAzLjg1LTguNDMgMy4zMy0yLjQ5Ny0uNTItNC41NzgtMi43MDYtNi4xMzktNi43NjQtMS4yNDktMy4yMjYtMS44NzMtNi40NTItMS44NzMtOS40NyAwLTIuNjAyLjIwOC01LjIwMy43MjgtNy41OTcuOTM3LTQuMjY2IDIuNzA2LTguNDI5IDUuNTE2LTEyLjM4NCAzLjQzNC01LjA5OSA3LjA3Ni03LjE4IDEwLjgyMy02LjQ1MiAyLjQ5Ny41MiA0LjU3OSAyLjcwNiA2LjE0IDYuNzY1IDEuMjQ4IDMuMjI2IDEuODczIDYuNDUyIDEuODczIDkuNDcuMTA0IDIuNzA1LS4yMDggNS4zMDctLjcyOSA3Ljd6Ii8+PC9zdmc+"
+        },
+        "displayName": "WooCommerce",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

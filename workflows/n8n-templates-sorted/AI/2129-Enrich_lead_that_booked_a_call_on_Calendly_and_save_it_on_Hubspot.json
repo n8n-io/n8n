@@ -1,0 +1,984 @@
+{
+  "workflow": {
+    "id": 2129,
+    "name": "Enrich lead that booked a call on Calendly and save it on Hubspot",
+    "views": 1595,
+    "recentViews": 0,
+    "totalViews": 1595,
+    "createdAt": "2024-02-23T14:18:58.663Z",
+    "description": "## Use Case\nWhen having a call with a new potential customer, one of the keys to getting the most out of the call is to find out as much information as you can about them before the call. Normally this involves a lot of manual research before every call. This workflow automates this tedious work for you.\n## What this workflow does\nThe workflow runs every time a new call is booked via your Calendly. It then filters out personal emails, before enriching the email. If the email is attached to a company it enriches the company and upserts it in your Hubspot CRM.\n## Setup\n1. Add `Clearbit`, `Hubspot`, and `Calendly` credentials.\n2. Click on `Test workflow`.\n3. Book a meeting on Calendly so the event starts the workflow.\nBe aware that you can adapt this workflow to work with your enrichment tool, CRM, and booking tool of choice.",
+    "workflow": {
+      "meta": {
+        "instanceId": "257476b1ef58bf3cb6a46e65fac7ee34a53a5e1a8492d5c6e4da5f87c9b82833",
+        "templateId": "2129"
+      },
+      "nodes": [
+        {
+          "id": "02cd5c16-de39-4e5c-acf8-fd3287662dfb",
+          "name": "if company does not exist on CRM",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2240,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "19bf6d06-76f4-479a-a9d8-2157414190b3",
+                  "operator": {
+                    "type": "object",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $input.item.json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c1325687-53cf-404f-9f9c-16696be0fcce",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {
+            "width": 257.64008049230523,
+            "height": 255.97404402400312,
+            "content": "## Setup\n1. Add `Clearbit`, `Hubspot`, and `Calendly` credentials\n2. Click on `Test workflow`\n3. Book meeting on Calendly so the event starts the workflow"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8c1f4364-1e5b-4d63-b11d-295a683ace73",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            660,
+            240
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 225.41119920533646,
+            "height": 260.45841271216835,
+            "content": "Replace this node with your booking tool of choice"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0fd0557e-56da-4b64-8f50-e931022d630b",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2340,
+            40
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 219.1588560076235,
+            "height": 260.45841271216835,
+            "content": "Map all data found about the company that you interested in"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9fe1367e-1d8b-4384-a920-8a6ebfcbb0db",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1040,
+            240
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 233.74765680228705,
+            "height": 260.45841271216835,
+            "content": "Make sure to map the email field from the data your booking tool provides"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "241835fc-1369-4c67-8de2-ffc86336369f",
+          "name": "Enrich company",
+          "type": "n8n-nodes-base.clearbit",
+          "notes": "Enrich company",
+          "position": [
+            1680,
+            140
+          ],
+          "parameters": {
+            "domain": "={{ $json.employment.domain }}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "clearbitApi": {
+              "id": "cKDImrinp9tg0ZHW",
+              "name": "Clearbit account"
+            }
+          },
+          "notesInFlow": false,
+          "typeVersion": 1
+        },
+        {
+          "id": "ba694bd1-0b7a-4caa-b31a-cbde1d77e626",
+          "name": "Create company",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            2520,
+            120
+          ],
+          "parameters": {
+            "name": "={{ $('Enrich company').item.json.name }}",
+            "resource": "company",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "twitterBio": "={{ $('Enrich company').item.json.twitter.bio }}",
+              "description": "={{ $('Enrich company').item.json.description }}",
+              "yearFounded": "={{ $('Enrich company').item.json.foundedYear }}",
+              "countryRegion": "={{ $('Enrich company').item.json.geo.country }}",
+              "twitterHandle": "={{ $('Enrich company').item.json.twitter.handle }}",
+              "totalMoneyRaised": "={{ $('Enrich company').item.json.metrics.raised }}",
+              "twitterFollowers": "={{ $('Enrich company').item.json.twitter.followers }}",
+              "companyDomainName": "={{ $('Enrich company').item.json.domain }}",
+              "numberOfEmployees": "={{ $('Enrich company').item.json.metrics.employees }}"
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "WEONgGVHLYPjIE6k",
+              "name": "HubSpot account"
+            }
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "b3ce17b4-ea85-4051-9231-67218d8586ea",
+          "name": "Upsert contact",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            2780,
+            120
+          ],
+          "parameters": {
+            "email": "={{ $('Enrich email').item.json.email }}",
+            "options": {
+              "resolveData": true
+            },
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "associatedCompanyId": "={{ $json.companyId }}"
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "WEONgGVHLYPjIE6k",
+              "name": "HubSpot account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "b7eb2b8d-4460-4aa3-b78d-fa5d575b0577",
+          "name": "Update company",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            2520,
+            420
+          ],
+          "parameters": {
+            "resource": "company",
+            "companyId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.companyId }}"
+            },
+            "operation": "update",
+            "updateFields": {
+              "twitterBio": "={{ $('Enrich company').item.json.twitter.bio }}",
+              "description": "={{ $('Enrich company').item.json.description }}",
+              "countryRegion": "={{ $('Enrich company').item.json.geo.country }}",
+              "twitterHandle": "={{ $('Enrich company').item.json.twitter.handle }}",
+              "totalMoneyRaised": "={{ $('Enrich company').item.json.metrics.raised }}",
+              "twitterFollowers": "={{ $('Enrich company').item.json.twitter.followers }}",
+              "numberOfEmployees": "={{ $('Enrich company').item.json.metrics.employees }}"
+            },
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "WEONgGVHLYPjIE6k",
+              "name": "HubSpot account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7215afb3-c9af-4b94-bb55-6cd95c075af5",
+          "name": "Contact not found, do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1380,
+            600
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "97bcd33e-333b-4e2f-a450-e415c774e1b1",
+          "name": "Enrich email",
+          "type": "n8n-nodes-base.clearbit",
+          "notes": "Enrich email",
+          "onError": "continueErrorOutput",
+          "position": [
+            1100,
+            340
+          ],
+          "parameters": {
+            "email": "={{ $json.payload.email }}",
+            "resource": "person",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "clearbitApi": {
+              "id": "cKDImrinp9tg0ZHW",
+              "name": "Clearbit account"
+            }
+          },
+          "notesInFlow": false,
+          "typeVersion": 1
+        },
+        {
+          "id": "1a759054-07ea-44eb-bfa5-d487630f84d0",
+          "name": "Filter out personal emails",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            920,
+            340
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "df6da257-7ec4-4433-9d29-2f12f6f11944",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@gmail.com"
+                },
+                {
+                  "id": "6a66410c-a2e8-494b-b972-751116e49418",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@yahoo.com"
+                },
+                {
+                  "id": "378fbe41-0e37-4756-93ca-bf81bfe8b258",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@outlook.com"
+                },
+                {
+                  "id": "fd05b842-3c11-4e1a-9226-0b0fd359ccab",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@hotmail.com"
+                },
+                {
+                  "id": "6040ea5d-3c15-4513-915b-47a55c24e8a7",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@icloud.com"
+                },
+                {
+                  "id": "ce67ed8b-34f9-4ba2-83d4-cc04cea090bb",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@mail.com"
+                },
+                {
+                  "id": "92c043ae-72de-41d8-887b-9e94755a9060",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@aol.com"
+                },
+                {
+                  "id": "377bcc07-e5a1-4e3a-a4da-4446f316a0b2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@zoho.com"
+                },
+                {
+                  "id": "c09c7057-2833-4085-8cb9-d2f28d853724",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.payload.email }}",
+                  "rightValue": "@gmx"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "17905d5e-bdc6-4419-b10e-5f390b92f269",
+          "name": "Search company",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            1980,
+            140
+          ],
+          "parameters": {
+            "limit": 1,
+            "domain": "={{ $json.domain }}",
+            "options": {},
+            "resource": "company",
+            "operation": "searchByDomain",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "WEONgGVHLYPjIE6k",
+              "name": "HubSpot account"
+            }
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "c3eff32b-a767-4165-9424-112cb85c8949",
+          "name": "Upsert lead",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            1680,
+            440
+          ],
+          "parameters": {
+            "email": "={{ $('Enrich email').item.json.email }}",
+            "options": {},
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "lastName": "={{ $('Enrich email').item.json.name.familyName }}",
+              "firstName": "={{ $('Enrich email').item.json.name.fullName }}"
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "WEONgGVHLYPjIE6k",
+              "name": "HubSpot account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "55aaa7fc-d138-499a-8246-57e978062a20",
+          "name": "If person has a company",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1380,
+            340
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1a7aad55-5f4c-4bbc-a098-90f00a29be85",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEquals"
+                  },
+                  "leftValue": "={{ $json.employment.domain }}",
+                  "rightValue": "={{ null }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "372c6118-5670-4afb-8e1d-df61c24acfd3",
+          "name": "Calendly Trigger",
+          "type": "n8n-nodes-base.calendlyTrigger",
+          "position": [
+            720,
+            340
+          ],
+          "webhookId": "9690577f-aa08-427e-9338-798c719361b1",
+          "parameters": {
+            "events": [
+              "invitee.created"
+            ]
+          },
+          "credentials": {
+            "calendlyApi": {
+              "id": "MJZuKpbZfBDXlvaH",
+              "name": "Calendly account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Enrich email": {
+          "main": [
+            [
+              {
+                "node": "If person has a company",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Contact not found, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create company": {
+          "main": [
+            [
+              {
+                "node": "Upsert contact",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Enrich company": {
+          "main": [
+            [
+              {
+                "node": "Search company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search company": {
+          "main": [
+            [
+              {
+                "node": "if company does not exist on CRM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calendly Trigger": {
+          "main": [
+            [
+              {
+                "node": "Filter out personal emails",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If person has a company": {
+          "main": [
+            [
+              {
+                "node": "Enrich company",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Upsert lead",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter out personal emails": {
+          "main": [
+            [
+              {
+                "node": "Enrich email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "if company does not exist on CRM": {
+          "main": [
+            [
+              {
+                "node": "Create company",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.hubspot": {
+          "count": 5
+        },
+        "n8n-nodes-base.clearbit": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.calendlyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Ricardo Espinoza",
+      "username": "n8nricardoe105",
+      "bio": "Software engineer at n8n.io",
+      "verified": true,
+      "links": [
+        "https://google.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/38ce96166b806b3aa86c8a9bea13b4e5b59c347750d6f8e18629028a74595eda?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 76,
+        "icon": "file:hubspot.svg",
+        "name": "n8n-nodes-base.hubspot",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hubspot/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/hubspot/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HubSpot"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjIuODgzIDY5Ljg4MyI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iMi40NDIiIHk9IjIuNDQyIi8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxwYXRoIGZpbGw9IiNmODc2MWYiIGZpbGwtcnVsZT0ibm9uemVybyIgc3Ryb2tlPSJub25lIiBkPSJNNTUuNTA0IDMwLjQwMWExNi4yNiAxNi4yNiAwIDAgMC01LjkwNC01Ljg2NGMtMS44NjUtMS4wODQtMy43OTQtMS43NzMtNS45NzItMi4wN3YtNy43OThhNS43MSA1LjcxIDAgMCAwIDMuNTI1LTUuMzU3IDUuODYgNS44NiAwIDAgMC01Ljg1OS01Ljg4OSA1LjkxIDUuOTEgMCAwIDAtNS45MDggNS44ODljMCAyLjM5MyAxLjI3IDQuNDM0IDMuNDUyIDUuMzU3djcuNzU0YTE3IDE3IDAgMCAwLTUuMTk1IDEuNjMxTDEyLjc2OSA4LjI0N2MuMTQ2LS41NTIuMjczLTEuMTIzLjI3My0xLjcyNEE2LjUyIDYuNTIgMCAwIDAgNi41MTkgMCA2LjUyIDYuNTIgMCAwIDAgMCA2LjUyNGE2LjUyMyA2LjUyMyAwIDAgMCA2LjUyNCA2LjUyNCA2LjQ3IDYuNDcgMCAwIDAgMy4zNS0uOTUybDEuMzY3IDEuMDM1IDE4LjcyNiAxMy41MDFjLS45OTEuOTA4LTEuOTE0IDEuOTQzLTIuNjUxIDMuMTA1LTEuNDk0IDIuMzY4LTIuNDA3IDQuOTcxLTIuNDA3IDcuODEzdi41ODZhMTYuNCAxNi40IDAgMCAwIDEuMDI1IDUuNjQ1QzI2LjUgNDUuMzI0IDI3LjMzIDQ2LjczIDI4LjM2MSA0OGwtNi4yMjEgNi4yMzVhNS4wMSA1LjAxIDAgMCAwLTUuMjk4IDEuMTYyYy0uOTQ3Ljk0Mi0xLjQ4IDIuMjI3LTEuNDc1IDMuNTY1cy41MjcgMi42MTIgMS40NzkgMy41NjQgMi4yMjcgMS40OCAzLjU2NSAxLjQ4YTUgNSAwIDAgMCAzLjU2NS0xLjQ4IDUuMDUgNS4wNSAwIDAgMCAxLjQ3NS0zLjU2NCA1IDUgMCAwIDAtLjIzNC0xLjUxNGw2LjQyNi02LjQyNmExNiAxNiAwIDAgMCAyLjg1NiAxLjU2MyAxNi43IDE2LjcgMCAwIDAgNi42ODUgMS40MDZoLjQzOWExNS43NiAxNS43NiAwIDAgMCA3LjYyNy0xLjkyOSAxNS43NyAxNS43NyAwIDAgMCA1Ljk3Ny01LjYzYzEuNDk5LTIuMzkzIDIuMzE5LTUuMDQ0IDIuMzE5LTcuOTU5di0uMTQ2YzAtMi44NjYtLjY2NC01LjUwOC0yLjA1MS03Ljkzem0tNy44NDcgMTMuNDg3Yy0xLjc0MyAxLjkzOC0zLjc1IDMuMTM1LTYuMDE2IDMuMTM1aC0uNDNjLTEuMjk0IDAtMi41NjQtLjM1Ni0zLjc5OS0xLjAxMWE4LjggOC44IDAgMCAxLTMuMzMtMy4wMzJjLS44OTgtMS4yNy0xLjM4Ny0yLjY1Ni0xLjM4Ny00LjEyNnYtLjQzOWMwLTEuNDQ1LjI3OC0yLjgxNy45NzctNC4xMTEuNzQ3LTEuNDY1IDEuNzU4LTIuNTE1IDMuMTAxLTMuMzg5YTcuNiA3LjYgMCAwIDEgNC4yOTctMS4yOTRoLjE0N2MxLjQxNiAwIDIuNzY5LjI3OCA0LjAzOC45MjhhOC41NiA4LjU2IDAgMCAxIDMuMTc0IDIuODg2IDkuMiA5LjIgMCAwIDEgMS40MjEgNC4wNTNsLjAzNC45MTNjMCAxLjk4Ny0uNzYyIDMuODI4LTIuMjggNS40OTh6Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "HubSpot",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 218,
+        "icon": "file:clearbit.svg",
+        "name": "n8n-nodes-base.clearbit",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clearbit/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clearbit/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Clearbit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MiIgaGVpZ2h0PSI3MiI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTAlIiB4Mj0iMTAwJSIgeTE9IjAlIiB5Mj0iMTAwJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI0RFRjJGRSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0RCRjFGRSIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMCUiIHgyPSI1MCUiIHkxPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1N0JDRkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1MUI1RkQiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjM3LjUlIiB4Mj0iNjIuNSUiIHkxPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxQ0E3RkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxNDhDRkMiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik03MiAzNnYxNi43N2wtLjAwNC44NjhjLS4wNiA2LjAzNS0uNzUgOC4zNTMtMiAxMC42ODhhMTMuNjMgMTMuNjMgMCAwIDEtNS42NyA1LjY3bC0uMzI2LjE3MUM2MS42NTggNzEuMzY0IDU5LjE2IDcyIDUyLjc3IDcySDM2VjM2eiIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik02NC4zMjYgMi4wMDNhMTMuNjMgMTMuNjMgMCAwIDEgNS42NyA1LjY3bC4xNzEuMzI3QzcxLjM2NCAxMC4zNDIgNzIgMTIuODQgNzIgMTkuMjNWMzZIMzZWMGgxNi43N2M2LjY4NyAwIDkuMTEyLjY5NiAxMS41NTYgMi4wMDMiLz48cGF0aCBmaWxsPSJ1cmwoI2MpIiBkPSJNMzYgMHY3MkgxOS4yM2wtLjg2OC0uMDA0Yy02LjAzNS0uMDYtOC4zNTMtLjc1LTEwLjY4OC0yYTEzLjYzIDEzLjYzIDAgMCAxLTUuNjctNS42N0wxLjgzMiA2NEMuNjM2IDYxLjY1OCAwIDU5LjE2IDAgNTIuNzdWMTkuMjNjMC02LjY4Ny42OTYtOS4xMTIgMi4wMDMtMTEuNTU2YTEzLjYzIDEzLjYzIDAgMCAxIDUuNjctNS42N0w4IDEuODMyQzEwLjM0Mi42MzYgMTIuODQgMCAxOS4yMyAweiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Clearbit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 302,
+        "icon": "file:calendly.svg",
+        "name": "n8n-nodes-base.calendlyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.calendlytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/calendly/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Calendly Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjUuOCA1MzUuNzMiPjxkZWZzPjxzdHlsZT4uY2xzLTJ7ZmlsbDojMDA2YmZmfS5jbHMtM3tmaWxsOiMwYWU5ZWZ9PC9zdHlsZT48L2RlZnM+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxvZ29fYXNzZXRzIiBkYXRhLW5hbWU9IkxvZ28gYXNzZXRzIj48ZyBpZD0iQnJhbmRfbWFyayIgZGF0YS1uYW1lPSJCcmFuZCBtYXJrIj48cGF0aCBkPSJtNDQzLjc0IDMzNy42Mi0yNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAxLTEyMC44MiA2OS43NWgtNTQuMzNhMTM5LjUyIDEzOS41MiAwIDAgMS0xMjAuODItNjkuNzVsLTI3LjE2LTQ3LjA1YTEzOS41MiAxMzkuNTIgMCAwIDEgMC0xMzkuNTFsMjcuMTYtNDcuMDVBMTM5LjUzIDEzOS41MyAwIDAgMSAyNDEuNDMgODEuM2g1NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAxIDEyMC44MiA2OS43NmwyNy4xNiA0Ny4wNWExMzkgMTM5IDAgMCAxIDguNTUgMTcuNTVjMCAuMTIuMDkuMjMuMTMuMzVhMTAyLjE1IDEwMi4xNSAwIDAgMCA0NC4zMy0xOC4yNGMwLS4xNC0uMDgtLjI4LS4xMy0uNDNhMjM3LjggMjM3LjggMCAwIDAtMzMuMjktNjcuNTggMjQwLjcgMjQwLjcgMCAwIDAtNTItNTMuNDggMjM5LjMgMjM5LjMgMCAwIDAtMzEyLjY4IDM2MC44IDIzOS40MyAyMzkuNDMgMCAwIDAgMzk4LTk4LjY5Yy4wNS0uMTUuMDktLjI5LjEzLS40M2ExMDIuMTUgMTAyLjE1IDAgMCAwLTQ0LjMzLTE4LjI0YzAgLjEyLS4wOS4yMy0uMTMuMzVhMTM5IDEzOSAwIDAgMS04LjU4IDE3LjU1IiBzdHlsZT0iZmlsbDpub25lIi8+PHBhdGggZD0iTTM2MC40IDM0Ny40Yy0xNyAxNS4wOS0zOC4yMSAzMy44Ny03Ni43OCAzMy44N2gtMjNjLTI3Ljg4IDAtNTMuMjMtMTAuMTItNzEuMzctMjguNDktMTcuNzItMTcuOTQtMjcuNDgtNDIuNS0yNy40OC02OS4xNnYtMzEuNTFjMC0yNi42NiA5Ljc2LTUxLjIyIDI3LjQ4LTY5LjE2IDE4LjE0LTE4LjM3IDQzLjQ5LTI4LjQ5IDcxLjM3LTI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYgMTguNzggNzYuNzggMzMuODcgMTcuNjUgMTUuNjUgMzIuOSAyOS4xNiA3My41MiAyOS4xNmExMTYgMTE2IDAgMCAwIDE4LjUtMS40OGMwLS4xMi0uMDgtLjIzLS4xMy0uMzVhMTM5IDEzOSAwIDAgMC04LjU1LTE3LjU1bC0yNy4xNi00Ny4wNUExMzkuNTMgMTM5LjUzIDAgMCAwIDI5NS43NiA4MS4zaC01NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAwLTEyMC44MiA2OS43NmwtMjcuMTYgNDcuMDVhMTM5LjUyIDEzOS41MiAwIDAgMCAwIDEzOS41MWwyNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44MiA2OS43NWg1NC4zM2ExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44Mi02OS43NWwyNy4xNi00Ny4wNWExMzkgMTM5IDAgMCAwIDguNTUtMTcuNTVjMC0uMTIuMDktLjIzLjEzLS4zNWExMTYgMTE2IDAgMCAwLTE4LjUtMS40OGMtNDAuNjIgMC01NS44NyAxMy41MS03My41MiAyOS4xNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTI4My42MiAxODNoLTIzYy00Mi40MiAwLTcwLjMgMzAuMy03MC4zIDY5LjA5djMxLjUxYzAgMzguNzkgMjcuODggNjkuMDkgNzAuMyA2OS4wOWgyM2M2MS44MiAwIDU3LTYzIDE1MC4zLTYzYTE0NCAxNDQgMCAwIDEgMjYuMzcgMi40MSAxMzkuNCAxMzkuNCAwIDAgMCAwLTQ4LjQ2IDE0My4zIDE0My4zIDAgMCAxLTI2LjM3IDIuNDJjLTkzLjMzLS4wMS04OC40OC02My4wNi0xNTAuMy02My4wNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTUxMy45MSAzMTUuMTNhMTMwLjIgMTMwLjIgMCAwIDAtNTMuNjItMjNjMCAuMTYtLjA1LjMyLS4wOC40N2ExMzguNSAxMzguNSAwIDAgMS03Ljc5IDI3LjE2QTEwMi4xNSAxMDIuMTUgMCAwIDEgNDk2Ljc1IDMzOGMwIC4xNC0uMDguMjgtLjEzLjQzQTIzNy44IDIzNy44IDAgMCAxIDQ2My4zMyA0MDZhMjQwLjcgMjQwLjcgMCAwIDEtNTIgNTMuNDhBMjM5LjMgMjM5LjMgMCAwIDEgOTguNjUgOTguNjVhMjM5LjQzIDIzOS40MyAwIDAgMSAzOTggOTguNjljLjA1LjE1LjA5LjI5LjEzLjQzQTEwMi4xNSAxMDIuMTUgMCAwIDEgNDUyLjQyIDIxNmExMzkuNCAxMzkuNCAwIDAgMSA3LjggMjcuMThjMCAuMTUgMCAuMy4wNy40NGExMjkuOTQgMTI5Ljk0IDAgMCAwIDUzLjYyLTIzYzE1LjI5LTExLjMxIDEyLjMzLTI0LjA5IDEwLTMxLjY1QzQ5MC4yMiA3OS41MiAzODguMzMgMCAyNjcuODYgMCAxMTkuOTMgMCAwIDExOS45MyAwIDI2Ny44NnMxMTkuOTMgMjY3Ljg3IDI2Ny44NiAyNjcuODdjMTIwLjQ3IDAgMjIyLjM2LTc5LjUyIDI1Ni0xODguOTQgMi4zOC03LjU2IDUuMzQtMjAuMzQtOS45NS0zMS42NiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PC9nPjwvZz48L2c+PC9zdmc+"
+        },
+        "displayName": "Calendly Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

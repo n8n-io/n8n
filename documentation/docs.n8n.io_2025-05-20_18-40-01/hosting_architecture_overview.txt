@@ -1,0 +1,16 @@
+URL: https://docs.n8n.io/hosting/architecture/overview/
+Scraped_At: 2025-05-20T18:43:20.682445
+
+Architecture
+#
+Understanding n8n's underlying architecture is helpful if you need to:
+Embed n8n
+Customize n8n's default databases
+This section is a work in progress. If you have questions, please try the
+forum
+and let n8n know which architecture documents would be useful for you.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

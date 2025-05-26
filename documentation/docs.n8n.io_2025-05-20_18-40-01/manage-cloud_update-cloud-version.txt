@@ -1,0 +1,43 @@
+URL: https://docs.n8n.io/manage-cloud/update-cloud-version/
+Scraped_At: 2025-05-20T19:09:39.962164
+
+Update your Cloud version
+#
+n8n recommends regularly updating your Cloud version. Check the
+Release notes
+to learn more about changes.
+Info
+Only instance owners can upgrade n8n Cloud versions. Contact your instance owner if you don't have permission to update n8n Cloud.
+Log in to the n8n Cloud dashboard
+On your dashboard, select
+Manage
+.
+Use the
+n8n version
+dropdown to select your preferred release version:
+Latest Stable: recommended for most users.
+Latest Beta: get the newest n8n. This may be unstable.
+Select
+Save Changes
+to restart your n8n instance and perform the update.
+In the confirmation modal, select
+Confirm
+.
+Best practices for updating
+#
+Update frequently: this avoids having to jump multiple versions at once, reducing the risk of a disruptive update. Try to update at least once a month.
+Check the
+Release notes
+for breaking changes.
+Use
+Environments
+to create a test version of your instance. Test the update there first.
+Automatic update
+#
+n8n automatically updates outdated Cloud instances.
+If you don't update you instance for 120 days, n8n emails you to warn you to update. After a further 30 days, n8n automatically updates your instance.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

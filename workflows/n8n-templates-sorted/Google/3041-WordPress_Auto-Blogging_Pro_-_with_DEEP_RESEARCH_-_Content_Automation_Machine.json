@@ -1,0 +1,3645 @@
+{
+  "workflow": {
+    "id": 3041,
+    "name": "WordPress Auto-Blogging Pro - with DEEP RESEARCH - Content Automation Machine",
+    "views": 2915,
+    "recentViews": 9,
+    "totalViews": 2915,
+    "createdAt": "2025-02-28T12:04:36.993Z",
+    "description": "The **best content automation template** in the market is now even better—with “**deep research” on time-sensitive topics**\\! Unlike most n8n content automation templates that are mainly for “demo purposes,” this advanced n8n workflow is for the real PROs. It conducts **in-depth research on the latest information about a topic**, then automatically creates and publishes **SEO-optimized blog posts** to your WordPress website. In addition, it generates **a unique image for each chapter and a featured image for the overall article**, and it collects internal website links—**seamlessly inserting links** throughout each chapter and the entire article. Furthermore, it **backs up all content and images** to a designated folder in your Google Drive.\n\nThis integrated approach not only creates high-quality, comprehensive content for readers but also enhances on-page SEO, improves navigation, and streamlines your content creation process—saving you time while ensuring your work is securely stored.\n\nThis is a complimentary variation of the n8n WordPress Auto-Blogging Pro for SEO topics. That one specializes in auto-blogging content about established topics that do not need up-to-date information while this one takes it further by incorporating online research into the workflow. Both make up the perfect combo to run your blog on autopilot\\!\n\n![WordPress_Auto_Blog_Automation_Deep_Research_v1_1.jpeg](fileId:972)\n![WordPress_Auto_Blog_Automation_Deep_Research_v1_2.jpeg](fileId:970)\n![WordPress_Auto_Blog_Automation_Deep_Research_v1_3.jpeg](fileId:971)\n\n---\n\n## How It Works\n\n1. **Trigger:** It activates upon adding a new row to a Google Sheet. Users can control many customizable parameters, such as key topic, number of subtopics, target audience, length, and style.  \n2. **Initial Research:** The workflow initiates preliminary research on the topic to gather insights for the content planning phase.  \n3. **Structure Planning:** Based on the initial research, it plans a detailed structure for the entire article and breaks the article into subtopics strongly tied to the main topic.  \n4. **In-Depth Research & Writing:** For each subtopic, it conducts further research to gather the most up-to-date, relevant information, then uses that research to write each chapter in depth.  \n5. **Image Generation:** It generates and adds images for each chapter, as well as a featured image for the article.  \n6. **Internal Linking:** The system gathers internal website links and strategically embeds them within each chapter and throughout the article, boosting SEO and enhancing user navigation.  \n7. **Final Assembly & Publishing:** All texts, images, and links are combined into one comprehensive article, which is then published directly to your WordPress website. You can also choose to post it as a draft for final review.  \n8. **Auto Backup to Drive:** Get peace of mind knowing all content (blog post and images) is automatically saved to Google Drive, organized in a folder named after the blog post title.\n\n---\n\n## Unique Features\n\n1. **Deep Research:** The workflow leverages advanced, real-time research to gather the latest information about a topic. It breaks down the key topic into subtopics and conducts in-depth research on each one, ensuring the most comprehensive and current knowledge.  \n2. **Full Automation:** Designed to be 100% automated, the workflow runs without manual intervention once imported and configured.  \n3. **Simple Activation:** It is easily triggered through the Google Sheets interface—simply add a new row to a Google Sheet.  \n4. **Customization Options:** Offers a wide array of options, including topic, category, target audience, word count, number of chapters, length of introduction and conclusion, and writing style. It also allows for the inclusion of calls-to-action (CTAs) and company/product introductions.  \n5. **Advanced Loop in Loop:** Clever looping is used to write each chapter and generate images, ensuring optimal results. “Wait” nodes are added where appropriate to avoid API call rate limits.  \n6. **Automatic Content Saving:** After the blog post is created, all content and images are automatically saved to Google Drive, preventing data loss. The folder is named after the blog post title.  \n7. **SEO-Optimized Content:** It is designed to create SEO-optimized content using seed keywords.  \n8. **Internal Link Limit:** The workflow limits the number of internal links to 20 by default.  \n9. **Error Catch:** “If” nodes are strategically used to ensure that the output from AI nodes strictly meets the JSON schema, ensuring a smooth flow of data without interruption.\n\nAnd many more big and small improvements.\n\n---\n\n## Requirements\n\nPlease make sure you have these requirements ready to ensure smooth deployment of this n8n workflow template:\n\n1. **OpenAI API** or equivalent for text and image generation  \n2. **PerplexityAI API** or equivalent for online research  \n3. A **WordPress** website (other website platforms will not work\\!)  \n4. Google Sheets for triggering the workflow, or a trigger of your choice  \n5. Google Drive and Google Docs for auto backup\n\n---\n\n## Set Up Steps\n\n1. **Install the Workflow Template:** Import the JSON files into your n8n instance. There are 2 files: one for the main workflow and one for the research tool (PerplexityAI).  \n2. **Connect the Workflow with Your Accounts:** Link your accounts for OpenAI API, PerplexityAI API, Google Drive, Google Sheets, Google Docs, and WordPress website.  \n3. **Configure the Google Sheet:** Ensure your Google Sheet is set up to trigger the workflow upon adding a new row and that the input data is correctly formatted.  \n4. **Customize the Inputs:** Adjust parameters like topic, target audience, and writing style to match your specific content needs. Optimize prompts for the best results.  \n5. **Test the Workflow:** Use low-cost AI models and image settings initially to ensure everything runs smoothly.  \n6. **Tailor Further as Needed:**  Modify workflow elements to perfectly align with your needs and content strategy.\n\n---\n\n## Tips for PROs\n\n1. **Image Generation:** The default AI model for image generation is OpenAI’s Dall-E. However, the outputs of this model are not impressive. Consider using FLUX.1 for better image quality.  \n2. **Research:** PerplexityAI is the tool of choice for research. The default model used in this workflow is “sonar” due to its fast speed and low cost. Feel free to experiment with its other models, including the “sonar-deep-research” model, which is dedicated to deep research.  \n3. **Triggering:** Triggering with a new row on Google Sheets is limited and unreliable. Consider setting an auto trigger with a daily schedule at a specific time. You can even put the whole workflow in a loop to process multiple rows one-by-one from Google Sheets.  \n4. **Human in the Loop:** It is possible to incorporate a human review process. For example, after the article is posted to WordPress as a draft, a human can review the draft. Only after approval will the post be published, and a final copy of the post will be saved to the shared Drive folder.",
+    "workflow": {
+      "id": "dm2trOGY525Nr10K",
+      "meta": {
+        "instanceId": "b3df22d2875c82e3ba1883c50049ed9cee0bcabf99d2b486961d2245a09e3964",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "WordPress Blog Automation Pro (Deep Research) v1",
+      "tags": [
+        {
+          "id": "ayyxr7TtiBwlGe4H",
+          "name": "AI",
+          "createdAt": "2024-12-30T19:11:18.302Z",
+          "updatedAt": "2024-12-30T19:11:18.302Z"
+        },
+        {
+          "id": "D6U0NdG2lu4KZaOd",
+          "name": "WordPress",
+          "createdAt": "2024-12-30T19:11:18.309Z",
+          "updatedAt": "2024-12-30T19:11:18.309Z"
+        },
+        {
+          "id": "MgXdx22JehBr08eN",
+          "name": "OpenAI",
+          "createdAt": "2024-12-30T19:11:18.385Z",
+          "updatedAt": "2024-12-30T19:11:18.385Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "7c5bd751-70e7-4b4e-b423-47bc6cfa4647",
+          "name": "Generate featured image",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            12360,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "f12f5551-6a09-4d13-99f4-dfe5fa393d27",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            12080,
+            2100
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "01481635-0073-451a-bf47-8a014b7c8123",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            8480,
+            2040
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b00d1b45-b7d9-499b-a1fb-74c0f4f307dd",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            10080,
+            2040
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "452bc2d2-ed63-483d-848b-6c81e398f044",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11480,
+            2040
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "38a0731c-cd2f-436c-9823-771a27bb4caa",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11300,
+            1720
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "07949d3f-02e7-478c-b59b-c39ca662238b",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11800,
+            2740
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "05193d67-6920-4e90-925c-320e26007d26",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            14560,
+            2240
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c480e5ef-1c56-47d4-8078-a368dbe2657e",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            15620,
+            2240
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2650c386-ec48-4a65-ae10-cbfa18ff1a99",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            16180,
+            2240
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5ed86991-3d74-495d-b5c5-e0de7e850d44",
+          "name": "Get post sitemap",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            11420,
+            1760
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "81feb398-5d59-4e12-8268-edbfcb93918c",
+          "name": "Get XML file",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            11640,
+            1760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "f7067e2b-636d-4734-96ac-14b54d04096a",
+          "name": "Split out links",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            11860,
+            1760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ce53391b-b0ed-4fbf-afff-0f416f61428b",
+          "name": "Generate chapter image",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            12680,
+            2900
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "6cfc7664-74a0-4d82-b482-f73154ff41f8",
+          "name": "Resize Image",
+          "type": "n8n-nodes-base.editImage",
+          "position": [
+            12940,
+            2800
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5a05ebf1-8b7f-464a-b741-bd06b669215e",
+          "name": "Upload chapter images",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            13240,
+            2860
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "4f890158-90ac-4eda-aea5-9f27ea3470b7",
+          "name": "Merge chapters title and text",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            14680,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "26518914-f8f7-40ae-b3b9-594644d8310c",
+          "name": "Markdown to HTML",
+          "type": "n8n-nodes-base.markdown",
+          "position": [
+            15340,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "034b5e03-57fa-4ee9-85f4-398550f7da3f",
+          "name": "Post on Wordpress",
+          "type": "n8n-nodes-base.wordpress",
+          "position": [
+            15940,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "f72e144a-9fa0-42ff-945b-1d27a105a986",
+          "name": "Resize featured image",
+          "type": "n8n-nodes-base.editImage",
+          "position": [
+            12760,
+            3240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "7f840b6b-c9bd-4471-8ddf-7c9d8cf89f18",
+          "name": "Upload featured image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            16500,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "09aaf233-e230-44be-a206-0328730d27df",
+          "name": "Set featured image for post",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            16920,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "c5c217dd-5aa0-4b4b-9d26-dbf7096386a4",
+          "name": "Update image meta data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            13440,
+            2860
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "9ba530fc-20ff-4d20-afee-094322782a5b",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            12360,
+            2780
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "baca5116-9ab4-4858-933a-e27f405769f1",
+          "name": "Update featured image meta data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            16720,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "bd34a2cf-6aff-43b1-b6a4-beff7e21ed46",
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            18540,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2a6db446-eaaa-4310-a688-c4f1279f158d",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            12080,
+            3220
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3a2b4437-efd1-4b28-b94b-7bc1f39ebee9",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            17160,
+            2240
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7b15a7f4-c890-4868-ba6a-b443b147fed3",
+          "name": "Set excerpt",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            17220,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "f120be0a-6ecf-4b51-b383-a311ac4a1baf",
+          "name": "Wait1",
+          "type": "n8n-nodes-base.wait",
+          "disabled": true,
+          "position": [
+            13900,
+            2900
+          ],
+          "webhookId": "c2e09c43-ce4e-4e27-b963-4cbd8d8b5567",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "389c3242-e071-42b9-b913-3808560234c7",
+          "name": "Check inputs",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            8940,
+            2100
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6217d2f0-b9df-479c-a304-1b93a22b0988",
+          "name": "Save texts to Doc",
+          "type": "n8n-nodes-base.googleDocs",
+          "position": [
+            18000,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "00e2af9d-de7f-4870-ac02-1a28b3bcbfdb",
+          "name": "Create Doc",
+          "type": "n8n-nodes-base.googleDocs",
+          "position": [
+            17780,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "f05c9211-edd9-4e5e-8d26-19377c6438f7",
+          "name": "Upload featured image to Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            12760,
+            3480
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "c99f01fe-2127-42f3-96ef-a27d6059311f",
+          "name": "Upload chapter images to Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            12940,
+            3000
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "becbdaab-759a-438b-9d12-63a555feae0b",
+          "name": "Get output",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            11260,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9a25678a-9abe-4e35-8cab-bb85c9e79158",
+          "name": "Create Drive folder",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            10980,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "0915bbff-131c-44b7-9188-6fe757ba3b37",
+          "name": "Merge2",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            13180,
+            3360
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "8dee0035-0562-49f4-a6bd-d4ed306f320f",
+          "name": "Merge1",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            13660,
+            2900
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "3cab94aa-f6d2-4837-ae36-04f0bfba5f68",
+          "name": "Researcher",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            12700,
+            2240
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "adc8009e-86be-4c37-95f7-e0424f8c1b58",
+          "name": "Research Tool",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            9700,
+            2340
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "e1aa095c-7055-427a-8a8f-202a3633d980",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "disabled": true,
+          "position": [
+            7380,
+            2620
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "0033a654-7421-4dfb-9724-d3a54cdcba66",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            10520,
+            2320
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "1d23099b-16b7-4c60-907d-698715eb20ae",
+          "name": "Research Tool1",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            12960,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "5fb3d1d9-4f9d-4a55-a49a-4ae5c9ba400e",
+          "name": "Wait2",
+          "type": "n8n-nodes-base.wait",
+          "disabled": true,
+          "position": [
+            13860,
+            2240
+          ],
+          "webhookId": "76c3315a-5570-401f-a378-000346a945b0",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e7c78cd8-cdc0-460b-b66f-a2d929fab671",
+          "name": "Wait featured image",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            16280,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "ae386a72-39bf-4c7a-bcb0-a7477076e755",
+          "name": "Structured Output Parser3",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            13500,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "466adc90-495e-400d-aa80-42912156a6f9",
+          "name": "Structured Output Parser4",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            9860,
+            2340
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "ad0bd24a-a29e-4539-a379-e92d0b7764dc",
+          "name": "Settings",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            8660,
+            2100
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "032b3edd-4428-45d4-a628-b4506014b035",
+          "name": "Initial Research",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            9520,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "dd882bd1-c9a6-420e-8cff-52a488d41b7a",
+          "name": "Split out chapters",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            11680,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2f586a9b-7874-4a45-a5b9-7f53935fe4d6",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            9300,
+            2040
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "88f0c247-dc7c-4dc7-b7c2-201dc0160086",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            10820,
+            2040
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c72f78ad-e52f-4da6-8128-309b0b1113a6",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            17720,
+            2240
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "582d9df6-d04a-4018-9a4a-cd6c11477ea1",
+          "name": "Copywriter",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            13260,
+            2240
+          ],
+          "parameters": {},
+          "typeVersion": 1.5
+        },
+        {
+          "id": "eae074f3-d2ed-450a-8f91-cea385293821",
+          "name": "Limit internal links",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            12100,
+            1760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "7cdb2b73-ee89-4784-a496-cdf9c6e51646",
+          "name": "Loop Over Items2",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            12380,
+            2100
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "f5a85f3a-0d26-4124-af5d-4be2ea7c77cc",
+          "name": "Get title chapter and content",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            13860,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "d7355df5-7d2c-4cc3-ba47-59d9777ddf59",
+          "name": "Final article in Markdown",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            15120,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "8a24ecd3-cb74-41ca-812b-61dd16934f90",
+          "name": "FInal article in HTML",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            15720,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "eba65262-abef-4906-a313-b4891e704906",
+          "name": "Combine into article",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            14900,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "dfb8595e-3b33-444f-a3bb-6f2f0ac6444e",
+          "name": "Aggregate internal links",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            12320,
+            1760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "161855c5-71da-4d60-8873-26ce09dfeee2",
+          "name": "Google Sheets Trigger",
+          "type": "n8n-nodes-base.googleSheetsTrigger",
+          "position": [
+            7380,
+            2100
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "c0434f90-3a6b-4349-9a50-d95a0db21749",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "disabled": true,
+          "position": [
+            7380,
+            2360
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "cb842278-7a85-4170-bd87-732c0f09c4a8",
+          "name": "Blog Planner",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            10260,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 1.5
+        },
+        {
+          "id": "4a8ff65e-7c44-45f8-9ef3-e79da08d1645",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            9440,
+            2340
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "017f6743-4d3e-4853-962d-d53aeaa35132",
+          "name": "OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            10240,
+            2320
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "4594d430-4187-4572-99a8-6c5e9b9f4d30",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            12660,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "91f103f0-64f4-42b5-a953-2f4ac8973a00",
+          "name": "OpenAI Chat Model3",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            13240,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "fb6ec7f0-1f0a-4f4e-8125-b1edfbe3b765",
+          "name": "Check empty output",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            10620,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "21f86f8c-d722-44b1-865b-4c9d52a7160e",
+          "name": "Limit to last post",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            7980,
+            2100
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "cc6def4b-e8df-483f-93ec-ea55dcb84d79",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "disabled": true,
+          "position": [
+            8680,
+            3360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6dad397c-3856-4aa5-8aba-86be4065d417",
+          "name": "PerplexityAI API",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true,
+          "position": [
+            9260,
+            3360
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "4ddd10ba-5011-498a-994f-34b19ad24a48",
+          "name": "Get Research Content",
+          "type": "n8n-nodes-base.set",
+          "disabled": true,
+          "position": [
+            9540,
+            3360
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5aafcadc-2999-420a-b2bb-07ee91166500",
+          "name": "Edit Fields1",
+          "type": "n8n-nodes-base.set",
+          "disabled": true,
+          "position": [
+            9020,
+            3360
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0090a4bf-d379-4f02-841b-69d5be03e56e",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "disabled": true,
+          "position": [
+            8540,
+            3260
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f3c513d5-af2a-4e72-97e7-5dda65d907c7",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            5560,
+            2060
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Researcher": [
+          {
+            "json": {
+              "output": "## Technological Advancements in the Ethereum Ecosystem 2025\n\nThe Ethereum ecosystem is poised for significant technological advancements in 2025, driven by ongoing upgrades, innovations, and integrations. These developments aim to enhance scalability, security, and usability, further solidifying Ethereum's position in the blockchain and cryptocurrency space.\n\n### 1. **Ethereum 2.0 (Eth2) and Proof-of-Stake (PoS)**\nEthereum 2.0 represents a major evolution, transitioning from a proof-of-work (PoW) to a proof-of-stake (PoS) consensus mechanism. This shift reduces energy consumption, increases transaction throughput, enhances security, and lowers barriers to entry for validators. Eth2 also introduces sharding, which significantly improves network scalability by allowing multiple transactions to be processed simultaneously.\n\n### 2. **Layer-2 Solutions and Rollups**\nLayer-2 solutions, such as Arbitrum, zkSync, and Optimism, are gaining traction. These technologies help reduce congestion on the main Ethereum chain by processing transactions off-chain and then settling them on the main chain, thereby increasing efficiency and reducing costs. Rollups, in particular, are expected to play a crucial role in enhancing Ethereum's scalability in 2025.\n\n### 3. **Dencun Upgrade and Other Network Enhancements**\nThe Dencun upgrade is set to make transactions faster and cheaper, further improving the user experience on the Ethereum network. Additionally, the PECTRA update, which consolidates major upgrades like Prague and Electra, aims to enhance scalability and performance.\n\n### 4. **Integration of AI and Blockchain**\nThe integration of artificial intelligence (AI) with blockchain technology is becoming increasingly prominent. Projects like Fetch.ai and SingularityNET are pioneering decentralized AI networks, enabling machine learning models to operate autonomously without centralized control. This integration could optimize smart contract execution and reduce inefficiencies.\n\n### 5. **Real-World Asset (RWA) Tokenization**\nTokenization of real-world assets (RWAs) is bridging the gap between traditional finance and blockchain-based markets. This trend allows for fractional ownership, instant settlements, and lower costs, making elite markets more accessible to everyday traders.\n\n### 6. **EigenLayer and Restaking**\nEigenLayer introduces \"restaking,\" allowing ETH holders to reuse their staked ETH to secure multiple protocols simultaneously. This innovation is expected to play a key role in expanding Ethereum's ecosystem and enhancing security for new decentralized applications (dApps).\n\n### 7. **Modular Blockchains and Competition**\nWhile Ethereum remains dominant, modular blockchains like Celestia are challenging the status quo by separating execution, settlement, and data availability functions. This approach could redefine how blockchains operate and interact.\n\n### Conclusion\nIn 2025, the Ethereum ecosystem is poised for significant technological advancements, driven by upgrades like Ethereum 2.0, the adoption of Layer-2 solutions, and the integration of AI. These developments are expected to enhance scalability, security, and usability, positioning Ethereum for continued growth and dominance in the blockchain space."
+            }
+          },
+          {
+            "json": {
+              "output": "## Market Growth and Predictions for Ethereum Ecosystem in 2025\n\nThe Ethereum ecosystem is poised for significant growth in 2025, driven by several key factors including network upgrades, institutional adoption, and the expansion of its decentralized finance (DeFi) and non-fungible token (NFT) markets.\n\n### Key Drivers of Growth\n\n1. **Network Upgrades**: \n   - **Pectra Upgrade**: Scheduled for early 2025, this upgrade aims to enhance network scalability by increasing the blob target for layer-2 solutions, which will improve transaction throughput and reduce costs.\n   - **Layer-2 Solutions**: Networks like Arbitrum, Optimism, and zkSync continue to play a crucial role in reducing congestion and gas fees, making Ethereum more attractive for developers and users.\n\n2. **Institutional Adoption**:\n   - Ethereum is increasingly viewed as a top investment by institutional investors, with 70% considering it a key asset according to mid-2024 research.\n   - Regulatory clarity, especially in the U.S. and Europe, is expected to further boost institutional interest.\n\n3. **ETFs and Market Sentiment**:\n   - Spot Ethereum ETFs have seen significant net inflows, indicating growing investor optimism, particularly around upcoming network upgrades.\n   - Strategic trading strategies, such as carry trades, are also contributing to positive market sentiment.\n\n### Price Predictions for Ethereum\n\n- **Short-Term Predictions**: Some analysts predict Ethereum could reach $7,200 by May 2025, driven by technical patterns and network upgrades.\n- **Mid-Year Predictions**: Forecasts suggest Ethereum could hit $5,000 in the coming months, with some experts viewing this as a minimum target.\n- **Year-End Predictions**: Price predictions for the end of 2025 range from $2,917 to $5,925, with an average expected around $3,392.\n\n### Challenges and Competition\n\n- **Competition from Other Blockchains**: Ethereum faces competition from blockchains like Solana and Avalanche, which offer built-in scalability without the need for layer-2 solutions.\n- **ETH/BTC Ratio**: The ETH/BTC ratio has dropped significantly, reflecting Bitcoin's dominance in liquidity and investor interest.\n\n### Emerging Trends and Opportunities\n\n- **NFT Market Revival**: The NFT market is showing signs of revival, which could contribute to Ethereum's growth as it is a major platform for NFTs.\n- **DeFi and Tokenization**: Ethereum's role in DeFi and real-world asset tokenization could provide fresh demand for ETH, driving its price higher.\n\nIn summary, while Ethereum faces challenges from competitors and market dynamics, its ecosystem is poised for growth driven by network upgrades, institutional interest, and expanding use cases in DeFi and NFTs."
+            }
+          },
+          {
+            "json": {
+              "output": "## Adoption and Competitive Landscape of Ethereum Ecosystem in 2025\n\n### Adoption Trends\n\n1. **Institutional Interest and DeFi Growth**: Ethereum continues to attract significant institutional interest, with major institutions like BlackRock, UBS, and MasterCard building on its platform. The growth of decentralized finance (DeFi) applications also contributes to increased network activity, as Ethereum remains the backbone of the DeFi sector.\n\n2. **Active Addresses Surge**: In early 2025, Ethereum experienced a 37% rise in active addresses, reaching approximately 670,000, driven by both institutional and retail engagement. This surge indicates a growing interest in the Ethereum network.\n\n3. **ETF Evolution**: Ethereum already has exchange-traded funds (ETFs) in the market, which may include staking yields in 2025, offering investors an additional return.\n\n### Competitive Landscape\n\n1. **Competition from Other Blockchains**: Ethereum faces increasing competition from alternative networks like Solana, Avalanche, and Binance Smart Chain, which offer faster and cheaper solutions. This competition has slowed the growth of the Ethereum ecosystem and its market share in DeFi trading volumes.\n\n2. **Scalability Challenges**: Despite advancements in Layer-2 solutions like Arbitrum and Optimism, Ethereum still grapples with scalability issues and high transaction costs, particularly during periods of congestion. The upcoming Pectra upgrade aims to enhance scalability by increasing blob targets, which could improve transaction throughput.\n\n3. **Market Position**: Ethereum remains a dominant force in the smart contract and DeFi sectors but faces challenges in maintaining its market share due to the rise of competing blockchains. Its robust ecosystem and institutional adoption continue to support its position as a cornerstone for blockchain investments.\n\n### Future Outlook\n\n1. **Technological Upgrades**: The Pectra upgrade and continued expansion of Layer-2 solutions are crucial for Ethereum's competitiveness in 2025. These upgrades aim to improve scalability and reduce costs, making Ethereum more attractive to developers and users.\n\n2. **Price Predictions**: Analysts predict a bullish outlook for Ethereum's price in 2025, with potential highs ranging from $5,925 to $7,194, driven by network upgrades and growing adoption.\n\n3. **Long-Term Growth**: Beyond 2025, Ethereum's price is expected to continue rising, driven by ongoing network improvements and increased demand for DeFi applications, with projections reaching as high as $15,575 by 2030.\n\nIn summary, Ethereum's adoption is driven by institutional interest and DeFi growth, while its competitive landscape is challenged by scalable alternatives. The success of upcoming upgrades will be crucial in maintaining Ethereum's market position and driving future growth."
+            }
+          }
+        ],
+        "Blog Planner": [
+          {
+            "json": {
+              "output": {
+                "cta": "Ready to elevate your business with cutting-edge automation? Contact Minh Duc TV today and let our expert team guide you to streamlined success with n8n and AI-driven solutions!",
+                "slug": "ethereum-2025-investors-guide",
+                "image": {
+                  "caption": "A collage depicting Ethereum's vibrant journey through technological and market advancements.",
+                  "alt_text": "Collage of Ethereum logos, urban landscapes, and charts showing its ecosystem dynamics.",
+                  "file_name": "ethereum-2025-overview",
+                  "image_prompt": "A visually striking collage of Ethereum logos, digital urban landscapes, and energetic charts symbolizing growth and change."
+                },
+                "title": "Ethereum 2025: A Laugh and Learn Guide for the Savvy Investor",
+                "cta_url": "https://ducnguyen.cc/contact/",
+                "chapters": [
+                  {
+                    "image": {
+                      "caption": "A futuristic city that represents the Ethereum ecosystem’s tech advancements in 2025.",
+                      "alt_text": "Futuristic cityscape with Ethereum logos and digital skyscrapers symbolizing technological advancements.",
+                      "file_name": "ethereum-tech-advancements",
+                      "image_prompt": "A futuristic cityscape with towering digital skyscrapers and vibrant holograms displaying Ethereum logos, symbolizing the tech-driven boom in 2025."
+                    },
+                    "chapter_title": "Technological Advancements in the Ethereum Ecosystem 2025"
+                  },
+                  {
+                    "image": {
+                      "caption": "A comic-style chart featuring Ethereum's projected market growth and lively followers.",
+                      "alt_text": "Cartoon chart depicting Ethereum's market growth with coins and cheering enthusiasts.",
+                      "file_name": "ethereum-market-growth",
+                      "image_prompt": "A playful cartoon chart with Ethereum coins bouncing upward, showing growth predictions, against a backdrop of cheering crypto enthusiasts."
+                    },
+                    "chapter_title": "Market Growth and Predictions for Ethereum Ecosystem 2025"
+                  },
+                  {
+                    "image": {
+                      "caption": "Ethereum and Cardano compete in a whimsical race, with Ethereum taking the lead.",
+                      "alt_text": "Cartoon race between Ethereum and Cardano, showcasing their competitive drive in 2025.",
+                      "file_name": "ethereum-competitive-landscape",
+                      "image_prompt": "A race track with Ethereum and Cardano represented by cartoons duking it out, Ethereum character zipping past with a triumphant smile."
+                    },
+                    "chapter_title": "Adoption and Competitive Landscape of Ethereum Ecosystem 2025"
+                  }
+                ],
+                "subtitle": "Discover the whimsically thrilling journey of Ethereum's growth with a side of humor.",
+                "conclusion": "Ethereum's journey in 2025 promises a thrilling ride filled with tech marvels, robust market predictions, and competitive zest. Embrace the excitement and growth opportunities lined in blockchain's bustling streets.",
+                "introduction": "Prepare for a comical adventure as we dive into Ethereum's canon—crammed with miraculous updates, unparalleled market gains, and fierce competitors turned comic relief. Join us as each chapter unravels Ethereum's strategic steps in simpler, fun terms, illuminating its unfolding grandeur for 2025.",
+                "google_excerpt": "Explore Ethereum 2025 with a humorous twist. Discover tech upgrades, market growth, and face-offs in decentralized finance.",
+                "company_offering": "Minh Duc TV is a forward-thinking consulting firm specializing in n8n workflow automation and AI-driven solutions. Our team of experts is dedicated to empowering businesses by streamlining processes, reducing operational inefficiencies, and accelerating digital transformation. By leveraging the flexibility of the open-source n8n platform alongside advanced AI technologies, we deliver tailored strategies that drive innovation and unlock new growth opportunities. Whether you're looking to automate routine tasks or integrate complex systems, Minh Duc TV provides the expert guidance you need to stay ahead in today's rapidly evolving digital landscape.",
+                "google_meta_description": "Discover Ethereum's 2025 spice with humor—tech upgrades, growth forecasts, and laugh-worthy competition explorations."
+              }
+            }
+          }
+        ],
+        "Initial Research": [
+          {
+            "json": {
+              "output": {
+                "topic": "Ethereum ecosystem 2025",
+                "subtopics": [
+                  {
+                    "subtopic_title": "Technological Advancements in the Ethereum Ecosystem 2025"
+                  },
+                  {
+                    "subtopic_title": "Market Growth and Predictions for Ethereum Ecosystem 2025"
+                  },
+                  {
+                    "subtopic_title": "Adoption and Competitive Landscape of Ethereum Ecosystem 2025"
+                  }
+                ],
+                "research_overview": "The Ethereum ecosystem is poised for significant growth and development in 2025, driven by technological advancements, expanding use cases, and increased adoption. Here are some key aspects shaping the Ethereum ecosystem in 2025:\n\n### **Technological Advancements and Upgrades**\n\n1. **PECTRA Update**: Ethereum is set to undergo the PECTRA update, which combines the Prague and Electra upgrades. This update aims to enhance scalability and performance, potentially attracting more developers and users to the platform.\n2. **Layer 2 Solutions**: Ethereum's Layer 2 (L2) solutions are expected to play a crucial role in scaling the network. Optimism's Superchain, a collective of L2s using the OP Stack, is projected to reach 80% of Ethereum L2 transactions by the end of 2025.\n\n### **Market Predictions and Growth**\n\n1. **Price Predictions**: Ethereum's price is expected to rise significantly, with predictions ranging from $2,917 to $5,925 by the end of 2025. Some analysts even suggest a potential high of $5,000.\n2. **Ecosystem Expansion**: The upcoming ecosystem upgrades are anticipated to bring massive growth in Q2 2025, solidifying Ethereum's role in decentralized applications.\n\n### **Adoption and Use Cases**\n\n1. **DeFi and L2s**: Ethereum remains a dominant hub for decentralized finance (DeFi), with L2s enhancing its capabilities and allowing for greater transaction throughput.\n2. **Long-term Holders**: There is an increase in long-term holders within the Ethereum ecosystem, indicating growing confidence in the network's future.\n\n### **Competitive Landscape**\n\n1. **Comparison with Cardano**: While Cardano focuses on academic ambitions, Ethereum's infrastructure and real-world utility are expected to drive growth, potentially dwarfing Cardano in Q2 2025.\n\n### **Innovative Projects and Tokens**\n\n1. **DTX Exchange**: Projects like DTX Exchange, which combines Ethereum's infrastructure with real-world utility, are gaining attention. Its tokens have seen significant growth, making it a promising new crypto.\n2. **Chainlink and Other Tokens**: Other tokens within the Ethereum ecosystem, such as Chainlink, are also expected to benefit from the network's growth.\n\nIn summary, the Ethereum ecosystem in 2025 is expected to experience substantial growth driven by technological advancements, increased adoption, and expanding use cases, particularly in DeFi and L2 solutions."
+              }
+            }
+          }
+        ],
+        "Google Sheets Trigger": [
+          {
+            "json": {
+              "ID": 1,
+              "CTA": "Ready to elevate your business with cutting-edge automation? Contact Minh Duc TV today and let our expert team guide you to streamlined success with n8n and AI-driven solutions!",
+              "Style": "Funny",
+              "Topic": "AI automation",
+              "CTA_URL": "https://ducnguyen.cc/contact/",
+              "Website": "ducnguyen.cc",
+              "Chapters": 2,
+              "Category_ID": 403,
+              "Max_word_count": 1000,
+              "Target_audience": "CEO",
+              "Company_offering": "Minh Duc TV is a forward-thinking consulting firm specializing in n8n workflow automation and AI-driven solutions. Our team of experts is dedicated to empowering businesses by streamlining processes, reducing operational inefficiencies, and accelerating digital transformation. By leveraging the flexibility of the open-source n8n platform alongside advanced AI technologies, we deliver tailored strategies that drive innovation and unlock new growth opportunities. Whether you're looking to automate routine tasks or integrate complex systems, Minh Duc TV provides the expert guidance you need to stay ahead in today's rapidly evolving digital landscape.",
+              "conclusion_length": 100,
+              "Introduction_length": 100
+            }
+          },
+          {
+            "json": {
+              "ID": 2,
+              "CTA": "Ready to elevate your business with cutting-edge automation? Contact Minh Duc TV today and let our expert team guide you to streamlined success with n8n and AI-driven solutions!",
+              "Style": "informative",
+              "Topic": "Ai agent",
+              "CTA_URL": "https://ducnguyen.cc/contact/",
+              "Website": "ducnguyen.cc",
+              "Chapters": 2,
+              "Category_ID": 403,
+              "Max_word_count": 1000,
+              "Target_audience": "CEO",
+              "Company_offering": "Minh Duc TV is a forward-thinking consulting firm specializing in n8n workflow automation and AI-driven solutions. Our team of experts is dedicated to empowering businesses by streamlining processes, reducing operational inefficiencies, and accelerating digital transformation. By leveraging the flexibility of the open-source n8n platform alongside advanced AI technologies, we deliver tailored strategies that drive innovation and unlock new growth opportunities. Whether you're looking to automate routine tasks or integrate complex systems, Minh Duc TV provides the expert guidance you need to stay ahead in today's rapidly evolving digital landscape.",
+              "conclusion_length": 100,
+              "Introduction_length": 100
+            }
+          },
+          {
+            "json": {
+              "ID": 3,
+              "CTA": "Ready to elevate your business with cutting-edge automation? Contact Minh Duc TV today and let our expert team guide you to streamlined success with n8n and AI-driven solutions!",
+              "Style": "informative",
+              "Topic": "DeepSeek impact on global AI development",
+              "CTA_URL": "https://ducnguyen.cc/contact/",
+              "Website": "ducnguyen.cc",
+              "Chapters": 2,
+              "Category_ID": 403,
+              "Max_word_count": 1000,
+              "Target_audience": "CEO",
+              "Company_offering": "Minh Duc TV is a forward-thinking consulting firm specializing in n8n workflow automation and AI-driven solutions. Our team of experts is dedicated to empowering businesses by streamlining processes, reducing operational inefficiencies, and accelerating digital transformation. By leveraging the flexibility of the open-source n8n platform alongside advanced AI technologies, we deliver tailored strategies that drive innovation and unlock new growth opportunities. Whether you're looking to automate routine tasks or integrate complex systems, Minh Duc TV provides the expert guidance you need to stay ahead in today's rapidly evolving digital landscape.",
+              "conclusion_length": 100,
+              "Introduction_length": 100
+            }
+          },
+          {
+            "json": {
+              "ID": 4,
+              "CTA": "Ready to elevate your business with cutting-edge automation? Contact Minh Duc TV today and let our expert team guide you to streamlined success with n8n and AI-driven solutions!",
+              "Style": "Funny",
+              "Topic": "Grok 3",
+              "CTA_URL": "https://ducnguyen.cc/contact/",
+              "Website": "ducnguyen.cc",
+              "Chapters": 3,
+              "Category_ID": 403,
+              "Max_word_count": 1000,
+              "Target_audience": "CEO",
+              "Company_offering": "Minh Duc TV is a forward-thinking consulting firm specializing in n8n workflow automation and AI-driven solutions. Our team of experts is dedicated to empowering businesses by streamlining processes, reducing operational inefficiencies, and accelerating digital transformation. By leveraging the flexibility of the open-source n8n platform alongside advanced AI technologies, we deliver tailored strategies that drive innovation and unlock new growth opportunities. Whether you're looking to automate routine tasks or integrate complex systems, Minh Duc TV provides the expert guidance you need to stay ahead in today's rapidly evolving digital landscape.",
+              "conclusion_length": 100,
+              "Introduction_length": 100
+            }
+          },
+          {
+            "json": {
+              "ID": 5,
+              "CTA": "Ready to elevate your business with cutting-edge automation? Contact Minh Duc TV today and let our expert team guide you to streamlined success with n8n and AI-driven solutions!",
+              "Style": "Funny",
+              "Topic": "Ethereum ecosystem 2025",
+              "CTA_URL": "https://ducnguyen.cc/contact/",
+              "Website": "ducnguyen.cc",
+              "Chapters": 3,
+              "Category_ID": 403,
+              "Max_word_count": 1000,
+              "Target_audience": "investors",
+              "Company_offering": "Minh Duc TV is a forward-thinking consulting firm specializing in n8n workflow automation and AI-driven solutions. Our team of experts is dedicated to empowering businesses by streamlining processes, reducing operational inefficiencies, and accelerating digital transformation. By leveraging the flexibility of the open-source n8n platform alongside advanced AI technologies, we deliver tailored strategies that drive innovation and unlock new growth opportunities. Whether you're looking to automate routine tasks or integrate complex systems, Minh Duc TV provides the expert guidance you need to stay ahead in today's rapidly evolving digital landscape.",
+              "conclusion_length": 100,
+              "Introduction_length": 100
+            }
+          }
+        ],
+        "When clicking ‘Test workflow’": [
+          {
+            "json": {}
+          }
+        ]
+      },
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1"
+      },
+      "versionId": "931d79f5-46b9-43fa-bae1-b279a3645458",
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait1": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait2": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge1": {
+          "main": [
+            [
+              {
+                "node": "Wait1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge2": {
+          "main": [
+            [
+              {
+                "node": "Wait featured image",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Settings": {
+          "main": [
+            [
+              {
+                "node": "Check inputs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Copywriter": {
+          "main": [
+            [
+              {
+                "node": "Wait2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Doc": {
+          "main": [
+            [
+              {
+                "node": "Save texts to Doc",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get output": {
+          "main": [
+            [
+              {
+                "node": "Generate featured image",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Split out chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Researcher": {
+          "main": [
+            [
+              {
+                "node": "Copywriter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set excerpt": {
+          "main": [
+            [
+              {
+                "node": "Create Doc",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Blog Planner": {
+          "main": [
+            [
+              {
+                "node": "Check empty output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check inputs": {
+          "main": [
+            [
+              {
+                "node": "Get post sitemap",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Initial Research",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields1": {
+          "main": [
+            [
+              {
+                "node": "PerplexityAI API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get XML file": {
+          "main": [
+            [
+              {
+                "node": "Split out links",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Resize Image": {
+          "main": [
+            [
+              {
+                "node": "Upload chapter images",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Research Tool": {
+          "ai_tool": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Research Tool1": {
+          "ai_tool": [
+            [
+              {
+                "node": "Researcher",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [
+              {
+                "node": "Merge chapters title and text",
+                "type": "main",
+                "index": 1
+              }
+            ],
+            [
+              {
+                "node": "Generate chapter image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split out links": {
+          "main": [
+            [
+              {
+                "node": "Limit internal links",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get post sitemap": {
+          "main": [
+            [
+              {
+                "node": "Get XML file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Initial Research": {
+          "main": [
+            [
+              {
+                "node": "Blog Planner",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items2": {
+          "main": [
+            [
+              {
+                "node": "Get title chapter and content",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Researcher",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Markdown to HTML": {
+          "main": [
+            [
+              {
+                "node": "FInal article in HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "PerplexityAI API": {
+          "main": [
+            [
+              {
+                "node": "Get Research Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Post on Wordpress": {
+          "main": [
+            [
+              {
+                "node": "Wait featured image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save texts to Doc": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check empty output": {
+          "main": [
+            [
+              {
+                "node": "Create Drive folder",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Blog Planner",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit to last post": {
+          "main": [
+            [
+              {
+                "node": "Settings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Blog Planner",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Researcher",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model3": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Copywriter",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split out chapters": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Drive folder": {
+          "main": [
+            [
+              {
+                "node": "Get output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait featured image": {
+          "main": [
+            [
+              {
+                "node": "Upload featured image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine into article": {
+          "main": [
+            [
+              {
+                "node": "Final article in Markdown",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit internal links": {
+          "main": [
+            [
+              {
+                "node": "Aggregate internal links",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "FInal article in HTML": {
+          "main": [
+            [
+              {
+                "node": "Post on Wordpress",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Sheets Trigger": {
+          "main": [
+            [
+              {
+                "node": "Limit to last post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Resize featured image": {
+          "main": [
+            [
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload chapter images": {
+          "main": [
+            [
+              {
+                "node": "Update image meta data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload featured image": {
+          "main": [
+            [
+              {
+                "node": "Update featured image meta data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate chapter image": {
+          "main": [
+            [
+              {
+                "node": "Upload chapter images to Drive",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Resize Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update image meta data": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate featured image": {
+          "main": [
+            [
+              {
+                "node": "Upload featured image to Drive",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Resize featured image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate internal links": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final article in Markdown": {
+          "main": [
+            [
+              {
+                "node": "Markdown to HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Blog Planner",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser3": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Copywriter",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser4": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set featured image for post": {
+          "main": [
+            [
+              {
+                "node": "Set excerpt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get title chapter and content": {
+          "main": [
+            [
+              {
+                "node": "Merge chapters title and text",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge chapters title and text": {
+          "main": [
+            [
+              {
+                "node": "Combine into article",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload chapter images to Drive": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Upload featured image to Drive": {
+          "main": [
+            [
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Update featured image meta data": {
+          "main": [
+            [
+              {
+                "node": "Set featured image for post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            []
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 77,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 8
+        },
+        "n8n-nodes-base.xml": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 2
+        },
+        "n8n-nodes-base.limit": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 5
+        },
+        "n8n-nodes-base.markdown": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.editImage": {
+          "count": 2
+        },
+        "n8n-nodes-base.wordpress": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleDocs": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 15
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 3
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 8
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 2
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.openAi": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleSheetsTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Daniel Ng",
+      "username": "danielng",
+      "bio": "A Growth Hacker, Digital Marketer & AI Automation Builder with 10+ years of experience in Digital Marketing & Workflow Automation. Based in Helsinki, Finland. For questions about my templates and customization, contact me at: daniel@aiautomationpro.org",
+      "verified": true,
+      "links": [
+        "https://aiautomationpro.org/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7e5e8e658b30fd9740edb159e9120a88edf324d14e7115e2229cf6876f2253a3?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 9,
+        "icon": "fa:image",
+        "name": "n8n-nodes-base.editImage",
+        "codex": {
+          "data": {
+            "details": "The Edit Image node allows you to manipulate and edit images. Use this node when you want to:\n\n- Blur an image\n- Add a border to an image\n- Create a new image\n- Crop an image\n- Composite an image on top of another\n- Draw on an image\n- Get information about the image\n- Rotate an image\n- Change the size of an image\n- Shear an image along the X or Y axis\n- Add text to the image",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Edit Image",
+          "color": "#553399"
+        },
+        "iconData": {
+          "icon": "image",
+          "type": "icon"
+        },
+        "displayName": "Edit Image",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 118,
+        "icon": "file:wordpress.svg",
+        "name": "n8n-nodes-base.wordpress",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wordpress/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wordpress/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Wordpress"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjI1MDAiIHZpZXdCb3g9IjguMzk5IDguNCA1MS4yIDUxLjIiPjxwYXRoIGZpbGw9IiMyMTc1OUIiIGQ9Ik0zNCA1OS42QzE5LjgxMyA1OS42IDguMjkzIDQ4LjI5MyA4LjQgMzRTMTkuMjggOC40IDM0IDguNCA1OS42IDE5LjkyIDU5LjYgMzQgNDguMTg3IDU5LjYgMzQgNTkuNm03LjU3My0zLjk0Ny03LjI1My0xOS41Mi02LjgyNyAxOS45NDdjNS4wMTQgMS4xNzQgOC40MjcgMS40OTMgMTQuMDgtLjQyN20tMTcuNzA2LTEuMDY2LTEwLjg4LTI5Ljc2Yy0xLjQ5NCAzLjItMS44MTMgNS44NjctMi4wMjcgOS4xNzMuMTA3IDguNzQ2IDUuMDEzIDE2Ljc0NiAxMi45MDcgMjAuNTg3TTU2LjkzNCAzNGMuMTA2LTUuNjUzLTIuNDUzLTEwLjEzMy0yLjY2Ny0xMC43NzMuMjE0IDQuMzc0LS40MjcgNi42MTMtMS4xNzMgOS4wNjdsLTcuNDY3IDIxLjQ0QzU1LjAxNCA0OC4wOCA1Ni44MjYgMzkuNjUzIDU3LjA0IDM0em0tMjMuNjgtLjk2LTMuNjI3LTkuOTItMi42NjctLjIxM2MtMS4wNjYtLjc0Ny0uNDI3LTEuOTIuMzItMS45MiA0LjguMzIgNy40NjYuMzIgMTIuMjY3IDAgMS4xNzQgMCAxLjQ5MyAxLjcwNy4xMDYgMS45MmwtMi41Ni4yMTMgOC4zMTkgMjQuNTMzIDMuOTQ2LTEzLjQ0Yy4yMTQtNS44NjYtMS4zODctNi41MDYtMy41Mi0xMC43NzMtMS43MDctMy4zMDcuMTA3LTYuNTA3IDMuNDE0LTYuNjEzLTIuNjY4LTIuNTYtOC4xMDctNS43Ni0xNS4yNTQtNS44NjdzLTE0LjcyIDMuNTItMTkuMiAxMC4zNDdsNy44OTQtLjIxM2MuOTYuNDI3LjUzMyAxLjgxMyAwIDEuOTJsLTIuNzczLjIxMyA4LjMyIDI0Ljk2eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Wordpress",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 495,
+        "icon": "file:googleDocs.svg",
+        "name": "n8n-nodes-base.googleDocs",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledocs/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Docs"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSItMTggMCA5MCA4MCI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iLjUiIHk9Ii41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzU0OGRmNiIgZD0ibTM2IDAgMjIgMjJ2NTNhNC45OSA0Ljk5IDAgMCAxLTUgNUg1YTQuOTkgNC45OSAwIDAgMS01LTVWNWE0Ljk5IDQuOTkgMCAwIDEgNS01eiIvPjxwYXRoIGQ9Ik0xNCA0MGgzMHYzSDE0em0wIDdoMzB2M0gxNHptMCA4aDMwdjNIMTR6bTAgN2gyMXYzSDE0eiIvPjxwYXRoIGZpbGw9IiNhYmQwZmIiIGQ9Im0zNiAwIDIyIDIySDQxYy0yLjc3IDAtNS0yLjQ4LTUtNS4yNXoiLz48cGF0aCBmaWxsPSIjM2U1YmI5IiBkPSJNNDAuNzUgMjIgNTggMjkuMTI1VjIyeiIvPjwvZz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Google Docs",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 564,
+        "icon": "file:markdown.svg",
+        "name": "n8n-nodes-base.markdown",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Markdown"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM3LjExNjQgMzIuNjE4N0gyLjg4MzU3QzIuNTA0OSAzMi42MTg3IDIuMTI5OTMgMzIuNTQ0MSAxLjc4MDA4IDMyLjM5OTJDMS40MzAyMyAzMi4yNTQzIDEuMTEyMzQgMzIuMDQxOSAwLjg0NDU3OSAzMS43NzQxQzAuNTc2ODE1IDMxLjUwNjQgMC4zNjQ0MTIgMzEuMTg4NSAwLjIxOTQ5OSAzMC44Mzg2QzAuMDc0NTg1OCAzMC40ODg4IDAgMzAuMTEzOCAwIDI5LjczNTFWMTAuODgzNkMwIDEwLjExODggMC4zMDM4MDQgOS4zODUzNSAwLjg0NDU3OSA4Ljg0NDU4QzEuMzg1MzUgOC4zMDM4IDIuMTE4OCA4IDIuODgzNTcgOEgzNy4xMTY0QzM3LjQ5NTEgOCAzNy44NzAxIDguMDc0NTkgMzguMjE5OSA4LjIxOTVDMzguNTY5OCA4LjM2NDQxIDM4Ljg4NzcgOC41NzY4MSAzOS4xNTU0IDguODQ0NThDMzkuNDIzMiA5LjExMjM0IDM5LjYzNTYgOS40MzAyMyAzOS43ODA1IDkuNzgwMDhDMzkuOTI1NCAxMC4xMjk5IDQwIDEwLjUwNDkgNDAgMTAuODgzNlYyOS43MzE4QzQwLjAwMDIgMzAuMTEwNiAzOS45MjU4IDMwLjQ4NTggMzkuNzgxIDMwLjgzNThDMzkuNjM2MiAzMS4xODU5IDM5LjQyMzggMzEuNTAzOSAzOS4xNTYgMzEuNzcxOUMzOC44ODgyIDMyLjAzOTggMzguNTcwMyAzMi4yNTI0IDM4LjIyMDMgMzIuMzk3NEMzNy44NzAzIDMyLjU0MjQgMzcuNDk1MiAzMi42MTg3IDM3LjExNjQgMzIuNjE4N1pNOS42MTQxMyAyNi44NDgyVjE5LjM0NzZMMTMuNDYxMSAyNC4xNTYzTDE3LjMwNjQgMTkuMzQ3NlYyNi44NDgySDIxLjE1MzRWMTMuNzcyMUgxNy4zMDY0TDEzLjQ2MTEgMTguNTgwOUw5LjYxNDEzIDEzLjc3MjFINS43NjcxNVYyNi44NTE2TDkuNjE0MTMgMjYuODQ4MlpNMzUuMzg2MyAyMC4zMDk0SDMxLjUzOTNWMTMuNzcwNUgyNy42OTRWMjAuMzA5NEgyMy44NDdMMjkuNjE1OCAyNy4wNDE2TDM1LjM4NjMgMjAuMzA5NFoiIGZpbGw9IiMzODM4MzkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Markdown",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 841,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheetsTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlesheetstrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Google Sheets Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1237,
+        "icon": "file:limit.svg",
+        "name": "n8n-nodes-base.limit",
+        "codex": {
+          "data": {
+            "alias": [
+              "Limit",
+              "Remove",
+              "Slice",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Limit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjMkZCNjdDIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcGF0aD0idXJsKCNhKSIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNNTEyIDQ1OGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDEyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoNjhjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMTUyLTIyMmMtNi42MjcgMC0xMi01LjM3My0xMi0xMlYzMGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDI0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MTk0YzAgNi42MjctNS4zNzMgMTItMTIgMTJ6Ii8+PHBhdGggZD0iTTE0OS41NzcgMTQ2Ljk4MmM5LjM5OC05LjM0NiAyNC41OTQtOS4zMDQgMzMuOTQxLjA5NUwyNTYgMjE5Ljk2NGw3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMCAzNTBjMC02LjYyNyA1LjM3My0xMiAxMi0xMmg0ODhjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDEyYy02LjYyNyAwLTEyLTUuMzczLTEyLTEyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Limit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1250,
+        "icon": "file:openAi.svg",
+        "name": "@n8n/n8n-nodes-langchain.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "ChatGPT",
+              "DallE",
+              "whisper",
+              "audio",
+              "transcribe",
+              "tts",
+              "assistant"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg1IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NiAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MSA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 970,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Word_Press_Auto_Blog_Automation_Deep_Research_v1_2_193e4e41da.jpeg"
+      },
+      {
+        "id": 971,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Word_Press_Auto_Blog_Automation_Deep_Research_v1_3_c2b059af6d.jpeg"
+      },
+      {
+        "id": 972,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Word_Press_Auto_Blog_Automation_Deep_Research_v1_1_a0f5ae7678.jpeg"
+      }
+    ]
+  }
+}

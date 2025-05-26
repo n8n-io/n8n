@@ -1,0 +1,124 @@
+URL: https://docs.n8n.io/code/cookbook/code-node/console-log/
+Scraped_At: 2025-05-20T18:41:20.741636
+
+Output to the browser console with
+console.log()
+or
+print()
+in the Code node
+#
+You can use
+console.log()
+or
+print()
+in the Code node to help when writing and debugging your code.
+For help opening your browser console, refer to
+this guide by Balsamiq
+.
+console.log (JavaScript)
+#
+For technical information on
+console.log()
+, refer to the
+MDN developer docs
+.
+For example, copy the following code into a Code node, then open your console and run the node:
+1
+2
+let
+a
+=
+"apple"
+;
+console
+.
+log
+(
+a
+);
+print (Python)
+#
+For technical information on
+print()
+, refer to the
+Real Python's guide
+.
+For example, set your Code node
+Language
+to
+Python
+, copy the following code into the node, then open your console and run the node:
+1
+2
+a
+=
+"apple"
+print
+(
+a
+)
+Handling an output of
+[object Object]
+#
+If the console displays
+[object Object]
+when you print, check the data type, then convert it as needed.
+To check the data type:
+1
+print
+(
+type
+(
+myData
+))
+JsProxy
+#
+If
+type()
+outputs
+<class 'pyodide.ffi.JsProxy'>
+, you need to convert the JsProxy to a native Python object using
+to_py()
+. This occurs when working with data in the n8n node data structure, such as node inputs and outputs. For example, if you want to print the data from a previous node in the workflow:
+1
+2
+3
+4
+5
+6
+previousNodeData
+=
+_
+(
+"<node-name>"
+)
+.
+all
+();
+for
+item
+in
+previousNodeData
+:
+# item is of type <class 'pyodide.ffi.JsProxy'>
+# You need to convert it to a Dict
+itemDict
+=
+item
+.
+json
+.
+to_py
+()
+print
+(
+itemDict
+)
+Refer to the Pyodide documentation on
+JsProxy
+for more information on this class.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

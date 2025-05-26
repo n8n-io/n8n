@@ -1,0 +1,3521 @@
+{
+  "workflow": {
+    "id": 1973,
+    "name": "Analyze CrowdStrike Detections - Search for IOCs in VirusTotal - Create a Ticket in Jira, and Post a Message in Slack",
+    "views": 3275,
+    "recentViews": 0,
+    "totalViews": 3275,
+    "createdAt": "2023-11-13T08:42:55.411Z",
+    "description": "This n8n workflow automates the handling of security detections from CrowdStrike, streamlining incident response and notification processes. The workflow is triggered daily at midnight by the Schedule Trigger node.\n\nIt begins by fetching recent security detections from CrowdStrike using an HTTP Request node. The response is then split into individual detections for further processing. Each detection is enriched by querying the CrowdStrike API for detailed information using another HTTP Request node. The workflow then processes these detections sequentially using the Split In Batches node.\n\nNext, it looks up behavioral information associated with each detection in VirusTotal using two HTTP Request nodes. One node queries VirusTotal based on SHA256 values, and the other based on IOC (Indicator of Compromise) values. The workflow includes a 1-second pause using the Wait node to prevent rate limiting when making requests to the VirusTotal API.\n\nSubsequently, the workflow sets fields with relevant details from both CrowdStrike and VirusTotal, including detection links, confidence scores, filenames, usernames, and more. These details are concatenated using an Item Lists node for each detection. The final step involves creating Jira issues for each detection, including summaries with CrowdStrike alert severity and hostnames, as well as descriptions that incorporate information from CrowdStrike and VirusTotal. Information about this issue is then sent via a Slack message to a Slack user.\n\nPotential issues during setup might include configuring the Schedule Trigger node to trigger at the correct time zone and handling potential rate limiting from the VirusTotal API, which could lead to throttled requests. Additionally, the note about a possible typo in the URL for the Virustotal nodes should be addressed to ensure correct API calls. The Jira node may need to be replaced with the latest version for compatibility. Properly configuring API credentials and handling errors that may occur during API requests are essential for a smooth workflow operation. Careful testing with sample data is recommended to validate the workflow's functionality and ensure it aligns with your organization's security incident response processes.",
+    "workflow": {
+      "id": "IMVycpyABaGuD1hq",
+      "meta": {
+        "instanceId": "03e9d14e9196363fe7191ce21dc0bb17387a6e755dcc9acc4f5904752919dca8"
+      },
+      "name": "Analyze_Crowdstrike_Detections__search_for_IOCs_in_VirusTotal__create_a_ticket_in_Jira_and_post_a_message_in_Slack",
+      "tags": [
+        {
+          "id": "GCHVocImoXoEVnzP",
+          "name": "🛠️ In progress",
+          "createdAt": "2023-10-31T02:17:21.618Z",
+          "updatedAt": "2023-10-31T02:17:21.618Z"
+        },
+        {
+          "id": "QPJKatvLSxxtrE8U",
+          "name": "Secops",
+          "createdAt": "2023-10-31T02:15:11.396Z",
+          "updatedAt": "2023-10-31T02:15:11.396Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "bd1234f2-631c-457d-8423-cec422852bbc",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -880,
+            602
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {}
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b9f134cd-06de-49cd-83a2-19f705fd18c6",
+          "name": "Split out detections",
+          "type": "n8n-nodes-base.itemLists",
+          "notes": "So we can process each one individually",
+          "position": [
+            -440,
+            602
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "resources"
+          },
+          "notesInFlow": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "8d1fc16d-bcbd-4ca2-ac2d-ea676cde4403",
+          "name": "Get recent detections from Crowdstrike",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true,
+          "position": [
+            -660,
+            602
+          ],
+          "parameters": {
+            "url": "https://api.us-2.crowdstrike.com/detects/queries/detects/v1",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "filter",
+                  "value": "status:'new'"
+                }
+              ]
+            },
+            "nodeCredentialType": "crowdStrikeOAuth2Api"
+          },
+          "credentials": {
+            "crowdStrikeOAuth2Api": {
+              "id": "tRdRtergnonxM2oS",
+              "name": "CrowdStrike account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "bda81386-f301-44ac-ba91-2301ecdad6c3",
+          "name": "Get detection details",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true,
+          "position": [
+            -220,
+            602
+          ],
+          "parameters": {
+            "url": "https://api.us-2.crowdstrike.com/detects/entities/summaries/GET/v1",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n   \"ids\":[\"{{ $json.resources }}\"]\n}",
+            "sendBody": true,
+            "sendQuery": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "ids",
+                  "value": "={{ $json.resources }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "crowdStrikeOAuth2Api"
+          },
+          "credentials": {
+            "crowdStrikeOAuth2Api": {
+              "id": "tRdRtergnonxM2oS",
+              "name": "CrowdStrike account"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "ed6fe708-c67e-4cd1-800f-e13ab999c1c2",
+          "name": "Split out behaviours",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            280,
+            362
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "resources[0].behaviors"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "4d6c708c-56c3-43b7-ae06-0078d917ebd5",
+          "name": "Look up SHA in Virustotal",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            720,
+            362
+          ],
+          "parameters": {
+            "url": "=https://www.virustotal.com/api/v3/files/{{ $json.dsha256 }}",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "virusTotalApi"
+          },
+          "credentials": {
+            "virusTotalApi": {
+              "id": "JXVMMSznhawgxP9S",
+              "name": "Virus Total account"
+            }
+          },
+          "typeVersion": 4.1,
+          "continueOnFail": true
+        },
+        {
+          "id": "3e9f63a1-7a2a-43e3-998c-32eef23f8066",
+          "name": "Look up IOC in Virustotal",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            940,
+            362
+          ],
+          "parameters": {
+            "url": "=https://www.virustotal.com/api/v3/files/{{ $('Split out behaviours').item.json.ioc_value }}",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "virusTotalApi"
+          },
+          "credentials": {
+            "virusTotalApi": {
+              "id": "JXVMMSznhawgxP9S",
+              "name": "Virus Total account"
+            }
+          },
+          "typeVersion": 4.1,
+          "continueOnFail": true
+        },
+        {
+          "id": "4249e16a-e84b-4af8-98e7-8a771a9016f0",
+          "name": "Split In Batches",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            60,
+            602
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 1
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a6de25ad-195d-44a8-a8da-3ec14bfaec66",
+          "name": "Merge behaviour descriptions",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            1460,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "summarize",
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "details",
+                  "separateBy": "other",
+                  "aggregation": "concatenate",
+                  "customSeparator": "\\n\\n"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "fdc43a7b-579b-44ea-841b-cfebf2447ab9",
+          "name": "Set behaviour descriptions",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1240,
+            360
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "details",
+                  "value": "=| Link | https://falcon.us-2.crowdstrike.com/activity/detections/detail/{{ $('Split out behaviours').item.json.control_graph_id.replaceAll(':', '/').substring(4) }} |\n| Confidence |  {{ $('Split out behaviours').item.json.confidence }} |\n| Filename |  {{ $('Split out behaviours').item.json.filename }} |\n| Username |  {{ $('Split out behaviours').item.json.user_name }} |\n| VT link | https://www.virustotal.com/gui/file/{{ $('Split out behaviours').item.json.sha256 }}/detection |\n| VT creation date |  {{ $('Look up SHA in Virustotal').item.json.data.attributes.creation_date }} |\n| VT tags |  {{ $('Look up SHA in Virustotal').item.json.data.attributes.tags.join(', ') }} |\n| IOC |  {{ $('Split out behaviours').item.json.ioc_value }} |\n| IOC VT score |  {{ $json.data.attributes.last_analysis_stats.malicious }} |\n| IOC source | {{ $('Split out behaviours').item.json.ioc_source }} |\n| IOC description | {{ $('Split out behaviours').item.json.ioc_description }} |"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d11c8794-ca93-4916-87b2-86b87751d64e",
+          "name": "Create Jira issue",
+          "type": "n8n-nodes-base.jira",
+          "disabled": true,
+          "position": [
+            1680,
+            360
+          ],
+          "parameters": {
+            "project": {
+              "__rl": true,
+              "mode": "list",
+              "value": "10000",
+              "cachedResultName": "My Kanban Project"
+            },
+            "summary": "=CrowdStrike {{ $('Split In Batches').item.json.resources[0].max_severity_displayname.toLowerCase() }} severity alert ({{ $('Split In Batches').item.json.resources[0].device.hostname }})",
+            "issueType": {
+              "__rl": true,
+              "mode": "list",
+              "value": "10001",
+              "cachedResultName": "Task"
+            },
+            "additionalFields": {
+              "description": "=\nAlert details\n\n| Severity | {{ $('Split In Batches').item.json.resources[0].max_severity_displayname }} |\n| Host | {{ $('Split In Batches').item.json.resources[0].device.hostname }} |\n| Device ID | {{ $('Split In Batches').item.json.resources[0].device.device_id }} |\n| IP (external) | {{ $('Split In Batches').item.json.resources[0].device.external_ip }}|\n| IP (internal) | {{ $('Split In Batches').item.json.resources[0].device.local_ip }}|\n| Platform | {{ $('Split In Batches').item.json.resources[0].device.platform_name }} |\n| OS version | {{ $('Split In Batches').item.json.resources[0].device.os_version }}|\n\nBehaviours\n\n{{ $json.concatenated_details }}"
+            }
+          },
+          "credentials": {
+            "jiraSoftwareCloudApi": {
+              "id": "1rCcjDO7MfM4b9ho",
+              "name": "David Jira SW Cloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ac44f600-31b3-418b-8f75-5c42094f2b5b",
+          "name": "Post notification on Slack",
+          "type": "n8n-nodes-base.slack",
+          "disabled": true,
+          "position": [
+            2080,
+            400
+          ],
+          "parameters": {
+            "text": "=New CrowdStrike {{ $('Split In Batches').item.json.resources[0].max_severity_displayname.toLowerCase() }} severity alert ({{ $('Split In Batches').item.json.resources[0].device.hostname }})\n<{{ $json.self }}|Jira ticket>",
+            "user": {
+              "__rl": true,
+              "mode": "list",
+              "value": "U034NUWQ7M5",
+              "cachedResultName": "david"
+            },
+            "select": "user",
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "slackOAuth2Api": {
+              "id": "262",
+              "name": "Slack David (User)"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "2c5c81bd-096c-4613-aa85-e1c01eac484e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -940,
+            200
+          ],
+          "parameters": {
+            "width": 907.2533697472911,
+            "height": 622.2432296251139,
+            "content": "![crowdstrike](https://i.imgur.com/bXWeemY.png)\n## Workflow Overview\nThis n8n workflow is a robust orchestration tool designed to streamline and automate the response to cybersecurity threats detected by CrowdStrike. By running daily, the script systematically gathers new detection data, enriches it with external intelligence from VirusTotal, and then creates tickets in Jira for incident tracking and resolution. Finally, it posts notifications to Slack to alert the security team promptly. \n\n## Get details of recent CrowdStrike detections\nThis section initiates the workflow, scheduled to run daily at midnight, by fetching new detection events from CrowdStrike. It leverages an HTTP Request to query the CrowdStrike API, receiving a list of recent detections. These detections are then individually parsed for further analysis, ensuring that each detection is handled separately and efficiently.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "34f3178a-f333-44ae-bb84-775748a40871",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            456,
+            85.94250946457566
+          ],
+          "parameters": {
+            "width": 684.9176314093856,
+            "height": 498.43309582729387,
+            "content": "![VirusTotal](https://upload.wikimedia.org/wikipedia/commons/thumb/b/b7/VirusTotal_logo.svg/320px-VirusTotal_logo.svg.png)\n## Enrich each detection using VirusTotal\n\nEach detection is enhanced with additional intelligence by querying VirusTotal. The process involves looking up SHA256 hashes and other indicators of compromise (IOCs) to gather comprehensive threat information. With rate-limiting in mind, a 1-second pause is included between requests to maintain compliance with VirusTotal's API usage policies.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9b248ed5-0a9b-4737-a571-ce20340a48af",
+          "name": "Pause 1 second",
+          "type": "n8n-nodes-base.wait",
+          "notes": "To avoid overloading VT",
+          "position": [
+            500,
+            362
+          ],
+          "webhookId": "be50455f-f28d-4621-87aa-60a5d46c219e",
+          "parameters": {
+            "unit": "seconds"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "854bbab6-b725-4a01-b179-1f1c944b7ea5",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1180,
+            89.58126014061668
+          ],
+          "parameters": {
+            "width": 732.8033084720628,
+            "height": 495.2133868905577,
+            "content": "![Jira](https://i.imgur.com/Ko72Qxa.png)\n## Create a Jira Ticket:\nFor actionable response and tracking, the workflow creates a Jira ticket for each detection. The ticket includes detailed information from CrowdStrike and enrichment data from VirusTotal, such as detection links, confidence scores, and relevant tags. This step is crucial for documenting incidents and initiating the incident response protocol.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "da8ca7ef-714f-42b1-a642-3165c479b5df",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1940,
+            90.04831844240124
+          ],
+          "parameters": {
+            "width": 348.9781174689024,
+            "height": 490.93784005768947,
+            "content": "![Slack](https://i.imgur.com/iKyMV0N.png)\n## Post Notification in Slack\nTo ensure prompt attention, a notification is sent to a designated Slack channel with the severity level of the alert and a link to the corresponding Jira ticket. This immediate notification allows for quick engagement from the security team to review and act upon the detection as needed.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a10f5365-85bc-435d-9b56-1154987af962",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            -96.97284326663032
+          ],
+          "parameters": {
+            "width": 432.3140705656865,
+            "height": 908.8964372010092,
+            "content": "![n8n](https://i.imgur.com/lKnBNnH.png)\n## Iterate Through Detection Events\nThe \"`Split In Batches`\" node is configured with a batch size of one, ensuring that the array of detections from CrowdStrike is divided into individual items for processing. \n\nThis approach allows for a focused analysis of each detection, ensuring no detail is overlooked. \n\nFollowing this, the \"`Split out behaviours`\" node further dissects each detection to extract and separately handle the array of behaviors associated with them. \n\nBy processing these elements one by one, we effectively manage the workflow's load, maintaining optimal performance and adherence to external APIs' rate limits, crucial for the seamless operation of our security protocols.\n\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Get detection details": [
+          {
+            "json": {
+              "meta": {
+                "trace_id": "638fdbc5-29f3-49c5-bb02-67846cc0eae5",
+                "powered_by": "legacy-detects",
+                "query_time": 0.002640396
+              },
+              "errors": [],
+              "resources": [
+                {
+                  "cid": "4f82da4ce0564f64a2469af78d4c73dc",
+                  "device": {
+                    "cid": "4f82da4ce0564f64a2469af78d4c73dc",
+                    "status": "normal",
+                    "hostname": "Sample-Detect-2",
+                    "local_ip": "10.0.2.15",
+                    "device_id": "5556c55274f24f149ee3ffcc9226e595",
+                    "last_seen": "2023-09-01T21:35:09Z",
+                    "first_seen": "2023-09-01T21:35:08Z",
+                    "os_version": "Windows 7",
+                    "external_ip": "10.224.245.198",
+                    "mac_address": "08-00-27-51-56-d8",
+                    "platform_id": "0",
+                    "bios_version": "VirtualBox",
+                    "product_type": "1",
+                    "agent_version": "5.25.10701.0",
+                    "major_version": "6",
+                    "minor_version": "1",
+                    "platform_name": "Windows",
+                    "config_id_base": "65994754",
+                    "config_id_build": "10701",
+                    "agent_load_flags": "0",
+                    "agent_local_time": "2019-08-08T18:27:17.143Z",
+                    "bios_manufacturer": "innotek GmbH",
+                    "product_type_desc": "Workstation",
+                    "config_id_platform": "3",
+                    "modified_timestamp": "2023-09-01T21:35:12Z",
+                    "system_manufacturer": "innotek GmbH",
+                    "system_product_name": "VirtualBox"
+                  },
+                  "status": "new",
+                  "hostinfo": {
+                    "domain": ""
+                  },
+                  "behaviors": [
+                    {
+                      "md5": "a390c897089f47bda6e913a68b49676f",
+                      "sha256": "a9b89714cb6e7c41c76484368856521d318b7237823f26f674c1f562eb11228a",
+                      "tactic": "Machine Learning",
+                      "cmdline": "\"C:\\demo\\OnSensor_MachineLearning.exe\"",
+                      "user_id": "S-1-5-21-1516984458-1910986210-2733350064-1000",
+                      "filename": "OnSensor_MachineLearning.exe",
+                      "filepath": "\\Device\\HarddiskVolume2\\demo\\OnSensor_MachineLearning.exe",
+                      "ioc_type": "",
+                      "scenario": "NGAV",
+                      "severity": 50,
+                      "device_id": "5556c55274f24f149ee3ffcc9226e595",
+                      "ioc_value": "",
+                      "objective": "Falcon Detection Method",
+                      "tactic_id": "CSTA0004",
+                      "technique": "Sensor-based ML",
+                      "timestamp": "2023-09-01T21:35:08Z",
+                      "user_name": "Trial",
+                      "confidence": 50,
+                      "ioc_source": "",
+                      "behavior_id": "5701",
+                      "description": "This file meets the machine learning-based on-sensor AV protection's medium confidence threshold for malicious files.",
+                      "display_name": "",
+                      "technique_id": "CST0007",
+                      "parent_details": {
+                        "parent_md5": "ea7fa3d7190f262a920bd04326f9a5f4",
+                        "parent_sha256": "9c30192c1d4cec9dc0de67ab4ace625bcf038f60eb038d5efa868bff9ec411d4",
+                        "parent_cmdline": "powershell.exe ",
+                        "parent_process_graph_id": "pid:5556c55274f24f149ee3ffcc9226e595:169381896777762"
+                      },
+                      "ioc_description": "",
+                      "alleged_filetype": "exe",
+                      "control_graph_id": "ctg:5556c55274f24f149ee3ffcc9226e595:169377591508015",
+                      "pattern_disposition": 2176,
+                      "pattern_disposition_details": {
+                        "detect": false,
+                        "rooting": false,
+                        "indicator": false,
+                        "inddet_mask": false,
+                        "kill_parent": false,
+                        "sensor_only": false,
+                        "kill_process": false,
+                        "suspend_parent": false,
+                        "kill_subprocess": false,
+                        "policy_disabled": false,
+                        "process_blocked": true,
+                        "quarantine_file": true,
+                        "suspend_process": false,
+                        "operation_blocked": false,
+                        "kill_action_failed": false,
+                        "quarantine_machine": false,
+                        "fs_operation_blocked": false,
+                        "bootup_safeguard_enabled": false,
+                        "critical_process_disabled": false,
+                        "registry_operation_blocked": false,
+                        "handle_operation_downgraded": false,
+                        "blocking_unsupported_or_disabled": false
+                      },
+                      "triggering_process_graph_id": "pid:5556c55274f24f149ee3ffcc9226e595:169381898588255"
+                    }
+                  ],
+                  "email_sent": false,
+                  "show_in_ui": true,
+                  "date_updated": "2023-09-01T21:36:36Z",
+                  "detection_id": "ldt:5556c55274f24f149ee3ffcc9226e595:169377591508015",
+                  "max_severity": 50,
+                  "last_behavior": "2023-09-01T21:35:08Z",
+                  "first_behavior": "2023-09-01T21:35:08Z",
+                  "max_confidence": 50,
+                  "created_timestamp": "2023-09-01T21:36:15.576367873Z",
+                  "quarantined_files": [
+                    {
+                      "id": "5556c55274f24f149ee3ffcc9226e595_a9b89714cb6e7c41c76484368856521d318b7237823f26f674c1f562eb11228a",
+                      "state": "quarantined",
+                      "sha256": "a9b89714cb6e7c41c76484368856521d318b7237823f26f674c1f562eb11228a"
+                    }
+                  ],
+                  "seconds_to_triaged": 0,
+                  "behaviors_processed": [
+                    "pid:5556c55274f24f149ee3ffcc9226e595:169381898588255:5701"
+                  ],
+                  "seconds_to_resolved": 0,
+                  "max_severity_displayname": "Medium"
+                }
+              ]
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          },
+          {
+            "json": {
+              "meta": {
+                "trace_id": "01ced1a3-9e31-4a5e-a4ab-33cba88c1081",
+                "powered_by": "legacy-detects",
+                "query_time": 0.002151283
+              },
+              "errors": [],
+              "resources": [
+                {
+                  "cid": "4f82da4ce0564f64a2469af78d4c73dc",
+                  "device": {
+                    "cid": "4f82da4ce0564f64a2469af78d4c73dc",
+                    "status": "normal",
+                    "hostname": "Sample-Detect-3",
+                    "local_ip": "10.0.2.15",
+                    "device_id": "bbb9e831141343808ced11e87081d820",
+                    "last_seen": "2023-09-01T21:35:08Z",
+                    "first_seen": "2023-09-01T21:35:07Z",
+                    "os_version": "Windows 7",
+                    "external_ip": "10.224.240.255",
+                    "mac_address": "08-00-27-51-56-d8",
+                    "platform_id": "0",
+                    "bios_version": "VirtualBox",
+                    "product_type": "1",
+                    "agent_version": "5.25.10701.0",
+                    "major_version": "6",
+                    "minor_version": "1",
+                    "platform_name": "Windows",
+                    "config_id_base": "65994754",
+                    "config_id_build": "10701",
+                    "agent_load_flags": "0",
+                    "agent_local_time": "2019-08-08T18:25:50.945Z",
+                    "bios_manufacturer": "innotek GmbH",
+                    "product_type_desc": "Workstation",
+                    "config_id_platform": "3",
+                    "modified_timestamp": "2023-09-01T21:35:11Z",
+                    "system_manufacturer": "innotek GmbH",
+                    "system_product_name": "VirtualBox"
+                  },
+                  "status": "new",
+                  "hostinfo": {
+                    "domain": ""
+                  },
+                  "behaviors": [
+                    {
+                      "md5": "bb7e3954e2db5c58e47ba39b9aad35af",
+                      "sha256": "c3598ca88efe1b7aace5430686e69667e9d34450b6a40ee87b7da896b3044ec4",
+                      "tactic": "Machine Learning",
+                      "cmdline": "Cloud_MachineLearning.exe",
+                      "user_id": "S-1-5-21-1516984458-1910986210-2733350064-1000",
+                      "filename": "Cloud_MachineLearning.exe",
+                      "filepath": "\\Device\\HarddiskVolume2\\demo\\Cloud_MachineLearning.exe",
+                      "ioc_type": "",
+                      "scenario": "NGAV",
+                      "severity": 70,
+                      "device_id": "bbb9e831141343808ced11e87081d820",
+                      "ioc_value": "",
+                      "objective": "Falcon Detection Method",
+                      "tactic_id": "CSTA0004",
+                      "technique": "Cloud-based ML",
+                      "timestamp": "2023-09-01T21:35:07Z",
+                      "user_name": "Trial",
+                      "confidence": 70,
+                      "ioc_source": "",
+                      "behavior_id": "5708",
+                      "description": "This file meets the File Analysis ML algorithm's high-confidence threshold for malware.",
+                      "display_name": "",
+                      "technique_id": "CST0008",
+                      "parent_details": {
+                        "parent_md5": "5746bd7e255dd6a8afa06f7c42c1ba41",
+                        "parent_sha256": "db06c3534964e3fc79d2763144ba53742d7fa250ca336f4a0fe724b75aaff386",
+                        "parent_cmdline": "cmd.exe ",
+                        "parent_process_graph_id": "pid:bbb9e831141343808ced11e87081d820:169377600150243"
+                      },
+                      "ioc_description": "",
+                      "alleged_filetype": "exe",
+                      "control_graph_id": "ctg:bbb9e831141343808ced11e87081d820:169373296003013",
+                      "pattern_disposition": 2176,
+                      "pattern_disposition_details": {
+                        "detect": false,
+                        "rooting": false,
+                        "indicator": false,
+                        "inddet_mask": false,
+                        "kill_parent": false,
+                        "sensor_only": false,
+                        "kill_process": false,
+                        "suspend_parent": false,
+                        "kill_subprocess": false,
+                        "policy_disabled": false,
+                        "process_blocked": true,
+                        "quarantine_file": true,
+                        "suspend_process": false,
+                        "operation_blocked": false,
+                        "kill_action_failed": false,
+                        "quarantine_machine": false,
+                        "fs_operation_blocked": false,
+                        "bootup_safeguard_enabled": false,
+                        "critical_process_disabled": false,
+                        "registry_operation_blocked": false,
+                        "handle_operation_downgraded": false,
+                        "blocking_unsupported_or_disabled": false
+                      },
+                      "triggering_process_graph_id": "pid:bbb9e831141343808ced11e87081d820:169377602048561"
+                    }
+                  ],
+                  "email_sent": false,
+                  "show_in_ui": true,
+                  "date_updated": "2023-09-01T21:35:35Z",
+                  "detection_id": "ldt:bbb9e831141343808ced11e87081d820:169373296003013",
+                  "max_severity": 70,
+                  "last_behavior": "2023-09-01T21:35:07Z",
+                  "first_behavior": "2023-09-01T21:35:07Z",
+                  "max_confidence": 70,
+                  "created_timestamp": "2023-09-01T21:35:15.070436407Z",
+                  "quarantined_files": [
+                    {
+                      "id": "bbb9e831141343808ced11e87081d820_c3598ca88efe1b7aace5430686e69667e9d34450b6a40ee87b7da896b3044ec4",
+                      "state": "quarantined",
+                      "sha256": "c3598ca88efe1b7aace5430686e69667e9d34450b6a40ee87b7da896b3044ec4"
+                    }
+                  ],
+                  "seconds_to_triaged": 0,
+                  "behaviors_processed": [
+                    "pid:bbb9e831141343808ced11e87081d820:169377602048561:5708"
+                  ],
+                  "seconds_to_resolved": 0,
+                  "max_severity_displayname": "High"
+                }
+              ]
+            },
+            "pairedItem": {
+              "item": 1
+            }
+          },
+          {
+            "json": {
+              "meta": {
+                "trace_id": "420a43e9-52f6-4304-9db6-16afb83f94c0",
+                "powered_by": "legacy-detects",
+                "query_time": 0.005119884
+              },
+              "errors": [],
+              "resources": [
+                {
+                  "cid": "4f82da4ce0564f64a2469af78d4c73dc",
+                  "device": {
+                    "cid": "4f82da4ce0564f64a2469af78d4c73dc",
+                    "status": "normal",
+                    "hostname": "Sample-Detect-1",
+                    "local_ip": "10.0.2.15",
+                    "device_id": "ac6da4f6e14249cc9e52a922d678edb7",
+                    "last_seen": "2023-09-01T21:35:06Z",
+                    "first_seen": "2023-09-01T21:35:07Z",
+                    "os_version": "Windows 7",
+                    "external_ip": "10.224.243.113",
+                    "mac_address": "08-00-27-51-56-d8",
+                    "platform_id": "0",
+                    "bios_version": "VirtualBox",
+                    "product_type": "1",
+                    "agent_version": "5.25.10701.0",
+                    "major_version": "6",
+                    "minor_version": "1",
+                    "platform_name": "Windows",
+                    "config_id_base": "65994754",
+                    "config_id_build": "10701",
+                    "agent_load_flags": "0",
+                    "agent_local_time": "2019-08-08T18:30:14.606Z",
+                    "bios_manufacturer": "innotek GmbH",
+                    "product_type_desc": "Workstation",
+                    "config_id_platform": "3",
+                    "modified_timestamp": "2023-09-01T21:35:09Z",
+                    "system_manufacturer": "innotek GmbH",
+                    "system_product_name": "VirtualBox"
+                  },
+                  "status": "new",
+                  "hostinfo": {
+                    "domain": ""
+                  },
+                  "behaviors": [
+                    {
+                      "md5": "27ad42cc15165b0ab19ea06a286c5507",
+                      "sha256": "ee117f5c26717300cc7ae1f92c77f6372fdcdc379599d2130b534f3c958247a9",
+                      "tactic": "Credential Access",
+                      "cmdline": "c:\\demo\\Mimikatz_Credtheft.exe",
+                      "user_id": "S-1-5-21-1516984458-1910986210-2733350064-1000",
+                      "filename": "Mimikatz_Credtheft.exe",
+                      "filepath": "\\Device\\HarddiskVolume2\\demo\\Mimikatz_Credtheft.exe",
+                      "ioc_type": "",
+                      "scenario": "credential_theft",
+                      "severity": 70,
+                      "device_id": "ac6da4f6e14249cc9e52a922d678edb7",
+                      "ioc_value": "",
+                      "objective": "Gain Access",
+                      "tactic_id": "TA0006",
+                      "technique": "OS Credential Dumping",
+                      "timestamp": "2023-09-01T21:35:05Z",
+                      "user_name": "Trial",
+                      "confidence": 99,
+                      "ioc_source": "",
+                      "behavior_id": "52",
+                      "description": "The LSASS process was accessed from the mimikatz hack tool.",
+                      "display_name": "LsassAccessFromMimikatz",
+                      "technique_id": "T1003",
+                      "parent_details": {
+                        "parent_md5": "5746bd7e255dd6a8afa06f7c42c1ba41",
+                        "parent_sha256": "db06c3534964e3fc79d2763144ba53742d7fa250ca336f4a0fe724b75aaff386",
+                        "parent_cmdline": "cmd.exe ",
+                        "parent_process_graph_id": "pid:ac6da4f6e14249cc9e52a922d678edb7:169390485285907"
+                      },
+                      "ioc_description": "",
+                      "alleged_filetype": "exe",
+                      "control_graph_id": "ctg:ac6da4f6e14249cc9e52a922d678edb7:169386181192007",
+                      "pattern_disposition": 128,
+                      "pattern_disposition_details": {
+                        "detect": false,
+                        "rooting": false,
+                        "indicator": false,
+                        "inddet_mask": false,
+                        "kill_parent": false,
+                        "sensor_only": false,
+                        "kill_process": false,
+                        "suspend_parent": false,
+                        "kill_subprocess": false,
+                        "policy_disabled": false,
+                        "process_blocked": false,
+                        "quarantine_file": true,
+                        "suspend_process": false,
+                        "operation_blocked": false,
+                        "kill_action_failed": false,
+                        "quarantine_machine": false,
+                        "fs_operation_blocked": false,
+                        "bootup_safeguard_enabled": false,
+                        "critical_process_disabled": false,
+                        "registry_operation_blocked": false,
+                        "handle_operation_downgraded": false,
+                        "blocking_unsupported_or_disabled": false
+                      },
+                      "triggering_process_graph_id": "pid:ac6da4f6e14249cc9e52a922d678edb7:169390487319138"
+                    }
+                  ],
+                  "email_sent": false,
+                  "show_in_ui": true,
+                  "date_updated": "2023-09-01T21:36:37Z",
+                  "detection_id": "ldt:ac6da4f6e14249cc9e52a922d678edb7:169386181192007",
+                  "max_severity": 70,
+                  "last_behavior": "2023-09-01T21:35:05Z",
+                  "first_behavior": "2023-09-01T21:35:05Z",
+                  "max_confidence": 99,
+                  "created_timestamp": "2023-09-01T21:36:15.373807643Z",
+                  "quarantined_files": [
+                    {
+                      "id": "ac6da4f6e14249cc9e52a922d678edb7_ee117f5c26717300cc7ae1f92c77f6372fdcdc379599d2130b534f3c958247a9",
+                      "state": "quarantined",
+                      "sha256": "ee117f5c26717300cc7ae1f92c77f6372fdcdc379599d2130b534f3c958247a9"
+                    }
+                  ],
+                  "seconds_to_triaged": 0,
+                  "behaviors_processed": [
+                    "pid:ac6da4f6e14249cc9e52a922d678edb7:169390487319138:52"
+                  ],
+                  "seconds_to_resolved": 0,
+                  "max_severity_displayname": "High"
+                }
+              ]
+            },
+            "pairedItem": {
+              "item": 2
+            }
+          }
+        ],
+        "Look up SHA in Virustotal": [
+          {
+            "json": {
+              "data": {
+                "id": "fb55414848281f804858ce188c3dc659d129e283bd62d58d34f6e6f568feab37",
+                "type": "file",
+                "links": {
+                  "self": "https://www.virustotal.com/api/v3/files/fb55414848281f804858ce188c3dc659d129e283bd62d58d34f6e6f568feab37"
+                },
+                "attributes": {
+                  "md5": "2c527d980eb30daa789492283f9bf69e",
+                  "sha1": "d007f64dae6bc5fdfe4ff30fe7be9b7d62238012",
+                  "size": 804352,
+                  "tags": [
+                    "peexe",
+                    "assembly",
+                    "runtime-modules",
+                    "detect-debug-environment",
+                    "idle",
+                    "long-sleeps",
+                    "direct-cpu-clock-access",
+                    "64bits"
+                  ],
+                  "tlsh": "T1DF051955A3ED0098F1B79AB59EF19516EBB378D61830C30F02A8CA5F1F73B519D29322",
+                  "trid": [
+                    {
+                      "file_type": "Microsoft Visual C++ compiled executable (generic)",
+                      "probability": 43.3
+                    },
+                    {
+                      "file_type": "Win64 Executable (generic)",
+                      "probability": 27.6
+                    },
+                    {
+                      "file_type": "Win16 NE executable (generic)",
+                      "probability": 13.2
+                    },
+                    {
+                      "file_type": "OS/2 Executable (generic)",
+                      "probability": 5.3
+                    },
+                    {
+                      "file_type": "Generic Win/DOS Executable",
+                      "probability": 5.2
+                    }
+                  ],
+                  "magic": "PE32+ executable (console) x86-64, for MS Windows",
+                  "names": [
+                    "mimikatz",
+                    "mimikatz.exe",
+                    "172869_96@172869",
+                    "172611_113@172611",
+                    "172608_99@172608",
+                    "172604_113@172604",
+                    "172603_99@172603",
+                    "172515_99@172515",
+                    "172514_99@172514",
+                    "172513_101@172513",
+                    "172511_97@172511",
+                    "mimi64.exe",
+                    "VirusShare_2c527d980eb30daa789492283f9bf69e",
+                    "fb55414848281f804858ce188c3dc659d129e283bd62d58d34f6e6f568feab37",
+                    "Tmp_575016140236840010mimikatz.exe",
+                    "mimikatz.exe3070765334181680807.tmp",
+                    "mimikatz.exe3239312256147622824.tmp",
+                    "realprotects02_mmk.exe",
+                    "aa"
+                  ],
+                  "vhash": "085066651d1555651572z152z8137082f1z30300240701051z203dz",
+                  "sha256": "fb55414848281f804858ce188c3dc659d129e283bd62d58d34f6e6f568feab37",
+                  "ssdeep": "12288:7DKgZYQ/TH180/fFKZxjpeNwGxj8TZncET1efb2EfYpXcO:3vZYQ/TV8iSjpMgncDT2Efi",
+                  "pe_info": {
+                    "imphash": "1b0369a1e06271833f78ffa70ffb4eaf",
+                    "sections": [
+                      {
+                        "md5": "211c2a40b62791565749abc7d7e30f37",
+                        "chi2": 3115270.25,
+                        "name": ".text",
+                        "flags": "rx",
+                        "entropy": 6.44,
+                        "raw_size": 497664,
+                        "virtual_size": 497409,
+                        "virtual_address": 4096
+                      },
+                      {
+                        "md5": "51730eaa462a07fe3b68ed33c1bfc3e0",
+                        "chi2": 15408258,
+                        "name": ".rdata",
+                        "flags": "r",
+                        "entropy": 4.18,
+                        "raw_size": 247296,
+                        "virtual_size": 246884,
+                        "virtual_address": 503808
+                      },
+                      {
+                        "md5": "b3c66f6122ece6ce02e2f17a3dc6c1e2",
+                        "chi2": 2412184.25,
+                        "name": ".data",
+                        "flags": "rw",
+                        "entropy": 2.87,
+                        "raw_size": 19968,
+                        "virtual_size": 23364,
+                        "virtual_address": 753664
+                      },
+                      {
+                        "md5": "bc744f41721f50c78b8d48aedfe88cf2",
+                        "chi2": 384387.06,
+                        "name": ".pdata",
+                        "flags": "r",
+                        "entropy": 5.74,
+                        "raw_size": 16384,
+                        "virtual_size": 16344,
+                        "virtual_address": 778240
+                      },
+                      {
+                        "md5": "19c28ffab7ff15fb1476e2ce044fcb76",
+                        "chi2": 180777.06,
+                        "name": ".rsrc",
+                        "flags": "r",
+                        "entropy": 6.55,
+                        "raw_size": 16384,
+                        "virtual_size": 16376,
+                        "virtual_address": 794624
+                      },
+                      {
+                        "md5": "ddae0726e032c4bb02273debff9763ac",
+                        "chi2": 203187.77,
+                        "name": ".reloc",
+                        "flags": "r",
+                        "entropy": 4.37,
+                        "raw_size": 5632,
+                        "virtual_size": 5600,
+                        "virtual_address": 811008
+                      }
+                    ],
+                    "timestamp": 1502638084,
+                    "entry_point": 473720,
+                    "import_list": [
+                      {
+                        "library_name": "NETAPI32.dll",
+                        "imported_functions": [
+                          "DsGetDcNameW",
+                          "NetApiBufferFree",
+                          "NetRemoteTOD",
+                          "NetServerGetInfo",
+                          "NetSessionEnum",
+                          "NetShareEnum",
+                          "NetStatisticsGet",
+                          "NetWkstaUserEnum"
+                        ]
+                      },
+                      {
+                        "library_name": "WINSTA.dll",
+                        "imported_functions": [
+                          "WinStationCloseServer",
+                          "WinStationConnectW",
+                          "WinStationEnumerateW",
+                          "WinStationFreeMemory",
+                          "WinStationOpenServerW",
+                          "WinStationQueryInformationW"
+                        ]
+                      },
+                      {
+                        "library_name": "CRYPT32.dll",
+                        "imported_functions": [
+                          "CertAddCertificateContextToStore",
+                          "CertAddEncodedCertificateToStore",
+                          "CertCloseStore",
+                          "CertEnumCertificatesInStore",
+                          "CertEnumSystemStore",
+                          "CertFindCertificateInStore",
+                          "CertFreeCertificateContext",
+                          "CertGetCertificateContextProperty",
+                          "CertGetNameStringW",
+                          "CertNameToStrW",
+                          "CertOpenStore",
+                          "CertSetCertificateContextProperty",
+                          "CryptAcquireCertificatePrivateKey",
+                          "CryptBinaryToStringW",
+                          "CryptEncodeObject",
+                          "CryptExportPublicKeyInfo",
+                          "CryptProtectData",
+                          "CryptSignAndEncodeCertificate",
+                          "CryptStringToBinaryW",
+                          "CryptUnprotectData",
+                          "PFXExportCertStoreEx"
+                        ]
+                      },
+                      {
+                        "library_name": "ADVAPI32.dll",
+                        "imported_functions": [
+                          "AllocateAndInitializeSid",
+                          "BuildSecurityDescriptorW",
+                          "CheckTokenMembership",
+                          "ClearEventLogW",
+                          "CloseServiceHandle",
+                          "ControlService",
+                          "ConvertSidToStringSidW",
+                          "ConvertStringSidToSidW",
+                          "CopySid",
+                          "CreateProcessAsUserW",
+                          "CreateProcessWithLogonW",
+                          "CreateServiceW",
+                          "CreateWellKnownSid",
+                          "CredEnumerateW",
+                          "CredFree",
+                          "CryptAcquireContextA",
+                          "CryptAcquireContextW",
+                          "CryptCreateHash",
+                          "CryptDecrypt",
+                          "CryptDestroyHash",
+                          "CryptDestroyKey",
+                          "CryptDuplicateKey",
+                          "CryptEncrypt",
+                          "CryptEnumProvidersW",
+                          "CryptEnumProviderTypesW",
+                          "CryptExportKey",
+                          "CryptGenKey",
+                          "CryptGetHashParam",
+                          "CryptGetKeyParam",
+                          "CryptGetProvParam",
+                          "CryptGetUserKey",
+                          "CryptHashData",
+                          "CryptImportKey",
+                          "CryptReleaseContext",
+                          "CryptSetHashParam",
+                          "CryptSetKeyParam",
+                          "CryptSetProvParam",
+                          "DeleteService",
+                          "DuplicateTokenEx",
+                          "FreeSid",
+                          "GetLengthSid",
+                          "GetNumberOfEventLogRecords",
+                          "GetSidSubAuthority",
+                          "GetSidSubAuthorityCount",
+                          "GetTokenInformation",
+                          "IsTextUnicode",
+                          "IsValidSid",
+                          "LookupAccountNameW",
+                          "LookupAccountSidW",
+                          "LookupPrivilegeNameW",
+                          "LookupPrivilegeValueW",
+                          "LsaClose",
+                          "LsaEnumerateTrustedDomainsEx",
+                          "LsaFreeMemory",
+                          "LsaOpenPolicy",
+                          "LsaOpenSecret",
+                          "LsaQueryInformationPolicy",
+                          "LsaQuerySecret",
+                          "LsaQueryTrustedDomainInfoByName",
+                          "LsaRetrievePrivateData",
+                          "OpenEventLogW",
+                          "OpenProcessToken",
+                          "OpenSCManagerW",
+                          "OpenServiceW",
+                          "OpenThreadToken",
+                          "QueryServiceObjectSecurity",
+                          "QueryServiceStatusEx",
+                          "RegCloseKey",
+                          "RegEnumKeyExW",
+                          "RegEnumValueW",
+                          "RegisterServiceCtrlHandlerW",
+                          "RegOpenKeyExW",
+                          "RegQueryInfoKeyW",
+                          "RegQueryValueExW",
+                          "RegSetValueExW",
+                          "SetServiceObjectSecurity",
+                          "SetServiceStatus",
+                          "SetThreadToken",
+                          "StartServiceCtrlDispatcherW",
+                          "StartServiceW",
+                          "SystemFunction001",
+                          "SystemFunction005",
+                          "SystemFunction006",
+                          "SystemFunction007",
+                          "SystemFunction013",
+                          "SystemFunction025",
+                          "SystemFunction032"
+                        ]
+                      },
+                      {
+                        "library_name": "KERNEL32.dll",
+                        "imported_functions": [
+                          "AreFileApisANSI",
+                          "CloseHandle",
+                          "CreateEventW",
+                          "CreateFileA",
+                          "CreateFileMappingA",
+                          "CreateFileMappingW",
+                          "CreateFileW",
+                          "CreateMutexW",
+                          "CreatePipe",
+                          "CreateProcessW",
+                          "CreateRemoteThread",
+                          "CreateThread",
+                          "DeleteCriticalSection",
+                          "DeleteFileA",
+                          "DeleteFileW",
+                          "DeviceIoControl",
+                          "DuplicateHandle",
+                          "EnterCriticalSection",
+                          "ExitProcess",
+                          "ExpandEnvironmentStringsW",
+                          "FileTimeToLocalFileTime",
+                          "FileTimeToSystemTime",
+                          "FillConsoleOutputCharacterW",
+                          "FindClose",
+                          "FindFirstFileW",
+                          "FindNextFileW",
+                          "FlushFileBuffers",
+                          "FlushViewOfFile",
+                          "FormatMessageA",
+                          "FormatMessageW",
+                          "FreeLibrary",
+                          "GetComputerNameExW",
+                          "GetConsoleOutputCP",
+                          "GetConsoleScreenBufferInfo",
+                          "GetCurrentDirectoryW",
+                          "GetCurrentProcess",
+                          "GetCurrentProcessId",
+                          "GetCurrentThread",
+                          "GetCurrentThreadId",
+                          "GetDateFormatW",
+                          "GetDiskFreeSpaceA",
+                          "GetDiskFreeSpaceW",
+                          "GetFileAttributesA",
+                          "GetFileAttributesExW",
+                          "GetFileAttributesW",
+                          "GetFileSize",
+                          "GetFileSizeEx",
+                          "GetFullPathNameA",
+                          "GetFullPathNameW",
+                          "GetLastError",
+                          "GetModuleHandleW",
+                          "GetProcAddress",
+                          "GetProcessHeap",
+                          "GetProcessId",
+                          "GetStdHandle",
+                          "GetSystemInfo",
+                          "GetSystemTime",
+                          "GetSystemTimeAsFileTime",
+                          "GetTempPathA",
+                          "GetTempPathW",
+                          "GetTickCount",
+                          "GetTimeFormatW",
+                          "GetTimeZoneInformation",
+                          "GetVersionExA",
+                          "GetVersionExW",
+                          "HeapAlloc",
+                          "HeapCompact",
+                          "HeapCreate",
+                          "HeapDestroy",
+                          "HeapFree",
+                          "HeapReAlloc",
+                          "HeapSize",
+                          "HeapValidate",
+                          "InitializeCriticalSection",
+                          "LeaveCriticalSection",
+                          "LoadLibraryA",
+                          "LoadLibraryW",
+                          "LocalAlloc",
+                          "LocalFree",
+                          "LockFile",
+                          "LockFileEx",
+                          "lstrlenA",
+                          "lstrlenW",
+                          "MapViewOfFile",
+                          "MultiByteToWideChar",
+                          "OpenProcess",
+                          "OutputDebugStringA",
+                          "OutputDebugStringW",
+                          "ProcessIdToSessionId",
+                          "QueryPerformanceCounter",
+                          "RaiseException",
+                          "ReadFile",
+                          "ReadProcessMemory",
+                          "RtlCaptureContext",
+                          "RtlLookupFunctionEntry",
+                          "RtlVirtualUnwind",
+                          "SetConsoleCtrlHandler",
+                          "SetConsoleCursorPosition",
+                          "SetConsoleOutputCP",
+                          "SetConsoleTitleW",
+                          "SetCurrentDirectoryW",
+                          "SetEndOfFile",
+                          "SetEvent",
+                          "SetFilePointer",
+                          "SetHandleInformation",
+                          "SetLastError",
+                          "SetUnhandledExceptionFilter",
+                          "Sleep",
+                          "SystemTimeToFileTime",
+                          "TerminateProcess",
+                          "TerminateThread",
+                          "TryEnterCriticalSection",
+                          "UnhandledExceptionFilter",
+                          "UnlockFile",
+                          "UnlockFileEx",
+                          "UnmapViewOfFile",
+                          "VirtualAlloc",
+                          "VirtualAllocEx",
+                          "VirtualFree",
+                          "VirtualFreeEx",
+                          "VirtualProtect",
+                          "VirtualProtectEx",
+                          "VirtualQuery",
+                          "VirtualQueryEx",
+                          "WaitForSingleObject",
+                          "WaitForSingleObjectEx",
+                          "WideCharToMultiByte",
+                          "WriteFile",
+                          "WriteProcessMemory"
+                        ]
+                      },
+                      {
+                        "library_name": "msvcrt.dll",
+                        "imported_functions": [
+                          "?terminate@@YAXXZ",
+                          "__badioinfo",
+                          "__C_specific_handler",
+                          "__mb_cur_max",
+                          "__pioinfo",
+                          "__set_app_type",
+                          "__setusermatherr",
+                          "__wgetmainargs",
+                          "_amsg_exit",
+                          "_cexit",
+                          "_commode",
+                          "_errno",
+                          "_exit",
+                          "_fileno",
+                          "_fmode",
+                          "_initterm",
+                          "_iob",
+                          "_isatty",
+                          "_itoa",
+                          "_lseeki64",
+                          "_msize",
+                          "_read",
+                          "_setmode",
+                          "_snprintf",
+                          "_wcsdup",
+                          "_wfopen",
+                          "_wpgmptr",
+                          "_write",
+                          "_XcptFilter",
+                          "calloc",
+                          "exit",
+                          "fclose",
+                          "ferror",
+                          "fflush",
+                          "fgetws",
+                          "free",
+                          "gmtime",
+                          "isdigit",
+                          "isleadbyte",
+                          "isspace",
+                          "iswctype",
+                          "isxdigit",
+                          "localeconv",
+                          "malloc",
+                          "mbtowc",
+                          "memcpy",
+                          "memset",
+                          "realloc",
+                          "strftime",
+                          "ungetc",
+                          "vfwprintf",
+                          "vwprintf",
+                          "wcstombs",
+                          "wctomb",
+                          "wprintf"
+                        ]
+                      },
+                      {
+                        "library_name": "OLEAUT32.dll",
+                        "imported_functions": [
+                          "SysAllocString",
+                          "SysFreeString",
+                          "VariantInit"
+                        ]
+                      },
+                      {
+                        "library_name": "netapi32.dll",
+                        "imported_functions": [
+                          "I_NetServerAuthenticate2",
+                          "I_NetServerReqChallenge",
+                          "I_NetServerTrustPasswordsGet"
+                        ]
+                      },
+                      {
+                        "library_name": "RPCRT4.dll",
+                        "imported_functions": [
+                          "I_RpcBindingInqSecurityContext",
+                          "MesDecodeIncrementalHandleCreate",
+                          "MesEncodeIncrementalHandleCreate",
+                          "MesHandleFree",
+                          "MesIncrementalHandleReset",
+                          "NdrClientCall2",
+                          "NdrMesTypeAlignSize2",
+                          "NdrMesTypeDecode2",
+                          "NdrMesTypeEncode2",
+                          "NdrMesTypeFree2",
+                          "NdrServerCall2",
+                          "RpcBindingFree",
+                          "RpcBindingFromStringBindingW",
+                          "RpcBindingInqAuthClientW",
+                          "RpcBindingSetAuthInfoExW",
+                          "RpcBindingSetOption",
+                          "RpcBindingToStringBindingW",
+                          "RpcBindingVectorFree",
+                          "RpcEpRegisterW",
+                          "RpcEpResolveBinding",
+                          "RpcEpUnregister",
+                          "RpcImpersonateClient",
+                          "RpcMgmtEpEltInqBegin",
+                          "RpcMgmtEpEltInqDone",
+                          "RpcMgmtEpEltInqNextW",
+                          "RpcMgmtStopServerListening",
+                          "RpcRevertToSelf",
+                          "RpcServerInqBindings",
+                          "RpcServerListen",
+                          "RpcServerRegisterAuthInfoW",
+                          "RpcServerRegisterIf2",
+                          "RpcServerUnregisterIfEx",
+                          "RpcServerUseProtseqEpW",
+                          "RpcStringBindingComposeW",
+                          "RpcStringFreeW",
+                          "UuidCreate"
+                        ]
+                      },
+                      {
+                        "library_name": "SHELL32.dll",
+                        "imported_functions": [
+                          "CommandLineToArgvW"
+                        ]
+                      },
+                      {
+                        "library_name": "ntdll.dll",
+                        "imported_functions": [
+                          "__chkstk",
+                          "_stricmp",
+                          "_vscwprintf",
+                          "_wcsicmp",
+                          "_wcsnicmp",
+                          "memcmp",
+                          "memmove",
+                          "NtCompareTokens",
+                          "NtEnumerateSystemEnvironmentValuesEx",
+                          "NtQueryInformationProcess",
+                          "NtQueryObject",
+                          "NtQuerySystemEnvironmentValueEx",
+                          "NtQuerySystemInformation",
+                          "NtResumeProcess",
+                          "NtSetSystemEnvironmentValueEx",
+                          "NtSuspendProcess",
+                          "NtTerminateProcess",
+                          "RtlAdjustPrivilege",
+                          "RtlAnsiStringToUnicodeString",
+                          "RtlAppendUnicodeStringToString",
+                          "RtlCompressBuffer",
+                          "RtlCreateUserThread",
+                          "RtlDowncaseUnicodeString",
+                          "RtlEqualString",
+                          "RtlEqualUnicodeString",
+                          "RtlFreeAnsiString",
+                          "RtlFreeOemString",
+                          "RtlFreeUnicodeString",
+                          "RtlGetCompressionWorkSpaceSize",
+                          "RtlGetCurrentPeb",
+                          "RtlGetNtVersionNumbers",
+                          "RtlGUIDFromString",
+                          "RtlInitUnicodeString",
+                          "RtlIpv4AddressToStringW",
+                          "RtlIpv6AddressToStringW",
+                          "RtlStringFromGUID",
+                          "RtlUnicodeStringToAnsiString",
+                          "RtlUpcaseUnicodeString",
+                          "RtlUpcaseUnicodeStringToOemString",
+                          "strrchr",
+                          "strtoul",
+                          "towupper",
+                          "wcschr",
+                          "wcsrchr",
+                          "wcsstr",
+                          "wcstol",
+                          "wcstoul"
+                        ]
+                      },
+                      {
+                        "library_name": "cryptdll.dll",
+                        "imported_functions": [
+                          "CDGenerateRandomBits",
+                          "CDLocateCheckSum",
+                          "CDLocateCSystem",
+                          "MD5Final",
+                          "MD5Init",
+                          "MD5Update"
+                        ]
+                      },
+                      {
+                        "library_name": "USERENV.dll",
+                        "imported_functions": [
+                          "CreateEnvironmentBlock",
+                          "DestroyEnvironmentBlock"
+                        ]
+                      },
+                      {
+                        "library_name": "HID.DLL",
+                        "imported_functions": [
+                          "HidD_FreePreparsedData",
+                          "HidD_GetAttributes",
+                          "HidD_GetHidGuid",
+                          "HidD_GetPreparsedData",
+                          "HidP_GetCaps"
+                        ]
+                      },
+                      {
+                        "library_name": "SETUPAPI.dll",
+                        "imported_functions": [
+                          "SetupDiDestroyDeviceInfoList",
+                          "SetupDiEnumDeviceInterfaces",
+                          "SetupDiGetClassDevsW",
+                          "SetupDiGetDeviceInterfaceDetailW"
+                        ]
+                      },
+                      {
+                        "library_name": "WLDAP32.dll",
+                        "imported_functions": [
+                          "Ord(127)",
+                          "Ord(13)",
+                          "Ord(133)",
+                          "Ord(142)",
+                          "Ord(145)",
+                          "Ord(147)",
+                          "Ord(157)",
+                          "Ord(167)",
+                          "Ord(208)",
+                          "Ord(26)",
+                          "Ord(27)",
+                          "Ord(301)",
+                          "Ord(304)",
+                          "Ord(309)",
+                          "Ord(310)",
+                          "Ord(36)",
+                          "Ord(41)",
+                          "Ord(54)",
+                          "Ord(73)",
+                          "Ord(77)",
+                          "Ord(79)"
+                        ]
+                      },
+                      {
+                        "library_name": "VERSION.dll",
+                        "imported_functions": [
+                          "GetFileVersionInfoSizeW",
+                          "GetFileVersionInfoW",
+                          "VerQueryValueW"
+                        ]
+                      },
+                      {
+                        "library_name": "SAMLIB.dll",
+                        "imported_functions": [
+                          "SamCloseHandle",
+                          "SamConnect",
+                          "SamEnumerateAliasesInDomain",
+                          "SamEnumerateDomainsInSamServer",
+                          "SamEnumerateGroupsInDomain",
+                          "SamEnumerateUsersInDomain",
+                          "SamFreeMemory",
+                          "SamGetAliasMembership",
+                          "SamGetGroupsForUser",
+                          "SamGetMembersInAlias",
+                          "SamGetMembersInGroup",
+                          "SamiChangePasswordUser",
+                          "SamLookupDomainInSamServer",
+                          "SamLookupIdsInDomain",
+                          "SamLookupNamesInDomain",
+                          "SamOpenAlias",
+                          "SamOpenDomain",
+                          "SamOpenGroup",
+                          "SamOpenUser",
+                          "SamQueryInformationUser",
+                          "SamRidToSid",
+                          "SamSetInformationUser"
+                        ]
+                      },
+                      {
+                        "library_name": "msasn1.dll",
+                        "imported_functions": [
+                          "ASN1_CloseDecoder",
+                          "ASN1_CloseEncoder",
+                          "ASN1_CloseModule",
+                          "ASN1_CreateDecoder",
+                          "ASN1_CreateEncoder",
+                          "ASN1_CreateModule",
+                          "ASN1_FreeEncoded",
+                          "ASN1BERDotVal2Eoid"
+                        ]
+                      },
+                      {
+                        "library_name": "Secur32.dll",
+                        "imported_functions": [
+                          "FreeContextBuffer",
+                          "LsaCallAuthenticationPackage",
+                          "LsaConnectUntrusted",
+                          "LsaDeregisterLogonProcess",
+                          "LsaFreeReturnBuffer",
+                          "LsaLookupAuthenticationPackage",
+                          "QueryContextAttributesW"
+                        ]
+                      },
+                      {
+                        "library_name": "WinSCard.dll",
+                        "imported_functions": [
+                          "SCardConnectW",
+                          "SCardDisconnect",
+                          "SCardEstablishContext",
+                          "SCardFreeMemory",
+                          "SCardGetAttrib",
+                          "SCardGetCardTypeProviderNameW",
+                          "SCardListCardsW",
+                          "SCardListReadersW",
+                          "SCardReleaseContext"
+                        ]
+                      },
+                      {
+                        "library_name": "advapi32.dll",
+                        "imported_functions": [
+                          "A_SHAFinal",
+                          "A_SHAInit",
+                          "A_SHAUpdate"
+                        ]
+                      },
+                      {
+                        "library_name": "ole32.dll",
+                        "imported_functions": [
+                          "CoCreateInstance",
+                          "CoInitializeEx",
+                          "CoUninitialize"
+                        ]
+                      },
+                      {
+                        "library_name": "SHLWAPI.dll",
+                        "imported_functions": [
+                          "PathCanonicalizeW",
+                          "PathCombineW",
+                          "PathFindFileNameW",
+                          "PathIsDirectoryW",
+                          "PathIsRelativeW"
+                        ]
+                      },
+                      {
+                        "library_name": "USER32.dll",
+                        "imported_functions": [
+                          "GetKeyboardLayout",
+                          "IsCharAlphaNumericW"
+                        ]
+                      }
+                    ],
+                    "machine_type": 34404,
+                    "resource_langs": {
+                      "ENGLISH US": 5
+                    },
+                    "resource_types": {
+                      "RT_ICON": 3,
+                      "RT_VERSION": 1,
+                      "RT_GROUP_ICON": 1
+                    },
+                    "resource_details": [
+                      {
+                        "chi2": 97825.41,
+                        "lang": "ENGLISH US",
+                        "type": "RT_ICON",
+                        "sha256": "bb14aef3a976374d7a2d7032e95e8b7d339402547705c07768f5e523aa227dbc",
+                        "entropy": 6.587414264678955,
+                        "filetype": "unknown"
+                      },
+                      {
+                        "chi2": 38498.81,
+                        "lang": "ENGLISH US",
+                        "type": "RT_ICON",
+                        "sha256": "4a5ff11cfc675db544c54be18d5f1c2a29ef4c9e02b931792b48263f773fe477",
+                        "entropy": 6.686271667480469,
+                        "filetype": "unknown"
+                      },
+                      {
+                        "chi2": 9270.41,
+                        "lang": "ENGLISH US",
+                        "type": "RT_ICON",
+                        "sha256": "268a8b9081b620341e20e68861b379f8d9a72d2e44a5f9910ce6c67c5fcfcbc5",
+                        "entropy": 6.698233127593994,
+                        "filetype": "unknown"
+                      },
+                      {
+                        "chi2": 3685.33,
+                        "lang": "ENGLISH US",
+                        "type": "RT_GROUP_ICON",
+                        "sha256": "77a1efb6136f52dd2372987b13bf486aa75baeacb93bad009aa3e284c57b8694",
+                        "entropy": 2.4584920406341553,
+                        "filetype": "ICO"
+                      },
+                      {
+                        "chi2": 74977.56,
+                        "lang": "ENGLISH US",
+                        "type": "RT_VERSION",
+                        "sha256": "448bf98b570a49d2c2998a29a7e5cd607608c45dc76ec66754e22423be55e747",
+                        "entropy": 3.480771541595459,
+                        "filetype": "unknown"
+                      }
+                    ],
+                    "rich_pe_header_hash": "125ebb664f20db252068564903aac593",
+                    "compiler_product_versions": [
+                      "[ASM] VS2008 SP1 build 30729 count=1",
+                      "[ C ] VS2008 SP1 build 30729 count=62",
+                      "[C++] VS2008 SP1 build 30729 count=16",
+                      "[IMP] VS2008 SP1 build 30729 count=2",
+                      "[IMP] VS2010 SP1 build 40219 count=2",
+                      "[IMP] VS2012 UPD4 build 61030 count=4",
+                      "[IMP] VS2012 UPD2 build 60315 count=2",
+                      "id: 109, version: 40310 count=2",
+                      "[C++] VS2008 build 21022 count=2",
+                      "id: 123, version: 40310 count=41",
+                      "[---] Unmarked objects count=548",
+                      "id: 126, version: 50727 count=1",
+                      "id: 137, version: 30729 count=79",
+                      "id: 148, version: 30729 count=1",
+                      "[LNK] VS2008 SP1 build 30729 count=1"
+                    ]
+                  },
+                  "type_tag": "peexe",
+                  "type_tags": [
+                    "executable",
+                    "windows",
+                    "win32",
+                    "pe",
+                    "peexe"
+                  ],
+                  "reputation": -3,
+                  "total_votes": {
+                    "harmless": 0,
+                    "malicious": 3
+                  },
+                  "authentihash": "02c86c9977c85a08f18ac1dae02f1cdda569eaba51ec6d17aed6f4ebc2adaf21",
+                  "detectiteasy": {
+                    "values": [
+                      {
+                        "name": "Microsoft Visual C/C++",
+                        "type": "Compiler",
+                        "version": "2008 SP1"
+                      },
+                      {
+                        "info": "LTCG/C",
+                        "name": "Microsoft Visual C/C++",
+                        "type": "Compiler",
+                        "version": "15.00.30729"
+                      },
+                      {
+                        "name": "Microsoft Linker",
+                        "type": "Linker",
+                        "version": "9.00.30729"
+                      },
+                      {
+                        "name": "Visual Studio",
+                        "type": "Tool",
+                        "version": "2008"
+                      }
+                    ],
+                    "filetype": "PE64"
+                  },
+                  "creation_date": 1502638084,
+                  "signature_info": {
+                    "product": "mimikatz",
+                    "copyright": "Copyright (c) 2007 - 2017 gentilkiwi (Benjamin DELPY)",
+                    "description": "mimikatz for Windows",
+                    "file version": "2.1.1.0",
+                    "internal name": "mimikatz",
+                    "original name": "mimikatz.exe"
+                  },
+                  "type_extension": "exe",
+                  "unique_sources": 26,
+                  "meaningful_name": "mimikatz.exe",
+                  "times_submitted": 40,
+                  "sandbox_verdicts": {
+                    "Zenbox": {
+                      "category": "malicious",
+                      "confidence": 72,
+                      "sandbox_name": "Zenbox",
+                      "malware_names": [
+                        "Mimikatz"
+                      ],
+                      "malware_classification": [
+                        "MALWARE",
+                        "TROJAN"
+                      ]
+                    }
+                  },
+                  "type_description": "Win32 EXE",
+                  "last_analysis_date": 1693832687,
+                  "first_seen_itw_date": 1613148992,
+                  "last_analysis_stats": {
+                    "failure": 0,
+                    "timeout": 0,
+                    "harmless": 0,
+                    "malicious": 59,
+                    "suspicious": 0,
+                    "undetected": 12,
+                    "type-unsupported": 4,
+                    "confirmed-timeout": 0
+                  },
+                  "last_submission_date": 1689416355,
+                  "first_submission_date": 1502652611,
+                  "last_analysis_results": {
+                    "AVG": {
+                      "method": "blacklist",
+                      "result": "Win64:HacktoolX-gen [Trj]",
+                      "category": "malicious",
+                      "engine_name": "AVG",
+                      "engine_update": "20230904",
+                      "engine_version": "23.8.8378.0"
+                    },
+                    "CMC": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "CMC",
+                      "engine_update": "20230822",
+                      "engine_version": "2.4.2022.1"
+                    },
+                    "MAX": {
+                      "method": "blacklist",
+                      "result": "malware (ai score=100)",
+                      "category": "malicious",
+                      "engine_name": "MAX",
+                      "engine_update": "20230904",
+                      "engine_version": "2023.1.4.1"
+                    },
+                    "APEX": {
+                      "method": "blacklist",
+                      "result": "Malicious",
+                      "category": "malicious",
+                      "engine_name": "APEX",
+                      "engine_update": "20230904",
+                      "engine_version": "6.451"
+                    },
+                    "Bkav": {
+                      "method": "blacklist",
+                      "result": "W32.AIDetectMalware.64",
+                      "category": "malicious",
+                      "engine_name": "Bkav",
+                      "engine_update": "20230904",
+                      "engine_version": "2.0.0.1"
+                    },
+                    "K7GW": {
+                      "method": "blacklist",
+                      "result": "Hacktool ( 0043c1591 )",
+                      "category": "malicious",
+                      "engine_name": "K7GW",
+                      "engine_update": "20230904",
+                      "engine_version": "12.113.49483"
+                    },
+                    "ALYac": {
+                      "method": "blacklist",
+                      "result": "Application.HackTool.Mimikatz.Z",
+                      "category": "malicious",
+                      "engine_name": "ALYac",
+                      "engine_update": "20230904",
+                      "engine_version": "1.1.3.1"
+                    },
+                    "Avast": {
+                      "method": "blacklist",
+                      "result": "Win64:HacktoolX-gen [Trj]",
+                      "category": "malicious",
+                      "engine_name": "Avast",
+                      "engine_update": "20230904",
+                      "engine_version": "23.8.8378.0"
+                    },
+                    "Avira": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "Avira",
+                      "engine_update": "20230904",
+                      "engine_version": "8.3.3.16"
+                    },
+                    "Baidu": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "Baidu",
+                      "engine_update": "20190318",
+                      "engine_version": "1.0.0.2"
+                    },
+                    "Cynet": {
+                      "method": "blacklist",
+                      "result": "Malicious (score: 100)",
+                      "category": "malicious",
+                      "engine_name": "Cynet",
+                      "engine_update": "20230904",
+                      "engine_version": "4.0.0.27"
+                    },
+                    "Cyren": {
+                      "method": "blacklist",
+                      "result": "W64/S-b61adc75!Eldorado",
+                      "category": "malicious",
+                      "engine_name": "Cyren",
+                      "engine_update": "20230904",
+                      "engine_version": "6.5.1.2"
+                    },
+                    "DrWeb": {
+                      "method": "blacklist",
+                      "result": "Tool.Mimikatz.149",
+                      "category": "malicious",
+                      "engine_name": "DrWeb",
+                      "engine_update": "20230904",
+                      "engine_version": "7.0.61.8090"
+                    },
+                    "GData": {
+                      "method": "blacklist",
+                      "result": "Win64.Trojan-Stealer.Mimikatz.J",
+                      "category": "malicious",
+                      "engine_name": "GData",
+                      "engine_update": "20230904",
+                      "engine_version": "A:25.36452B:27.33020"
+                    },
+                    "Panda": {
+                      "method": "blacklist",
+                      "result": "Hacktool/Mimikatz",
+                      "category": "malicious",
+                      "engine_name": "Panda",
+                      "engine_update": "20230904",
+                      "engine_version": "4.6.4.2"
+                    },
+                    "VBA32": {
+                      "method": "blacklist",
+                      "result": "TrojanPSW.Win64.Mimikatz",
+                      "category": "malicious",
+                      "engine_name": "VBA32",
+                      "engine_update": "20230904",
+                      "engine_version": "5.0.0"
+                    },
+                    "VIPRE": {
+                      "method": "blacklist",
+                      "result": "Application.HackTool.Mimikatz.Z",
+                      "category": "malicious",
+                      "engine_name": "VIPRE",
+                      "engine_update": "20230904",
+                      "engine_version": "6.0.0.35"
+                    },
+                    "VirIT": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "VirIT",
+                      "engine_update": "20230904",
+                      "engine_version": "9.5.527"
+                    },
+                    "Zoner": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "Zoner",
+                      "engine_update": "20230904",
+                      "engine_version": "2.2.2.0"
+                    },
+                    "ClamAV": {
+                      "method": "blacklist",
+                      "result": "Win.Dropper.Mimikatz-9778171-1",
+                      "category": "malicious",
+                      "engine_name": "ClamAV",
+                      "engine_update": "20230904",
+                      "engine_version": "1.2.0.0"
+                    },
+                    "Google": {
+                      "method": "blacklist",
+                      "result": "Detected",
+                      "category": "malicious",
+                      "engine_name": "Google",
+                      "engine_update": "20230904",
+                      "engine_version": "1693828828"
+                    },
+                    "Ikarus": {
+                      "method": "blacklist",
+                      "result": "HackTool.Mimikatz",
+                      "category": "malicious",
+                      "engine_name": "Ikarus",
+                      "engine_update": "20230904",
+                      "engine_version": "6.1.14.0"
+                    },
+                    "Lionic": {
+                      "method": "blacklist",
+                      "result": "Trojan.Win32.Generic.4!c",
+                      "category": "malicious",
+                      "engine_name": "Lionic",
+                      "engine_update": "20230904",
+                      "engine_version": "7.5"
+                    },
+                    "McAfee": {
+                      "method": "blacklist",
+                      "result": "HTool-MimiKatz!2C527D980EB3",
+                      "category": "malicious",
+                      "engine_name": "McAfee",
+                      "engine_update": "20230904",
+                      "engine_version": "6.0.6.653"
+                    },
+                    "Rising": {
+                      "method": "blacklist",
+                      "result": "HackTool.Mimikatz!1.B63A (CLASSIC)",
+                      "category": "malicious",
+                      "engine_name": "Rising",
+                      "engine_update": "20230904",
+                      "engine_version": "25.0.0.27"
+                    },
+                    "Sophos": {
+                      "method": "blacklist",
+                      "result": "ATK/Apteryx-Gen",
+                      "category": "malicious",
+                      "engine_name": "Sophos",
+                      "engine_update": "20230904",
+                      "engine_version": "2.3.1.0"
+                    },
+                    "Yandex": {
+                      "method": "blacklist",
+                      "result": "Trojan.GenAsa!yEfBfhfG1SM",
+                      "category": "malicious",
+                      "engine_name": "Yandex",
+                      "engine_update": "20230904",
+                      "engine_version": "5.5.2.24"
+                    },
+                    "Zillya": {
+                      "method": "blacklist",
+                      "result": "Tool.Mimikatz.Win32.432",
+                      "category": "malicious",
+                      "engine_name": "Zillya",
+                      "engine_update": "20230904",
+                      "engine_version": "2.0.0.4949"
+                    },
+                    "Acronis": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "Acronis",
+                      "engine_update": "20230828",
+                      "engine_version": "1.2.0.121"
+                    },
+                    "Alibaba": {
+                      "method": "blacklist",
+                      "result": "TrojanPSW:Win64/Mimikatz.3b37040b",
+                      "category": "malicious",
+                      "engine_name": "Alibaba",
+                      "engine_update": "20190527",
+                      "engine_version": "0.3.0.5"
+                    },
+                    "Arcabit": {
+                      "method": "blacklist",
+                      "result": "Application.HackTool.Mimikatz.Z",
+                      "category": "malicious",
+                      "engine_name": "Arcabit",
+                      "engine_update": "20230904",
+                      "engine_version": "2022.0.0.18"
+                    },
+                    "Cylance": {
+                      "method": "blacklist",
+                      "result": "unsafe",
+                      "category": "malicious",
+                      "engine_name": "Cylance",
+                      "engine_update": "20230830",
+                      "engine_version": "2.0.0.0"
+                    },
+                    "Elastic": {
+                      "method": "blacklist",
+                      "result": "Windows.Hacktool.Mimikatz",
+                      "category": "malicious",
+                      "engine_name": "Elastic",
+                      "engine_update": "20230830",
+                      "engine_version": "4.0.105"
+                    },
+                    "FireEye": {
+                      "method": "blacklist",
+                      "result": "Generic.mg.2c527d980eb30daa",
+                      "category": "malicious",
+                      "engine_name": "FireEye",
+                      "engine_update": "20230904",
+                      "engine_version": "35.24.1.0"
+                    },
+                    "Sangfor": {
+                      "method": "blacklist",
+                      "result": "Trojan.Win32.Save.a",
+                      "category": "malicious",
+                      "engine_name": "Sangfor",
+                      "engine_update": "20230818",
+                      "engine_version": "2.23.0.0"
+                    },
+                    "TACHYON": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "TACHYON",
+                      "engine_update": "20230904",
+                      "engine_version": "2023-09-04.02"
+                    },
+                    "Tencent": {
+                      "method": "blacklist",
+                      "result": "Trojan.Win64.Mimikatz.a",
+                      "category": "malicious",
+                      "engine_name": "Tencent",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0.0.1"
+                    },
+                    "ViRobot": {
+                      "method": "blacklist",
+                      "result": "HackTool.Mimikatz.804352",
+                      "category": "malicious",
+                      "engine_name": "ViRobot",
+                      "engine_update": "20230904",
+                      "engine_version": "2014.3.20.0"
+                    },
+                    "Webroot": {
+                      "method": "blacklist",
+                      "result": "W32.Hacktool.Gen",
+                      "category": "malicious",
+                      "engine_name": "Webroot",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0.0.403"
+                    },
+                    "Xcitium": {
+                      "method": "blacklist",
+                      "result": "Malware@#krqmh0fxnt9s",
+                      "category": "malicious",
+                      "engine_name": "Xcitium",
+                      "engine_update": "20230904",
+                      "engine_version": "35974"
+                    },
+                    "tehtris": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "tehtris",
+                      "engine_update": "20230904",
+                      "engine_version": "v0.1.4"
+                    },
+                    "Emsisoft": {
+                      "method": "blacklist",
+                      "result": "Application.HackTool.Mimikatz.Z (B)",
+                      "category": "malicious",
+                      "engine_name": "Emsisoft",
+                      "engine_update": "20230904",
+                      "engine_version": "2022.6.0.32461"
+                    },
+                    "F-Secure": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "F-Secure",
+                      "engine_update": "20230904",
+                      "engine_version": "18.10.1137.128"
+                    },
+                    "Fortinet": {
+                      "method": "blacklist",
+                      "result": "Riskware/NetWalker",
+                      "category": "malicious",
+                      "engine_name": "Fortinet",
+                      "engine_update": "20230830",
+                      "engine_version": "None"
+                    },
+                    "Jiangmin": {
+                      "method": "blacklist",
+                      "result": "Trojan.PSW.Mimikatz.pv",
+                      "category": "malicious",
+                      "engine_name": "Jiangmin",
+                      "engine_update": "20230831",
+                      "engine_version": "16.0.100"
+                    },
+                    "Paloalto": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "Paloalto",
+                      "engine_update": "20230904",
+                      "engine_version": "0.9.0.1003"
+                    },
+                    "Symantec": {
+                      "method": "blacklist",
+                      "result": "ML.Attribute.HighConfidence",
+                      "category": "malicious",
+                      "engine_name": "Symantec",
+                      "engine_update": "20230904",
+                      "engine_version": "1.20.0.0"
+                    },
+                    "Trapmine": {
+                      "method": "blacklist",
+                      "result": "malicious.high.ml.score",
+                      "category": "malicious",
+                      "engine_name": "Trapmine",
+                      "engine_update": "20230718",
+                      "engine_version": "4.0.14.90"
+                    },
+                    "AhnLab-V3": {
+                      "method": "blacklist",
+                      "result": "Trojan/Win32.Mimikatz.R248716",
+                      "category": "malicious",
+                      "engine_name": "AhnLab-V3",
+                      "engine_update": "20230904",
+                      "engine_version": "3.24.0.10447"
+                    },
+                    "Antiy-AVL": {
+                      "method": "blacklist",
+                      "result": "Trojan/Win32.AGeneric",
+                      "category": "malicious",
+                      "engine_name": "Antiy-AVL",
+                      "engine_update": "20230904",
+                      "engine_version": "3.0"
+                    },
+                    "Kaspersky": {
+                      "method": "blacklist",
+                      "result": "HEUR:Trojan.Win32.Generic",
+                      "category": "malicious",
+                      "engine_name": "Kaspersky",
+                      "engine_update": "20230904",
+                      "engine_version": "22.0.1.28"
+                    },
+                    "MaxSecure": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "MaxSecure",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0.0.1"
+                    },
+                    "Microsoft": {
+                      "method": "blacklist",
+                      "result": "HackTool:Win32/Mimikatz.D",
+                      "category": "malicious",
+                      "engine_name": "Microsoft",
+                      "engine_update": "20230904",
+                      "engine_version": "1.1.23080.2005"
+                    },
+                    "Trustlook": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "type-unsupported",
+                      "engine_name": "Trustlook",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0"
+                    },
+                    "ZoneAlarm": {
+                      "method": "blacklist",
+                      "result": "HEUR:Trojan.Win32.Generic",
+                      "category": "malicious",
+                      "engine_name": "ZoneAlarm",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0"
+                    },
+                    "Cybereason": {
+                      "method": "blacklist",
+                      "result": "malicious.80eb30",
+                      "category": "malicious",
+                      "engine_name": "Cybereason",
+                      "engine_update": "20230822",
+                      "engine_version": "1.2.449"
+                    },
+                    "ESET-NOD32": {
+                      "method": "blacklist",
+                      "result": "a variant of Win64/Riskware.Mimikatz.D",
+                      "category": "malicious",
+                      "engine_name": "ESET-NOD32",
+                      "engine_update": "20230904",
+                      "engine_version": "27850"
+                    },
+                    "Gridinsoft": {
+                      "method": "blacklist",
+                      "result": "Risk.Win64.Gen.dd!i",
+                      "category": "malicious",
+                      "engine_name": "Gridinsoft",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0.136.174"
+                    },
+                    "TrendMicro": {
+                      "method": "blacklist",
+                      "result": "HKTL_MIMIKATZ64.SMGK",
+                      "category": "malicious",
+                      "engine_name": "TrendMicro",
+                      "engine_update": "20230904",
+                      "engine_version": "11.0.0.1006"
+                    },
+                    "BitDefender": {
+                      "method": "blacklist",
+                      "result": "Application.HackTool.Mimikatz.Z",
+                      "category": "malicious",
+                      "engine_name": "BitDefender",
+                      "engine_update": "20230904",
+                      "engine_version": "7.2"
+                    },
+                    "CrowdStrike": {
+                      "method": "blacklist",
+                      "result": "win/malicious_confidence_100% (W)",
+                      "category": "malicious",
+                      "engine_name": "CrowdStrike",
+                      "engine_update": "20220812",
+                      "engine_version": "1.0"
+                    },
+                    "K7AntiVirus": {
+                      "method": "blacklist",
+                      "result": "Hacktool ( 0043c1591 )",
+                      "category": "malicious",
+                      "engine_name": "K7AntiVirus",
+                      "engine_update": "20230904",
+                      "engine_version": "12.112.49482"
+                    },
+                    "SentinelOne": {
+                      "method": "blacklist",
+                      "result": "Static AI - Suspicious PE",
+                      "category": "malicious",
+                      "engine_name": "SentinelOne",
+                      "engine_update": "20230705",
+                      "engine_version": "23.3.0.3"
+                    },
+                    "Avast-Mobile": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "type-unsupported",
+                      "engine_name": "Avast-Mobile",
+                      "engine_update": "20230904",
+                      "engine_version": "230904-00"
+                    },
+                    "DeepInstinct": {
+                      "method": "blacklist",
+                      "result": "MALICIOUS",
+                      "category": "malicious",
+                      "engine_name": "DeepInstinct",
+                      "engine_update": "20230831",
+                      "engine_version": "3.1.0.15"
+                    },
+                    "Malwarebytes": {
+                      "method": "blacklist",
+                      "result": "Generic.Malware.AI.DDS",
+                      "category": "malicious",
+                      "engine_name": "Malwarebytes",
+                      "engine_update": "20230904",
+                      "engine_version": "4.5.5.54"
+                    },
+                    "CAT-QuickHeal": {
+                      "method": "blacklist",
+                      "result": "HackTool.Mimikatz.S13719268",
+                      "category": "malicious",
+                      "engine_name": "CAT-QuickHeal",
+                      "engine_update": "20230903",
+                      "engine_version": "22.00"
+                    },
+                    "NANO-Antivirus": {
+                      "method": "blacklist",
+                      "result": "Trojan.Win64.Mimikatz.erycef",
+                      "category": "malicious",
+                      "engine_name": "NANO-Antivirus",
+                      "engine_update": "20230904",
+                      "engine_version": "1.0.146.25796"
+                    },
+                    "BitDefenderFalx": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "type-unsupported",
+                      "engine_name": "BitDefenderFalx",
+                      "engine_update": "20230829",
+                      "engine_version": "2.0.936"
+                    },
+                    "BitDefenderTheta": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "undetected",
+                      "engine_name": "BitDefenderTheta",
+                      "engine_update": "20230828",
+                      "engine_version": "7.2.37796.0"
+                    },
+                    "MicroWorld-eScan": {
+                      "method": "blacklist",
+                      "result": "Application.HackTool.Mimikatz.Z",
+                      "category": "malicious",
+                      "engine_name": "MicroWorld-eScan",
+                      "engine_update": "20230904",
+                      "engine_version": "14.0.409.0"
+                    },
+                    "SUPERAntiSpyware": {
+                      "method": "blacklist",
+                      "result": "Hack.Tool/Gen-Mimikatz",
+                      "category": "malicious",
+                      "engine_name": "SUPERAntiSpyware",
+                      "engine_update": "20230902",
+                      "engine_version": "5.6.0.1032"
+                    },
+                    "McAfee-GW-Edition": {
+                      "method": "blacklist",
+                      "result": "BehavesLike.Win64.HToolMimiKatz.bh",
+                      "category": "malicious",
+                      "engine_name": "McAfee-GW-Edition",
+                      "engine_update": "20230904",
+                      "engine_version": "v2021.2.0+4045"
+                    },
+                    "TrendMicro-HouseCall": {
+                      "method": "blacklist",
+                      "result": "HKTL_MIMIKATZ64.SMGK",
+                      "category": "malicious",
+                      "engine_name": "TrendMicro-HouseCall",
+                      "engine_update": "20230904",
+                      "engine_version": "10.0.0.1040"
+                    },
+                    "SymantecMobileInsight": {
+                      "method": "blacklist",
+                      "result": null,
+                      "category": "type-unsupported",
+                      "engine_name": "SymantecMobileInsight",
+                      "engine_update": "20230119",
+                      "engine_version": "2.0"
+                    }
+                  },
+                  "last_modification_date": 1693839964,
+                  "crowdsourced_yara_results": [
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "HKTL_Mimikatz_SkeletonKey_in_memory_Aug20_1",
+                      "ruleset_id": "000f4d099b",
+                      "description": "Detects Mimikatz SkeletonKey in Memory",
+                      "ruleset_name": "gen_mimikatz"
+                    },
+                    {
+                      "author": "Arnim Rupp",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "HKTL_mimikatz_icon",
+                      "ruleset_id": "000f4d099b",
+                      "description": "Detects mimikatz icon in PE file",
+                      "ruleset_name": "gen_mimikatz",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "Mimikatz_Strings",
+                      "ruleset_id": "000f4d099b",
+                      "description": "Detects Mimikatz strings",
+                      "ruleset_name": "gen_mimikatz",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Arnim Rupp",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "HKTL_mimikatz_icon",
+                      "ruleset_id": "000f4d099b",
+                      "description": "Detects mimikatz icon in PE file",
+                      "ruleset_name": "gen_mimikatz"
+                    },
+                    {
+                      "author": "@fusionrace",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "hacktool_windows_mimikatz_modules",
+                      "ruleset_id": "00028d3c79",
+                      "description": "Mimikatz credential dump tool: Modules",
+                      "ruleset_name": "airbnb_binaryalert"
+                    },
+                    {
+                      "author": "@fusionrace",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "hacktool_windows_mimikatz_copywrite",
+                      "ruleset_id": "00028d3c79",
+                      "description": "Mimikatz credential dump tool: Author copywrite",
+                      "ruleset_name": "airbnb_binaryalert"
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "Mimikatz_Gen_Strings",
+                      "ruleset_id": "00017701b5",
+                      "description": "Detects Mimikatz by using some special strings",
+                      "ruleset_name": "thor-hacktools",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Elastic Security",
+                      "source": "https://github.com/elastic/protections-artifacts",
+                      "rule_name": "Windows_Hacktool_Mimikatz_674fd079",
+                      "ruleset_id": "015dd811fe",
+                      "description": "Detection for default mimikatz memssp module",
+                      "ruleset_name": "Windows_Hacktool_Mimikatz",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "Powerkatz_DLL_Generic",
+                      "ruleset_id": "000a067e96",
+                      "description": "Detects Powerkatz - a Mimikatz version prepared to run in memory via Powershell (overlap with other Mimikatz versions is possible)",
+                      "ruleset_name": "gen_powerkatz"
+                    },
+                    {
+                      "author": "ditekSHen",
+                      "source": "https://github.com/ditekshen/detection",
+                      "rule_name": "INDICATOR_TOOL_PWS_Mimikatz",
+                      "ruleset_id": "00cfed631c",
+                      "description": "Detects Mimikatz",
+                      "ruleset_name": "indicator_tools",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "HKTL_Mimikatz_SkeletonKey_in_memory_Aug20_1",
+                      "ruleset_id": "000f4d099b",
+                      "description": "Detects Mimikatz SkeletonKey in Memory",
+                      "ruleset_name": "gen_mimikatz",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Florian Roth",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "HKTL_Imphashes_Aug22_1",
+                      "ruleset_id": "000c8f1d6e",
+                      "description": "Detects different hacktools based on their imphash",
+                      "ruleset_name": "gen_imphash_detection"
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "Mimikatz_Strings",
+                      "ruleset_id": "000f4d099b",
+                      "description": "Detects Mimikatz strings",
+                      "ruleset_name": "gen_mimikatz"
+                    },
+                    {
+                      "author": "@fusionrace",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "hacktool_windows_mimikatz_modules",
+                      "ruleset_id": "00028d3c79",
+                      "description": "Mimikatz credential dump tool: Modules",
+                      "ruleset_name": "airbnb_binaryalert",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "ditekSHen",
+                      "source": "https://github.com/ditekshen/detection",
+                      "rule_name": "INDICATOR_SUSPICIOUS_EXE_SQLQuery_ConfidentialDataStore",
+                      "ruleset_id": "00c3b8eb5d",
+                      "description": "Detects executables containing SQL queries to confidential data stores. Observed in infostealers",
+                      "ruleset_name": "indicator_suspicious"
+                    },
+                    {
+                      "author": "Elastic Security",
+                      "source": "https://github.com/elastic/protections-artifacts",
+                      "rule_name": "Windows_Hacktool_Mimikatz_674fd079",
+                      "ruleset_id": "015dd811fe",
+                      "description": "Detection for default mimikatz memssp module",
+                      "ruleset_name": "Windows_Hacktool_Mimikatz"
+                    },
+                    {
+                      "author": "Benjamin DELPY (gentilkiwi)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "mimikatz",
+                      "ruleset_id": "000f4d099b",
+                      "description": "mimikatz",
+                      "ruleset_name": "gen_mimikatz"
+                    },
+                    {
+                      "author": "Felix Bilstein - yara-signator at cocacoding dot com",
+                      "source": "https://malpedia.caad.fkie.fraunhofer.de/",
+                      "rule_name": "win_mimikatz_auto",
+                      "ruleset_id": "008212ed58",
+                      "description": "Detects win.mimikatz.",
+                      "ruleset_name": "win.mimikatz_auto",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "ditekSHen",
+                      "source": "https://github.com/ditekshen/detection",
+                      "rule_name": "INDICATOR_TOOL_PWS_Mimikatz",
+                      "ruleset_id": "00cfed631c",
+                      "description": "Detects Mimikatz",
+                      "ruleset_name": "indicator_tools"
+                    },
+                    {
+                      "author": "Elastic Security",
+                      "source": "https://github.com/elastic/protections-artifacts",
+                      "rule_name": "Windows_Hacktool_Mimikatz_1388212a",
+                      "ruleset_id": "015dd811fe",
+                      "ruleset_name": "Windows_Hacktool_Mimikatz",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Florian Roth",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "HKTL_Imphashes_Aug22_1",
+                      "ruleset_id": "000c8f1d6e",
+                      "description": "Detects different hacktools based on their imphash",
+                      "ruleset_name": "gen_imphash_detection",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "Mimikatz_Gen_Strings",
+                      "ruleset_id": "00017701b5",
+                      "description": "Detects Mimikatz by using some special strings",
+                      "ruleset_name": "thor-hacktools"
+                    },
+                    {
+                      "author": "ditekSHen",
+                      "source": "https://github.com/ditekshen/detection",
+                      "rule_name": "INDICATOR_SUSPICIOUS_EXE_SQLQuery_ConfidentialDataStore",
+                      "ruleset_id": "00c3b8eb5d",
+                      "description": "Detects executables containing SQL queries to confidential data stores. Observed in infostealers",
+                      "ruleset_name": "indicator_suspicious",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Elastic Security",
+                      "source": "https://github.com/elastic/protections-artifacts",
+                      "rule_name": "Windows_Hacktool_Mimikatz_1388212a",
+                      "ruleset_id": "015dd811fe",
+                      "ruleset_name": "Windows_Hacktool_Mimikatz"
+                    },
+                    {
+                      "author": "@fusionrace",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "hacktool_windows_mimikatz_copywrite",
+                      "ruleset_id": "00028d3c79",
+                      "description": "Mimikatz credential dump tool: Author copywrite",
+                      "ruleset_name": "airbnb_binaryalert",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Benjamin DELPY (gentilkiwi)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "mimikatz",
+                      "ruleset_id": "000f4d099b",
+                      "description": "mimikatz",
+                      "ruleset_name": "gen_mimikatz",
+                      "match_in_subfile": true
+                    },
+                    {
+                      "author": "Felix Bilstein - yara-signator at cocacoding dot com",
+                      "source": "https://malpedia.caad.fkie.fraunhofer.de/",
+                      "rule_name": "win_mimikatz_auto",
+                      "ruleset_id": "008212ed58",
+                      "description": "Detects win.mimikatz.",
+                      "ruleset_name": "win.mimikatz_auto"
+                    },
+                    {
+                      "author": "Florian Roth (Nextron Systems)",
+                      "source": "https://github.com/Neo23x0/signature-base",
+                      "rule_name": "Powerkatz_DLL_Generic",
+                      "ruleset_id": "000a067e96",
+                      "description": "Detects Powerkatz - a Mimikatz version prepared to run in memory via Powershell (overlap with other Mimikatz versions is possible)",
+                      "ruleset_name": "gen_powerkatz",
+                      "match_in_subfile": true
+                    }
+                  ],
+                  "popular_threat_classification": {
+                    "popular_threat_name": [
+                      {
+                        "count": 26,
+                        "value": "mimikatz"
+                      },
+                      {
+                        "count": 2,
+                        "value": "trojanpsw"
+                      },
+                      {
+                        "count": 2,
+                        "value": "hacktoolx"
+                      }
+                    ],
+                    "suggested_threat_label": "hacktool.mimikatz/trojanpsw",
+                    "popular_threat_category": [
+                      {
+                        "count": 19,
+                        "value": "hacktool"
+                      },
+                      {
+                        "count": 11,
+                        "value": "trojan"
+                      },
+                      {
+                        "count": 2,
+                        "value": "pua"
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          }
+        ],
+        "Get recent detections from Crowdstrike": [
+          {
+            "json": {
+              "meta": {
+                "trace_id": "0682792d-d018-4075-a204-64e9dc26061b",
+                "pagination": {
+                  "limit": 100,
+                  "total": 3,
+                  "offset": 0
+                },
+                "powered_by": "legacy-detects",
+                "query_time": 0.003692402
+              },
+              "errors": [],
+              "resources": [
+                "ldt:5556c55274f24f149ee3ffcc9226e595:169377591508015",
+                "ldt:bbb9e831141343808ced11e87081d820:169373296003013",
+                "ldt:ac6da4f6e14249cc9e52a922d678edb7:169386181192007"
+              ]
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "5529711a-2944-4559-a798-a6b2bc43f65a",
+      "connections": {
+        "Pause 1 second": {
+          "main": [
+            [
+              {
+                "node": "Look up SHA in Virustotal",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Get recent detections from Crowdstrike",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split In Batches": {
+          "main": [
+            [
+              {
+                "node": "Split out behaviours",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Jira issue": {
+          "main": [
+            [
+              {
+                "node": "Post notification on Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split out behaviours": {
+          "main": [
+            [
+              {
+                "node": "Pause 1 second",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split out detections": {
+          "main": [
+            [
+              {
+                "node": "Get detection details",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get detection details": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Look up IOC in Virustotal": {
+          "main": [
+            [
+              {
+                "node": "Set behaviour descriptions",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Look up SHA in Virustotal": {
+          "main": [
+            [
+              {
+                "node": "Look up IOC in Virustotal",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Post notification on Slack": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set behaviour descriptions": {
+          "main": [
+            [
+              {
+                "node": "Merge behaviour descriptions",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge behaviour descriptions": {
+          "main": [
+            [
+              {
+                "node": "Create Jira issue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get recent detections from Crowdstrike": {
+          "main": [
+            [
+              {
+                "node": "Split out detections",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 18,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.jira": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.itemLists": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 4
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 77,
+        "icon": "file:jira.svg",
+        "name": "n8n-nodes-base.jira",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jira/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/jira/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Jira Software"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjguMjUgNzEuMjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjMuMTI1IiB5PSIzLjEyNSIvPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkxLjklIiB4Mj0iMjguNDklIiB5MT0iNDAuMjIlIiB5Mj0iODEuNjMlIj48c3RvcCBvZmZzZXQ9IjE4JSIgc3RvcC1jb2xvcj0iIzAwNTJjYyIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzI2ODRmZiIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJjIiB4MT0iOC43JSIgeDI9IjcyLjI2JSIgeTE9IjU5LjE3JSIgeTI9IjE3Ljk5JSI+PHN0b3Agb2Zmc2V0PSIxOCUiIHN0b3AtY29sb3I9IiMwMDUyY2MiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyNjg0ZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PGcgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiPjxwYXRoIGZpbGw9IiMyNjg0ZmYiIGQ9Ik02MS4xNjEgMzAuMjExIDMwLjk1IDAgLjc0IDMwLjIxMWEyLjU0IDIuNTQgMCAwIDAgMCAzLjU4MWwzMC4yMTEgMzAuMjEgMzAuMjExLTMwLjIxYTIuNTQgMi41NCAwIDAgMCAwLTMuNTgxek0zMC45NSA0MS40NmwtOS40NjItOS40NjIgOS40NjItOS40NjIgOS40NjIgOS40NjJ6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTMwLjk1IDIyLjU5OUMyNC43NTUgMTYuNDA1IDI0LjcyNCA2LjM3IDMwLjg4MS4xMzhMMTAuMTE0IDIwLjc3NGwxMS4yNjggMTEuMjY4eiIvPjxwYXRoIGZpbGw9InVybCgjYykiIGQ9Ik00MC40MzcgMzEuOTczIDMwLjk1IDQxLjQ2YTE1LjkzIDE1LjkzIDAgMCAxIDAgMjIuNTM2bDIwLjc0OS0yMC43NDl6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Jira Software",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

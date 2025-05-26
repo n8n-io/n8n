@@ -1,0 +1,24 @@
+URL: https://docs.n8n.io/embed/
+Scraped_At: 2025-05-20T18:42:50.834851
+
+n8n Embed
+#
+n8n Embed is part of n8n's paid offering. Using Embed, you can white label n8n, or incorporate it in your software as part of your commercial product.
+For more information about when to use Embed, as well as costs and licensing processes, refer to
+Embed
+on the n8n website.
+Support
+#
+The
+community forum
+can help with various issues. If you are a current Embed customer, you can also contact n8n support, using the email provided when you bought the license.
+Russia and Belarus
+#
+n8n Embed isn't available in Russia and Belarus. Refer to n8n's blog post
+Update on n8n cloud accounts in Russia and Belarus
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

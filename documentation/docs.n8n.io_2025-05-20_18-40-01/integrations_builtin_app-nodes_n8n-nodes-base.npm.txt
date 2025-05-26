@@ -1,0 +1,51 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.npm/
+Scraped_At: 2025-05-20T18:50:18.251995
+
+npm node
+#
+Use the npm node to automate work in npm, and integrate npm with other applications.
+On this page, you'll find a list of operations the npm node supports and links to more resources.
+Credentials
+Refer to
+npm credentials
+for guidance on setting up authentication.
+Operations
+#
+Package
+Get Package Metadata
+Get Package Versions
+Search for Packages
+Distribution Tag
+Get All Tags
+Update a Tag
+Templates and examples
+#
+Browse npm integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+npm's documentation
+for more information about the service.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

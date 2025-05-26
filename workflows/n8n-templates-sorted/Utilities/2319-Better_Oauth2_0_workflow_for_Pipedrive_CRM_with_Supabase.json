@@ -1,0 +1,1840 @@
+{
+  "workflow": {
+    "id": 2319,
+    "name": "Better Oauth2.0 workflow for Pipedrive CRM with Supabase",
+    "views": 1433,
+    "recentViews": 0,
+    "totalViews": 1433,
+    "createdAt": "2024-07-06T18:28:02.254Z",
+    "description": "This workflow provides an OAuth 2.0 auth token refresh process for better control. Developers can utilize it as an alternative to n8n's built-in OAuth flow to achieve improved control and visibility. In this template, I've used [Pipedrive API](https://developers.pipedrive.com/docs/api/v1/Oauth#get-tokens), but users can apply it with any app that requires the authorization_code for token access.\n\nThis resolves the issue of manually refreshing the OAuth 2.0 token when it expires, or when n8n's native OAuth stops working.\n\n## What you need to replicate this\n\n1. Your database with a pre-existing table for storing authentication tokens and associated information. I'm using Supabase in this example, but you can also employ a self-hosted MySQL.\n\nHere's a [quick video](https://go.screenpal.com/watch/cZiXhEV8N0y) on setting up the Supabase table.\n\n\n2. Create a client app for your chosen application that you want to access via the API.\n\n3. After duplicating the template:\n\na. Add credentials to your database and connect the DB nodes in all 3 workflows.\n\n4. Enable/Publish the first workflow, \"1. Generate and Save Pipedrive tokens to Database.\"\n\n5. Open your client app and follow the Pipedrive instructions to authenticate.\n\nClick on [Install and test](https://www.awesomescreenshot.com/image/49321214?key=886672146f2ba1b1482d43a625b72f10).\n\n\nThis will save your initial refresh token and access token to the database.\n\n6. Please watch the [YouTube video](https://youtu.be/6nXi_yverss) for a detailed demonstration of the workflow:\n\n\n## How it operates\n\n**Workflow 1**. Create a workflow to capture the authorization_code, generate the access_token, and refresh the token, and then save the token to the database.\n\n**Workflow 2**. Develop your primary workflow to fetch or post data to/from your application. Observe the logic to include an if condition when an error occurs with an invalid token. This triggers the third workflow to refresh the token.\n\n**Workflow 3**. This workflow will handle the token refresh. Remember to send the unique ID to the webhook to fetch the necessary tokens from your table.\n\nDetailed demonstration of the workflow:\nhttps://youtu.be/6nXi_yverss",
+    "workflow": {
+      "id": "IYgbtNpyB4E6Jbxo",
+      "meta": {
+        "instanceId": "35ae520798f87e479496aa54e1a1f89ffdf43eee77986511d08258a12b1edc98",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "2. Refresh Pipedrive tokens",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "2b66edcd-c71a-4dac-971f-deb1b09ef85b",
+          "name": "Stop and Error",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            1460,
+            -80
+          ],
+          "parameters": {
+            "errorMessage": "Token refresh failed"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "b48d6760-766e-4b39-be35-89de7dc3ab5e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            -300
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 872,
+            "height": 97,
+            "content": "## Step 2:\nCreate a workflow to refresh your access token when the access token requires a refresh."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6119eef3-9ffa-45a1-b238-412738e7529e",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            280,
+            -80
+          ],
+          "parameters": {
+            "height": 211,
+            "content": "\n\n\n\n\n\n\n\nPost unique data to identify your row in Database and be able to fetch the existing access and refresh token"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2d76be21-95e1-4747-b761-126b133e8264",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            980,
+            -220
+          ],
+          "parameters": {
+            "content": "## Get token from pipedrive"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9a44eb63-9d31-4b24-9171-1f9a828a5c52",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            -740
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 995,
+            "height": 82,
+            "content": "## Step 1:\nSave Refresh token and Access token to DB when authenticated by user and installed.  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f3247e6a-7c1c-4479-9f83-f3bc4146f254",
+          "name": "Insert",
+          "type": "n8n-nodes-base.supabase",
+          "position": [
+            1600,
+            -660
+          ],
+          "parameters": {
+            "tableId": "App_tok",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldId": "ref_token",
+                  "fieldValue": "={{ $node[\"Generate Refresh Token from authcode\"].json[\"body\"][\"refresh_token\"] }}"
+                },
+                {
+                  "fieldId": "acc_token",
+                  "fieldValue": "={{ $node[\"Generate Refresh Token from authcode\"].json[\"body\"][\"access_token\"] }}"
+                },
+                {
+                  "fieldId": "Platform",
+                  "fieldValue": "Pipedrive"
+                },
+                {
+                  "fieldId": "created_at",
+                  "fieldValue": "={{$now.toUTC().toString()}}"
+                },
+                {
+                  "fieldId": "updated_at",
+                  "fieldValue": "={{$now.toUTC().toString()}}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "tlmP1CXY3ExzjJDs",
+              "name": "Supabase Automation"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f7ad45d0-7055-45f4-9971-031ffebfdbda",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            500,
+            -640
+          ],
+          "parameters": {
+            "content": "You can also use SET NODE + tobase64 function as done in step 2"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e14e2dac-e84b-475f-a01b-14bb723eedc8",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            200
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1644,
+            "height": 80,
+            "content": "## Step 3:\nMake an actual API call. In this example, we are using search person API. Please refer to Pipedrive API documentation for your specific use case. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b450c928-e0e4-4f49-829e-03b61828d4d9",
+          "name": "Get Pipedrive Token",
+          "type": "n8n-nodes-base.supabase",
+          "position": [
+            600,
+            660
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "Platform",
+                  "keyValue": "Pipedrive"
+                },
+                {
+                  "keyName": "AppId",
+                  "keyValue": "57db0bab2932f657"
+                }
+              ]
+            },
+            "tableId": "App_tok",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "tlmP1CXY3ExzjJDs",
+              "name": "Supabase Automation"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f92a957a-d0ef-4037-8657-74e7fe74fe6d",
+          "name": "Get contact from Pipedrive",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            900,
+            660
+          ],
+          "parameters": {
+            "url": "=https://priyajain-sandbox.pipedrive.com/api/v2/persons/search?fields=email&term={{ $node[\"Receive request\"].json[\"body\"][\"person\"][\"email\"] }}",
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": true
+                }
+              }
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $node[\"Get Pipedrive Token\"].json[\"acc_token\"] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4,
+          "continueOnFail": true,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "bff21156-3da0-4cf3-b3de-c24d8abe7577",
+          "name": "Access Token Invalid",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1160,
+            700
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ $json[\"error\"][\"message\"].includes(\"Invalid token: access token is invalid\") }}",
+                  "value2": "={{ true }}"
+                }
+              ]
+            },
+            "combineOperation": "any"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9fd832b1-2af9-48c2-9d57-86a9f34bdd78",
+          "name": "Success",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1440,
+            720
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200
+            },
+            "respondWith": "json",
+            "responseBody": "={{ $node[\"Get contact from Pipedrive\"].json[\"body\"][\"data\"][\"items\"][\"0\"][\"item\"][\"name\"] }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "daf33b32-ff7b-4d7e-8fd0-d54dfaddf405",
+          "name": "Refresh Access Token",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1360,
+            320
+          ],
+          "parameters": {
+            "url": "http://localhost:5678/webhook/937a8843-a28a-400a-b473-bdc598366fa0",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n\n  \"appId\":\"57db0bab2932f657\"\n\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth"
+          },
+          "credentials": {
+            "httpBasicAuth": {
+              "id": "E2RYFiR9PotuglZv",
+              "name": "PJ demo"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "6759a890-6c2a-4bb1-aae9-9b8723b9e143",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            580,
+            420
+          ],
+          "parameters": {
+            "width": 668,
+            "content": "## Loop back to fecth the  refreshed Access Token\n### Note:\nYou can add further conditions and use Switch  statemen tinstead of IF to validate API response based on your use case."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d975ce9f-2ef2-46b1-9d30-4f6e06e19b7e",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            120,
+            -960
+          ],
+          "parameters": {
+            "width": 1413,
+            "content": "## 1. This workflow helps you create your own Oauth 2.0 token refresh system. It helps you have better control of your oauth 2.0 auth process.\n## 2. I am using Pipedrive API here. However, you can re-use this for other similar applications. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "40d59a94-563d-459c-91d0-4206c2a19704",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            580
+          ],
+          "parameters": {
+            "height": 248,
+            "content": "A 3rd partyapplication posting the request to the webhook"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "03945766-570c-47db-82c6-2c973e45106d",
+          "name": "convert clientId and secret to base64",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            560,
+            -560
+          ],
+          "parameters": {
+            "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nconst client_id = \"57db0bab2932f657\";\nconst client_secret = \"edfaba095e9e7ddefe2e960ce2e98345230a016d\";\n\n// Combine client_id and client_secret with a colon\nconst combinedString = client_id+\":\"+client_secret;\n\n// Encode the combined string in Base64\nconst encodedString = Buffer.from(combinedString).toString('base64');\n\n// Create the Authorization header value\nconst authorizationHeader = `Basic ${encodedString}`;\n\nreturn {\"authheader\":authorizationHeader};"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "8ca6eb93-6994-4536-b61e-d884c8515929",
+          "name": "Generate Refresh Token from authcode",
+          "type": "n8n-nodes-base.httpRequest",
+          "maxTries": 2,
+          "position": [
+            820,
+            -560
+          ],
+          "parameters": {
+            "url": "https://oauth.pipedrive.com/oauth/token",
+            "method": "POST",
+            "options": {
+              "response": {
+                "response": {
+                  "fullResponse": true
+                }
+              }
+            },
+            "sendBody": true,
+            "contentType": "form-urlencoded",
+            "sendHeaders": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "grant_type",
+                  "value": "authorization_code"
+                },
+                {
+                  "name": "code",
+                  "value": "={{$node[\"catch Auth code\"].json[\"query\"][\"code\"]}}"
+                },
+                {
+                  "name": "redirect_uri",
+                  "value": "={{ $node[\"catch Auth code\"].json[\"webhookUrl\"] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "={{$node[\"convert clientId and secret to base64\"].json[\"authheader\"]}}"
+                }
+              ]
+            }
+          },
+          "retryOnFail": false,
+          "typeVersion": 4,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "9c1b22e1-fd50-4c70-91cf-f4ea8cc7d3ac",
+          "name": "Look for the related record in Supabase",
+          "type": "n8n-nodes-base.supabase",
+          "position": [
+            1060,
+            -540
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "Platform",
+                  "keyValue": "Pipedrive"
+                }
+              ]
+            },
+            "tableId": "App_tok",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "tlmP1CXY3ExzjJDs",
+              "name": "Supabase Automation"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "53602a58-d47a-4133-b9ec-4ea421a75eea",
+          "name": "IF rec not found",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1260,
+            -540
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{ $json.values().length }}",
+                  "operation": "equal"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "38e5d91c-1bea-4f7a-8336-98748005d02e",
+          "name": "Update tokns in the record",
+          "type": "n8n-nodes-base.supabase",
+          "position": [
+            1600,
+            -460
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "Platform",
+                  "keyValue": "Pipedrive",
+                  "condition": "eq"
+                }
+              ]
+            },
+            "tableId": "App_tok",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldId": "acc_token",
+                  "fieldValue": "={{ $node[\"Generate Refresh Token from authcode\"].json[\"body\"][\"access_token\"] }}"
+                },
+                {
+                  "fieldId": "ref_token",
+                  "fieldValue": "={{ $node[\"Generate Refresh Token from authcode\"].json[\"body\"][\"refresh_token\"] }}"
+                },
+                {
+                  "fieldId": "updated_at",
+                  "fieldValue": "={{$now.toUTC().toString()}}"
+                }
+              ]
+            },
+            "matchType": "allFilters",
+            "operation": "update"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "tlmP1CXY3ExzjJDs",
+              "name": "Supabase Automation"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "43a2613d-7793-48c9-8934-57d9b713f5fe",
+          "name": "Supabase- look for the record",
+          "type": "n8n-nodes-base.supabase",
+          "position": [
+            600,
+            -140
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "Platform",
+                  "keyValue": "Pipedrive"
+                },
+                {
+                  "keyName": "AppId",
+                  "keyValue": "={{ $node[\"Webhook\"].json[\"body\"][\"appId\"] }}"
+                }
+              ]
+            },
+            "tableId": "App_tok",
+            "operation": "get"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "tlmP1CXY3ExzjJDs",
+              "name": "Supabase Automation"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "366bd343-419c-4a77-b2ce-e6124a6cc291",
+          "name": "combine client id and secret",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            840,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "4330b857-6184-4ad8-82dc-a8b806ab8077",
+                  "name": "authheader",
+                  "type": "string",
+                  "value": "57db0bab2932f657:edfaba095e9e7ddefe2e960ce2e98345230a016d"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "156acb8f-3a23-40ec-b011-9db8bfa6d98b",
+          "name": "Get Pipedrive acess token",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1060,
+            -140
+          ],
+          "parameters": {
+            "url": "https://oauth.pipedrive.com/oauth/token",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "contentType": "form-urlencoded",
+            "sendHeaders": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "grant_type",
+                  "value": "refresh_token"
+                },
+                {
+                  "name": "refresh_token",
+                  "value": "={{ $node[\"Supabase- look for the record\"].json[\"ref_token\"] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Basic {{ $json[\"authheader\"].base64Encode() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "3e20309e-6d50-444c-b9e1-cf6d6982e546",
+          "name": "IF success",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1240,
+            -140
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ Object.keys($input.first().json)[0]}}",
+                  "value2": "access_token"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e991aa7-9888-404d-8f80-bb6ce0a3b777",
+          "name": "Update thr row with new access token",
+          "type": "n8n-nodes-base.supabase",
+          "position": [
+            1420,
+            -280
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "keyName": "Platform",
+                  "keyValue": "Pipedrive",
+                  "condition": "eq"
+                }
+              ]
+            },
+            "tableId": "App_tok",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldId": "acc_token",
+                  "fieldValue": "={{ $node[\"Get Pipedrive acess token\"].json[\"access_token\"] }}"
+                },
+                {
+                  "fieldId": "ref_token",
+                  "fieldValue": "={{ $node[\"Get Pipedrive acess token\"].json[\"refresh_token\"] }}"
+                }
+              ]
+            },
+            "matchType": "allFilters",
+            "operation": "update"
+          },
+          "credentials": {
+            "supabaseApi": {
+              "id": "tlmP1CXY3ExzjJDs",
+              "name": "Supabase Automation"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "d0989bad-9176-44a2-86ce-db07a5e8a34c",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            340,
+            -140
+          ],
+          "webhookId": "937a8843-a28a-400a-b473-bdc598366fa0",
+          "parameters": {
+            "path": "937a8843-a28a-400a-b473-bdc598366fa0",
+            "options": {},
+            "httpMethod": "POST",
+            "responseMode": "lastNode",
+            "authentication": "basicAuth"
+          },
+          "credentials": {
+            "httpBasicAuth": {
+              "id": "E2RYFiR9PotuglZv",
+              "name": "PJ demo"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "108a2ea1-de2a-4df3-9d9f-0ce1b27a52e9",
+          "name": "Receive request",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            280,
+            680
+          ],
+          "webhookId": "47704458-bfa6-4d95-adf1-97fc78e35d8a",
+          "parameters": {
+            "path": "47704458-bfa6-4d95-adf1-97fc78e35d8a",
+            "options": {},
+            "httpMethod": "POST",
+            "responseMode": "responseNode",
+            "authentication": "basicAuth"
+          },
+          "credentials": {
+            "httpBasicAuth": {
+              "id": "E2RYFiR9PotuglZv",
+              "name": "PJ demo"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f983cfd1-52db-4839-88af-6386ec7c7256",
+          "name": "catch Auth code",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            300,
+            -560
+          ],
+          "webhookId": "aae545fb-a69d-4e20-91ce-65f105d0ea2f",
+          "parameters": {
+            "path": "aae545fb-a69d-4e20-91ce-65f105d0ea2f",
+            "options": {}
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Receive request": [
+          {
+            "json": {
+              "body": {
+                "person": {
+                  "email": "priya+solar@psw.com"
+                }
+              },
+              "query": {},
+              "params": {},
+              "headers": {
+                "host": "http://localhost:5678",
+                "accept": "*/*",
+                "user-agent": "PostmanRuntime/7.39.0",
+                "content-type": "application/json",
+                "authorization": "Basic xxxxxxx==",
+                "cache-control": "no-cache",
+                "postman-token": "41b79257-xxxx-xxxx-xxxx-9e004cae4e9e",
+                "content-length": "52",
+                "accept-encoding": "gzip, deflate, br",
+                "x-forwarded-for": "54.86.50.139",
+                "x-forwarded-host": "localhost:5678",
+                "x-forwarded-proto": "https"
+              },
+              "webhookUrl": "http://localhost:5678/webhook-test/47704458-bfa6-4d95-adf1-97fc78e35d8a",
+              "executionMode": "test"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "saveManualExecutions": true
+      },
+      "versionId": "54499ed8-4677-400a-9e03-d0d84f8a97b5",
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Supabase- look for the record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF success": {
+          "main": [
+            [
+              {
+                "node": "Update thr row with new access token",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop and Error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Receive request": {
+          "main": [
+            [
+              {
+                "node": "Get Pipedrive Token",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "catch Auth code": {
+          "main": [
+            [
+              {
+                "node": "convert clientId and secret to base64",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF rec not found": {
+          "main": [
+            [
+              {
+                "node": "Insert",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update tokns in the record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Pipedrive Token": {
+          "main": [
+            [
+              {
+                "node": "Get contact from Pipedrive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Access Token Invalid": {
+          "main": [
+            [
+              {
+                "node": "Refresh Access Token",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Refresh Access Token": {
+          "main": [
+            [
+              {
+                "node": "Get Pipedrive Token",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Pipedrive acess token": {
+          "main": [
+            [
+              {
+                "node": "IF success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get contact from Pipedrive": {
+          "main": [
+            [
+              {
+                "node": "Access Token Invalid",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "combine client id and secret": {
+          "main": [
+            [
+              {
+                "node": "Get Pipedrive acess token",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Supabase- look for the record": {
+          "main": [
+            [
+              {
+                "node": "combine client id and secret",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate Refresh Token from authcode": {
+          "main": [
+            [
+              {
+                "node": "Look for the related record in Supabase",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "convert clientId and secret to base64": {
+          "main": [
+            [
+              {
+                "node": "Generate Refresh Token from authcode",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Look for the related record in Supabase": {
+          "main": [
+            [
+              {
+                "node": "IF rec not found",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 29,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 3
+        },
+        "n8n-nodes-base.supabase": {
+          "count": 6
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 4
+        },
+        "n8n-nodes-base.stopAndError": {
+          "count": 1
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Priya Jain",
+      "username": "processease",
+      "bio": "",
+      "verified": false,
+      "links": [
+        "https://www.priyajain.tech"
+      ],
+      "avatar": "https://gravatar.com/avatar/3b27a0755c3e1570fc0885c2a140cda0abdf0dbdd2fa3085d7e9a14651bbe6fb?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 528,
+        "icon": "fa:exclamation-triangle",
+        "name": "n8n-nodes-base.stopAndError",
+        "codex": {
+          "data": {
+            "alias": [
+              "Throw error",
+              "Error",
+              "Exception"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Stop and Error",
+          "color": "#ff0000"
+        },
+        "iconData": {
+          "icon": "exclamation-triangle",
+          "type": "icon"
+        },
+        "displayName": "Stop and Error",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 545,
+        "icon": "file:supabase.svg",
+        "name": "n8n-nodes-base.supabase",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.supabase/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/supabase/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Supabase"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDkiIGhlaWdodD0iMTEzIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNNjMuNzA4IDExMC4yODRjLTIuODYgMy42MDEtOC42NTggMS42MjgtOC43MjctMi45N2wtMS4wMDctNjcuMjUxaDQ1LjIyYzguMTkgMCAxMi43NTggOS40NiA3LjY2NSAxNS44NzR6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZmlsbC1vcGFjaXR5PSIuMiIgZD0iTTYzLjcwOCAxMTAuMjg0Yy0yLjg2IDMuNjAxLTguNjU4IDEuNjI4LTguNzI3LTIuOTdsLTEuMDA3LTY3LjI1MWg0NS4yMmM4LjE5IDAgMTIuNzU4IDkuNDYgNy42NjUgMTUuODc0eiIvPjxwYXRoIGZpbGw9IiMzRUNGOEUiIGQ9Ik00NS4zMTcgMi4wNzFjMi44Ni0zLjYwMSA4LjY1Ny0xLjYyOCA4LjcyNiAyLjk3bC40NDIgNjcuMjUxSDkuODNjLTguMTkgMC0xMi43NTktOS40Ni03LjY2NS0xNS44NzV6Ii8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTMuOTc0IiB4Mj0iOTQuMTYzIiB5MT0iNTQuOTc0IiB5Mj0iNzEuODI5IiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3Agc3RvcC1jb2xvcj0iIzI0OTM2MSIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzNFQ0Y4RSIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMzYuMTU2IiB4Mj0iNTQuNDg0IiB5MT0iMzAuNTc4IiB5Mj0iNjUuMDgxIiBncmFkaWVudFVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHN0b3AvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Supabase",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

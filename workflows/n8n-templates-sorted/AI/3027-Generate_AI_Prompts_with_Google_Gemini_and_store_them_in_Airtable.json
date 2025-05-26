@@ -1,0 +1,993 @@
+{
+  "workflow": {
+    "id": 3027,
+    "name": "Generate AI Prompts with Google Gemini and store them in Airtable",
+    "views": 1669,
+    "recentViews": 6,
+    "totalViews": 1669,
+    "createdAt": "2025-02-27T09:18:24.480Z",
+    "description": "This workflow is designed to generate prompts for AI agents and store them in Airtable. \n\n\nIt starts by receiving a chat message, processes it to create a structured prompt, categorizes the prompt, and finally stores it in Airtable.\n\n## 2. Setup Instructions\n\n### Prerequisites\n- **AI model eg Gemini, openAI etc**\n- **Airtable base and table or other storage tool**\n\n### Step-by-Step Guide\n\n1. **Clone the Workflow**\n- Copy the provided workflow JSON and import it into your n8n instance.\n\n2. **Configure Credentials**\n- Set up the Google Gemini(PaLM) API account credentials.\n- Set up the Airtable Personal Access Token account credentials.\n\n3. **Map Airtable Base and Table**\n- Create a copy of the [Prompt Library](https://airtable.com/app994hU3fOw0ssrx/shrRxcst3vzWMKFcR) in Airtable.\n- Map the Airtable base and table in the Airtable node.\n\n4. **Customize Prompt Template**\n- Edit the 'Create prompt' node to customize the prompt template as needed.\n\n### Configuration Options\n- **Prompt Template:** Customize the prompt template in the 'Create prompt' node to fit your specific use case.\n- **Airtable Mapping:** Ensure the Airtable base and table are correctly mapped in the Airtable node.\n\n## 4. Running and Troubleshooting\n\n### Running the Workflow\n1. **Trigger the Workflow:** Send a chat message to trigger the workflow.\n2. **Monitor Execution:** Use the n8n interface to monitor the workflow execution.\n3. **Check Completion:** Verify that the prompt is stored in Airtable and check the chat interface for the result.\n\n### Troubleshooting Tips\n- **API Issues:** Ensure that the APIs and Airtable credentials are correctly configured.\n- **Data Mapping:** Verify that the Airtable base and table are correctly mapped.\n- **Prompt Template:** Check the prompt template for any errors or inconsistencies.\n\n3. Use Case Examples\n\nThis workflow is particularly useful in scenarios where you want to automate the generation and management of AI agent prompts. \n\nHere are some examples:\n\n**Rapid Prototyping of AI Agents:** \n\nQuickly generate and test different prompts for AI agents in various applications.\n\n* **Content Creation:** Generate prompts for AI models that create blog posts, articles, or social media content.\n* **Customer Service Automation:** Develop prompts for AI-powered chatbots to handle customer inquiries and support requests.\n* **Educational Tools:** Create prompts for AI tutors or learning assistants.\n\n**Industries/Professionals:**\n\n* **Software Development:** Developers building AI-powered applications.\n* **Marketing:** Marketers automating content creation and social media management.\n* **Customer Service:** Customer service managers implementing AI-driven chatbots.\n\n* **Education:** Educators creating AI-based learning tools.\n\n**Practical Value:**\n\n* **Time Savings:** Automates the prompt generation process, saving significant time and effort.\n\n* **Improved Prompt Quality:** Leverages Google Gemini and structured prompt engineering principles to generate more effective prompts.\n\n* **Centralized Prompt Management:** Stores prompts in Airtable for easy access, organization, and reuse.\n\n## 4. Running and Troubleshooting\n\n* **Running the Workflow:**\n1. Activate the workflow in n8n.\n2. Send a chat message to the webhook URL configured in the \"When chat message received\" node.\n3. Monitor the workflow execution in the n8n editor.\n* **Monitoring Execution:**\n* Check the execution log in n8n to see the data flowing through each node and identify any errors.\n\n* **Checking for Successful Completion:**\n* Verify that a new record is created in your Airtable base with the generated prompt, name, and category.\n\n* Confirm that the \"Return results\" node sends back confirmation of the prompt in the chat interface.\n\n* **Troubleshooting Tips:**\n* **Error:** `400: Bad Request` in the Google Gemini nodes:\n\n* **Cause:** Invalid API key or insufficient permissions.\n* **Solution:** Double-check your Google Gemini API key and ensure that the API is enabled for your project.\n* **Error:** Airtable node fails to create a record:\n* **Cause:** Invalid Airtable credentials, incorrect Base ID or Table ID, or mismatched column names.\n* **Solution:** Verify your Airtable API key, Base ID, Table ID, and column names. Ensure that the data types in n8n match the data types in your Airtable columns.\n\nFollow me on [Linkedin](https://www.linkedin.com/in/zacharia-kimotho/) for more ",
+    "workflow": {
+      "meta": {
+        "instanceId": "db80165df40cb07c0377167c050b3f9ab0b0fb04f0e8cae0dc53f5a8527103ca",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "ed5363cf-1fb6-4662-b12c-073b2b3a3576",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -240,
+            140
+          ],
+          "webhookId": "ebe97b63-ae4b-40e7-9738-b7cf7ffbc8b6",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e47a166f-3e70-433e-ad0d-2100309cac92",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -60,
+            500
+          ],
+          "parameters": {
+            "options": {
+              "topP": 1
+            },
+            "modelName": "models/gemini-2.0-flash-lite"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "Xp5T9q3YYxBIw2nd",
+              "name": "Google Gemini(PaLM) Api account✅"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5474805f-8d18-4a09-a3ea-5602af97a5de",
+          "name": "Auto-fixing Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+          "position": [
+            500,
+            360
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d9a0eadc-54c7-4980-b4f8-79fd77627c32",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            600,
+            520
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n\t\"name\": \"Name of the prompt\",\n    \"category\" : \"the prompt category\"\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "898f64cd-2332-42ad-9bac-a817dd9bf3d7",
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            220,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c5fec90-b7f0-45f3-81a3-22e0956fc3bf",
+                  "name": "text",
+                  "type": "string",
+                  "value": "={{ $json.text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "4bbd160a-98bd-4622-a54e-77b61ff91b46",
+          "name": "Google Gemini Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            380,
+            540
+          ],
+          "parameters": {
+            "options": {
+              "topP": 1
+            },
+            "modelName": "models/gemini-2.0-flash-lite"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "Xp5T9q3YYxBIw2nd",
+              "name": "Google Gemini(PaLM) Api account✅"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f45cbed4-c2b8-4f1b-8026-4686324a714a",
+          "name": "Return results",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            960,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "40aba86b-57b7-4c74-8e9f-d09cd2f344c5",
+                  "name": "text",
+                  "type": "string",
+                  "value": "={{ $('Generate a new prompt').item.json.text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "25650ec5-b559-4bfc-a95a-f81c674bc680",
+          "name": "Categorize and name Prompt",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            360,
+            140
+          ],
+          "parameters": {
+            "text": "={{ $json.text }}",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=Categorize the above prompt into a category that it can fall into"
+                }
+              ]
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "c324d952-0722-40aa-981c-fcb2007b43b9",
+          "name": "set prompt fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            660,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "cbf3b587-67fd-4f08-b50f-53561e869827",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.output.name }}"
+                },
+                {
+                  "id": "7fda5833-9a3b-4c8a-b18d-4c31b35dae94",
+                  "name": "category",
+                  "type": "string",
+                  "value": "={{ $json.output.category }}"
+                },
+                {
+                  "id": "50f06ab3-97d5-43cb-83ff-1a6aac45251b",
+                  "name": "Prompt",
+                  "type": "string",
+                  "value": "={{ $('Edit Fields').item.json.text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "97ad8d84-141e-4c21-8ce4-930dbe921f76",
+          "name": "add to airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            800,
+            140
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app994hU3fOw0ssrx",
+              "cachedResultUrl": "https://airtable.com/app994hU3fOw0ssrx",
+              "cachedResultName": "Prompt Library"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tbldwJrCK2HmAeknA",
+              "cachedResultUrl": "https://airtable.com/app994hU3fOw0ssrx/tbldwJrCK2HmAeknA",
+              "cachedResultName": "Prompt Library"
+            },
+            "columns": {
+              "value": {
+                "Name": "={{ $json.name }}",
+                "Prompt": "={{ $json.Prompt }}",
+                "Category": "={{ $json.category }}"
+              },
+              "schema": [
+                {
+                  "id": "Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Prompt",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Prompt",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Created ON",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "Created ON",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Updated",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "Updated",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Category",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Category",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "create"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "CAa937hASXcJZWTv",
+              "name": "Airtable Personal Access Token account✅"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "516dc434-25d9-4011-9453-bb28521823ca",
+          "name": "Generate a new prompt",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            -80,
+            140
+          ],
+          "parameters": {
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are an **expert n8n prompt engineer**, specializing in creating highly optimized, context-aware prompts for AI agents in n8n workflows. Your primary goal is to ensure AI agents execute well-defined tasks **accurately, autonomously, and efficiently**.  \n\n### Instructions  \n1. **Define the AI Agent's Role and Rules**  \n   - Use a structured role definition format:  \n     `\"You are a [SPECIFIC ROLE] working for [SPECIFIC BUSINESS CONTEXT].\"`  \n   - Clearly specify the agent's responsibilities and scope.  \n\n2. **Provide Task Instructions**  \n   - Use a **step-by-step** numbered list to outline the process.  \n   - Ensure the instructions allow for flexibility but prevent errors.  \n\n3. **Set Rules to Guide AI Behavior**  \n   - Enumerate key constraints such as:  \n     - Timezone requirements  \n     - Prohibitions on making assumptions  \n     - Required formatting for responses  \n\n4. **Use Few-Shot Prompting**  \n   - Provide clear examples of desired outputs inside `<example>` tags.  \n\n5. **Include Additional Context**  \n   - Define relevant business details, the current date/time, and any required environmental context.  \n\n---\n\n## Input Layer  \n### Structuring User Inputs  \n1. **Define Input Type**  \n   - Specify whether inputs come from a human user (chat-based) or an external system (API calls).  \n\n2. **Handle Dynamic Inputs**  \n   - Use placeholders (e.g., `{customer_name}`, `{appointment_date}`) for adaptable prompts.  \n\n3. **Ensure Personalization**  \n   - Format prompts naturally while maintaining clarity and specificity.  \n\n4. **Merge Static & Dynamic Data**  \n   - Concatenate fixed prompt structures with real-time system data from n8n.  \n\n---\n## Action Layer  \n### Tool and Function Calling  \n1. **Standardized Tool Naming**  \n   - Use `snake_case` names for tools (e.g., `check_calendar_availability`).  \n\n2. **Provide Clear Tool Descriptions**  \n   - Example:  \n     `\"Use the `fetch_customer_data` tool to retrieve details about a specific user based on their email address.\"`  \n\n3. **Specify Tool Parameters & Expected Responses**  \n   - Define required inputs, expected formats, and error handling strategies.  \n\n4. **Avoid Hallucinations**  \n   - AI should **only** use tools for their defined purposes. If information is missing, request clarification instead of guessing.  \n\n---\n## Example Prompt for an AI Agent in n8n  \n\n```yaml\n# System Layer\n## Role\nYou are a **Scheduling Assistant** working for a **beauty salon**. Your role is to help customers book appointments.  \n\n## Instructions\n1. Ask the user for their preferred appointment date.  \n2. Use `check_calendar_availability` to find open slots.  \n3. If no slots are available, ask the user to select another day.  \n4. Capture the user’s **full name** and **email**.  \n5. Use `create_calendar_appointment` to confirm the booking.  \n6. Notify the user with appointment details.  \n\n## Rules\n- Always use **UTC+1 timezone**.  \n- Do not assume details—ask if unsure.  \n- If asked about non-scheduling topics, respond: `\"I can only assist with booking appointments.\"`  \n\n## Few-shot Example  \n<example>\n\"I have successfully booked your appointment:\n- Date & Time: **Wednesday, 15 March 2025, 14:00 (UTC+1)**\n- Booking Email: **jane.doe@example.com**\nIf you need to cancel, please call +49 123 456 789.\"\n</example>\n```\n---\n## Key Considerations  \n✅ **Avoid vague roles** (e.g., \"You are an assistant\"). Always specify **business context**.  \n✅ **Keep task steps structured** but flexible.  \n✅ **Provide explicit tool instructions** in a separate section.  \n✅ **Enable AI to ask clarifying questions** instead of making assumptions.  \n✅ **Use examples to guide expected outputs.**  \n\n\n"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.5
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Edit Fields": {
+          "main": [
+            [
+              {
+                "node": "Categorize and name Prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "add to airtable": {
+          "main": [
+            [
+              {
+                "node": "Return results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set prompt fields": {
+          "main": [
+            [
+              {
+                "node": "add to airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate a new prompt": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Generate a new prompt",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Auto-fixing Output Parser",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Auto-fixing Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Categorize and name Prompt",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Categorize and name Prompt",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Auto-fixing Output Parser",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Categorize and name Prompt": {
+          "main": [
+            [
+              {
+                "node": "set prompt fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Generate a new prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 11,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.outputParserAutofixing": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Imperol",
+      "username": "imperolq",
+      "bio": "Automation expert with years of experience helping businesses improve their efficiency and productivity with smart automations that are affordable, scalable, and flexible. ",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/zacharia-kimotho/"
+      ],
+      "avatar": "https://gravatar.com/avatar/13b050fd63dc0c9242774c4b8769c4788df8b47268c1fb183d6f1da085b9e6e2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1175,
+        "icon": "fa:tools",
+        "name": "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserautofixing/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Auto-fixing Output Parser"
+        },
+        "iconData": {
+          "icon": "tools",
+          "type": "icon"
+        },
+        "displayName": "Auto-fixing Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

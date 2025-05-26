@@ -1,0 +1,76 @@
+URL: https://docs.n8n.io/integrations/creating-nodes/test/node-linter/
+Scraped_At: 2025-05-20T19:09:14.976948
+
+n8n node linter
+#
+n8n's node linter,
+eslint-plugin-n8n-nodes-base
+, statically analyzes ("lints") the source code of n8n nodes and credentials in the official repository and in community packages. The linter detects issues and automatically fixes them to help you follow best practices.
+eslint-plugin-n8n-nodes-base
+contains a
+collection of rules
+for node files (
+*.node.ts
+), resource description files (
+*Description.ts
+), credential files (
+*.credentials.ts
+), and the
+package.json
+of a community package.
+Setup
+#
+If using the
+n8n node starter
+: Run
+npm install
+in the starter project to install all dependencies. Once the installation finishes, the linter is available to you.
+If using VS Code, install the
+ESLint VS Code extension
+. For other IDEs, refer to their ESLint integrations.
+Don't edit the configuration file
+.eslintrc.js
+contains the configuration for
+eslint-plugin-n8n-nodes-base
+. Don't edit this file.
+Usage
+#
+You can use the linter in a community package or in the main n8n repository.
+Linting
+#
+In a community package, the linter runs automatically after installing dependencies and before publishing the package to npm. In the
+main n8n repository
+, the linter runs automatically using GitHub Actions whenever you push to your pull request.
+In both cases, VS Code lints in the background as you work on your project. Hover over a detected issue to see a full description of the linting and a link to further information.
+You can also run the linter manually:
+Run
+npm run lint
+to lint and view detected issues in your console.
+Run
+npm run lintfix
+to lint and automatically fix issues. The linter fixes violations of rules
+marked as automatically fixable
+.
+Both commands can run in the root directory of your community package, or in
+/packages/nodes-base/
+in the main repository.
+Exceptions
+#
+Instead of fixing a rule violation, you can also make an exception for it, so the linter doesn't flag it.
+To make a lint exception from VS Code: hover over the issue and click on
+Quick fix
+(or
+cmd+.
+in macOS) and select
+Disable {rule} for this line
+. Only disable rules for a line where you have good reason to. If you think the linter is incorrectly reporting an issue, please
+report it in the linter repository
+.
+To add a lint exception to a single file, add a code comment. In particular, TSLint rules may not show up in VS Code and may need to be turned off using code comments. Refer to the
+TSLint documentation
+for more guidance.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

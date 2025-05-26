@@ -1,0 +1,643 @@
+{
+  "workflow": {
+    "id": 2732,
+    "name": "CSV to JSON Converter with Error Handling and Slack Notifications",
+    "views": 2302,
+    "recentViews": 2,
+    "totalViews": 2302,
+    "createdAt": "2025-01-15T11:45:23.218Z",
+    "description": "## Who this template is for\nThis template is for developers or teams who need to convert CSV data into JSON format through an API endpoint, with support for both file uploads and raw CSV text input.\n\n## Use case\nConverting CSV files or raw CSV text data into JSON format via a webhook endpoint, with error handling and notifications. This is particularly useful when you need to transform CSV data into JSON as part of a larger automation or integration process.\n\n## How this workflow works\n\n1. Receives POST requests through a webhook endpoint at \n```\n/tool/csv-to-json\n```\n2. Uses a Switch node to handle different input types:\n    - File uploads (binary data)\n    - Plain text CSV data\n    - JSON format data\n3. Processes the CSV data:\n    - For files: Uses the Extract From File node\n    - For raw text: Converts the text to CSV using a custom Code node that handles both comma and semicolon delimiters\n4. Aggregates the processed data and returns:\n    - Success response (200): Converted JSON data\n    - Error response (500): Error message with details\n5. In case of errors, sends notifications to a Slack error channel with execution details and a link to debug\n\n## Set up steps\n\n1. Configure the webhook endpoint by deploying the workflow\n2. Set up Slack integration for error notifications:\n    - Update the Slack channel ID (currently set to \"C0832GBAEN4\")\n    - Configure OAuth2 authentication for Slack\n3. Test the endpoint using either:\n    - CURL for file uploads:\n        \n        ```bash\n        bash\n        Copy\n        curl -X POST \"https://yoururl.com/webhook-test/tool/csv-to-json\" \\\n             -H \"Content-Type: text/csv\" \\\n             --data-binary @path/to/your/file.csv\n        \n        ```\n        \n    - Or send raw CSV data as text/plain content type",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "b73fed9b-d56c-4175-a310-8c09ed51acd2",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            80,
+            60
+          ],
+          "parameters": {
+            "width": 464,
+            "height": 303,
+            "content": "## Testing \n\nTesting can be done with CURL or similar.\n\nFor File posting using Form Data\ncurl -X POST \"https://yoururl.com/webhook-test/tool/csv-to-json\" \\\n     -H \"Content-Type: text/csv\" \\\n     --data-binary @path/to/your/file.csv\n\n\nThis can also be tested using the Test workflow"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6ed4b2cc-444f-44e2-ab91-34337acd7a9b",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1680,
+            580
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 396,
+            "height": 256,
+            "content": "## Response\nWhere possible we will be returning a binary object.\n```\nIf there is an error\n```\n{\n  \"status\": \"error\",\n  \"data\": \"error message to display\"\n}\n```"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4eff962e-e636-4704-835a-672ccd705e16",
+          "name": "Extract From File",
+          "type": "n8n-nodes-base.extractFromFile",
+          "onError": "continueErrorOutput",
+          "position": [
+            680,
+            80
+          ],
+          "parameters": {
+            "options": {},
+            "binaryPropertyName": "data0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ccc66f1e-e000-4048-a492-b80fbf8c8fce",
+          "name": "Error Response",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "onError": "continueErrorOutput",
+          "position": [
+            1900,
+            900
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 500
+            },
+            "respondWith": "json",
+            "responseBody": "{\n  \"status\": \"error\",\n  \"data\": \"There was a problem converting your CSV. Please refresh the page and try again.\"\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a7d34aba-6ded-4cc8-8866-7d4aa6ae3255",
+          "name": "Success Response",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "onError": "continueErrorOutput",
+          "position": [
+            1920,
+            220
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200
+            },
+            "respondWith": "json",
+            "responseBody": "={\n  \"status\": \"OK\",\n  \"data\": {{ JSON.stringify($json.jsondata) }}\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3484b148-4ba5-4b54-9401-44010ac31178",
+          "name": "Change Field",
+          "type": "n8n-nodes-base.set",
+          "onError": "continueErrorOutput",
+          "position": [
+            680,
+            320
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b2e3bec3-221e-4f1d-b439-f75174f68ed1",
+                  "name": "csv",
+                  "type": "string",
+                  "value": "={{ $json.body }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "f35635fe-8943-486b-b5fa-4f566dd8f938",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            40
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 2298,
+            "height": 1027,
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cede2fad-f0ee-4082-a403-81f6d8eb188e",
+          "name": "Switch",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            340,
+            400
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "File",
+                  "conditions": {
+                    "options": {
+                      "version": 1,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "operator": {
+                          "type": "object",
+                          "operation": "notEmpty",
+                          "singleValue": true
+                        },
+                        "leftValue": "={{ $binary }}",
+                        "rightValue": ""
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "Data/Text",
+                  "conditions": {
+                    "options": {
+                      "version": 1,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "8930ce1a-a4cc-4094-b08f-a23a13dec40c",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.headers['content-type'] }}",
+                        "rightValue": "text/plain"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "appJSON",
+                  "conditions": {
+                    "options": {
+                      "version": 1,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "e3108952-daa2-425c-8c70-7d2ce0949e0c",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.headers['content-type'] }}",
+                        "rightValue": "=application/json"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {
+              "fallbackOutput": "extra"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a2d92aeb-25eb-4d3c-82ad-16d2124099a8",
+          "name": "Send to Error Channel",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            2380,
+            880
+          ],
+          "webhookId": "d8e1201d-cbcc-4153-a164-51d7b3e17c84",
+          "parameters": {
+            "text": ":interrobang: Error in XML to JSON tool",
+            "select": "channel",
+            "blocksUi": "={\n\t\"blocks\": [\n{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \":interrobang: Error in CSV to JSON tool\"\n\t\t\t}\n\t\t},\n\t\t{\n\t\t\t\"type\": \"section\",\n\t\t\t\"text\": {\n\t\t\t\t\"type\": \"mrkdwn\",\n\t\t\t\t\"text\": \"*Time:*\\n{{ $now.format('dd/MM/yyyy HH:mm:ss') }}\\n*Execution ID:*\\n{{ $execution.id }}\\n\"\n\t\t\t},\n\t\t\t\"accessory\": {\n\t\t\t\t\"type\": \"button\",\n\t\t\t\t\"text\": {\n\t\t\t\t\t\"type\": \"plain_text\",\n\t\t\t\t\t\"text\": \"Go to Error\",\n\t\t\t\t\t\"emoji\": true\n\t\t\t\t},\n\t\t\t\t\"value\": \"error\",\n\t\t\t\t\"url\": \"[insert URL here]{{ $workflow.id }}/executions/{{ $execution.id }}\",\n\t\t\t\t\"action_id\": \"button-action\",\n\t\t\t\t\"style\": \"primary\"\n\t\t\t}\n\t\t}\n\t]\n}",
+            "channelId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "C0832GBAEN4"
+            },
+            "messageType": "block",
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "b21c88d1-6f21-4ada-95ef-8ea91463e7ad",
+          "name": "Convert Raw Text To CSV",
+          "type": "n8n-nodes-base.code",
+          "onError": "continueRegularOutput",
+          "position": [
+            940,
+            300
+          ],
+          "parameters": {
+            "jsCode": "const csvData = $input.all()[0]?.json?.csv;\n\n// Use a regex to split on either ',' or ';'\nconst lines = csvData.split(\"\\n\");\nconst headers = lines[0].split(/,|;/);\n\nconst jsonData = lines.slice(1).map((line) => {\n  // Split on ',' or ';' for each line\n  const data = line.split(/,|;/);\n  let obj = {};\n  headers.forEach((header, i) => {\n    obj[header] = data[i];\n  });\n  return obj;\n});\n\nif (jsonData.length === 0) {\n  throw new Error(\"No data to process\");\n}\n\nreturn jsonData;\n"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "a9803789-0397-4f5f-9cd2-cb630f983efc",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2380,
+            40
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 700,
+            "height": 600,
+            "content": "## Sample of Raw CSV Data Send\nUse the HTTP request node below to see how to send the Raw CSV data into this workflow. Don't forget to include the \\n's "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8fb97224-706b-41de-a7ab-cbe2191436e9",
+          "name": "Check if Value",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1180,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "d8d4cfda-f384-4154-8ad2-c3eabcb8c7ce",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.error }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "4484f424-429b-449f-85c2-dd6a135972a0",
+          "name": "Send Raw CSV",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2480,
+            200
+          ],
+          "parameters": {
+            "url": "[insert URL here]",
+            "body": "album, year, US_peak_chart_post\nThe White Stripes, 1999, -\nDe Stijl, 2000, -\nWhite Blood Cells, 2001, 61\nElephant, 2003, 6\nGet Behind Me Satan, 2005, 3\nIcky Thump, 2007, 2\nUnder Great White Northern Lights, 2010, 11\nLive in Mississippi, 2011, -\nLive at the Gold Dollar, 2012, -\nNine Miles from the White City, 2013, -\n",
+            "method": "POST",
+            "options": {
+              "response": {
+                "response": {
+                  "responseFormat": "file"
+                }
+              }
+            },
+            "sendBody": true,
+            "contentType": "raw",
+            "rawContentType": "text/plain"
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "70a46bce-32da-4868-a960-3ee1cefbed1f",
+          "name": "POST",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            140,
+            420
+          ],
+          "webhookId": "add125c9-1591-4e1c-b68c-8032b99b6010",
+          "parameters": {
+            "path": "tool/csv-to-json",
+            "options": {
+              "binaryPropertyName": "data"
+            },
+            "httpMethod": "POST",
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "116cfc2c-6e5f-4367-8c80-e1341e7d196a",
+          "name": "Aggregate",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1580,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "jsondata"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "967dc555-2599-4fb0-b3e1-00164bae4120",
+          "name": "Aggregate1",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1580,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData",
+            "destinationFieldName": "jsondata"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "51c77def-cdf7-41da-bfd1-e585f0553672",
+          "name": "Success Response2",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "onError": "continueErrorOutput",
+          "position": [
+            1900,
+            400
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200
+            },
+            "respondWith": "json",
+            "responseBody": "={{ JSON.stringify($json.jsondata) }}"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "POST": {
+          "main": [
+            [
+              {
+                "node": "Switch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch": {
+          "main": [
+            [
+              {
+                "node": "Extract From File",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Change Field",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Error Response",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Error Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate": {
+          "main": [
+            [
+              {
+                "node": "Success Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate1": {
+          "main": [
+            [
+              {
+                "node": "Success Response2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Change Field": {
+          "main": [
+            [
+              {
+                "node": "Convert Raw Text To CSV",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Error Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Value": {
+          "main": [
+            [
+              {
+                "node": "Aggregate1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Error Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Error Response": {
+          "main": [
+            [
+              {
+                "node": "Send to Error Channel",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Send to Error Channel",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Success Response": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Send to Error Channel",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract From File": {
+          "main": [
+            [
+              {
+                "node": "Aggregate",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Error Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Success Response2": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Send to Error Channel",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert Raw Text To CSV": {
+          "main": [
+            [
+              {
+                "node": "Check if Value",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.extractFromFile": {
+          "count": 1
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": []
+  }
+}

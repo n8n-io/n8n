@@ -1,0 +1,1190 @@
+{
+  "workflow": {
+    "id": 3211,
+    "name": "Chinese Translator via Line x OpenRouter (Text & Image) ",
+    "views": 497,
+    "recentViews": 3,
+    "totalViews": 497,
+    "createdAt": "2025-03-18T17:36:10.863Z",
+    "description": "This workflow template, \"Chinese Translator via Line x OpenRouter (Text & Image)\" is designed to provide seamless Chinese translation services directly within the LINE messaging platform. By integrating with OpenRouter.ai and advanced language models like Qwen, this workflow translates text or images containing Chinese characters into pinyin and English translations, making it an invaluable tool for language learners, travelers, and businesses operating in multilingual environments.\n\n## This template is ideal for:\n- Language Learners: Who want to practice Chinese by receiving instant translations of text or images.\n- Travelers: Looking for quick translations of Chinese signs, menus, or documents while abroad.\n- Educators: Teaching Chinese language courses and needing tools to assist students with translations.\n- Businesses: Operating in multilingual markets and requiring efficient communication tools.\n- Automation Enthusiasts: Seeking to build intelligent chatbots that can handle language translation tasks.\n\n## What Problem Does This Workflow Solve?\nTranslating Chinese text or images into English and pinyin can be challenging, especially for beginners or those without access to reliable translation tools. This workflow solves that problem by:\n- Automatically detecting and translating text or images containing Chinese characters.\nProviding accurate translations in both pinyin and English for better comprehension.\n- Supporting multiple input formats (text, images) to cater to diverse user needs.\nSending replies directly to users via the LINE messaging platform , ensuring accessibility and ease of use.\n\n## What This Workflow Does\n1) **Receive Messages via LINE Webhook**\nThe workflow is triggered when a user sends a message (text, image, or other types) to the LINE bot.\n2) **Display Loading Animation**\nA loading animation is displayed to reassure the user that their request is being processed.\n3) **Route Input Types**\nThe workflow uses a Switch node to determine the type of input (text, image, or unsupported formats).\n- If the input is text , it is sent to the OpenRouter.ai API for translation.\n- If the input is an image , the workflow extracts the image content, converts it to base64, and sends it to the API for translation.\n- Unsupported formats trigger a polite response indicating the limitation.\n4) **Translate Content Using OpenRouter.ai**\nThe workflow leverages Qwen models from OpenRouter.ai to generate translations:\n- For text inputs, it provides Chinese characters , pinyin , and English translations .\n- For images, it extracts and translates using the qwen-VL model which can take images\n5) **Reply with Translations**\nThe translated content is formatted and sent back to the user via the LINE Reply API.\n\n## Setup Guide\n**Pre-Requisites**\n- Access to the LINE Developers Console to configure your webhook and channel access token.\n- An OpenRouter.ai account with credentials to access Qwen models.\n- Basic knowledge of APIs, webhooks, and JSON formatting.\n\n**Step-by-Step Setup**\n1) Configure the LINE Webhook:\nGo to the LINE Developers Console and set up a webhook to receive incoming messages.\nCopy the Webhook URL from the Line Webhook node and paste it into the LINE Console.\nRemove any \"test\" configurations when moving to production.\n2) Set Up OpenRouter.ai:\nCreate an account on OpenRouter.ai and obtain your API credentials.\nConnect your credentials to the OpenRouter nodes in the workflow.\n3) Test the Workflow:\nSimulate sending text or images to the LINE bot to verify that translations are processed and replied correctly.\n\n## How to Customize This Workflow to Your Needs \n- Add More Languages: Extend the workflow to support additional languages by modifying the API calls.\n- Enhance Image Processing: Integrate more advanced OCR tools to improve text extraction from complex images.\n- Customize Responses: Modify the reply format to include additional details, such as grammar explanations or cultural context.\n- Expand Use Cases: Adapt the workflow for specific industries, such as tourism or e-commerce, by tailoring the translations to relevant vocabulary.\n\n## Why Use This Template?\n- Real-Time Translation: Provides instant translations of text and images, improving user experience and accessibility.\n- Multimodal Support: Handles both text and image inputs, catering to diverse user needs.\n- Scalable: Easily integrate into existing systems or scale to support multiple users and workflows.\n- Customizable: Tailor the workflow to suit your specific audience or industry requirements.",
+    "workflow": {
+      "id": "iFkGAiVn3yBlykIG",
+      "meta": {
+        "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+      },
+      "name": "Chinese Translator",
+      "tags": [
+        {
+          "id": "IhTa6egt1w8uqn9Z",
+          "name": "_ACTIVE",
+          "createdAt": "2025-03-12T05:07:05.060Z",
+          "updatedAt": "2025-03-12T05:07:05.060Z"
+        },
+        {
+          "id": "0xpEHcJjNRRRMtEj",
+          "name": "lin",
+          "createdAt": "2025-03-12T05:06:24.112Z",
+          "updatedAt": "2025-03-12T05:06:24.112Z"
+        },
+        {
+          "id": "Q0IWVCdrzoxXDC7z",
+          "name": "error_linlinmhee_line",
+          "createdAt": "2025-03-12T06:37:16.225Z",
+          "updatedAt": "2025-03-12T06:37:16.225Z"
+        },
+        {
+          "id": "U1ozjO3iXQZWUyfG",
+          "name": "_Blueprint",
+          "createdAt": "2025-03-12T06:24:40.268Z",
+          "updatedAt": "2025-03-12T06:24:40.268Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "3ebfb7f1-b655-405b-8bde-0219fa92d09c",
+          "name": "Line Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -260,
+            -20
+          ],
+          "webhookId": "b2b119e6-6de5-4684-9a51-4706a1c20caf",
+          "parameters": {
+            "path": "cn",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "63ae844f-dfc3-4e8f-97d0-c0ec4be7858f",
+          "name": "Line Loading Animation",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            120,
+            -20
+          ],
+          "parameters": {
+            "url": "https://api.line.me/v2/bot/chat/loading/start",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"chatId\": \"{{ $json.body.events[0].source.userId }}\",\n    \"loadingSeconds\": 60\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3IEOzxKOUr6OEXyU",
+              "name": "Line @405jtfqs LazyChinese"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "7e4cc2a0-958c-4111-909c-fba75a428d5e",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -380,
+            -100
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 360,
+            "height": 560,
+            "content": "**Webhook from Line**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nYou need to set-up this webhook at Line Manager or Line Developer Console\n\nYou'll need to copy Webhook URL from this node to put in Line Console\n\nAlso, don't forget to remove 'test' part when going for production\n\nhttps://developers.line.biz/en/docs/messaging-api/receiving-messages/\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "767827b2-fbca-4dbb-b392-749c25a56c93",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            -100
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 360,
+            "height": 560,
+            "content": "**Line Loading Animation**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis node is to only give ... loading animation back in Line.\n\nIt seems stupid but it actually tells user that the workflow is running and you are not left waiting without hope\n\nTo authorize, you can fill in the Line Token in the node here, or you can you header authorization (shown at the 'reply message' node)\n\nhttps://developers.line.biz/en/docs/messaging-api/use-loading-indicator/"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8cdafc15-3bf8-45e9-8081-901d5c5a7880",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1200,
+            -540
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 360,
+            "height": 420,
+            "content": "**OpenRouter.ai**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis is to call LLMs model at Openrouter.ai \n\nYou can use it to call ChatGPT, Lllama, Qwen, Deepseek, and much more with just standardized API call and top-up only once\n\nhttps://openrouter.ai/docs/quickstart"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3e2f4acf-771c-4d55-a13e-b4c874136574",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1580,
+            -540
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 360,
+            "height": 420,
+            "content": "**Line Reply**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis node is to send reply message via Line\n\nhttps://developers.line.biz/en/docs/messaging-api/sending-messages/\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b17eddaf-da3e-4e21-ab33-9e71f385d734",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -380,
+            -200
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 780,
+            "height": 80,
+            "content": "## You can test this workflow by adding Line @405jtfqs"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5ce9db0a-0c84-48df-828c-591d01a47bc8",
+          "name": "Switch",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            500,
+            -20
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "text",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "9f8075cf-8f3f-419f-ae0a-833ee29fc063",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('Line Webhook').item.json.body.events[0].message.type }}",
+                        "rightValue": "text"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "img",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "b7770f5b-dfb5-4b7a-8dc1-4404337dbfde",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('Line Webhook').item.json.body.events[0].message.type }}",
+                        "rightValue": "image"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "audio",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "9faa9dd4-32ce-4287-b7e5-885a42a62e32",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('Line Webhook').item.json.body.events[0].message.type }}",
+                        "rightValue": "audio"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "else",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "f4dbfa6a-a7f8-4c32-a94d-da384f37c0d1",
+                        "operator": {
+                          "type": "boolean",
+                          "operation": "true",
+                          "singleValue": true
+                        },
+                        "leftValue": true,
+                        "rightValue": ""
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "30e52c17-5231-43df-8da7-e5eb20e88846",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            -100
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 360,
+            "height": 560,
+            "content": "**Router for Text, Image, Voice, and others\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e580dcf4-ad46-4a2a-a881-51e6ae71a236",
+          "name": "Get Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            840,
+            -40
+          ],
+          "parameters": {
+            "url": "=https://api-data.line.me/v2/bot/message/{{ $('Line Webhook').item.json.body.events[0].message.id }}/content",
+            "options": {},
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3IEOzxKOUr6OEXyU",
+              "name": "Line @405jtfqs LazyChinese"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "b0efee4c-0904-4774-b962-aee11886e8c7",
+          "name": "OpenRouter : qwen/qwen2.5-vl-72b-instruct:free",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1320,
+            0
+          ],
+          "parameters": {
+            "url": "https://openrouter.ai/api/v1/chat/completions",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": \"qwen/qwen2.5-vl-72b-instruct:free\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"please provide chinese character, pinyin and translation in english for all the text in the image\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": [\n        {\n          \"type\": \"image_url\",\n          \"image_url\": {\n            \"url\": \"data:image/jpeg;base64,{{ $json.img_prompt }}\"\n          }\n        }\n      ]\n    }\n  ]\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "7Y8q0dS2Y1fcvzTl",
+              "name": "OpenRouter.ai"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "b7fc7675-f8d7-4e7e-bec3-f9c626ba1728",
+          "name": "OpenRouter: qwen/qwen-2.5-72b-instruct:free",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1320,
+            -460
+          ],
+          "parameters": {
+            "url": "https://openrouter.ai/api/v1/chat/completions",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": \"qwen/qwen-2.5-72b-instruct:free\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"please provide chinese character, pinyin and translation in english. if the input is in english, you will translate and also provide chinese character, pinyin and translation in english for each word\"\n    },\n     {\n      \"role\": \"user\",\n      \"content\": \"{{ $('Line Webhook').item.json.body.events[0].message.text }}\"\n    }\n  ]\n} ",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "7Y8q0dS2Y1fcvzTl",
+              "name": "OpenRouter.ai"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "84ad9eae-c6fc-4a02-b5cc-0a0b1755d5a8",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1580,
+            -100
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 360,
+            "height": 300,
+            "content": "**Line Reply**\nSimilar to above but from different route"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dade001e-80c6-4add-9c6c-e4583f7fcf72",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1200,
+            -100
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 360,
+            "height": 300,
+            "content": "**OpenRouter.ai**\nWe will use image as prompt and change the model to support image. \n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "54157315-3898-4e48-9598-1a5533803674",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            780,
+            -100
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 380,
+            "height": 300,
+            "content": "**Pre-processing**\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nWe need to use get media API to get the data from Line and also move it to base64 file to prompt"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "df058683-5649-4143-b3ce-e39c7b209065",
+          "name": "Extract from File",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            1000,
+            -40
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "binaryToPropery",
+            "destinationKey": "img_prompt"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "23a1ee09-d967-45de-a87a-bf7bc5473f53",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            240
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 360,
+            "height": 420,
+            "content": "**Line Reply**\nTo reply that message is not supported\n\n\n\n\n\n\n\n\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9d968370-6c55-480a-b09b-a16e55b855a3",
+          "name": "Line Reply (image)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1700,
+            0
+          ],
+          "parameters": {
+            "url": "https://api.line.me/v2/bot/message/reply",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"replyToken\": \"{{ $('Line Webhook').item.json.body.events[0].replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{ $json.choices[0].message.content.replaceAll(\"\\n\",\"\\\\n\").replaceAll(\"\\n\",\"\").removeMarkdown().removeTags().replaceAll('\"',\"\") }}\"\n    }\n  ]\n} ",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3IEOzxKOUr6OEXyU",
+              "name": "Line @405jtfqs LazyChinese"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "fed14d64-d3ea-4a17-98d5-28d889ac4ffa",
+          "name": "Line Reply (Text)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1700,
+            -460
+          ],
+          "parameters": {
+            "url": "https://api.line.me/v2/bot/message/reply",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"replyToken\": \"{{ $('Line Webhook').item.json.body.events[0].replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"{{ $json.choices[0].message.content.replaceAll(\"\\n\",\"\\\\n\").replaceAll(\"\\n\",\"\").removeMarkdown().removeTags().replaceAll('\"',\"\") }}\"\n    }\n  ]\n} ",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3IEOzxKOUr6OEXyU",
+              "name": "Line @405jtfqs LazyChinese"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "22b0359f-66f8-4a6a-b2b9-5a516f235aef",
+          "name": "Line Reply (Not Supported 2)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1060,
+            500
+          ],
+          "parameters": {
+            "url": "https://api.line.me/v2/bot/message/reply",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"replyToken\": \"{{ $('Line Webhook').item.json.body.events[0].replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"Please try again. Message type is not supported\"\n    }\n  ]\n} ",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3IEOzxKOUr6OEXyU",
+              "name": "Line @405jtfqs LazyChinese"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "a5d4ad30-71b8-4544-88a0-5cfbb0a79013",
+          "name": "Line Reply (Not Supported 1)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1060,
+            320
+          ],
+          "parameters": {
+            "url": "https://api.line.me/v2/bot/message/reply",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"replyToken\": \"{{ $('Line Webhook').item.json.body.events[0].replyToken }}\",\n  \"messages\": [\n    {\n      \"type\": \"text\",\n      \"text\": \"Please try again. Message type is not supported\"\n    }\n  ]\n} ",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3IEOzxKOUr6OEXyU",
+              "name": "Line @405jtfqs LazyChinese"
+            }
+          },
+          "typeVersion": 4.2
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "timezone": "Asia/Bangkok",
+        "callerPolicy": "workflowsFromSameOwner",
+        "errorWorkflow": "A8HoJ5iCrAMPbsLh",
+        "executionOrder": "v1"
+      },
+      "versionId": "7e072a04-5169-4bfd-8391-2797f4714d0c",
+      "connections": {
+        "Switch": {
+          "main": [
+            [
+              {
+                "node": "OpenRouter: qwen/qwen-2.5-72b-instruct:free",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get Image",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Line Reply (Not Supported 1)",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Line Reply (Not Supported 2)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Image": {
+          "main": [
+            [
+              {
+                "node": "Extract from File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Line Webhook": {
+          "main": [
+            [
+              {
+                "node": "Line Loading Animation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract from File": {
+          "main": [
+            [
+              {
+                "node": "OpenRouter : qwen/qwen2.5-vl-72b-instruct:free",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Line Loading Animation": {
+          "main": [
+            [
+              {
+                "node": "Switch",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenRouter: qwen/qwen-2.5-72b-instruct:free": {
+          "main": [
+            [
+              {
+                "node": "Line Reply (Text)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenRouter : qwen/qwen2.5-vl-72b-instruct:free": {
+          "main": [
+            [
+              {
+                "node": "Line Reply (image)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 7,
+    "workflowInfo": {
+      "nodeCount": 21,
+      "nodeTypes": {
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 10
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 8
+        },
+        "n8n-nodes-base.extractFromFile": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "lin@davoy.tech",
+      "username": "linlinmhee",
+      "bio": "",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/4e38af5bc6715cea4e86e60c03e21e287cea3cdb5ceba78b3003e6404743fd32?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1235,
+        "icon": "file:extractFromFile.svg",
+        "name": "n8n-nodes-base.extractFromFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "decode",
+              "decoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "PDF",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "txt",
+              "Text",
+              "RTF",
+              "XML",
+              "64",
+              "Base64",
+              "Convert"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Extract from File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAuOTM3NSAyQzAuNDE5NzMzIDIgMCAyLjQxOTczIDAgMi45Mzc1VjM3LjMyMjFDMCAzNy44Mzk5IDAuNDE5NzMzIDM4LjI1OTYgMC45Mzc1IDM4LjI1OTZIMjYuMjE1NEMyNi43MzMyIDM4LjI1OTYgMjcuMTUyOSAzNy44Mzk5IDI3LjE1MjkgMzcuMzIyMUwyNy4xNTI5IDMwLjY3MTlMMTYuNzk2OSAzMC42NzE5QzE0Ljg5ODQgMzAuNjcxOSAxMy4zNTk0IDI5LjEzMjkgMTMuMzU5NCAyNy4yMzQ0VjI1LjM1OTRDMTMuMzU5NCAyMy40NjA5IDE0Ljg5ODQgMjEuOTIxOSAxNi43OTY5IDIxLjkyMTlIMjcuMTUyOUwyNy4xNTI5IDE1Ljc4MjFIMTQuMzA4M0MxMy43OTA2IDE1Ljc4MjEgMTMuMzcwOCAxNS4zNjI0IDEzLjM3MDggMTQuODQ0NlYySDAuOTM3NVoiIGZpbGw9IiMzNTNGNkUiLz4KPHBhdGggZD0iTTE2LjAyNzEgMkMxNS45NDA4IDIgMTUuODcwOCAyLjA2OTk2IDE1Ljg3MDggMi4xNTYyNVYxMi44MTM0QzE1Ljg3MDggMTMuMDcyMyAxNi4wODA3IDEzLjI4MjEgMTYuMzM5NiAxMy4yODIxSDI2Ljk5NjdDMjcuMDgzIDEzLjI4MjEgMjcuMTUyOSAxMy4yMTIyIDI3LjE1MjkgMTMuMTI1OUwyNy4xNTI5IDEyLjYxNzFDMjcuMTUyOSAxMi4zNjg4IDI3LjA1NDUgMTIuMTMwNyAyNi44NzkxIDExLjk1NUwxNy4yMjI1IDIuMjc1MzhDMTcuMDQ2NiAyLjA5OTA4IDE2LjgwNzkgMiAxNi41NTg4IDJIMTYuMDI3MVoiIGZpbGw9IiMzNTNGNkUiLz4KPHBhdGggZD0iTTI5Ljc2NDIgMzQuNjUwM0MyOS4wMzQgMzMuOTE2IDI5LjAzNzQgMzIuNzI4OCAyOS43NzE2IDMxLjk5ODZMMzMuNjE5NyAyOC4xNzE5TDE2Ljc5NjkgMjguMTcxOUMxNi4yNzkxIDI4LjE3MTkgMTUuODU5NCAyNy43NTIxIDE1Ljg1OTQgMjcuMjM0NFYyNS4zNTk0QzE1Ljg1OTQgMjQuODQxNiAxNi4yNzkxIDI0LjQyMTkgMTYuNzk2OSAyNC40MjE5TDMzLjU0MTIgMjQuNDIxOUwyOS43NzE2IDIwLjY3MzNDMjkuMDM3NCAxOS45NDMxIDI5LjAzNCAxOC43NTU5IDI5Ljc2NDIgMTguMDIxNkMzMC40OTQ0IDE3LjI4NzQgMzEuNjgxNiAxNy4yODQgMzIuNDE1OSAxOC4wMTQyTDM5LjQ0NzEgMjUuMDA2NEMzOS44MDEgMjUuMzU4MyA0MCAyNS44MzY4IDQwIDI2LjMzNTlDNDAgMjYuODM1IDM5LjgwMSAyNy4zMTM1IDM5LjQ0NzEgMjcuNjY1NUwzMi40MTU5IDM0LjY1NzZDMzEuNjgxNiAzNS4zODc4IDMwLjQ5NDQgMzUuMzg0NSAyOS43NjQyIDM0LjY1MDNaIiBmaWxsPSIjMzUzRjZFIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Extract from File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

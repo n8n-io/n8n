@@ -1,0 +1,196 @@
+{
+  "workflow": {
+    "id": 660,
+    "name": "Receive updates when an email is bounced or opened",
+    "views": 386,
+    "recentViews": 0,
+    "totalViews": 386,
+    "createdAt": "2020-09-14T13:23:11.906Z",
+    "description": "![workflow-screenshot](fileId:233)",
+    "workflow": {
+      "id": "48",
+      "name": "Receive updates when an email is bounced or opened",
+      "nodes": [
+        {
+          "name": "Postmark Trigger",
+          "type": "n8n-nodes-base.postmarkTrigger",
+          "position": [
+            690,
+            260
+          ],
+          "webhookId": "1422ac7a-62ba-4f7c-8e22-4e8ecb4950ce",
+          "parameters": {
+            "events": [
+              "bounce",
+              "open"
+            ],
+            "includeContent": true
+          },
+          "credentials": {
+            "postmarkApi": "postmark"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Postmark Trigger": {
+          "main": [
+            []
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.postmarkTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 340,
+        "icon": "file:postmark.png",
+        "name": "n8n-nodes-base.postmarkTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.postmarktrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/postmark/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Postmark Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAIAAAC1nk4lAAAACXBIWXMAAAsTAAALEwEAmpwYAAAEw0lEQVRoge2aTWhcVRTH//9z33uTTDITkzZpmjSpDVop2NKCSpQWRaqFbnRTQRBXouDHShciLooLwZ0oCG5FQbvQQsEPtIiC6EKUimJqP6xJm7T5apJpMh/v3XtczDQdW2jePKYzls5/MR+PO/N+c9655/zvfUM9jZtOXrMBkqgF3Si1oBulFnSj1IJulFrQa4iA1uWLEkATYPkhLgS1PBogFFBCXe3nvaJEkRaOT6a/+aEzsrGGkww8zWZsf68d2ljYsC70gxA2edQTQCuoE1Pt7x/qL0US8zMEjNgg0N7boru3Lu/bs3Tv9lxbYKGaIGeS5bSSEKOmlousMMUSxi9441Nt3/2ceeT+3DMHZgY25NUpazx9wonoFNbCltODMFURV6h14DUkJEgIFYYref/w0Z7zM96rz58f7luG1hZs1r4IoApPnun85IuuKCLJxZz/47FMKSRBVXR3lUZ3XPL8qnx3XCmas9PBP+eCfD4QqSA65/Y/uPDac5PpthIU8fMkATSUhBot4wjGTmdffGN4Yckn4Ry3b1165/WJTGfxCoPSKXPL3rGxjg8Or/vteKZSS5RBEB586dyju+dha0juJOlBVSBavfyEJSrZrXCqFDhBVb4TQnRno4dGw5Gh0sF3+etYxoiSmi94X36f3XPPUlsQMnaO1KW5VJ+N1xxZHUXnMDy48vTjcyfebssXfaWK4M9T6alpf2RTGP98jeyISiic27lt+fah/B8nPCFILOS88cn2keEVxKv6aLD3oDoAmY5weGP4+1+Vg2EoM7Nx631ZTTBMhpppt0SltzvlSkFqqnpNgFZoaKmXoUn1fAUFiNurmgBdCs3MfABWyo8x2tNVWzNvMLRA3OSF1KmJFCmAqrIjHW0aKP2P04MsRsFnR7unZwNDVcAptgwWN/fna3JN9YcmIQLINeXbyezF1KGvej79usexXM/VE/fwfUvZTARXwxKhLtCsesVC0Ts5ke5s9xWEqjopFL3pRR4/nf7pl/TYmQ7rDKkAIic77szt3b0EjV2i6wd9JUIiemYqePmtTVL5IU6dhJEUSqYUChU0CioA59DXXXz2idn+9YXYZaOe0P+RjeTiYuryO64+i6gSqoSjhQ73r7zw1OwDu3JwDVoErCG92kyrKlQBMjBR7/pwdNfygX1zd43kAVurmcaNgE4FbrCvuGqaQfieaw9cNhMN9EVbNxe23ZHfPFD0vAgOyiRL9DpDO4ctA/k3XzmbSVf8NAkRega+r75nIQ4KuEr7Y+1hRt2hFTQeurOlTEdYFUFCCSqg8a3cdVT39FBVhQP+05gV0Dpt1ACtbbHG6RaCvm6dosYdmVRJNiAVJAgSVBCkqexKQqlCFYiBCBQA4fSqWdkUaEDw90TmyLddkaMA84teoeiVPRDFnp/z3/uo3w8sFIHnHts7P1Sj87wR0Epicjr14ZGeMBQAJEUqaUBydiH4+PPu8tB0KhrdeWloY/OhAYCEMXBu1WNUNxIYU3bLELO6qqqnEk5EB1irdq32Zl25T9d5Oia6E6AY7M0/uX/OruWDfc9tWBcm8HFrECT66wQBiXX7Qnm5dDS9ekABewPqb1zdQh2xyWpBN0ot6EapBd0otaAbpZsS+l+4dfoP731vmAAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Postmark Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 233,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/4b9fb6226a294a77b84e03e3e1d37726.png"
+      }
+    ]
+  }
+}

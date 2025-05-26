@@ -1,0 +1,1532 @@
+{
+  "workflow": {
+    "id": 3297,
+    "name": "Monitor Dropbox Folders for New Files with DB Comparison",
+    "views": 372,
+    "recentViews": 3,
+    "totalViews": 372,
+    "createdAt": "2025-03-23T17:50:18.345Z",
+    "description": "Here's the corrected English text:\n\n# Dropbox Folder Monitoring Workflow\n\nAs we don't have (yet?) a Dropbox node \"Watching new files\" or \"Watching folder\", I created this central workflow to do it.\n\n## How it works\n- Triggered by Dropbox webhook\n- I respond immediately to Dropbox to avoid webhook disabling\n- Then I add/duplicate one branch per monitored folder, according to my needs\n\nIn my case, I need to monitor several folders, like \"vocal notes to process\", \"transcriptions to LinkedIn posts\" or \"quotes to add\".\n\n### This workflow shows 2 types of folder monitoring:\n1. **Way #1:** Each file in the monitored folder calls a sub-workflow\n2. **Way #2:** We get all files from the monitored folder and compare them to a database. If the file is not listed in DB, i supposed it's new one.\n\n### Way #1 - We get all files from the monitored folder\n1. I set a variable `folder_to_watch` to indicate which folder to monitor. This step is here just to be homogeneous and allow setting the folder path only once in this branch.\n2. I list the folder files\n3. We keep only files (exclude folders)\n4. Then I call the specialized sub-workflow\n\n### Way #2 - We want only new files from the monitored folder\n1. I set a variable `folder_to_watch` to indicate which folder to monitor \n2. I list the folder files and keep only files\n3. Meanwhile, I query my DB to get known files about this folder (I send the query to NocoDB `(folder_to_watch,eq,{{ $json.folder_to_watch }})`)\n4. Now I can exclude old files and keep only new ones by merging (I compare from Dropbox file `id` - as the file could be renamed by the user)\n5. I add the new file in DB to be sure to recognize it next time - I save the JSON Dropbox data:\n```\n{\n\"id\":\"{{ $json.id }}\",\n\"name\":\"{{ $json.name }}\",\n\"lastModifiedClient\": \"{{ $json.lastModifiedClient }}\",\n\"lastModifiedServer\": \"{{ $json.lastModifiedServer }}\",\n\"rev\": \"{{ $json.rev }}\",\n\"contentSize\": {{ $json.contentSize }},\n\"type\": \"{{ $json.type }}\",\n\"contentHash\": \"{{ $json.contentHash }}\",\n\"pathLower\": \"{{ $json.pathLower }}\",\n\"pathDisplay\": \"{{ $json.pathDisplay }}\",\n\"isDownloadable\": {{ $json.isDownloadable }}\n}\n```\n6. And now I can call my sub-workflow :)\n\n### My DB\nColumns details:\n- `folder_to_watch`\n- `data` (json/text)\n- `timestamp`\n- `file_id` (Dropbox file ID, to ease future searches)\n\n## My vision:\n- I have only one workflow in my n8n that monitors Dropbox folders/files\n- This workflow calls the required sub-workflow specialized for the tasks required\n- I will have as many branches as I have folders to monitor (if I have 5 different folders to watch, I will get 5 branches and 5 sub-workflows)",
+    "workflow": {
+      "meta": {
+        "instanceId": "4e8285376decaea86c34202e3f6f0900c15ccf72a22e44fbb5cd9851bb3fd11f",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "971e1616-af67-4961-9ef4-4b8dd24e392c",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -660,
+            240
+          ],
+          "webhookId": "29a6482f-36ac-4c15-8792-450aa32cf5f4",
+          "parameters": {
+            "path": "29a6482f-36ac-4c15-8792-450aa32cf5f4",
+            "options": {},
+            "httpMethod": [
+              "POST",
+              "GET"
+            ],
+            "responseMode": "responseNode",
+            "multipleMethods": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "22d8dca1-a2fd-474e-a1cd-7f75be1c04a6",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -720,
+            -220
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 620,
+            "height": 920,
+            "content": "## Dropbox\n\nDropbox call me each time a modification is done somewhere in my dropbox."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0178e813-ae15-4729-933b-2799ec405863",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            240,
+            -280
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 840,
+            "height": 140,
+            "content": "## Watch Files, 2 ways :\n1. We explore each file in a folder (new and old ones)\n2. We want to filter new files only"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "229b9a46-5d76-4cb7-b1ac-4b10a6427f66",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            240,
+            -80
+          ],
+          "parameters": {
+            "width": 1040,
+            "height": 100,
+            "content": "### Way 1 - We call the subworklow for each file in the specified folder"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "43a4fa3c-e378-443b-81a1-349201a85056",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            240,
+            200
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1240,
+            "height": 100,
+            "content": "### Way 2- We filter new/old files then we call the subworkflow only for new files"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e9639a07-6672-46ee-a86e-025265e45069",
+          "name": "Dropbox - List watched folder",
+          "type": "n8n-nodes-base.dropbox",
+          "position": [
+            500,
+            280
+          ],
+          "parameters": {
+            "path": "={{ $json.folder_to_watch }}",
+            "filters": {
+              "include_deleted": false,
+              "include_mounted_folders": false
+            },
+            "resource": "folder",
+            "operation": "list",
+            "returnAll": true,
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "dropboxOAuth2Api": {
+              "id": "GocmYXzmqQnUpojt",
+              "name": "Dropbox BT"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "61707418-fcbb-4b70-ab06-02b9b7060bfb",
+          "name": "Switch File vs Folder",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            700,
+            280
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "file",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "f7fda7a2-1961-41aa-a332-f9a8be9b3bfa",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.type }}",
+                        "rightValue": "file"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "folder",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "d8bb9414-ae11-4b8f-ad0e-6bfe0e2f1071",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.type }}",
+                        "rightValue": "folder"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "2670d2d1-acfb-4d0b-9bde-12dbd3806976",
+          "name": "Switch File vs Folder1",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            780,
+            0
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "file",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "f7fda7a2-1961-41aa-a332-f9a8be9b3bfa",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.type }}",
+                        "rightValue": "file"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "folder",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "d8bb9414-ae11-4b8f-ad0e-6bfe0e2f1071",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.type }}",
+                        "rightValue": "folder"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "8225e284-b193-4859-891e-2277b2bc004b",
+          "name": "NocoDB - Get know files to exclude",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            600,
+            480
+          ],
+          "parameters": {
+            "table": "m0tqa79y2sv4g0j",
+            "options": {
+              "where": "=(folder_to_watch,eq,{{ $json.folder_to_watch }})"
+            },
+            "operation": "getAll",
+            "projectId": "p73a23pw65qwwr4",
+            "returnAll": true,
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "GW7a5UwWksviQWb7",
+              "name": "NocoDB cloudron"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "0b9cb74b-ce02-4ed2-a417-084529a79977",
+          "name": "Merge - Keep only new items",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1000,
+            280
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "advanced": true,
+            "joinMode": "keepNonMatches",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "id",
+                  "field2": "data.id"
+                }
+              ]
+            },
+            "outputDataFrom": "input1"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "c1f52687-7b6e-4c69-bcce-cc9bf053c62f",
+          "name": "Just a quick answer to Dropbox - webhook validation",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            -400,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "text",
+            "responseBody": "={{ $json.query.challenge }}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "42c84256-cbce-46d6-ab5a-01b1ef0715b0",
+          "name": "Respond to Dropbox in less than 10sec",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            -400,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "text",
+            "responseBody": "={{ $json.query.challenge }}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "bb45006e-f12e-4b9d-99fa-ec5003f1c141",
+          "name": "Dropbox get files",
+          "type": "n8n-nodes-base.dropbox",
+          "position": [
+            500,
+            0
+          ],
+          "parameters": {
+            "path": "={{ $json.folder_to_watch }}",
+            "filters": {
+              "include_deleted": false,
+              "include_mounted_folders": false
+            },
+            "resource": "folder",
+            "operation": "list",
+            "returnAll": true,
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "dropboxOAuth2Api": {
+              "id": "GocmYXzmqQnUpojt",
+              "name": "Dropbox BT"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b4f8c38c-c674-488d-8c9a-f68e42c702cf",
+          "name": "NocoDB - Add this file in the table",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            1200,
+            280
+          ],
+          "parameters": {
+            "table": "m0tqa79y2sv4g0j",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "folder_to_watch",
+                  "fieldValue": "={{ $('set_folder to watch B').item.json.folder_to_watch }}"
+                },
+                {
+                  "fieldName": "data",
+                  "fieldValue": "={\n\"id\":\"{{ $json.id }}\",\n\"name\":\"{{ $json.name }}\",\n\"lastModifiedClient\": \"{{ $json.lastModifiedClient }}\",\n\"lastModifiedServer\": \"{{ $json.lastModifiedServer }}\",\n\"rev\": \"{{ $json.rev }}\",\n\"contentSize\": {{ $json.contentSize }},\n\"type\": \"{{ $json.type }}\",\n\"contentHash\": \"{{ $json.contentHash }}\",\n\"pathLower\": \"{{ $json.pathLower }}\",\n\"pathDisplay\": \"{{ $json.pathDisplay }}\",\n\"isDownloadable\": {{ $json.isDownloadable }}\n}"
+                },
+                {
+                  "fieldName": "file_id",
+                  "fieldValue": "={{ $json.id }}"
+                }
+              ]
+            },
+            "operation": "create",
+            "projectId": "p73a23pw65qwwr4",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "GW7a5UwWksviQWb7",
+              "name": "NocoDB cloudron"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "9d6d2d96-f16f-408d-bc35-0e17da4d4e6d",
+          "name": "set_folder A",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            260,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8416f15a-a6a2-47d2-8c15-e1742b323a8f",
+                  "name": "folder_to_watch",
+                  "type": "string",
+                  "value": "/z_Apps/a_iphone/RecUp Memos/"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "aaa1ef55-10ef-4d8f-ae71-d317930229bc",
+          "name": "set_folder to watch B",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            280,
+            280
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8416f15a-a6a2-47d2-8c15-e1742b323a8f",
+                  "name": "folder_to_watch",
+                  "type": "string",
+                  "value": "/z_Apps/auphonic/whisper"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "770b7f54-e85e-4d62-ab2a-60c9a73411e3",
+          "name": "Execute Workflow - what i want to do for this folder/file A",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            1040,
+            -20
+          ],
+          "parameters": {
+            "mode": "each",
+            "options": {
+              "waitForSubWorkflow": false
+            },
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "PRxsqnbMoqY6avr6",
+              "cachedResultName": "02 JE TRANSMETS > Dropbox RecUp Memos - transcription audio - 2025-01 v1"
+            },
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d9230834-13b4-420f-9e9a-154176803a66",
+          "name": "Execute Workflow - Something to do for new files",
+          "type": "n8n-nodes-base.executeWorkflow",
+          "position": [
+            1400,
+            280
+          ],
+          "parameters": {
+            "options": {},
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "NzETudhVA1JruLCl",
+              "cachedResultName": "210 PODCAST > Dropbox txt - Pré rédige épisode avec transcription - 2025-03 v2"
+            },
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": true
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "68d02221-861c-41d6-afe3-3757b272746f",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -60,
+            120
+          ],
+          "parameters": {
+            "color": 2,
+            "height": 80,
+            "content": "I duplicate those processes for each folder i want to watch"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6befd86e-9a7b-442e-abb2-e1ed535f5166",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            460
+          ],
+          "parameters": {
+            "color": 2,
+            "content": "I define in a \"variable\" the folder to watch to ease the next steps"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {
+        "set_folder A": [
+          {
+            "folder_to_watch": "/z_Apps/a_iphone/RecUp Memos/"
+          }
+        ],
+        "Dropbox get files": [
+          {
+            "id": "id:m50XjFjkXDsAAAAAAAVw5w",
+            "name": "done",
+            "type": "folder",
+            "pathLower": "/z_apps/a_iphone/recup memos/done",
+            "pathDisplay": "/z_Apps/a_iphone/RecUp Memos/done"
+          },
+          {
+            "id": "id:m50XjFjkXDsAAAAAAAVxNg",
+            "name": "txt",
+            "type": "folder",
+            "pathLower": "/z_apps/a_iphone/recup memos/txt",
+            "pathDisplay": "/z_Apps/a_iphone/RecUp Memos/txt"
+          },
+          {
+            "id": "id:m50XjFjkXDsAAAAAAAVxNw",
+            "name": "notes_md",
+            "type": "folder",
+            "pathLower": "/z_apps/a_iphone/recup memos/notes_md",
+            "pathDisplay": "/z_Apps/a_iphone/RecUp Memos/notes_md"
+          },
+          {
+            "id": "id:m50XjFjkXDsAAAAAAAVxTA",
+            "name": "done vraiment",
+            "type": "folder",
+            "pathLower": "/z_apps/a_iphone/recup memos/done vraiment",
+            "pathDisplay": "/z_Apps/a_iphone/RecUp Memos/done vraiment"
+          },
+          {
+            "id": "id:m50XjFjkXDsAAAAAAAV1Jg",
+            "name": "trash",
+            "type": "folder",
+            "pathLower": "/z_apps/a_iphone/recup memos/trash",
+            "pathDisplay": "/z_Apps/a_iphone/RecUp Memos/trash"
+          },
+          {
+            "id": "id:m50XjFjkXDsAAAAAAAV1uQ",
+            "rev": "63104211ae04e0b4b15a2",
+            "name": "test DV-2025-02-04-050515.mp3",
+            "type": "file",
+            "pathLower": "/z_apps/a_iphone/recup memos/test dv-2025-02-04-050515.mp3",
+            "contentHash": "feb314cba10772588af3e56bdbc2a1efb693e7174794d660efed188b87ba9398",
+            "contentSize": 1464900,
+            "pathDisplay": "/z_Apps/a_iphone/RecUp Memos/test DV-2025-02-04-050515.mp3",
+            "isDownloadable": true,
+            "lastModifiedClient": "2025-02-04T04:05:17Z",
+            "lastModifiedServer": "2025-03-23T15:27:45Z"
+          }
+        ],
+        "set_folder to watch B": [
+          {
+            "folder_to_watch": "/z_Apps/auphonic/whisper"
+          }
+        ],
+        "Dropbox - List watched folder": [
+          {
+            "id": "id:lXWFwy5R52AAAAAAAAAIeA",
+            "rev": "631049fe37ae34f316ea3",
+            "name": "test btXXX - stabilité émotionnelle-final-auphonic-final-auphonic copie.txt",
+            "type": "file",
+            "pathLower": "/z_apps/auphonic/whisper/test btxxx - stabilité émotionnelle-final-auphonic-final-auphonic copie.txt",
+            "contentHash": "fda114fad56df672588bc1543c869863c81c7e6b843d05158cdc8d1573515587",
+            "contentSize": 26671,
+            "pathDisplay": "/z_Apps/auphonic/whisper/test btXXX - stabilité émotionnelle-final-auphonic-final-auphonic copie.txt",
+            "isDownloadable": true,
+            "lastModifiedClient": "2025-01-22T13:26:49Z",
+            "lastModifiedServer": "2025-03-23T16:03:12Z"
+          },
+          {
+            "id": "id:lXWFwy5R52AAAAAAAAAIeQ",
+            "rev": "63104b143779c4f316ea3",
+            "name": "test-nospace-normal.txt",
+            "type": "file",
+            "pathLower": "/z_apps/auphonic/whisper/test-nospace-normal.txt",
+            "contentHash": "fda114fad56df672588bc1543c869863c81c7e6b843d05158cdc8d1573515587",
+            "contentSize": 26671,
+            "pathDisplay": "/z_Apps/auphonic/whisper/test-nospace-normal.txt",
+            "isDownloadable": true,
+            "lastModifiedClient": "2025-01-22T13:26:49Z",
+            "lastModifiedServer": "2025-03-23T16:08:03Z"
+          }
+        ],
+        "Respond to Dropbox in less than 10sec": [
+          {
+            "body": {
+              "delta": {
+                "users": [
+                  117105590
+                ]
+              },
+              "list_folder": {
+                "accounts": [
+                  "dbid:AAA9MBwnssJK-R5bqnTuKBDTg7UMwOZb8mk"
+                ]
+              }
+            },
+            "query": {},
+            "params": {},
+            "headers": {
+              "host": "n8n.app.businesstemple.co",
+              "accept": "*/*",
+              "x-real-ip": "34.194.118.45",
+              "connection": "close",
+              "user-agent": "DropboxWebhooks/1.0",
+              "content-type": "application/json",
+              "content-length": "108",
+              "accept-encoding": "gzip,deflate",
+              "x-forwarded-for": "34.194.118.45",
+              "x-forwarded-ssl": "on",
+              "x-forwarded-host": "n8n.app.businesstemple.co",
+              "x-forwarded-port": "443",
+              "x-forwarded-proto": "https",
+              "x-dropbox-signature": "339bfefa3e30feaddaa59cd7a37df9de12ccd490d7aee9b1e055d32ae7d4acee"
+            },
+            "webhookUrl": "https://n8n.app.businesstemple.co/webhook-test/dropboxbox-watch-files",
+            "executionMode": "test"
+          }
+        ]
+      },
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Respond to Dropbox in less than 10sec",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Just a quick answer to Dropbox - webhook validation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set_folder A": {
+          "main": [
+            [
+              {
+                "node": "Dropbox get files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Dropbox get files": {
+          "main": [
+            [
+              {
+                "node": "Switch File vs Folder1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch File vs Folder": {
+          "main": [
+            [
+              {
+                "node": "Merge - Keep only new items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set_folder to watch B": {
+          "main": [
+            [
+              {
+                "node": "Dropbox - List watched folder",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "NocoDB - Get know files to exclude",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch File vs Folder1": {
+          "main": [
+            [
+              {
+                "node": "Execute Workflow - what i want to do for this folder/file A",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge - Keep only new items": {
+          "main": [
+            [
+              {
+                "node": "NocoDB - Add this file in the table",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Dropbox - List watched folder": {
+          "main": [
+            [
+              {
+                "node": "Switch File vs Folder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "NocoDB - Get know files to exclude": {
+          "main": [
+            [
+              {
+                "node": "Merge - Keep only new items",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "NocoDB - Add this file in the table": {
+          "main": [
+            [
+              {
+                "node": "Execute Workflow - Something to do for new files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Respond to Dropbox in less than 10sec": {
+          "main": [
+            [
+              {
+                "node": "set_folder A",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "set_folder to watch B",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 20,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.nocoDb": {
+          "count": 2
+        },
+        "n8n-nodes-base.switch": {
+          "count": 2
+        },
+        "n8n-nodes-base.dropbox": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.executeWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "David Levesque",
+      "username": "davidlevesque",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f931f17633f65fabc2e870402c17985083d08f81ee7c55cbd0fa173d730aa9de?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 8,
+        "icon": "file:dropbox.svg",
+        "name": "n8n-nodes-base.dropbox",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropbox/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/dropbox/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Dropbox"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjcgNjIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjEiIHk9IjEiLz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PHBhdGggZmlsbD0iIzAwN2VlNSIgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiIGQ9Ik0xOC44NzQuMDIgMCAxMi4xOGwxMy4wNjYgMTAuNTI2TDMyIDExLjAzMm0tMzIgMjIgMTguODc0IDEyLjRMMzIgMzQuNDIyIDEzLjA2NiAyMi42ODZNMzIgMzQuNDIybDEzLjE4OCAxMS4wMUw2NCAzMy4xNTIgNTAuOTk0IDIyLjY4Nk02NCAxMi4yOCA0NS4xODggMCAzMiAxMS4wMWwxOC45OTQgMTEuNjc0TTMyLjA2IDM2Ljc3OCAxOC44NzIgNDcuNzI2bC01LjY4Ni0zLjY5djQuMTc0TDMyLjA2IDU5LjUyMiA1MC45MzQgNDguMjF2LTQuMTc0bC01LjY4NiAzLjY5Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Dropbox",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 111,
+        "icon": "fa:sign-in-alt",
+        "name": "n8n-nodes-base.executeWorkflow",
+        "codex": {
+          "data": {
+            "alias": [
+              "n8n",
+              "call",
+              "sub",
+              "workflow",
+              "sub-workflow",
+              "subworkflow"
+            ],
+            "details": "The Execute Workflow node can be used when you want your workflow to treat another workflow as a step in your flow. It allows you to modularize your workflows and have a single source of truth for series of actions you perform often. ",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Execute Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-in-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Sub-workflow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 510,
+        "icon": "file:nocodb.svg",
+        "name": "n8n-nodes-base.nocoDb",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nocodb/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/nocoDb/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "NocoDB"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJub25lIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzNENDNENSIgcng9IjI1Ii8+PHBhdGggZmlsbD0iI2ZmZiIgZD0ibTM4IDkzLjkwNyAyOS43NiAyOS4wMDZ2NDUuOTJIMzh6bTEyNS02MS42NjV2MTI1LjQxN2MwIDguMDc4LTQuNDk4IDExLjM0MS0xMS43NDIgMTEuMzQxLTEuMzMzIDAtMy43MjUtLjUwMS01Ljc5My0yLjUwMkwzOCA2NS4zMjhWNDIuODRDMzggMzQuNzYzIDQxLjM2MyAzMS41IDQ5LjcyMyAzMS41YzEuMzMzIDAgNC4wMS41MiA2LjA2IDIuNTAybDc3LjQzOCA3MS45MjNWMzIuMjQyeiIvPjwvc3ZnPg=="
+        },
+        "displayName": "NocoDB",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

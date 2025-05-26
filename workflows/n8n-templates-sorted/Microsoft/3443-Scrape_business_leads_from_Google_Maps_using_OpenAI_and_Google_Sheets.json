@@ -1,0 +1,1422 @@
+{
+  "workflow": {
+    "id": 3443,
+    "name": "Scrape business leads from Google Maps using OpenAI and Google Sheets",
+    "views": 5554,
+    "recentViews": 1111,
+    "totalViews": 5554,
+    "createdAt": "2025-04-05T19:50:44.805Z",
+    "description": "![Workflow Screenshot](https://www.dr-firas.com/Google_Maps_Finale.png)\n\n# Google Maps Data Extraction Workflow for Lead Generation\n\nThis workflow is ideal for **sales teams, marketers, entrepreneurs, and researchers** looking to efficiently gather detailed business information from Google Maps for:\n\n- Lead generation  \n- Market analysis  \n- Competitive research\n\n---\n\n# Who Is This Workflow For?\n\n- **Sales professionals** aiming to build targeted contact lists  \n- **Marketers** looking for localized business data  \n- **Researchers** needing organized, comprehensive business information  \n\n---\n\n# Problem This Workflow Solves\n\nManually gathering business contact details from Google Maps is:\n\n- Tedious  \n- Error-prone  \n- Time-consuming  \n\nThis workflow **automates** data extraction to **increase efficiency, accuracy, and productivity**.\n\n---\n\n# What This Workflow Does\n\n- Automates extraction of business data (name, address, phone, email, website) from **Google Maps**  \n- Crawls and extracts **additional website content**  \n- Integrates **OpenAI** to enhance data processing  \n- Stores structured results in **Google Sheets** for easy access and analysis  \n- Uses **Google Search API** to fill in missing information  \n\n---\n\n# Setup\n\n1. **Import** the provided n8n workflow JSON into your **n8n instance**.  \n2. Set your **OpenAI** and **Google Sheets API** credentials.  \n3. Provide your **Google Maps Scraper** and **Website Content Crawler** API keys.  \n4. Ensure **SerpAPI** is configured to enhance data completeness.  \n\n---\n\n# Customizing This Workflow to Your Needs\n\n- Adjust scraping parameters:\n  - Location  \n  - Business category  \n  - Country code  \n- Customize **Google Sheets output format** to fit your current data structure  \n- Integrate additional **AI processing steps or APIs** for richer data enrichment  \n\n---\n\n# Final Notes\n\nThis structured approach ensures:\n\n- **Accurate and compliant data extraction** from Google Maps  \n- Streamlined **lead generation**  \n- Actionable and well-organized data ready for business use  \n\n📄 **Documentation**: [Notion Guide](https://automatisation.notion.site/GOOGLE-MAPS-SCRAPER-1cc3d6550fd98005a99cea02986e7b05?pvs=4)\n\n## Demo Video\n\n🎥 Watch the full tutorial here: [YouTube Demo](https://www.youtube.com/watch?v=DoBRufiwElU)\n",
+    "workflow": {
+      "id": "qhZvZVCoV3HLjRkq",
+      "meta": {
+        "instanceId": "a2b23892dd6989fda7c1209b381f5850373a7d2b85609624d7c2b7a092671d44",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Google Maps FULL",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "c5d63d91-ffcc-4c05-a1ee-d78ca955fc85",
+          "name": "Trigger - When User Sends Message",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -400,
+            -60
+          ],
+          "webhookId": "e5c0f357-c0a4-4ebc-9162-0382d8009539",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e422761f-a662-4fef-81fe-de42cdb350fc",
+          "name": "AI Agent - Lead Collection",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -160,
+            -60
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "' UNIFIED AND OPTIMIZED PROMPT FOR DATA EXTRACTION VIA GOOGLE MAPS SCRAPER\n\n' --- 1. Task ---\n' - Collect high-quality professional leads from Google Maps, including:\n'   - Business name\n'   - Address\n'   - Phone number\n'   - Website\n'   - Email\n'   - Other relevant contact details\n' - Deliver organized, accurate, and actionable data.\n\n' --- 2. Context & Collaboration ---\n' - Tools & Sources:\n'   * Google Maps Scraper: Extracts data based on location, business type, and country code \n'     (ISO 3166 Alpha-2 in lowercase).\n'   * Website Scraper: Extracts data from provided URLs (the URL must be passed exactly as received, without quotation marks).\n'   * Google Sheets: Stores and retrieves previously extracted data.\n'   * Internet Search: Provides additional information if the scraping results are incomplete.\n' - Priorities: Accuracy and efficiency, avoiding unnecessary searches.\n\n' --- 3. Ethical Guidelines ---\n' - Only extract publicly accessible professional data.\n' - Do not collect or store personal/sensitive data.\n' - Adhere to scraping policies and data protection regulations.\n' - Error Handling:\n'   * In case of failure or incomplete results, suggest a retry, adjusted search parameters, or an alternative source.\n'   * If Google Sheets is unavailable, notify the user and propose workarounds.\n\n' --- 4. Constraints ---\n' - Country codes must follow the ISO 3166 Alpha-2 format in lowercase (e.g., \"fr\" for France).\n' - When using the Website Scraper, pass the URL exactly as provided, without quotation marks or modifications.\n' - Validate and correctly format all data (no duplicates or errors).\n' - Store results in Google Sheets in an organized and accessible manner.\n\n' --- 5. Final Requirements & Quality Checks ---\n' - Verification: Ensure the country code is always passed in lowercase to the Google Maps Scraper.\n' - URL: If a URL is provided, forward it directly to the Website Scraper without adding quotation marks.\n' - Existing Data: Check Google Sheets to see if the data is already available before performing new scraping.\n' - Supplementary: In case of partial results, propose using Internet Search to complete the information.\n\n' --- 6. Interaction ---\n' - If data already exists in Google Sheets, retrieve and present it to the user instead of launching a new scrape.\n' - If scraping fails or returns incomplete results, suggest alternative actions (e.g., web search, verifying the country code).\n\n' --- 7. Examples ---\n' BAD Example (Google Maps Scraper)\n'   User: \"Find coffee shops in Paris, France.\"\n'   AI: \"Extracting coffee shop data from Google Maps in France.\"\n'   > Issue: The country code \"fr\" was not provided.\n'\n' GOOD Example (Google Maps Scraper)\n'   User: \"Find coffee shops in Paris, France.\"\n'   AI:\n'     - \"Extracting coffee shop data from Google Maps in fr (France).\"\n'     - \"Scraped 50 businesses with names, addresses, phone numbers, and websites.\"\n'     - \"Storing results in Google Sheets under Lead_Generation_Paris_FR.\"\n'\n' BAD Example (Website Scraper)\n'   User: \"Scrape data from https://www.example.com/\"\n'   AI: \"Forwarding 'https://www.example.com/' to the Website Scraper.\"\n'   > Issue: Unnecessary quotation marks around the URL.\n'\n' GOOD Example (Website Scraper)\n'   User: \"Scrape data from https://www.example.com/\"\n'   AI:\n'     - \"Forwarding https://www.example.com to the Website Scraper.\"\n'     - \"Processing data extraction and storing results in Google Sheets.\"\n\n' --- 8. Output Format ---\n' - Responses should be concise and informative.\n' - Present data in a structured manner (e.g., business name, address, phone, website, etc.).\n' - If data already exists, clearly display the retrieved information from Google Sheets.\n\n' --- Additional Context & Details ---\n'\n' You interact with scraping APIs and databases to retrieve, update, and manage lead information.\n' Always pass country information using lowercase ISO 3166 Alpha-2 format when using the Google Maps Scraper.\n' If a URL is provided, it must be passed exactly as received, without quotation marks, to the Website Scraper.\n'\n' Known details:\n' You extract business names, addresses, phone numbers, websites, emails, and other relevant contact information.\n'\n' The URL must be passed exactly as provided (e.g., https://www.example.com/) without quotation marks or formatting changes.\n' Google Maps Scraper requires location, business type, and ISO 3166 Alpha-2 country codes to extract business listings.\n'\n' Context:\n' - System environment:\n'   You have direct integration with scraping tools, Internet search capabilities, and Google Sheets.\n'   You interact with scraping APIs and databases to retrieve, update, and manage lead information.\n'\n' Role:\n' You are a Lead Generation & Web Scraping Agent.\n' Your primary responsibility is to identify, collect, and organize relevant business leads by scraping websites, Google Maps, and performing Internet searches.\n' Ensure all extracted data is structured, accurate, and stored properly for easy access and analysis.\n' You have access to two scraping tools:\n'   1. Website Scraper – Requires only the raw URL to extract data from a specific website.\n'      - The URL must be passed exactly as provided (e.g., https://www.example.com/) without quotation marks or formatting changes.\n'   2. Google Maps Scraper – Requires location, business type, and ISO 3166 Alpha-2 country codes to extract business listings.\n\n' --- FINAL INSTRUCTIONS ---\n' 1. Adhere to all the directives and constraints above when extracting data from Google Maps (or other sources).\n' 2. Systematically check if data already exists in Google Sheets.\n' 3. In case of failure or partial results, propose an adjustment to the query or resort to Internet search.\n' 4. Ensure ethical compliance: only collect public data and do not store sensitive information.\n'\n' This prompt will guide the AI agent to efficiently extract and manage business data using Google Maps Scraper (and other mentioned tools)\n' while adhering to the structure, ISO country code standards, and ethical handling of information.\n"
+            }
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "8469f6f8-e56e-433f-8439-ac0f568b01b1",
+          "name": "GPT-4o - Generate & Process Requests",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -360,
+            160
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "6h3DfVhNPw9I25nO",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "8f89996c-f5d1-48e3-8023-9c5d4c8db12a",
+          "name": "Memory - Track Recent Context",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -180,
+            160
+          ],
+          "parameters": {
+            "contextWindowLength": 50
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "ef32b577-47a2-489f-8b5a-3640126a0ff9",
+          "name": "Tool - Scrape Google Maps Business Data",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            160,
+            160
+          ],
+          "parameters": {
+            "name": "extract_google_maps",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "9rD7iD6sbXqDX44S",
+              "cachedResultName": "Google Maps - sous 1 - Extract Google maps"
+            },
+            "description": "Extract data from hundreds of places fast. Scrape Google Maps by keyword, category, location, URLs & other filters. Get addresses, contact info, opening hours, popular times, prices, menus & more. Export scraped data, run the scraper via API, schedule and monitor runs, or integrate with other tools.",
+            "workflowInputs": {
+              "value": {
+                "city": "={{ $fromAI('city', ``, 'string') }}",
+                "search": "={{ $fromAI('search', ``, 'string') }}",
+                "countryCode": "={{ $fromAI('countryCode', ``, 'string') }}",
+                "state/county": "={{ $fromAI('state_county', ``, 'string') }}"
+              },
+              "schema": [
+                {
+                  "id": "search",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "search",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "city",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "city",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "state/county",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "state/county",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "countryCode",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "countryCode",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "86a6eafe-9ffc-4d58-85f7-eef7171eeb8e",
+          "name": "Fallback - Enrich with Google Search",
+          "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
+          "position": [
+            -20,
+            160
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "serpApi": {
+              "id": "FlfGC4PlqpLMJYRU",
+              "name": "SerpAPI account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "37409653-0409-4f2d-8105-9216f974f6a8",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -780,
+            -200
+          ],
+          "parameters": {
+            "width": 1300,
+            "height": 540,
+            "content": "# AI-Powered Lead Generation Workflow\n\nThis workflow extracts business data from Google Maps and associated websites using an AI agent.\n\n## Dependencies\n- **OpenAI API**\n- **Google Sheets API**\n- **Apify Actors**: Google Maps Scraper \n- **Apify Actors**: Website Content Crawler\n- **SerpAPI**: Used as a fallback to enrich data\n\n## External Setup Guide\n**Notion** : [Guide](https://automatisation.notion.site/GOOGLE-MAPS-SCRAPER-1cc3d6550fd98005a99cea02986e7b05)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0b42dfae-49e6-4117-8a5d-d1f396f22dcb",
+          "name": "Tool - Crawl Business Website",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            340,
+            160
+          ],
+          "parameters": {
+            "name": "Website_Content_Crawler",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "I7KceT8Mg1lW7BW4",
+              "cachedResultName": "Google Maps - sous 2 - Extract Google"
+            },
+            "description": "Crawl websites and extract text content to feed AI models, LLM applications, vector databases, or RAG pipelines. The Actor supports rich formatting using Markdown, cleans the HTML, downloads files, and integrates well with 🦜🔗 LangChain, LlamaIndex, and the wider LLM ecosystem.",
+            "workflowInputs": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "8a713b20-99e6-4df1-88ce-698ffc3c1e31",
+          "name": "Trigger - On Subworkflow Start",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -460,
+            520
+          ],
+          "parameters": {
+            "inputSource": "jsonExample",
+            "jsonExample": "{\n  \"search\": \"carpenter\",\n  \"city\": \"san francisco\",\n  \"state/county\": \"california\",\n  \"countryCode\": \"us\"\n}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "59af012d-de3f-4a44-b3ad-e587857b554d",
+          "name": "Scrape Google Maps (via Apify)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -240,
+            520
+          ],
+          "parameters": {
+            "url": "https://api.apify.com/v2/acts/2Mdma1N6Fd0y3QEjR/run-sync-get-dataset-items",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"city\": \"{{ $json.city }}\",\n    \"countryCode\": \"{{ $json.countryCode }}\",\n    \"locationQuery\": \"{{ $json.city }}\",\n    \"maxCrawledPlacesPerSearch\": 5,\n    \"searchStringsArray\": [\n        \"{{ $json.search }}\"\n    ],\n    \"skipClosedPlaces\": false\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "Bearer <token>"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "b1c40871-aa57-4b15-9f19-34a07dc6c45f",
+          "name": "Save Extracted Data to Google Sheets",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            -20,
+            520
+          ],
+          "parameters": {
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "",
+              "cachedResultUrl": "",
+              "cachedResultName": ""
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "="
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "51us92xkOlrvArhV",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "679f2af5-0024-4a71-8c04-dcbccc8f00c8",
+          "name": "Aggregate Business Listings",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            200,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dff1191a-b9f4-4ba6-ba42-a479fab76a5b",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -780,
+            380
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1300,
+            "height": 440,
+            "content": "# 📍 Google Maps Extractor Subworkflow\n\nThis subworkflow handles business data extraction from Google Maps using the Apify Google Maps Scraper.\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Purpose\n- Automates the collection of business leads based on:\n  - Search term (e.g., plumber, agency)\n  - City and region\n  - ISO 3166 Alpha-2 country code"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dd691f9c-15e2-4b4a-a6eb-8765905a2cb4",
+          "name": "Scrape Website Content (via Apify)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -320,
+            1000
+          ],
+          "parameters": {
+            "url": "https://api.apify.com/v2/acts/aYG0l9s7dbB7j3gbS/run-sync-get-dataset-items",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"aggressivePrune\": false,\n    \"clickElementsCssSelector\": \"[aria-expanded=\\\"false\\\"]\",\n    \"clientSideMinChangePercentage\": 15,\n    \"crawlerType\": \"playwright:adaptive\",\n    \"debugLog\": false,\n    \"debugMode\": false,\n    \"expandIframes\": true,\n    \"ignoreCanonicalUrl\": false,\n    \"keepUrlFragments\": false,\n    \"proxyConfiguration\": {\n        \"useApifyProxy\": true\n    },\n    \"readableTextCharThreshold\": 100,\n    \"removeCookieWarnings\": true,\n    \"removeElementsCssSelector\": \"nav, footer, script, style, noscript, svg, img[src^='data:'],\\n[role=\\\"alert\\\"],\\n[role=\\\"banner\\\"],\\n[role=\\\"dialog\\\"],\\n[role=\\\"alertdialog\\\"],\\n[role=\\\"region\\\"][aria-label*=\\\"skip\\\" i],\\n[aria-modal=\\\"true\\\"]\",\n    \"renderingTypeDetectionPercentage\": 10,\n    \"saveFiles\": false,\n    \"saveHtml\": false,\n    \"saveHtmlAsFile\": false,\n    \"saveMarkdown\": true,\n    \"saveScreenshots\": false,\n    \"startUrls\": [\n        {\n            \"url\": \"{{ $json.query }}\",\n            \"method\": \"GET\"\n        }\n    ],\n    \"useSitemaps\": false\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "Bearer apify_api_8UZf2KdZTkPihmNauBubgDsjAYTfKP4nsQSN"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "7cc813a7-e1a5-40fe-a76a-3e52438cf2f4",
+          "name": "Save Website Data to Google Sheets",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            -100,
+            1000
+          ],
+          "parameters": {
+            "columns": {
+              "value": {},
+              "schema": [
+                {
+                  "id": "url",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "url",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "crawl",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "crawl",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "metadata",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "metadata",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "screenshotUrl",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "screenshotUrl",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "text",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "text",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "markdown",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "markdown",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "debug",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "debug",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "autoMapInputData",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": 1886744055,
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JewfKbdS6gJhVFz0Maz6jpoDxQrByKyy77I5s7UvLD4/edit#gid=1886744055",
+              "cachedResultName": "MYWEBBASE"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1JewfKbdS6gJhVFz0Maz6jpoDxQrByKyy77I5s7UvLD4",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1JewfKbdS6gJhVFz0Maz6jpoDxQrByKyy77I5s7UvLD4/edit?usp=drivesdk",
+              "cachedResultName": "GoogleMaps_LEADS"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "51us92xkOlrvArhV",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "6c20b427-48e8-4ba1-885e-7db71406a0db",
+          "name": "Aggregate Website Content",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            120,
+            1000
+          ],
+          "parameters": {
+            "options": {},
+            "aggregate": "aggregateAllItemData"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7b1ff556-f212-4ab5-9995-deeb83f68da4",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -780,
+            860
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1300,
+            "height": 400,
+            "content": "# 🌐 Website Content Crawler Subworkflow\n\nThis subworkflow processes URLs to extract readable website content using Apify's Website Content Crawler.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Purpose\n- Extracts detailed and structured content from business websites.\n- Enhances leads with enriched, on-site information."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "fd75b3e6-1dba-4e01-8c95-fdd9dd07fac4",
+      "connections": {
+        "Memory - Track Recent Context": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Agent - Lead Collection",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Tool - Crawl Business Website": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent - Lead Collection",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Scrape Google Maps (via Apify)": {
+          "main": [
+            [
+              {
+                "node": "Save Extracted Data to Google Sheets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Trigger - On Subworkflow Start": {
+          "main": [
+            [
+              {
+                "node": "Scrape Google Maps (via Apify)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Trigger - When User Sends Message": {
+          "main": [
+            [
+              {
+                "node": "AI Agent - Lead Collection",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save Website Data to Google Sheets": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Website Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Scrape Website Content (via Apify)": {
+          "main": [
+            [
+              {
+                "node": "Save Website Data to Google Sheets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fallback - Enrich with Google Search": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent - Lead Collection",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GPT-4o - Generate & Process Requests": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent - Lead Collection",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save Extracted Data to Google Sheets": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Business Listings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Tool - Scrape Google Maps Business Data": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent - Lead Collection",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.aggregate": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolSerpApi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Dr. Firas",
+      "username": "drfiras",
+      "bio": "Automation expert and certified trainer. I create hands-on courses to master automation with n8n. Contact me to access my exclusive training and start building powerful workflows today. 🚀",
+      "verified": true,
+      "links": [
+        "https://www.youtube.com/@DRFIRASS"
+      ],
+      "avatar": "https://gravatar.com/avatar/988a46579257f9e8c522aeb7b906f1ee96e47c4298faa548e41b04957f455ae3?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1199,
+        "icon": "file:serpApi.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolSerpApi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolserpapi/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "SerpAPI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZlcnNpb249IjEuMCIgdmlld0JveD0iMCAwIDQ2ODAgMTM0MCI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTQ0NjMgMTIxdjExMGgyMDdWMTFoLTIwN3pNMzAwLjUgNDcuNmMtMi43LjItMTIuMi44LTIxIDEuNC02OC4yIDQuNi0xMjMuOCAxOC4xLTE2MSAzOS4yQzYwLjYgMTIxIDMxLjggMTc0LjIgMjQgMjYzYy0yLjcgMzEuNS0yLjIgOTguMyAxLjEgMTM1QzM1IDUwOS40IDcyLjggNTU1LjEgMTg1IDU5MS41YzI0IDcuNyA1NS4xIDE1LjggOTguMiAyNS41IDIwIDQuNSA0Ny4xIDEwLjkgNjAuMyAxNC4yIDcxLjggMTggOTUgMzIuNSAxMDIuNSA2My45IDUuMiAyMS45IDUuMiA3NC4zLjEgOTcuOS05IDQwLjktMzYuMSA1NS44LTEwNS44IDU3LjgtOTEuNiAyLjgtMTc3LTkuMy0yNzkuNi0zOS41LTEwLjQtMy0xOS4yLTUuMS0xOS43LTQuNy0uOSAxLjEtMzYuMyAxNjUuNC0zNS43IDE2NiAxLjMgMS4zIDM0LjQgMTQuMyA0OS43IDE5LjUgNTkuOSAyMC41IDEyMy4yIDMzLjMgMTk3LjUgNDAgMTkuMiAxLjcgOTIuMSAyLjMgMTE3IDEgMTMzLjYtNy4yIDIxMC0zNi40IDI1My4xLTk2LjggMzQuMy00OCA0Ni44LTExNy4yIDQyLjUtMjM1LjMtMi4zLTYyLjgtNy41LTkyLjEtMjEuNi0xMjEuNS0yNy41LTU3LjItODktOTAuMS0yMzUuNS0xMjYuMS05Mi44LTIyLjgtMTA0LjktMjYuMS0xMjMuMy0zMy40LTI1LjctMTAuMy0zNy41LTIyLTQyLjctNDIuNS0zLjctMTQuNS01LjItNTUuOS0yLjktNzkgNC0zOS45IDIwLjEtNTYuMyA2MS45LTYzIDMzLjctNS40IDExNC42LTMuNiAxODQuNSA0LjEgMjcgMyA3NC41IDkuNyAxMTAuOSAxNS43IDE2LjMgMi43IDI2IDMuOSAyNi4yIDMuMi42LTEuOSAyMS41LTE3OS44IDIxLjEtMTgwLjEtLjctLjgtNDAuNS04LjUtNjMuNi0xMi4zQzUzMS43IDU4IDQ4OS40IDUzIDQzMy41IDQ4LjljLTE0LjEtMS0xMjIuMS0yLjEtMTMzLTEuM20yNjk5IDE0LjZjLTEgMi45LTI5MS41IDk1Ni44LTI5MS41IDk1Ny4zIDAgLjMgNTAuNS40IDExMi4yLjNsMTEyLjMtLjMgMjUuMi05MWMxMy44LTUwLjEgMjUuNC05MiAyNS44LTkzLjNsLjUtMi4yIDE2MC44LjIgMTYwLjcuMyAyNS41IDkyYzE0LjEgNTAuNiAyNS44IDkyLjYgMjYgOTMuMy40IDEgMjMuNCAxLjIgMTEyLjYgMWwxMTItLjMtMTQ2LjYtNDc5LTE0Ni43LTQ3OS0xNDQuMi0uM2MtMTE0LjgtLjItMTQ0LjMgMC0xNDQuNiAxbTE5OS4zIDM5MGMyOS44IDEwOS42IDU0LjIgMTk5LjYgNTQuMiAyMDAgMCAuNS00OS41LjgtMTEwLjEuOC05MS4zIDAtMTEwLS4yLTEwOS42LTEuMy4zLS44IDI1LjItOTAuOCA1NS4zLTIwMCAzMC4xLTEwOS4zIDU1LjEtMTk4LjcgNTUuNC0xOTguN3MyNSA4OS43IDU0LjggMTk5LjJNMTA2MiAzMDQuNmMtMTcuNC45LTM4LjYgMi43LTQ4LjUgNC0xMjkuOCAxNy41LTIwNS44IDg1LjktMjI2LjUgMjA0LjEtNS4yIDI5LjctNS4zIDMwLjktNS43IDE0Mi44LS41IDExMC4xLS4xIDEyNi43IDMuOCAxNTQuNCA3LjEgNTAuOCAyNSA5NS43IDUxLjQgMTI4LjYgMzcuMyA0Ni42IDk0LjggNzYuOSAxNjguOSA4OC45IDM0LjEgNS42IDU3LjQgNyAxMDIuMSA2LjMgNTMuNC0uOSA5OC41LTUuOSAxNTMuNS0xNy4yIDM5LjItOCA5Ny0yNC42IDk3LTI3LjcgMC0xLjItMjguOS0xNTAuNi0yOS42LTE1Mi45LS40LTEuNS0uOS0xLjUtNS4yLS4zLTQwLjggMTIuNC0xMTAuNSAyMy45LTE2Ni45IDI3LjUtMjQuOCAxLjYtNzcuNC43LTkxLjEtMS41LTQxLTYuNy02MC41LTIwLjQtNzAuMy00OS43LTQuMS0xMi40LTUuOS0yNS4yLTYuNi00OS4ybC0uNi0yMC43SDEzNjZ2LTczLjhjMC03Ni42LS45LTEwOS40LTMuNi0xMzMuNS0xMi4yLTExMC43LTYwLjUtMTc4LjgtMTQ5LjYtMjEwLjgtMjIuNS04LTUzLjYtMTQuNi04Mi44LTE3LjMtMTUuNS0xLjUtNTUuNy0yLjctNjgtMm0zOSAxNjMuNGMyMS43IDIuNyAzNS42IDguNiA0Ny4xIDIwIDE2LjMgMTYuMyAyMS4yIDMzLjMgMjEuMyA3NC41bC4xIDI0aC0xODFsLS4zLTE1Yy0uOC00MS4yIDYuMy02NC43IDI0LjYtODEuNyAxMS4zLTEwLjQgMjUuMy0xNy4xIDQyLjMtMjAuMiAxNC42LTIuNyAzMi0zLjMgNDUuOS0xLjZtMTI5Ni41LTE2Mi45Yy0zOS4zIDIuNy04NSAxNC42LTEzMC43IDM0LTE3LjggNy42LTQ0LjQgMjEtNTguMSAyOS4ybC0xMC44IDYuNS0xLjItMy4xYy0uNy0xLjgtNS42LTE0LjMtMTAuOC0yNy45bC05LjQtMjQuOEgyMDE0djUwNi41YzAgNDY0LjcuMSA1MDYuNSAxLjYgNTA2LjUuOSAwIDQ3LTYuMyAxMDIuNC0xNCA1NS41LTcuNyAxMDEuMy0xNCAxMDEuOS0xNCAuOCAwIDEuMS00Mi40IDEuMS0xNDQuOHYtMTQ0LjlsOC4zIDEuOGMzNS42IDcuOSA4MiAxNCAxMjguNSAxNyAyNC4yIDEuNSA3Mi42LjcgODguNy0xLjUgNjcuOS05LjUgMTE1LjMtMzYuNSAxNDYuOS04My42IDcuNi0xMS4zIDE5LjUtMzUuNyAyNC40LTUwIDcuNi0yMi4yIDEyLjUtNDYuMSAxNS45LTc2LjUgMS4zLTExLjYgMS42LTM0LjkgMi0xMzYgLjUtMTIzLjkgMC0xNTEuNC0zLjItMTc3LjUtMTAtODIuMi00MS42LTEzOS43LTk0LjctMTcyLjYtMjguOC0xNy45LTYyLjgtMjcuNy0xMDUuMy0zMC40LTE2LjUtMS4xLTE5LTEuMS0zNSAuMU0yMzY0IDQ4NWMxOS45IDEuOSAzMi40IDYuOCA0My4xIDE2LjhzMTYuNiAyMiAxOS40IDM5LjVjMi4yIDEzLjcgMi4yIDI0Mi4yIDAgMjU1LTQuOCAyNy4zLTE3LjkgNDQuNS00MC40IDUyLjctMTIgNC40LTIxLjUgNS40LTQ2LjEgNC43LTIyLjUtLjYtNDQuOS0yLjktNzEtNy4xLTE1LjctMi42LTM3LjEtNi44LTQ0LjItOC42bC0zLjgtMS4xVjUzOS4ybDQuMy0zLjdjNi42LTUuNyAyNi4yLTE4LjYgMzcuOC0yNC44IDMwLjItMTYuMiA1Ny43LTI0LjQgODguNC0yNi42IDEuMSAwIDYuNy40IDEyLjUuOW0xNzE0LjUtMTgwLjRjLTU5IDMuNS0xMzQuNCAyOC4zLTE5My43IDYzLjdsLTEwLjcgNi40LTQuOS0xMi42Yy0yLjctNi45LTcuNS0xOS41LTEwLjctMjcuOWwtNS45LTE1LjJIMzY5MHY1MDYuNWMwIDQ2OCAuMSA1MDYuNSAxLjYgNTA2LjUuOSAwIDQ3LjEtNi4zIDEwMi42LTE0czEwMS4zLTE0IDEwMS44LTE0Yy42IDAgMS01My4zIDEtMTQ0Ljh2LTE0NC44bDE4LjMgMy43YzMwLjIgNi4xIDU2LjUgOS43IDk3LjcgMTMuNiAyMy41IDIuMiA4OC45IDIuNSAxMDUgLjUgMzEtMy45IDU5LjUtMTIgODIuOS0yMy45IDE5LjItOS42IDMwLjktMTguMSA0Ni4xLTMzLjMgMjkuMi0yOS4yIDQ3LTY1LjEgNTctMTE1IDcuNC0zNyA4LTUxLjMgOC0xOTEgMC0xMzguOS0uNi0xNTIuOC04LTE5MC0yMC4zLTEwMi04MC42LTE2MC44LTE3Ny0xNzIuNC0xMy0xLjUtMzguMS0yLjYtNDguNS0yTTQwNDEgNDg1YzEyLjYgMS4yIDE5LjggMy4yIDI5LjcgOCAxNS4zIDcuNSAyNS4yIDIwLjggMzAuNiA0MWwyLjIgOC41djI1M2wtMi4yIDguNGMtNi4yIDIzLjEtMjAuMiAzOS00MC4xIDQ1LjUtMTMuMSA0LjMtMTkuNyA0LjktNDQuMiA0LjMtMjIuMi0uNi0zNi4xLTEuOS02My41LTUuOC0xMy43LTItNDUuMy04LTUyLjctMTBsLTMuOC0xVjUzOWw1LjgtNC41YzMyLjctMjYuMSA3OC44LTQ2IDExNC41LTQ5LjQgMTEuNi0xLjIgMTMuMS0xLjIgMjMuNy0uMU0xODc5IDMwNy42Yy00NS4xIDExLjgtMTE1LjcgNDIuNi0xNjIuNSA3MC45LTcuOCA0LjgtMTIuMiA2LjktMTIuNiA2LjItLjMtLjctMy43LTE1LjctNy40LTMzLjVsLTYuOC0zMi4ySDE1MTd2NzAxaDIwN1Y1OTIuMmwxMC44LTdjMzUuNy0yMy4xIDk3LjctNTMuNyAxNTguNC03OC4yIDguNC0zLjQgMTUuNi02LjUgMTYtNi44LjQtLjQtMy4xLTQzLjctNy44LTk2LjItNC42LTUyLjUtOC40LTk2LjMtOC40LTk3LjMgMC0yLjMtMi40LTIuMi0xNCAuOW0yNTg0IDM2MS45VjEwMjBoMjA3VjMxOWgtMjA3eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "SerpApi (Google Search)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

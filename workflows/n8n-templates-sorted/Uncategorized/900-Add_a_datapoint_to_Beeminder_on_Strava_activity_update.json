@@ -1,0 +1,187 @@
+{
+  "workflow": {
+    "id": 900,
+    "name": "Add a datapoint to Beeminder on Strava activity update",
+    "views": 283,
+    "recentViews": 0,
+    "totalViews": 283,
+    "createdAt": "2021-01-21T12:21:29.238Z",
+    "description": "This workflow allows you to add a datapoint to Beeminder when a new activity is added to Strava.\n\nYou can use this workflow to keep a track of your fitness activities and connect Strava with Beeminder.\n\nIf you want to keep a track of different activities like the number of hours worked in a week or the number of tasks completed, you can use the relevant node. For example, you can use the Clockify Trigger node or the Toggl Trigger node.\n\n\n![workflow-screenshot](fileId:386)",
+    "workflow": {
+      "id": "208",
+      "name": "Add a datapoint to Beeminder when new activity is added to Strava",
+      "nodes": [
+        {
+          "name": "Strava Trigger",
+          "type": "n8n-nodes-base.stravaTrigger",
+          "position": [
+            470,
+            300
+          ],
+          "webhookId": "2b0c6812-ac24-42e5-b15e-8d1fb7606908",
+          "parameters": {
+            "event": "create",
+            "options": {}
+          },
+          "credentials": {
+            "stravaOAuth2Api": "strava"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Beeminder",
+          "type": "n8n-nodes-base.beeminder",
+          "position": [
+            670,
+            300
+          ],
+          "parameters": {
+            "goalName": "testing",
+            "additionalFields": {
+              "comment": "={{$json[\"object_data\"][\"name\"]}}"
+            }
+          },
+          "credentials": {
+            "beeminderApi": "Beeminder credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Strava Trigger": {
+          "main": [
+            [
+              {
+                "node": "Beeminder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.beeminder": {
+          "count": 1
+        },
+        "n8n-nodes-base.stravaTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 386,
+        "icon": "file:strava.svg",
+        "name": "n8n-nodes-base.stravaTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.stravatrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/strava/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Strava Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjI1MDAiIHZpZXdCb3g9IjAgMCAxNiAxNiI+PHBhdGggZmlsbD0iI2ZjNGMwMiIgZD0iTTAgMGgxNnYxNkgweiIvPjxnIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZD0ibTYuOSA4LjggMi41IDQuNSAyLjQtNC41aC0xLjVsLS45IDEuNy0xLTEuN3oiIG9wYWNpdHk9Ii42Ii8+PHBhdGggZD0ibTcuMiAyLjUgMy4xIDYuM0g0em0wIDMuOCAxLjIgMi41SDUuOXoiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Strava Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 437,
+        "icon": "file:beeminder.png",
+        "name": "n8n-nodes-base.beeminder",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.beeminder/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/beeminder/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Beeminder"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABelBMVEUAAAA6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw7Ozw7Oz46Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw6Ojw7Oz07Oz06Ojw6Ojw6Oj07Oz06Ojw6Ojw6Ojw6Ojw6Ojw7Ozw5OTw7Oz06Ojw6Oj06Ojw6Ojw6Ojw6Ojz/ywf/zgYyND03ODw1NjwvMj3/0wRCQUD2xxL/1Af/zwT/0QRPSz8vMj//0Qo9PUAyNUE0NTz/zwotMEAxM0BYUT5wZDp3ajn/0ggxND7vwxP/1QRGREA3OEBUTz5kWz2iiS6skCvtwBb4yQ7uvgw5OUI0NkFKRj9rYDx8bTiXgTG/oCPWsB3btBzhuBn0xBD6yw/9ywz/2QFSTT1cVDs6OjpsYDmCcTaZgzCTfTC6myfFoiTfthrovhlbUz1gWDxoXjqKdzSPejPCoSmylSm2mCjDoCHPqyD9zQz/0wv/1wR0ZjmpjizKpiPTrR/iuhjquw1UUEaPfD6tkjF8XVfuAAAAKXRSTlMA59K3oPqzMQkF9smWj0AsJ+7g2HpcGhGag2JSTPPMxq2piXRuNta/ZZKUy0EAAAOpSURBVEjH7ZVnW9pQGIbD0jqq1tm915NxEggBwpSNWFoHG7TuvbW7/e89SUA+kLbRr/X+ALmS685zzsl73sPc8D/zYhRwOUa0y2GHCxh9ad29DR3bSB8zbIPOc6vuEIBkkFDbPkBdEk0CeGVRHgSy66UYDx0+VloXgNsWZQdCO+fNskp4kSdErTQDsRB6LMrPILi3lPTa3G58eimSl5WKW4DTonwfEBfOuNoWGwjXNmve+gwPTFiUbw0AkdkE52VZllO4xOcI8OTWv72+KWPciM4qbIvAtAg80B72/S1x4qndZu+533sH/F6YbaN8yQKDI+MO++s390YYc3ofw6Af8G80L2VOpnPu74fOo3vm7h1AoB9HAIVMV6WW6w0cZYx7okgA3DUbsx3g1YXFPbcoABDdR2Gv5krb8ajmhKJL8XguKQD3u+W3Wi2Vw4nwt/1sSMvxx7dl1pvYmBdB8ec2PIFEIZ8FRrsX/gkEtZLWhil/yUX08PljObUaDGmxwdWUxNHpX+yLwMMu+RHERZnVkVL7ukKC8ZgeK/pKCc5YgC1VMClzwD8rXa7voU+3kgTarlp8J7EtGss8HCZy8ERh20jvVlUYCL7jgJdtE57m8dhEntvsyGy6PhOCztyvZsdlA4si7GbJJalTF1+XSTsZBx6lk7zCY8Bszvm2rNTXPvCa50/qvzunMtd6ayFHTLY2reeVQCu2PBMxCiUf9xMA/Idi3QhXvn4A7pm0D2QPLziOk87yqh4bmamkw5/don69W057OU45/8QDQ13yQ4C4j1KFVGnPr8WG3PmwxHmb1RW92nl1veIpbC0mgYE+xiyaROdz80E9Vvxx6Em9o9S2f7bmry7l1CS04G4m7aB6iECf5NpCxm2QyRRXIoKmE6L9mff/qbsuGJDYqfxp3tcic3JeVAUY2B8wf2B43Ol02sAveyS24LmkwV1szAEOp/P5w3+0sh4qN+gH60Cr9SQKDFk6qAS1qhVkx2XldT9cIxbkB639Vfv+Xuc7fU1jh8dYnwV5ktbaboPzVn3kIyV0EGalzaDVw8oJRI/TrHI6TVk4KHDc2Qxv9ZjsdYFkqhJtmxq0haTX/ECP9SOWj2132srsnABXr0V5aozavrJkuOFiUABeMFYZtlHbvSlrHa++GhG0Tm+d3lGAZOlBqaQWIgAGmaswOaB13qL8Te+948zVmOoBhGh8ibr9E8yVGQTAE8A2xFyDcWiMDTPXYmIM/U8nmRtuuD6/AQzW+dqtokXXAAAAAElFTkSuQmCC"
+        },
+        "displayName": "Beeminder",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 386,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/4fcd1d7f317441d897d74b53f00709da.png"
+      }
+    ]
+  }
+}

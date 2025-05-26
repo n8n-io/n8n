@@ -1,0 +1,278 @@
+{
+  "workflow": {
+    "id": 3623,
+    "name": "AI-Powered Gmail MCP Server",
+    "views": 310,
+    "recentViews": 62,
+    "totalViews": 310,
+    "createdAt": "2025-04-20T21:13:40.047Z",
+    "description": "# 🤖 AI-Powered Gmail MCP Server for n8n\n\n### Description\nThis n8n workflow template leverages an external AI Model Control Plane (MCP) Server to automate various Gmail tasks, such as composing emails, replying to threads, and handling follow-ups using dynamically generated content. It uses the native n8n Gmail nodes available from v1.88.0 onwards.\n\n### Who is this template for?\nIdeal for **developers**, **automation engineers**, and **power users** using self-hosted n8n (v1.88.0+) who want to integrate artificial intelligence directly into their email workflows via a dedicated MCP Server for enhanced control and customization over AI interactions.\n\n### What problem does this workflow solve?\n*   ⚙️ **Reduces Manual Effort:** Decreases the work involved in writing, sending, and following up on emails in Gmail.\n*   ✅ **Consistency and Quality:** Ensures standardized, professional responses free from typos by leveraging controlled AI prompts.\n*   🔄 **Complete Automation:** Automates the entire email cycle: from the initial send, through waiting for a reply, to sending automated follow-ups based on AI logic.\n\n### Workflow Overview\nThis template provides a structured approach to integrating Gmail with an MCP Server:\n\n*   📡 **MCP Trigger (“MCP_GMAIL”):** An n8n Webhook node that receives HTTP calls from your MCP Server. It standardizes the inputs (like recipient, subject, AI prompt) for all subsequent Gmail nodes. *(You will need to configure your MCP Server to call this webhook URL).*\n*   📤 **SEND_EMAIL (Gmail Node v2.1):** Sends new messages. The email body (`message` field) is typically populated by content generated from an AI prompt processed by your MCP server and passed via the trigger.\n*   🔄 **REPLY_EMAIL (Gmail Node v2.1):** Automatically replies to existing conversations (threads). It uses AI-generated content (via MCP) to formulate the reply based on the thread context. Requires `Message ID` and/or `Thread ID`.\n*   📥 **GET_EMAIL (Gmail Node v2.1):** Fetches data for a specific message (using `Message ID`) for analysis, processing, or archiving. Useful for retrieving context before replying.\n*   ⏳ **SEND_AND_WAIT (Gmail Node v2.1):** Sends an email and pauses the workflow execution until a reply is received in that specific conversation (thread). This is crucial for building automated follow-up sequences. It then outputs data from the reply message.\n\n* **Note:** All Gmail nodes in this template use the native n8n **Gmail Tool**, integrated since v1.88.0. No additional installation of community nodes is required. See the [official n8n documentation](https://docs.n8n.io/) for more details on node configuration.*\n\n### Prerequisites\nEnsure you have the following before importing:\n\n*   🚀 A self-hosted n8n instance running version **1.88.0** or higher.\n*   ☁️ A Google Cloud project with the **Gmail API** correctly enabled.\n*   🔑 **Gmail OAuth2 credentials** configured in your n8n instance. Navigate to `Settings` &gt; `Credentials` &gt; `New` &gt; `Google` &gt; `Gmail (OAuth2 API)` to set this up if you haven't already.\n*   🧠 Access to your **MCP Server** and an **API Key** (or other authentication method) required to interact with it via HTTP requests.\n\n### How to Import and Configure\nFollow these steps to get the template running:\n\n1.  In your n8n interface, navigate to **Templates** → **Import from URL**.\n2.  Paste the JSON link provided for this workflow template.\n3.  Configure the necessary credentials within n8n under `Credentials`:\n    *   **Gmail OAuth2:** Select the Google OAuth2 credential you previously configured that has access to the desired Gmail account.\n    *   **MCP API Key:** You'll likely need to configure credentials for interacting with your MCP Server. This might involve setting up a `Header Auth` credential in n8n with your MCP API Key, or configuring the HTTP Request node within the workflow directly, depending on your MCP's authentication scheme. Link this credential where needed (e.g., in the Trigger node if MCP calls n8n with auth, or in HTTP Request nodes if n8n calls MCP).\n4.  **Activate the Workflow:** Ensure the workflow toggle is set to \"Active\" in the top right corner.\n5.  **Webhook URL:** Copy the Webhook URL from the \"MCP_GMAIL\" Trigger node (Test or Production URL as needed) and configure your MCP Server to send requests to this URL.\n6.  **Recommendation:**\n    *   Rename the nodes with clear, descriptive names relevant to your specific use case (e.g., `✨ Generate Sales Email Body via MCP`, `📥 Fetch Customer Replies`).\n    *   Utilize the workflow notes (sticky notes on the canvas) to document specific logic, prompt details, or configuration choices for future reference.\n\n### Customization & Technical Guidance\nTailor the workflow to your specific needs:\n\n*   🔍 **Search Filters:** In nodes that fetch emails (like `GET_EMAIL` or if you add a `Gmail - Get Many` node), refine the search using the `Search` field (standard Gmail search operators) or filter by `Label Names` to process specific emails (e.g., unread from a specific sender, emails with a certain label).\n*   ✍️ **AI Fine-Tuning (Prompt Engineering):** The core of the AI integration happens in the prompts sent to your MCP Server. Modify these prompts (often constructed within function nodes or directly in the trigger input expected from MCP) in the `message` or `body` fields passed to the send/reply nodes. Adjust prompts to control:\n    *   **Tone & Style:** Formal, informal, empathetic, technical, etc.\n    *   **Content & Format:** Request bullet points, summaries, specific data extraction.\n    *   **Dynamic Variables:** Inject data from previous n8n nodes (e.g., customer name, order details, previous email content) into the prompt for context-aware generation. Example: ``\"Reply to the following email thread [{{ $json.thread_content }}] addressing the customer {{ $json.customer_name }} about their query...\"``\n*   🔗 **Post-Response Actions:** Extend the workflow after key actions, especially the `SEND_AND_WAIT` node. Add nodes to:\n    *   Log results to a database (`MySQL`, `PostgreSQL`, `Airtable`).\n    *   Update CRM records (`HubSpot`, `Salesforce`).\n    *   Send notifications (`Slack`, `Discord`, `Telegram`).\n    *   Trigger other n8n workflows.\n*   🛡️ **Error Handling:** Implement robust error handling. Connect the red output pins (error output) of critical nodes (like Gmail nodes or HTTP Requests to MCP) to an `Error Trigger` node. From there, you can:\n    *   Log detailed error information to a monitoring tool or spreadsheet.\n    *   Send failure notifications.\n    *   Implement retry logic (using loops or specific retry settings on nodes).\n    *   Route to alternative paths or fallback workflows.",
+    "workflow": {
+      "id": "lYOQGMEJDxugrfrT",
+      "meta": {
+        "instanceId": "6d46e25379ef430a7067964d1096b885c773564549240cb3ad4c087f6cf94bd3",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "MCP_GMAIL",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "c13105ec-6ac3-4179-a331-da5214ced6e6",
+          "name": "SEND_EMAIL",
+          "type": "n8n-nodes-base.gmailTool",
+          "position": [
+            -260,
+            540
+          ],
+          "webhookId": "7ecc72c7-8968-4e5c-ae5a-a3d41823ca73",
+          "parameters": {
+            "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+            "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+            "options": {},
+            "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+            "descriptionType": "manual",
+            "toolDescription": "envia menssagems via API google"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "qvvveZOGtqMK0yvU",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "0836faf7-59fd-41f5-9a54-3f467ed87db1",
+          "name": "REPLY_EMAIL",
+          "type": "n8n-nodes-base.gmailTool",
+          "position": [
+            -120,
+            540
+          ],
+          "webhookId": "30c6020e-eceb-4381-9874-be21f34ceea2",
+          "parameters": {
+            "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+            "options": {},
+            "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+            "operation": "reply",
+            "descriptionType": "manual"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "qvvveZOGtqMK0yvU",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "892e89a7-8751-4c9f-87f3-a663ec0ca042",
+          "name": "GET_EMAIL",
+          "type": "n8n-nodes-base.gmailTool",
+          "position": [
+            0,
+            540
+          ],
+          "webhookId": "6b3f4e85-bdfe-4396-8ee7-5a73efc680fb",
+          "parameters": {
+            "simple": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Simplify', ``, 'boolean') }}",
+            "options": {},
+            "messageId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message_ID', ``, 'string') }}",
+            "operation": "get"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "qvvveZOGtqMK0yvU",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "c1c2d8cd-6117-4238-b696-22da8f217f59",
+          "name": "SEND_AND_WAIT",
+          "type": "n8n-nodes-base.gmailTool",
+          "position": [
+            140,
+            540
+          ],
+          "webhookId": "1f8a82c1-cbd1-4f40-9820-2de005c0473f",
+          "parameters": {
+            "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+            "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+            "options": {},
+            "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+            "operation": "sendAndWait",
+            "responseType": "freeText"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "qvvveZOGtqMK0yvU",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "89c8bc41-cbf9-4099-a3ac-6d5d7cd1a626",
+          "name": "MCP_GMAIL",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            0,
+            0
+          ],
+          "webhookId": "82a7a338-618c-44f5-a1c3-f2e32b6b4833",
+          "parameters": {
+            "path": "/mcp/:tool/gmail"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "2022464f-822f-4b3e-9425-4e938a95348c",
+      "connections": {
+        "GET_EMAIL": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_GMAIL",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SEND_EMAIL": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_GMAIL",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "REPLY_EMAIL": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_GMAIL",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SEND_AND_WAIT": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_GMAIL",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.gmailTool": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Luciano Gutierrez",
+      "username": "koresoluciones",
+      "bio": "🇧🇷 Argentino de 30 anos e fundador da KORE Soluções em Belo Horizonte (MG). Há 1 ano, fornecemos automações, cursos, configurações e manutenção de workflows, ajudando empresas a aumentar eficiência e escalar processos com tecnologia.\n\n🇺🇸 I’m a 30‑year‑old Argentine founder of KORE Soluções in Belo Horizonte (MG). For 1 year, we’ve delivered automations, courses, configuration, and workflow maintenance, helping businesses boost efficiency and scale processes with technology.",
+      "verified": true,
+      "links": [
+        "https://koresolucoes.github.io/expertise/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7caef85e3231ac83b8634980bd314fc40ba26df805b86e5f839bf75a1582a1a7?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

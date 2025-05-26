@@ -1,0 +1,46 @@
+URL: https://docs.n8n.io/advanced-ai/examples/introduction/
+Scraped_At: 2025-05-20T18:40:13.437925
+
+Advanced AI examples and concepts
+#
+This section provides explanations of important AI concepts, and workflow templates that highlight those concepts, with explanations and configuration guides. The examples cover common use cases and highlight different features of advanced AI in n8n.
+Agents and chains
+Learn about
+agents
+and
+chains
+in AI, including exploring key differences using the example workflow.
+What's a chain in AI?
+What's an agent in AI?
+Demonstration of key differences between agents and chains
+Call n8n Workflow Tool
+Learn about
+tools
+in AI, then explore examples that use n8n workflows as custom tools to give your AI workflow access to more data.
+What's a tool in AI?
+Chat with Google Sheets
+Call an API to fetch data
+Set up a human fallback
+Let AI specify tool parameters with
+$fromAI()
+Vector databases
+Learn about
+vector databases
+in AI, along with related concepts including
+embeddings
+and retrievers.
+What's a vector database?
+Populate a Pinecone vector database from a website
+Memory
+Learn about
+memory
+in AI.
+What's memory in AI?
+AI workflow templates
+You can browse AI templates, included community contributions, on the n8n website.
+Browse all AI templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

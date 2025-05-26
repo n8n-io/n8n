@@ -1,0 +1,213 @@
+{
+  "workflow": {
+    "id": 659,
+    "name": "Create a coupon on Paddle",
+    "views": 427,
+    "recentViews": 0,
+    "totalViews": 427,
+    "createdAt": "2020-09-14T12:15:25.652Z",
+    "description": "![workflow-screenshot](fileId:232)",
+    "workflow": {
+      "id": "54",
+      "name": "Create a coupon on Paddle",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            550,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Paddle",
+          "type": "n8n-nodes-base.paddle",
+          "position": [
+            750,
+            260
+          ],
+          "parameters": {
+            "discountAmount": 2,
+            "additionalFields": {
+              "couponCode": "n8n-docs"
+            }
+          },
+          "credentials": {
+            "paddleApi": "paddle"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Paddle": {
+          "main": [
+            []
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Paddle",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.paddle": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 362,
+        "icon": "file:paddle.png",
+        "name": "n8n-nodes-base.paddle",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.paddle/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/paddle/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Paddle"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAA7VBMVEXq9f/q9f/q9f9FVnz////s9/8pO2YnOWTo9P+Aj6tGV30/UHdCU3otQGrt+P+Tobo4SnL7//9HWH4jNWFIWX8rPWf9//88TXXz/v/v+v/p9f82SHElN2Py+/9PX4M0RW4xQ2z5///2//+isMWZqL+JlrF5h6Tk7/lreplod5dgb5Baao1UZokgMl8cL1zv+//T3+3P2ujK1ODAzNu7xte1wtW6xNKdrMOQn7mOnLWEk699jKlygqBvfpxLXIHx9fng6/fd6PXj6/LY4u2wvdGuucvq8ffM1+TT2eLC0OKhsciWorqFk68VKFYFGEkorq/MAAAAAnRSTlPy5YB5WPAAAAIRSURBVEjH7dfHdptAFAZgRVyYMQOEIopEVe9dVrMl9/Tk/R8n96Cco2QFg7Kxj//dLD5+5jILpvShVDRIyxekVLrAvuM3gTWv0WiEIjfWGgBglO/vuyGAI9LcmGrououX9mEYHaNBp/kEDq3lwzSE5a4X6RKxY133E2LpnUcQaS5cNdqWZetM+BNZdsf6EnUeDKuJawr/pKIGK6jlwnvrZE1FV21Vl2XUSfIENBtP631VkBWGmkX9Q98kbgW11YNqNq53I98n6ugo2Pu7hlF//J74qBX7K9BMDMufUtRZbGLF2kBVqzpwrTLcg3UD2c3Gc2/VhVDxZfIRTl+9HeC245HmZeIaBYBwRCpCilHDzMdq5s6dbKxpFL6NZeGEMd50GOOm1WvIc7ZFuAn+wppza+PspWZeLAlnLEInXbZy4qsTPjcXxp43SNLXLoKNB8FNB1YAU3gmuGJs5nDgYAMUrQEjFWevDr2QA0s/IM0VQWuOt1DjwIrbWc/n6z5RZEHW9QeDB1cUSXVdVRWwWJ5scQAcGKMwhrX4nPGw7lEOfI6pTI6fgHI1m4yllklW7y61PM0VPSAkIP7gBRy0XNjefmm197vmZwOqaPmw1YI0Z8p9PNO8JhzsimPTahXGZpzMjGLYZmTSBLEQvv0VD9ag0SK43j4sILX8uEzL52PFjctTsfZ6/wDf8X/H5Qty0XXwN61CRV4cnPZKAAAAAElFTkSuQmCC"
+        },
+        "displayName": "Paddle",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 232,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/0c4c34fd424f40b4bf7726e4a882e1a9.png"
+      }
+    ]
+  }
+}

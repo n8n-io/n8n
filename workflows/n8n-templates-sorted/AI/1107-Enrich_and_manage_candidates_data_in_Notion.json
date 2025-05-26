@@ -1,0 +1,331 @@
+{
+  "workflow": {
+    "id": 1107,
+    "name": "Enrich and manage candidates data in Notion",
+    "views": 1539,
+    "recentViews": 0,
+    "totalViews": 1539,
+    "createdAt": "2021-06-03T08:50:57.191Z",
+    "description": "This workflow allows you to add candidates’ profile assessments to Notion before an interview.\n\n## Prerequisites\n1. Add an input field on your Calendly Invite page where the candidate can enter their LinkedIn URL.\n2. Create credentials for your Calendly account. Follow the steps mentioned in the [documentation](https://docs.n8n.io/credentials/calendly/) to learn how to do that.\n3. Create credentials for Humantic AI following the steps mentioned [here](https://docs.n8n.io/credentials/humanticAi).\n4. Create a page on Notion similar to this [page](https://www.notion.so/n8n/464ee4ca7a5e4252ab21ea018d7450c8?v=d640406f12f24f9ea3509ff45b81a8bb).\n5. Create credentials for the Notion node by following the steps in the [documentation](https://docs.n8n.io/credentials/notion/).\n\n![workflow-screenshot](fileId:502)\n\n**Calendly Trigger node:** This node will trigger the workflow when an interview gets scheduled. Make sure to add a field to collect the candidates' LinkedIn URL on your invite page.\n\n**Humantic AI:** This node uses the LinkedIn URL received by the previous node to create a candidate profile in Humantic AI.\n\n**Humantic AI1:** This node will analyze the candidates' profile.\n\n\n**Notion node:** This node will create a new page in Notion using the information from the previous node.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            1050,
+            300
+          ],
+          "parameters": {
+            "blockUi": {
+              "blockValues": [
+                {
+                  "textContent": "=Name: {{$json[\"display_name\"]}}\nPersonality: {{$json[\"personality_analysis\"][\"summary\"][\"ocean\"][\"description\"].join(', ')}}, {{$json[\"personality_analysis\"][\"summary\"][\"disc\"][\"description\"].join(', ')}}\nOpenness: {{$json[\"personality_analysis\"][\"ocean_assessment\"][\"openness\"][\"level\"]}} {{$json[\"personality_analysis\"][\"ocean_assessment\"][\"openness\"][\"score\"]}}\nCalculativeness: {{$json[\"personality_analysis\"][\"disc_assessment\"][\"calculativeness\"][\"level\"]}} {{$json[\"personality_analysis\"][\"disc_assessment\"][\"calculativeness\"][\"score\"]}}"
+                }
+              ]
+            },
+            "resource": "databasePage",
+            "databaseId": "",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Name|title",
+                  "title": "={{$json[\"display_name\"]}}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Humantic AI",
+          "type": "n8n-nodes-base.humanticAi",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "userId": "={{$json[\"payload\"][\"questions_and_responses\"][\"1_response\"]}}"
+          },
+          "credentials": {
+            "humanticAiApi": "humantic"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Calendly Trigger",
+          "type": "n8n-nodes-base.calendlyTrigger",
+          "position": [
+            450,
+            300
+          ],
+          "webhookId": "6d38c1f6-42ee-4f44-b424-20943075087b",
+          "parameters": {
+            "events": [
+              "invitee.created"
+            ]
+          },
+          "credentials": {
+            "calendlyApi": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Humantic AI1",
+          "type": "n8n-nodes-base.humanticAi",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "userId": "={{$json[\"results\"][\"userid\"]}}",
+            "options": {},
+            "operation": "get"
+          },
+          "credentials": {
+            "humanticAiApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Humantic AI": {
+          "main": [
+            [
+              {
+                "node": "Humantic AI1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Humantic AI1": {
+          "main": [
+            [
+              {
+                "node": "Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calendly Trigger": {
+          "main": [
+            [
+              {
+                "node": "Humantic AI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.notion": {
+          "count": 1
+        },
+        "n8n-nodes-base.humanticAi": {
+          "count": 2
+        },
+        "n8n-nodes-base.calendlyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 302,
+        "icon": "file:calendly.svg",
+        "name": "n8n-nodes-base.calendlyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.calendlytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/calendly/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Calendly Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjUuOCA1MzUuNzMiPjxkZWZzPjxzdHlsZT4uY2xzLTJ7ZmlsbDojMDA2YmZmfS5jbHMtM3tmaWxsOiMwYWU5ZWZ9PC9zdHlsZT48L2RlZnM+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxvZ29fYXNzZXRzIiBkYXRhLW5hbWU9IkxvZ28gYXNzZXRzIj48ZyBpZD0iQnJhbmRfbWFyayIgZGF0YS1uYW1lPSJCcmFuZCBtYXJrIj48cGF0aCBkPSJtNDQzLjc0IDMzNy42Mi0yNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAxLTEyMC44MiA2OS43NWgtNTQuMzNhMTM5LjUyIDEzOS41MiAwIDAgMS0xMjAuODItNjkuNzVsLTI3LjE2LTQ3LjA1YTEzOS41MiAxMzkuNTIgMCAwIDEgMC0xMzkuNTFsMjcuMTYtNDcuMDVBMTM5LjUzIDEzOS41MyAwIDAgMSAyNDEuNDMgODEuM2g1NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAxIDEyMC44MiA2OS43NmwyNy4xNiA0Ny4wNWExMzkgMTM5IDAgMCAxIDguNTUgMTcuNTVjMCAuMTIuMDkuMjMuMTMuMzVhMTAyLjE1IDEwMi4xNSAwIDAgMCA0NC4zMy0xOC4yNGMwLS4xNC0uMDgtLjI4LS4xMy0uNDNhMjM3LjggMjM3LjggMCAwIDAtMzMuMjktNjcuNTggMjQwLjcgMjQwLjcgMCAwIDAtNTItNTMuNDggMjM5LjMgMjM5LjMgMCAwIDAtMzEyLjY4IDM2MC44IDIzOS40MyAyMzkuNDMgMCAwIDAgMzk4LTk4LjY5Yy4wNS0uMTUuMDktLjI5LjEzLS40M2ExMDIuMTUgMTAyLjE1IDAgMCAwLTQ0LjMzLTE4LjI0YzAgLjEyLS4wOS4yMy0uMTMuMzVhMTM5IDEzOSAwIDAgMS04LjU4IDE3LjU1IiBzdHlsZT0iZmlsbDpub25lIi8+PHBhdGggZD0iTTM2MC40IDM0Ny40Yy0xNyAxNS4wOS0zOC4yMSAzMy44Ny03Ni43OCAzMy44N2gtMjNjLTI3Ljg4IDAtNTMuMjMtMTAuMTItNzEuMzctMjguNDktMTcuNzItMTcuOTQtMjcuNDgtNDIuNS0yNy40OC02OS4xNnYtMzEuNTFjMC0yNi42NiA5Ljc2LTUxLjIyIDI3LjQ4LTY5LjE2IDE4LjE0LTE4LjM3IDQzLjQ5LTI4LjQ5IDcxLjM3LTI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYgMTguNzggNzYuNzggMzMuODcgMTcuNjUgMTUuNjUgMzIuOSAyOS4xNiA3My41MiAyOS4xNmExMTYgMTE2IDAgMCAwIDE4LjUtMS40OGMwLS4xMi0uMDgtLjIzLS4xMy0uMzVhMTM5IDEzOSAwIDAgMC04LjU1LTE3LjU1bC0yNy4xNi00Ny4wNUExMzkuNTMgMTM5LjUzIDAgMCAwIDI5NS43NiA4MS4zaC01NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAwLTEyMC44MiA2OS43NmwtMjcuMTYgNDcuMDVhMTM5LjUyIDEzOS41MiAwIDAgMCAwIDEzOS41MWwyNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44MiA2OS43NWg1NC4zM2ExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44Mi02OS43NWwyNy4xNi00Ny4wNWExMzkgMTM5IDAgMCAwIDguNTUtMTcuNTVjMC0uMTIuMDktLjIzLjEzLS4zNWExMTYgMTE2IDAgMCAwLTE4LjUtMS40OGMtNDAuNjIgMC01NS44NyAxMy41MS03My41MiAyOS4xNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTI4My42MiAxODNoLTIzYy00Mi40MiAwLTcwLjMgMzAuMy03MC4zIDY5LjA5djMxLjUxYzAgMzguNzkgMjcuODggNjkuMDkgNzAuMyA2OS4wOWgyM2M2MS44MiAwIDU3LTYzIDE1MC4zLTYzYTE0NCAxNDQgMCAwIDEgMjYuMzcgMi40MSAxMzkuNCAxMzkuNCAwIDAgMCAwLTQ4LjQ2IDE0My4zIDE0My4zIDAgMCAxLTI2LjM3IDIuNDJjLTkzLjMzLS4wMS04OC40OC02My4wNi0xNTAuMy02My4wNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTUxMy45MSAzMTUuMTNhMTMwLjIgMTMwLjIgMCAwIDAtNTMuNjItMjNjMCAuMTYtLjA1LjMyLS4wOC40N2ExMzguNSAxMzguNSAwIDAgMS03Ljc5IDI3LjE2QTEwMi4xNSAxMDIuMTUgMCAwIDEgNDk2Ljc1IDMzOGMwIC4xNC0uMDguMjgtLjEzLjQzQTIzNy44IDIzNy44IDAgMCAxIDQ2My4zMyA0MDZhMjQwLjcgMjQwLjcgMCAwIDEtNTIgNTMuNDhBMjM5LjMgMjM5LjMgMCAwIDEgOTguNjUgOTguNjVhMjM5LjQzIDIzOS40MyAwIDAgMSAzOTggOTguNjljLjA1LjE1LjA5LjI5LjEzLjQzQTEwMi4xNSAxMDIuMTUgMCAwIDEgNDUyLjQyIDIxNmExMzkuNCAxMzkuNCAwIDAgMSA3LjggMjcuMThjMCAuMTUgMCAuMy4wNy40NGExMjkuOTQgMTI5Ljk0IDAgMCAwIDUzLjYyLTIzYzE1LjI5LTExLjMxIDEyLjMzLTI0LjA5IDEwLTMxLjY1QzQ5MC4yMiA3OS41MiAzODguMzMgMCAyNjcuODYgMCAxMTkuOTMgMCAwIDExOS45MyAwIDI2Ny44NnMxMTkuOTMgMjY3Ljg3IDI2Ny44NiAyNjcuODdjMTIwLjQ3IDAgMjIyLjM2LTc5LjUyIDI1Ni0xODguOTQgMi4zOC03LjU2IDUuMzQtMjAuMzQtOS45NS0zMS42NiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PC9nPjwvZz48L2c+PC9zdmc+"
+        },
+        "displayName": "Calendly Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      },
+      {
+        "id": 407,
+        "icon": "file:humanticai.svg",
+        "name": "n8n-nodes-base.humanticAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.humanticai/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/humanticAi/"
+                }
+              ]
+            },
+            "categories": [
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Humantic AI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDEiIHZpZXdCb3g9IjAgMCA0MCA0MSIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2LjQ3MjIgMzAuOTA5NkMzOC4yOTQzIDI3LjkyNyAzOS4zNDQzIDI0LjQyMTMgMzkuMzQ0MyAyMC42NzAzQzM5LjM0NDMgOS44MDY3MSAzMC41MzY3IDEgMTkuNjcyMSAxQzguODA3NTEgMSAwIDkuODA2NzEgMCAyMC42NzAzQzAgMzEuNTM0IDguODA3NTEgNDAuMzQwNyAxOS42NzIxIDQwLjM0MDdDMjMuOTUwOSA0MC4zNDA3IDI3LjkxMDYgMzguOTc0OCAzMS4xMzg5IDM2LjY1NTJMNDAgNDAuMDEyOEwzNi40NzIyIDMwLjkwOTZaIiBmaWxsPSIjRkVCRDAwIi8+CjxwYXRoIGQ9Ik0zMy4yMTQgMjguOTA3NkMzNC42NzU2IDI2LjUwODEgMzUuNTE3OSAyMy42ODc5IDM1LjUxNzkgMjAuNjcwNEMzNS41MTc5IDExLjkzMDkgMjguNDUyNiA0Ljg0NjE5IDE5LjczNyA0Ljg0NjE5QzExLjAyMTQgNC44NDYxOSAzLjk1NjA1IDExLjkzMDkgMy45NTYwNSAyMC42NzA0QzMuOTU2MDUgMjkuNDA5OCAxMS4wMjE0IDM2LjQ5NDUgMTkuNzM3IDM2LjQ5NDVDMjMuMTY5NCAzNi40OTQ1IDI2LjM0NTkgMzUuMzk1NyAyOC45MzU2IDMzLjUyOTdMMzYuMDQ0IDM2LjIzMDhMMzMuMjE0IDI4LjkwNzZaIiBmaWxsPSIjRkZDRDNBIi8+CjxwYXRoIGQ9Ik0yOS4xNDA5IDI2LjM5MDdDMzAuMTUyMSAyNC43MjQ0IDMwLjczNDggMjIuNzY1OSAzMC43MzQ4IDIwLjY3MDRDMzAuNzM0OCAxNC42MDEzIDI1Ljg0NzEgOS42ODE0IDE5LjgxNzggOS42ODE0QzEzLjc4ODYgOS42ODE0IDguOTAwODggMTQuNjAxMyA4LjkwMDg4IDIwLjY3MDRDOC45MDA4OCAyNi43Mzk1IDEzLjc4ODYgMzEuNjU5NCAxOS44MTc4IDMxLjY1OTRDMjIuMTkyMyAzMS42NTk0IDI0LjM4OTcgMzAuODk2MyAyNi4xODEzIDI5LjYwMDVMMzEuMDk4NyAzMS40NzYzTDI5LjE0MDkgMjYuMzkwN1oiIGZpbGw9IiNGRkQ5NkIiLz4KPHBhdGggZD0iTTI1LjUyMTEgMjQuMTAyNUMyNi4xMzE4IDIzLjEwMjcgMjYuNDgzNyAyMS45Mjc2IDI2LjQ4MzcgMjAuNjcwM0MyNi40ODM3IDE3LjAyODkgMjMuNTMxNyAxNC4wNzY5IDE5Ljg5MDMgMTQuMDc2OUMxNi4yNDg4IDE0LjA3NjkgMTMuMjk2OSAxNy4wMjg5IDEzLjI5NjkgMjAuNjcwM0MxMy4yOTY5IDI0LjMxMTcgMTYuMjQ4OCAyNy4yNjM3IDE5Ljg5MDMgMjcuMjYzN0MyMS4zMjQ0IDI3LjI2MzcgMjIuNjUxNSAyNi44MDU5IDIzLjczMzUgMjYuMDI4NEwyNi43MDM1IDI3LjE1MzhMMjUuNTIxMSAyNC4xMDI1WiIgZmlsbD0iI0ZGRjREMyIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Humantic AI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": [
+      {
+        "id": 502,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/4e5952e2c5934f5989735f4fff13ea24.png"
+      }
+    ]
+  }
+}

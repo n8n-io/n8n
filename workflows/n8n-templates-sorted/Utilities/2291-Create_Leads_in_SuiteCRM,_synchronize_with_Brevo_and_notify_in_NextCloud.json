@@ -1,0 +1,1070 @@
+{
+  "workflow": {
+    "id": 2291,
+    "name": "Create Leads in SuiteCRM, synchronize with Brevo and notify in NextCloud",
+    "views": 1040,
+    "recentViews": 0,
+    "totalViews": 1040,
+    "createdAt": "2024-06-12T13:57:07.354Z",
+    "description": "## Who is this template for?\nThis workflow template is designed for **Marketing** and pre-**Sales** to get prospects from a form like Tally, decline data in the famous opensource CRM (SuiteCRM), synchronize contact in Brevo with linking the id from CRM, and then notify in NextCloud.\n\nBonus : validate email with ++CaptainVerify++ and notify in NextCloud depending on response\n\n## How it works\nFor each submission in the form, a webhook is triggered.\nA check of the email is done with CaptainVerify. Depending on the response, and if it is ok, then a Lead is created in SuiteCRM. Else, a message in your selected discussion is sent.\nAs the lead has been created, we can create a contact in Brevo (for future campain), ank link this contact with the lead_id from the CRM in a dedicated field.\nFinaly, a message in your selected discussion in NextCloud informs you about the lead.\n\n## Set up instructions\nComplete the Set up credentials step when you first open the workflow. You'll need a CaptainVerify account (Api Key), a dedicated SuiteCRM user with Oauth, a Brevo account (Api Key) and a Nextcloud account.\nSet up the Webhook in the form's tool of your choice (why not Tally ?).\nSet each node with the explanations in sticky Notes.\nEnjoy !\n\nTemplate was created in n8n **v1.44.1**\n\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "2490ba08907e49e216e6667acbe7f8867d372c76c9bd95e87bb8d210bd552e80"
+      },
+      "nodes": [
+        {
+          "id": "3ebbf865-26f6-456f-83bd-33fa72bc09ea",
+          "name": "Token SuiteCRM",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            480,
+            800
+          ],
+          "parameters": {
+            "url": "=https://SUITECRMURLSERVER/Api/access_token",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "name": "client_id",
+                  "value": "IDVALUE"
+                },
+                {
+                  "name": "client_secret",
+                  "value": "PWDVALUE"
+                }
+              ]
+            },
+            "allowUnauthorizedCerts": true
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "763bd0bc-7c08-496d-82b7-1fb021c1e6e1",
+          "name": "CaptainMail",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -360,
+            560
+          ],
+          "parameters": {
+            "url": "=https://api.captainverify.com/v2/verify?apikey=YOURAPIKEY&email={{ $json.body.data.fields[0].value }}",
+            "options": {
+              "response": {
+                "response": {
+                  "responseFormat": "json"
+                }
+              }
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "9d1f03eb-4be2-4e72-bc86-723d92869888",
+          "name": "If mail ok",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            220,
+            580
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "ea7e2b2b-35cc-469c-b01b-eeb4f0030aa5",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.result }}",
+                  "rightValue": "invalid"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "03ffff8c-401a-4723-80c6-df702cda2ba5",
+          "name": "If Credits OK",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -180,
+            560
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "007b0ec4-870d-48d6-a961-adff23ceabd4",
+                  "operator": {
+                    "type": "number",
+                    "operation": "lt"
+                  },
+                  "leftValue": "={{ $json.credits }}",
+                  "rightValue": 100
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "487b4746-48d3-40c2-a21c-0a3aa38ba780",
+          "name": "Tally Forms Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -600,
+            560
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2ff81440-ffb4-4d92-8fb0-0a46f6488a2e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -420,
+            382.5935162094766
+          ],
+          "parameters": {
+            "width": 221.29675810473822,
+            "height": 324.588528678304,
+            "content": "## CaptainVerify \n**Verify your email !** To reduce bounce email for your future campains. [Link](https://captainverify.com)\n\nChange **YOURAPIKEY** with yours"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "73d00252-c081-451c-84df-67e44bf0bb11",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -60,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 266.18453865336653,
+            "height": 395.6608478802989,
+            "content": "## Warning about your credits \nNotify with a message and level of credits in your NextCloud Discussion\n\nChange **URLSERVERNEXTCLOUD** with yours\nand **DISCUSSIONCODE** with the code of target discussion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "da8758f6-82f6-481c-97cc-40292579d723",
+          "name": "Notif Talk credits",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            20,
+            420
+          ],
+          "parameters": {
+            "url": "=https://URLSERVERNEXTCLOUD/ocs/v2.php/apps/spreed/api/v1/chat/DISCUSSIONCODE",
+            "options": {
+              "bodyContentType": "json",
+              "bodyContentCustomMimeType": "application/json"
+            },
+            "requestMethod": "POST",
+            "authentication": "basicAuth",
+            "jsonParameters": true,
+            "bodyParametersJson": "={\n\"message\":\"Low credits for CaptainVerify Mail. Balance = {{ $json[\"credits\"] }}\"\n}",
+            "headerParametersJson": "={\"OCS-APIRequest\":\"true\"}"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1,
+          "continueOnFail": true
+        },
+        {
+          "id": "569b9fd4-85d0-4300-8dc1-ab71fc5c2d09",
+          "name": "Notif Talk bad email",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            420,
+            420
+          ],
+          "parameters": {
+            "url": "=https://URLSERVERNEXTCLOUD/ocs/v2.php/apps/spreed/api/v1/chat/DISCUSSIONCODE",
+            "options": {
+              "bodyContentType": "json",
+              "bodyContentCustomMimeType": "application/json"
+            },
+            "requestMethod": "POST",
+            "authentication": "basicAuth",
+            "jsonParameters": true,
+            "bodyParametersJson": "={\n\"message\":\"Invalid mail on submission form for contact : {{ $('Execute Workflow Trigger').item.json[\"body\"][\"data\"][\"fields\"][1][\"value\"] }} et mail : {{ $('CaptainMail').item.json[\"email\"] }} \"\n}",
+            "headerParametersJson": "={\"OCS-APIRequest\":\"true\"}"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1,
+          "continueOnFail": true
+        },
+        {
+          "id": "6b555580-b66d-485d-b1b7-dd9fbd580294",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            340,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 266.18453865336653,
+            "height": 395.6608478802989,
+            "content": "## Warning bad email \nNotify with a message for contact with invalid mail in your NextCloud Discussion\n\nChange **URLSERVERNEXTCLOUD** with yours\nand **DISCUSSIONCODE** with the code of target discussion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fcc84bdb-9ae2-44c9-a038-c9282cfe1373",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            600
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 226.00997506234387,
+            "height": 358.40399002493757,
+            "content": "## Auth SuiteCRM \n**Get Token** with V8 API. [Guide](https://docs.suitecrm.com/developer/api/developer-setup-guide/)\n\nChange **SUITECRMURLSERVER** with yours\nChange **IDVALUE** and **PWDVALUE** with a specific user in SuiteCRM"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d9a96370-f545-4daf-a2e2-af7efd5fda42",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            461.97007481296754
+          ],
+          "parameters": {
+            "color": 7,
+            "height": 252.8428927680797,
+            "content": "## WEBHOOK \n**TRIGGER** with the FormsTool of your choice."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8e50db5a-5945-468c-ae92-239b8eb74f31",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1060,
+            120
+          ],
+          "parameters": {
+            "width": 221.29675810473822,
+            "height": 80,
+            "content": "## CaptainVerify \n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "81deb53f-4161-42ef-9eec-d075e694aa04",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1060,
+            220
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220.39900249376552,
+            "height": 80,
+            "content": "## NextCloud\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2aea4eaf-d7fa-4e87-ae75-e52bc3f385c2",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            660,
+            600
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 226.00997506234387,
+            "height": 358.40399002493757,
+            "content": "## Create Leads \nAdjust **Json** with your data\n\nChange **SUITECRMURLSERVER** with yours\nChange **IDVALUE** and **PWDVALUE** with a specific user in SuiteCRM"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2550bf07-3d3b-497a-b14e-8626ab478659",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1060,
+            320
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 223.46633416458826,
+            "height": 80,
+            "content": "## SuiteCRM \n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "18324e1a-6873-466c-9eab-2292eb2fe1f4",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            920,
+            600
+          ],
+          "parameters": {
+            "color": 4,
+            "height": 357.1321695760598,
+            "content": "## Brevo\nCreate Contact with data and **Link with the id of SuiteCRM** Lead in a dedicated custom field in Brevo"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "df474fee-be22-4fda-9cfc-61e46492e30c",
+          "name": "Create Lead SuiteCRM",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            720,
+            800
+          ],
+          "parameters": {
+            "url": "https://SUITECRMURLSERVER/Api/V8/module",
+            "method": "POST",
+            "options": {
+              "response": {
+                "response": {
+                  "responseFormat": "json"
+                }
+              }
+            },
+            "jsonBody": "={\"data\": {\n\"type\": \"Leads\",\n\"attributes\": { \n\"last_name\": \"{{ $('Tally Forms Trigger').item.json[\"body\"][\"data\"][\"fields\"][1][\"value\"] }}\",\n\"status\": \"Hot\",\n\"email1\": \"{{ $('CaptainMail').item.json[\"email\"] }}\",\n\"lead_source\": \"FormsChoice\",\n\"assigned_user_id\": \"491cf554-4d5e-b06a-7a61-605210d85367\",\n\"lead_source_description\": \"FORMNAME Submission\"}\n}\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{$node[\"Token SuiteCRM\"].json[\"access_token\"]}}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/vnd.api+json"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "635665d3-f35b-42b7-b9d5-427f46d1867f",
+          "name": "Notif Talk Lead created",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1260,
+            800
+          ],
+          "parameters": {
+            "url": "=https://URLSERVERNEXTCLOUD/ocs/v2.php/apps/spreed/api/v1/chat/DISCUSSIONCODE",
+            "options": {
+              "bodyContentType": "json",
+              "bodyContentCustomMimeType": "application/json"
+            },
+            "requestMethod": "POST",
+            "authentication": "basicAuth",
+            "jsonParameters": true,
+            "bodyParametersJson": "={\n\"message\":\"Lead créé ! Saisie du Formulaire choix séance. Contact : {{ $('Tally Forms Trigger').item.json[\"body\"][\"data\"][\"fields\"][1][\"value\"] }} et mail : {{ $('CaptainMail').item.json[\"email\"] }} \"\n}",
+            "headerParametersJson": "={\"OCS-APIRequest\":\"true\"}"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1,
+          "continueOnFail": true
+        },
+        {
+          "id": "84fda59b-5d9c-42aa-9ce6-2c3fc837e04e",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1180,
+            600
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 266.18453865336653,
+            "height": 357.50623441396476,
+            "content": "## Notify lead created \nMessage for a lead created in your selected NextCloud discussion\n\nChange **URLSERVERNEXTCLOUD** with yours\nand **DISCUSSIONCODE** with the code of target discussion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2f55803e-bb3a-482a-9d12-5fdeefbbac6c",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1060,
+            420
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 224.73815461346635,
+            "height": 80,
+            "content": "## Brevo"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fbf39f60-e895-4477-9f62-9ec6965a84cc",
+          "name": "Brevo Create Contact",
+          "type": "n8n-nodes-base.sendInBlue",
+          "position": [
+            980,
+            800
+          ],
+          "parameters": {
+            "email": "{{ $('CaptainMail').item.json[\"email\"] }}",
+            "resource": "contact",
+            "createContactAttributes": {
+              "attributesValues": [
+                {
+                  "fieldName": "NOM",
+                  "fieldValue": "={{ $('Tally Forms Trigger').item.json.body.data.fields[1].value }}"
+                },
+                {
+                  "fieldName": "PRENOM",
+                  "fieldValue": "={{ $('Tally Forms Trigger').item.json.body.data.fields[2].value }}"
+                },
+                {
+                  "fieldName": "LEADS_ID",
+                  "fieldValue": "={{ $('Create Lead SuiteCRM').item.json.data.id }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "If mail ok": {
+          "main": [
+            [
+              {
+                "node": "Notif Talk bad email",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Token SuiteCRM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CaptainMail": {
+          "main": [
+            [
+              {
+                "node": "If Credits OK",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If Credits OK": {
+          "main": [
+            [
+              {
+                "node": "Notif Talk credits",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "If mail ok",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Token SuiteCRM": {
+          "main": [
+            [
+              {
+                "node": "Create Lead SuiteCRM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notif Talk credits": {
+          "main": [
+            [
+              {
+                "node": "If mail ok",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Tally Forms Trigger": {
+          "main": [
+            [
+              {
+                "node": "CaptainMail",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Brevo Create Contact": {
+          "main": [
+            [
+              {
+                "node": "Notif Talk Lead created",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Lead SuiteCRM": {
+          "main": [
+            [
+              {
+                "node": "Brevo Create Contact",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 22,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.sendInBlue": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 12
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 6
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "algopi.io",
+      "username": "algopi",
+      "bio": "Empowering your Business with strong organization and automate Process. Booking a meeting is possible on website.",
+      "verified": false,
+      "links": [
+        "https://algopi.io"
+      ],
+      "avatar": "https://gravatar.com/avatar/a3df2e0d4944e8fc7b56768f7da57051348a112dba9991ad2a853abf2b100c93?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 820,
+        "icon": "file:brevo.svg",
+        "name": "n8n-nodes-base.sendInBlue",
+        "codex": {
+          "data": {
+            "alias": [
+              "sendinblue"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.brevo/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/brevo/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Brevo"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiMwQjk5NkUiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMzEuNTA0IDIxLjgxYzEuNDgzLTEuNDU0IDIuMTc5LTMuMTMzIDIuMTc5LTUuMTc1IDAtNC4yMi0zLjEwNi03LjAzNS03Ljc4Ny03LjAzNUgxNC40djMwaDkuMjdDMzAuNzE4IDM5LjYgMzYgMzUuMjg5IDM2IDI5LjU3YzAtMy4xMzItMS42MjItNS45NDUtNC40OTYtNy43Nm0tMTIuOTMyLTguMzA4aDYuODZjMi4zMTcgMCAzLjg0OCAxLjMxNiAzLjg0OCAzLjMxMyAwIDIuMjY5LTEuOTkzIDMuOTk0LTYuMDcyIDUuMzEtMi43ODEuODYxLTQuMDMyIDEuNTg4LTQuNDk2IDIuNDUxbC0uMTQuMDAyem00LjcyNyAyMi4xOTZoLTQuNzI3di00LjYzYzAtMi4wNDIgMS43NjItNC4wMzkgNC4yMTktNC44MSAyLjE3OS0uNzI3IDMuOTg1LTEuNDU0IDUuNTE2LTIuMjI0IDIuMDM5IDEuMTgxIDMuMjkgMy4yMjIgMy4yOSA1LjM1NiAwIDMuNjMtMy41MjMgNi4zMDgtOC4yOTggNi4zMDgiLz48L3N2Zz4="
+        },
+        "displayName": "Brevo",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": []
+  }
+}

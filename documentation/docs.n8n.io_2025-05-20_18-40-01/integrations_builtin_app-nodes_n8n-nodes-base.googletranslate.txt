@@ -1,0 +1,54 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googletranslate/
+Scraped_At: 2025-05-20T18:48:21.053776
+
+Google Translate node
+#
+Use the Google Translate node to automate work in Google Translate, and integrate Google Translate with other applications. n8n has built-in support for a wide range of Google Translate features, including translating languages.
+On this page, you'll find a list of operations the Google Translate node supports and links to more resources.
+Credentials
+Refer to
+Google Translate credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Language
+Translate data
+Templates and examples
+#
+Translate PDF documents from Google drive folder with DeepL
+by Milorad Filipovic
+View template details
+Translate text from English to German
+by Harshil Agrawal
+View template details
+🉑 Generate Anki Flash Cards for Language Learning with Google Translate and GPT
+by Samir Saci
+View template details
+Browse Google Translate integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

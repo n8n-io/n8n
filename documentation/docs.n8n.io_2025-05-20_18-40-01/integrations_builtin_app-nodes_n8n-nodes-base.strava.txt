@@ -1,0 +1,57 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.strava/
+Scraped_At: 2025-05-20T18:51:46.271207
+
+Strava node
+#
+Use the Strava node to automate work in Strava, and integrate Strava with other applications. n8n has built-in support for a wide range of Strava features, including creating new activities, and getting activity information.
+On this page, you'll find a list of operations the Strava node supports and links to more resources.
+Credentials
+Refer to
+Strava credentials
+for guidance on setting up authentication.
+Operations
+#
+Activity
+Create a new activity
+Get an activity
+Get all activities
+Get all activity comments
+Get all activity kudos
+Get all activity laps
+Get all activity zones
+Update an activity
+Templates and examples
+#
+AI Fitness Coach Strava Data Analysis and Personalized Training Insights
+by Amjid Ali
+View template details
+Receive updates when a new activity gets created and tweet about it
+by Harshil Agrawal
+View template details
+Export all Strava Activity Data to Google Sheets
+by Sherlockes
+View template details
+Browse Strava integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

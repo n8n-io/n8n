@@ -1,0 +1,45 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.whatsapp/common-issues/
+Scraped_At: 2025-05-20T18:52:41.384674
+
+WhatsApp Business Cloud node common issues
+#
+Here are some common errors and issues with the
+WhatsApp Business Cloud node
+and steps to resolve or troubleshoot them.
+Bad request - please check your parameters
+#
+This error occurs when WhatsApp Business Cloud rejects your request because of a problem with its parameters. It's common to see this when using the
+Send Template
+operation if the data you send doesn't match the format of your template.
+To resolve this issue, review the parameters in your
+message template
+. Pay attention to each parameter's data type and the order they're defined in the template.
+Check the data that n8n is mapping to the template parameters. If you're using expressions to set parameter values, check the input data to make sure each item resolves to a valid value. You may want to use the
+Edit Fields (Set) node
+or
+set a fallback value
+to ensure you send a value with the correct format.
+Working with non-text media
+#
+The WhatsApp Business Cloud node can work with non-text messages and media like images, audio, documents, and more.
+If your operation includes a
+Input Data Field Name
+or
+Property Name
+parameter, set this to the field name itself rather than referencing the data in an expression.
+For example, if you are trying to send a message with an "Image"
+MessageType
+and
+Take Image From
+set to "n8n", set
+Input Data Field Name
+to a field name like
+data
+instead of an expression like
+{{ $json.input.data }}
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

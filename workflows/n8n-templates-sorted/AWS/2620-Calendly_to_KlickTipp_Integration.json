@@ -1,0 +1,1425 @@
+{
+  "workflow": {
+    "id": 2620,
+    "name": "Calendly to KlickTipp Integration",
+    "views": 432,
+    "recentViews": 0,
+    "totalViews": 432,
+    "createdAt": "2024-12-10T15:13:32.783Z",
+    "description": "**Community Node Disclaimer**: This workflow uses community nodes and is compatible only with self-hosted n8n environments.\n\n**How It Works**  \n\nEnhanced Calendly Integration: This workflow processes bookings and cancellations in Calendly, dynamically managing invitee and guest data with KlickTipp.  \n\nData Transformation: Dates and times are converted into formats (UNIX timestamps) compatible with KlickTipp’s API, ensuring seamless data integration.  \n\n**Key Features**  \n\n**Calendly Trigger:**  \n- Captures new bookings or cancellations of events, including participant details.  \n\n**Invitee and Guest Subscription in KlickTipp:**  \n- Adds or updates invitees and guests in KlickTipp based on booking details (event name, time, join link, reschedule link, cancel link, etc.).  \n- Tracks and processes cancellations for both invitees and guests.  \n- Handles rescheduling intelligently to avoid redundant operations.  \n\n**Guest-Specific Operations:**  \n- Processes guests individually for bookings and cancellations using dynamic arrays of email addresses.  \n- Recovers guest data from invitee records for cancellations since Calendly does not provide guest data upon cancellation.  \n\n**Data Processing:**  \n- Standardizes and validates input fields  \n- Converts phone numbers to numeric-only format with international prefixes.  \n- Transforms dates into UNIX timestamps.  \n- Reads out the name of the invitee based on both possible input fields for name (name vs. firstname and lastname field setup).  \n\n**Error Handling:**  \n- Validates critical fields like phone numbers, URLs, and dates to prevent incorrect data submissions.  \n\n**Setup Instructions**  \n\n**Authentication:**  \n- Set up the Calendly and KlickTipp nodes in your n8n instance.  \n- Configure authentication for both Calendly and KlickTipp nodes.  \n\n**Custom Field Preparation in KlickTipp:**  \nCreate the following custom fields in KlickTipp to align with workflow requirements:  \n\n| **Feld-Name**                   | **Feld-Typ**     |\n|----------------------------------|------------------|\n| Calendly_event_name             | Zeile            |\n| Calendly_join_url               | URL              |\n| Calendly_reschedule_url         | URL              |\n| Calendly_cancel_url             | URL              |\n| Calendly_event_start_datetime   | Datum & Zeit     |\n| Calendly_event_end_datetime     | Datum & Zeit     |\n| Calendly_invitee_start_date     | Datum            |\n| Calendly_invitee_end_date       | Datum            |\n| Calendly_invitee_start_time     | Zeit             |\n| Calendly_invitee_end_time       | Zeit             |\n| Calendly_invitee_timezone       | Zeile            |\n| Calendly_invitee_guests_adresses| Zeile            |  \n\nAfter creating fields, allow 10-15 minutes for them to sync. If fields don’t appear, reconnect your KlickTipp credentials.  \n\n**Field Mapping and Adjustments:**  \nOpen each KlickTipp node and map fields to match your setup. The workflow includes placeholders for:  \n- Invitee details (first name, last name, email, and phone).  \n- Event details (start/end times, timezone, etc.).  \n\n**Workflow Logic**  \n\n1. **Trigger via Calendly event Booking:**  \n   A new form event booking or cancellation from Calendly initiates the workflow  \n\n2. **Data Transformation:**  \n   Processes raw Calendly event data to ensure compatibility with KlickTipp’s API.  \n\n3. **Add to KlickTipp Subscriber List:**  \n   Adds invitees and guests to the designated KlickTipp list, including event-specific details.  \n\n**Benefits**  \n\n**Efficient lead generation:** Contacts from event bookings are automatically imported into KlickTipp and can be used immediately, saving time and increasing the conversion rate.  \n**Automated processes:** Experts can start workflows directly, such as reminder emails or course admissions, reducing administrative effort.  \n**Error-free data management:** The template ensures precise data mapping, avoids manual corrections and reinforces a professional appearance.  \n\n**Testing and Deployment**  \n\nTest the workflow by triggering a Calendly event and verifying data updates in KlickTipp.  \n\n**Notes:**  \n\n**Customization:**  \nUpdate field mappings within the KlickTipp nodes to align with your account setup. This ensures accurate data syncing.  \n",
+    "workflow": {
+      "meta": {
+        "instanceId": "95b3ab5a70ab1c8c1906357a367f1b236ef12a1409406fd992f60255f0f95f85"
+      },
+      "nodes": [
+        {
+          "id": "819491a0-14f8-4e46-a6a3-0bc84255ab68",
+          "name": "Subscribe invitee booking in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Adds the invitee to the KlickTipp subscriber list, associating them with the relevant booking details. In this step an array of the guests email addresses is saved in the record to navigate guest cancellations. In case of cancellations Calendly does not provide an array of guests and therefore this information needs to be read from the invitee record.",
+          "position": [
+            1700,
+            300
+          ],
+          "parameters": {
+            "email": "={{ $('New Calendly event').item.json.payload.email }}",
+            "tagId": "12375153",
+            "fields": {
+              "dataFields": [
+                {
+                  "fieldId": "fieldFirstName",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_first_name }}"
+                },
+                {
+                  "fieldId": "fieldLastName",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_last_name }}"
+                },
+                {
+                  "fieldId": "field213329",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.name }}"
+                },
+                {
+                  "fieldId": "field213330",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.location.join_url }}"
+                },
+                {
+                  "fieldId": "field213331",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.reschedule_url }}"
+                },
+                {
+                  "fieldId": "field213332",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.cancel_url }}"
+                },
+                {
+                  "fieldId": "field213333",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.event_start_date_time }}"
+                },
+                {
+                  "fieldId": "field213334",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.event_end_date_time }}"
+                },
+                {
+                  "fieldId": "field213335",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.event_start_date_time }}"
+                },
+                {
+                  "fieldId": "field213336",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.event_end_date_time }}"
+                },
+                {
+                  "fieldId": "field213337",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_start_time_seconds }}"
+                },
+                {
+                  "fieldId": "field213338",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_end_time_seconds }}"
+                },
+                {
+                  "fieldId": "field213339",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.timezone }}"
+                },
+                {
+                  "fieldId": "field214142",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.guest_addresses }}"
+                }
+              ]
+            },
+            "listId": "358895",
+            "resource": "subscriber",
+            "operation": "subscribe",
+            "smsNumber": "={{ $('Convert data for KlickTipp').item.json.invitee_mobile }}"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "5bc59f89-b89f-4fa0-b481-b66bcc8698d6",
+          "name": "Subscribe guest booking in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Adds guests to the KlickTipp subscriber list for the associated booking.",
+          "position": [
+            2500,
+            200
+          ],
+          "parameters": {
+            "email": "={{ $json.guests.email }}",
+            "tagId": "12375153",
+            "fields": {
+              "dataFields": [
+                {
+                  "fieldId": "field213329",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.name }}"
+                },
+                {
+                  "fieldId": "field213330",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.location.join_url }}"
+                },
+                {
+                  "fieldId": "field213331",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.location.join_url }}"
+                },
+                {
+                  "fieldId": "field213332",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.cancel_url }}"
+                },
+                {
+                  "fieldId": "field213333",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.event_start_date_time }}"
+                },
+                {
+                  "fieldId": "field213334",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.event_end_date_time }}"
+                },
+                {
+                  "fieldId": "field213335",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_start_date }}"
+                },
+                {
+                  "fieldId": "field213336",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_end_date }}"
+                },
+                {
+                  "fieldId": "field213337",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_start_time_seconds }}"
+                },
+                {
+                  "fieldId": "field213338",
+                  "fieldValue": "={{ $('Convert data for KlickTipp').item.json.invitee_end_time_seconds }}"
+                },
+                {
+                  "fieldId": "field213339",
+                  "fieldValue": "={{ $('New Calendly event').item.json.payload.timezone }}"
+                }
+              ]
+            },
+            "listId": "358895",
+            "resource": "subscriber",
+            "operation": "subscribe"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "aac23ac2-38de-42bf-b7d8-dfcffbd9f474",
+          "name": "Subscribe guest cancellation in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Handles cancellations by removing guests from the subscriber list in KlickTipp.",
+          "position": [
+            2500,
+            580
+          ],
+          "parameters": {
+            "email": "={{ $json.invitee_guests_addresses }}",
+            "tagId": "12506304",
+            "listId": "358895",
+            "resource": "subscriber",
+            "operation": "subscribe"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "4f38122a-7cf0-427d-bd68-9e2fb4674bc3",
+          "name": "Subscribe invitee cancellation in KlickTipp",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Handles cancellations by removing the invitee from the subscriber list in KlickTipp.",
+          "position": [
+            1700,
+            660
+          ],
+          "parameters": {
+            "email": "={{ $('New Calendly event').item.json.payload.email }}",
+            "tagId": "12506304",
+            "listId": "358895",
+            "resource": "subscriber",
+            "operation": "subscribe",
+            "smsNumber": "={{ $('Convert data for KlickTipp').item.json.invitee_mobile }}"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "63f9e951-d1e0-46ea-b189-1386be3dc9a4",
+          "name": "Split Out guest bookings",
+          "type": "n8n-nodes-base.splitOut",
+          "notes": "Splits the guests into individual items for processing their bookings.",
+          "position": [
+            2300,
+            200
+          ],
+          "parameters": {
+            "include": "allOtherFields",
+            "options": {},
+            "fieldToSplitOut": "guests"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "f411bc16-2478-4122-b0f5-e0a67c6cfa61",
+          "name": "Split Out guest cancellations",
+          "type": "n8n-nodes-base.splitOut",
+          "notes": "Splits the guests into individual items for processing their cancellations.",
+          "position": [
+            2300,
+            580
+          ],
+          "parameters": {
+            "include": "allOtherFields",
+            "options": {},
+            "fieldToSplitOut": "invitee_guests_addresses"
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "52c157f4-4f7c-479b-9051-10a9557f4c02",
+          "name": "Guests booking check",
+          "type": "n8n-nodes-base.if",
+          "notes": "Validates if there are any guests associated with the booking to process them separately.",
+          "position": [
+            1880,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0c2ae412-74af-4e9f-99b6-bda9ce59f27e",
+                  "operator": {
+                    "type": "array",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.event_guests }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "dec38fda-52a1-45ef-9ad6-c3ba90c35683",
+          "name": "Subscribe invitee to empty guest addresses field",
+          "type": "n8n-nodes-klicktipp.klicktipp",
+          "notes": "Writes \"null\" into the field which saves the array of the guests email addresses to prevent errors when rebooking.",
+          "position": [
+            2940,
+            660
+          ],
+          "parameters": {
+            "email": "={{ $('New Calendly event').item.json.payload.email }}",
+            "tagId": "12506304",
+            "fields": {
+              "dataFields": [
+                {
+                  "fieldId": "field214142",
+                  "fieldValue": "={{\n//Writes null into the field where the guests e-mail addresses are saved within the invitee contact/record.\nnull}}"
+                }
+              ]
+            },
+            "listId": "358895",
+            "resource": "subscriber",
+            "operation": "subscribe",
+            "smsNumber": "={{ $('Convert data for KlickTipp').item.json.invitee_mobile }}"
+          },
+          "credentials": {
+            "klickTippApi": {
+              "id": "K9JyBdCM4SZc1cXl",
+              "name": "DEMO KlickTipp account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "c9eb8503-ab46-43b6-b8c0-c04e3bfad2c7",
+          "name": "New Calendly event",
+          "type": "n8n-nodes-base.calendlyTrigger",
+          "notes": "This node triggers the workflow whenever an event is booked or canceled in Calendly.",
+          "position": [
+            980,
+            360
+          ],
+          "webhookId": "f5440e40-1e7f-4ef1-b639-b8b65832a1a6",
+          "parameters": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ]
+          },
+          "credentials": {
+            "calendlyApi": {
+              "id": "xDtep5NpxCyWRmzW",
+              "name": "Ricardo Calendly account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "495adbe6-dc4b-4fdd-93da-da4cff573e8f",
+          "name": "Convert data for KlickTipp",
+          "type": "n8n-nodes-base.set",
+          "notes": "Formats the timestamps provided by Calendly so they are within the format that KlickTipp expects. UNIX Timestamps for date and date&time values and the time fields expects to receive the time in amounts of seconds since midnight.",
+          "position": [
+            1200,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "93769f47-287f-4e4c-8e8d-86b557baa9ac",
+                  "name": "event_start_date_time",
+                  "type": "string",
+                  "value": "={{ \n//Converts the date and time value to a Unix timestamp since this is the expected format for date&time values in KlickTipp.\nnew Date($('New Calendly event').item.json.payload.scheduled_event.start_time).getTime() / 1000 }}"
+                },
+                {
+                  "id": "47f1638b-2c43-42c6-945c-e444bdd648bc",
+                  "name": "event_end_date_time",
+                  "type": "string",
+                  "value": "={{ \n//Converts the date and time value to a Unix timestamp since this is the expected format for date&time values in KlickTipp.\nnew Date($('New Calendly event').item.json.payload.scheduled_event.end_time).getTime() / 1000 }}"
+                },
+                {
+                  "id": "ceeed6fa-3715-4bf0-9929-a93e465d291e",
+                  "name": "invitee_start_date",
+                  "type": "string",
+                  "value": "={{      \n// Converts the date into an UNIX timestamp since this is the expected format for date values in KlickTipp.\nnew Date(new Date($json.payload.scheduled_event.start_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getTime() / 1000  }}"
+                },
+                {
+                  "id": "86165bd2-6e2f-4995-872b-14768c28ee9b",
+                  "name": "invitee_end_date",
+                  "type": "string",
+                  "value": "={{      \n// Converts the date into an UNIX timestamp since this is the expected format for date values in KlickTipp.\nnew Date(new Date($json.payload.scheduled_event.end_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getTime() / 1000  }}"
+                },
+                {
+                  "id": "88535bfa-2fc1-4559-8e7c-a2391fcecac7",
+                  "name": "invitee_start_time_seconds",
+                  "type": "string",
+                  "value": "={{      \n// Converts the time to seconds since midnight since this is the expected format for time values in KlickTipp.\nnew Date(new Date($json.payload.scheduled_event.start_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getHours() * 3600      + new Date(new Date($json.payload.scheduled_event.start_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getMinutes() * 60      + new Date(new Date($json.payload.scheduled_event.start_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getSeconds()  }}"
+                },
+                {
+                  "id": "240171bf-c174-4922-aba2-a1014f4fd350",
+                  "name": "invitee_end_time_seconds",
+                  "type": "string",
+                  "value": "={{  \n// Converts the time to seconds since midnight since this is the expected format for time values in KlickTipp.\nnew Date(new Date($json.payload.scheduled_event.end_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getHours() * 3600      + new Date(new Date($json.payload.scheduled_event.end_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getMinutes() * 60      + new Date(new Date($json.payload.scheduled_event.end_time).toLocaleString('en-US', { timeZone: $json.payload.timezone })).getSeconds()  }}"
+                },
+                {
+                  "id": "fbc2ce8b-ffc8-4b03-b869-7abceafee323",
+                  "name": "invitee_first_name",
+                  "type": "string",
+                  "value": "={{ \n  //Extracts first_name. If not available, extracts from name by taking all but the last word(s).\n\n  $json.payload.first_name // Use first_name directly if available\n    ? $json.payload.first_name \n    : $json.payload.name \n      ? $json.payload.name.split(' ').slice(0, -1).join(' ') // Extract all words except the last as first names\n      : '' // Default to empty string if both are missing\n}}\n"
+                },
+                {
+                  "id": "e269a0dc-4c05-49f6-8595-e8ceb3701259",
+                  "name": "invitee_last_name",
+                  "type": "string",
+                  "value": "={{ \n  //Extracts last_name. If not available, extracts from name by taking the last word(s).\n  $json.payload.last_name // Use last_name directly if available\n    ? $json.payload.last_name \n    : $json.payload.name \n      ? $json.payload.name.split(' ').slice(-1).join('') // Extract the last word(s) as the last name\n      : '' // Default to empty string if both are missing\n}}"
+                },
+                {
+                  "id": "3b69338b-1f62-4148-a640-25b2110da1d6",
+                  "name": "invitee_mobile",
+                  "type": "string",
+                  "value": "={{ \n  // Converts the phone number by replacing '+' with '00' and removing all spaces for standardization.\n  $('New Calendly event').item.json.payload.text_reminder_number\n    .replace('+', '00') // Replace '+' with '00'\n    .replace(/\\s+/g, '') // Remove all spaces\n}}\n"
+                },
+                {
+                  "id": "57be44f3-fc01-4ab7-9917-ecd9a1d7a584",
+                  "name": "guest_addresses",
+                  "type": "string",
+                  "value": "={{ \n//Extracts the email addresses of the guests and creates a list of them.\n$('New Calendly event').item.json.payload.scheduled_event.event_guests.map(guest => guest.email) }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "fb8e7feb-f8c3-4177-b8dd-c0ca5ff15626",
+          "name": "Check event - booking or cancellation?",
+          "type": "n8n-nodes-base.if",
+          "notes": "Validates if an event booking or cancellation is being processed.",
+          "position": [
+            1440,
+            360
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "61a4200d-9660-488a-ad0a-ea03d37f69d3",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('New Calendly event').item.json.payload.scheduled_event.status }}",
+                  "rightValue": "=active"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "cb5665a9-8973-4a9c-b9df-f0cbbd5aaf45",
+          "name": "List guests for booking",
+          "type": "n8n-nodes-base.set",
+          "notes": "Prepares the guest data for subscription into KlickTipp during booking.",
+          "position": [
+            2100,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "67b36bb6-d82e-4631-9103-fde87217e556",
+                  "name": "guests",
+                  "type": "array",
+                  "value": "={{ $('New Calendly event').item.json.payload.scheduled_event.event_guests.map(guest => ({ email: guest.email })) }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "f9b2d284-fcc1-4746-90eb-e1ecf004e3c0",
+          "name": "List guests for cancellation",
+          "type": "n8n-nodes-base.set",
+          "notes": "Prepares the guest data for subscription removal in KlickTipp during cancellations.",
+          "position": [
+            2100,
+            580
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "a06f26f5-3246-425e-901a-22370133ce64",
+                  "name": "invitee_guests_addresses",
+                  "type": "array",
+                  "value": "={{ JSON.parse($json.field214142.replace(/&quot;/g, '\"')) }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b5cac1bc-f20a-4c66-a1e7-df0d5187e28d",
+          "name": "Guests cancellation check",
+          "type": "n8n-nodes-base.if",
+          "notes": "Validates if there are guest email addresses within the result of the subscription process of the invitee cancellation so that the cancellations can be transmitted as well. Since Calendly does not provide a list of guests upon cancellation we store this information inside the invitee contact in KlickTipp and read it out.",
+          "position": [
+            1880,
+            660
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a41b92de-b135-43f6-9fd9-fb5fe5f596ae",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.field214142 }}",
+                  "rightValue": "@"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "aa0fa3e7-72aa-49fe-b568-280b8686e71b",
+          "name": "Rescheduling check",
+          "type": "n8n-nodes-base.if",
+          "notes": "This node checks whether the cancellation is due to a rescheduling of the original booking or not. In case it is a rescheduling, we are not overwriting the string of guest email addresses within the invitee record.",
+          "position": [
+            2720,
+            580
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "51e6485f-ea0a-42f7-b772-bb6513eb8615",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $('New Calendly event').item.json.payload.rescheduled }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b3db3b20-f579-42a7-ac09-c856725791ec",
+          "name": "Invitee did not add guests to the booking",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2100,
+            400
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5ee8be1b-b4a1-4229-b191-b6034218527d",
+          "name": "Event was rescheduled",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2940,
+            500
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "fe8ed37b-cb1f-4ee0-99ac-7dfefdc0a670",
+          "name": "No guest email addresses found",
+          "type": "n8n-nodes-base.noOp",
+          "notes": "If no guest E-Mail Addresses were found inside the invitee record there are no guest cancellations that must be processed as there were no guests involved in the original event booking.",
+          "position": [
+            2100,
+            760
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "90515b4f-8c56-4dd9-8935-9aa0913a234b",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1840,
+            960
+          ],
+          "parameters": {
+            "width": 1133.0384930384926,
+            "height": 1689.5659295659311,
+            "content": "### Introduction\nThis workflow streamlines the integration between Calendly and KlickTipp, managing bookings and cancellations dynamically while ensuring accurate data transformation and seamless synchronization. Input data is validated and formatted to meet KlickTipp’s API requirements, including handling guests, rescheduling, and cancellations.\n\n### Benefits\n- **Improved scheduling management**: Automatically processes bookings and cancellations in Calendly, saving time and reducing errors. Contacts are automatically imported into KlickTipp and can be used immediately, saving time and increasing the conversion rate.\n- **Automated processes**: Experts can start workflows directly, such as welcome emails or course admissions, reducing administrative effort.\n- **Error-free data management**: The template ensures precise data mapping, avoids manual corrections, and reinforces a professional appearance.\n\n### Key Features\n- **Calendly Trigger**: Captures booking and cancellation events, including invitee and guest details.\n- **Data Processing**: Validates and standardizes input fields:\n  - Converts dates to UNIX timestamps for API compatibility.\n  - Processes guests dynamically, splitting guest emails into individual records.\n  - Validates invitee email addresses to ensure accuracy.\n- **Subscriber Management in KlickTipp**: Adds or updates invitees and guests as subscribers in KlickTipp. Supports custom field mappings such as:\n  - Invitee information: Name, email, booking details.\n  - Event details: Start/end times, timezone, and guest emails.\n- **Error Handling**: Differentiates between cancellations and rescheduling, preventing redundant or incorrect updates.\n\n#### Setup Instructions\n1. Install the required nodes:\n   - Ensure the KlickTipp community node and its dependencies are installed.\n2. Authenticate your Calendly and KlickTipp accounts.\n3. Pre-create the following custom fields in KlickTipp to align with workflow requirements.\n4. Open each KlickTipp node and map the fields to align with your setup.\n\n![Screenshot Description](https://mail.cdndata.io/user/images/kt1073234/share_link_calendly_fields_v2.png)\n\n### Testing and Deployment\n1. Test the workflow by triggering a Calendly event.\n2. Verify that the invitee and guest data is updated accurately in KlickTipp.\n\n- **Customization**: Adjust field mappings within KlickTipp nodes to match your specific account setup.\n\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "New Calendly event": {
+          "main": [
+            [
+              {
+                "node": "Convert data for KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Rescheduling check": {
+          "main": [
+            [
+              {
+                "node": "Event was rescheduled",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Subscribe invitee to empty guest addresses field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Guests booking check": {
+          "main": [
+            [
+              {
+                "node": "List guests for booking",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Invitee did not add guests to the booking",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "List guests for booking": {
+          "main": [
+            [
+              {
+                "node": "Split Out guest bookings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out guest bookings": {
+          "main": [
+            [
+              {
+                "node": "Subscribe guest booking in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Guests cancellation check": {
+          "main": [
+            [
+              {
+                "node": "List guests for cancellation",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "No guest email addresses found",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert data for KlickTipp": {
+          "main": [
+            [
+              {
+                "node": "Check event - booking or cancellation?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "List guests for cancellation": {
+          "main": [
+            [
+              {
+                "node": "Split Out guest cancellations",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out guest cancellations": {
+          "main": [
+            [
+              {
+                "node": "Subscribe guest cancellation in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check event - booking or cancellation?": {
+          "main": [
+            [
+              {
+                "node": "Subscribe invitee booking in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Subscribe invitee cancellation in KlickTipp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subscribe invitee booking in KlickTipp": {
+          "main": [
+            [
+              {
+                "node": "Guests booking check",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subscribe guest cancellation in KlickTipp": {
+          "main": [
+            [
+              {
+                "node": "Rescheduling check",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subscribe invitee cancellation in KlickTipp": {
+          "main": [
+            [
+              {
+                "node": "Guests cancellation check",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 19,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 4
+        },
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 3
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-klicktipp.klicktipp": {
+          "count": 5
+        },
+        "n8n-nodes-base.calendlyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "KlickTipp",
+      "username": "KlickTipp",
+      "bio": "Reach more people. 100% GDPR compliant. Quickly create automated email campaigns, SMS and marketing automations. Market your knowledge independently of Google & Co., sell lucrative products and activate your customers.",
+      "verified": true,
+      "links": [
+        "https://www.klicktipp.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/38677fedcb7c47d414fa2b6ecabb1f51a1f0efaecd06f316971632d6c192e2ff?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 302,
+        "icon": "file:calendly.svg",
+        "name": "n8n-nodes-base.calendlyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.calendlytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/calendly/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Calendly Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjUuOCA1MzUuNzMiPjxkZWZzPjxzdHlsZT4uY2xzLTJ7ZmlsbDojMDA2YmZmfS5jbHMtM3tmaWxsOiMwYWU5ZWZ9PC9zdHlsZT48L2RlZnM+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxvZ29fYXNzZXRzIiBkYXRhLW5hbWU9IkxvZ28gYXNzZXRzIj48ZyBpZD0iQnJhbmRfbWFyayIgZGF0YS1uYW1lPSJCcmFuZCBtYXJrIj48cGF0aCBkPSJtNDQzLjc0IDMzNy42Mi0yNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAxLTEyMC44MiA2OS43NWgtNTQuMzNhMTM5LjUyIDEzOS41MiAwIDAgMS0xMjAuODItNjkuNzVsLTI3LjE2LTQ3LjA1YTEzOS41MiAxMzkuNTIgMCAwIDEgMC0xMzkuNTFsMjcuMTYtNDcuMDVBMTM5LjUzIDEzOS41MyAwIDAgMSAyNDEuNDMgODEuM2g1NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAxIDEyMC44MiA2OS43NmwyNy4xNiA0Ny4wNWExMzkgMTM5IDAgMCAxIDguNTUgMTcuNTVjMCAuMTIuMDkuMjMuMTMuMzVhMTAyLjE1IDEwMi4xNSAwIDAgMCA0NC4zMy0xOC4yNGMwLS4xNC0uMDgtLjI4LS4xMy0uNDNhMjM3LjggMjM3LjggMCAwIDAtMzMuMjktNjcuNTggMjQwLjcgMjQwLjcgMCAwIDAtNTItNTMuNDggMjM5LjMgMjM5LjMgMCAwIDAtMzEyLjY4IDM2MC44IDIzOS40MyAyMzkuNDMgMCAwIDAgMzk4LTk4LjY5Yy4wNS0uMTUuMDktLjI5LjEzLS40M2ExMDIuMTUgMTAyLjE1IDAgMCAwLTQ0LjMzLTE4LjI0YzAgLjEyLS4wOS4yMy0uMTMuMzVhMTM5IDEzOSAwIDAgMS04LjU4IDE3LjU1IiBzdHlsZT0iZmlsbDpub25lIi8+PHBhdGggZD0iTTM2MC40IDM0Ny40Yy0xNyAxNS4wOS0zOC4yMSAzMy44Ny03Ni43OCAzMy44N2gtMjNjLTI3Ljg4IDAtNTMuMjMtMTAuMTItNzEuMzctMjguNDktMTcuNzItMTcuOTQtMjcuNDgtNDIuNS0yNy40OC02OS4xNnYtMzEuNTFjMC0yNi42NiA5Ljc2LTUxLjIyIDI3LjQ4LTY5LjE2IDE4LjE0LTE4LjM3IDQzLjQ5LTI4LjQ5IDcxLjM3LTI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYgMTguNzggNzYuNzggMzMuODcgMTcuNjUgMTUuNjUgMzIuOSAyOS4xNiA3My41MiAyOS4xNmExMTYgMTE2IDAgMCAwIDE4LjUtMS40OGMwLS4xMi0uMDgtLjIzLS4xMy0uMzVhMTM5IDEzOSAwIDAgMC04LjU1LTE3LjU1bC0yNy4xNi00Ny4wNUExMzkuNTMgMTM5LjUzIDAgMCAwIDI5NS43NiA4MS4zaC01NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAwLTEyMC44MiA2OS43NmwtMjcuMTYgNDcuMDVhMTM5LjUyIDEzOS41MiAwIDAgMCAwIDEzOS41MWwyNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44MiA2OS43NWg1NC4zM2ExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44Mi02OS43NWwyNy4xNi00Ny4wNWExMzkgMTM5IDAgMCAwIDguNTUtMTcuNTVjMC0uMTIuMDktLjIzLjEzLS4zNWExMTYgMTE2IDAgMCAwLTE4LjUtMS40OGMtNDAuNjIgMC01NS44NyAxMy41MS03My41MiAyOS4xNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTI4My42MiAxODNoLTIzYy00Mi40MiAwLTcwLjMgMzAuMy03MC4zIDY5LjA5djMxLjUxYzAgMzguNzkgMjcuODggNjkuMDkgNzAuMyA2OS4wOWgyM2M2MS44MiAwIDU3LTYzIDE1MC4zLTYzYTE0NCAxNDQgMCAwIDEgMjYuMzcgMi40MSAxMzkuNCAxMzkuNCAwIDAgMCAwLTQ4LjQ2IDE0My4zIDE0My4zIDAgMCAxLTI2LjM3IDIuNDJjLTkzLjMzLS4wMS04OC40OC02My4wNi0xNTAuMy02My4wNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTUxMy45MSAzMTUuMTNhMTMwLjIgMTMwLjIgMCAwIDAtNTMuNjItMjNjMCAuMTYtLjA1LjMyLS4wOC40N2ExMzguNSAxMzguNSAwIDAgMS03Ljc5IDI3LjE2QTEwMi4xNSAxMDIuMTUgMCAwIDEgNDk2Ljc1IDMzOGMwIC4xNC0uMDguMjgtLjEzLjQzQTIzNy44IDIzNy44IDAgMCAxIDQ2My4zMyA0MDZhMjQwLjcgMjQwLjcgMCAwIDEtNTIgNTMuNDhBMjM5LjMgMjM5LjMgMCAwIDEgOTguNjUgOTguNjVhMjM5LjQzIDIzOS40MyAwIDAgMSAzOTggOTguNjljLjA1LjE1LjA5LjI5LjEzLjQzQTEwMi4xNSAxMDIuMTUgMCAwIDEgNDUyLjQyIDIxNmExMzkuNCAxMzkuNCAwIDAgMSA3LjggMjcuMThjMCAuMTUgMCAuMy4wNy40NGExMjkuOTQgMTI5Ljk0IDAgMCAwIDUzLjYyLTIzYzE1LjI5LTExLjMxIDEyLjMzLTI0LjA5IDEwLTMxLjY1QzQ5MC4yMiA3OS41MiAzODguMzMgMCAyNjcuODYgMCAxMTkuOTMgMCAwIDExOS45MyAwIDI2Ny44NnMxMTkuOTMgMjY3Ljg3IDI2Ny44NiAyNjcuODdjMTIwLjQ3IDAgMjIyLjM2LTc5LjUyIDI1Ni0xODguOTQgMi4zOC03LjU2IDUuMzQtMjAuMzQtOS45NS0zMS42NiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PC9nPjwvZz48L2c+PC9zdmc+"
+        },
+        "displayName": "Calendly Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

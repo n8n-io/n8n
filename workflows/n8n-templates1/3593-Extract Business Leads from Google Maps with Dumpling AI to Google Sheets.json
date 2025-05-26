@@ -1,0 +1,1737 @@
+{
+  "workflow": {
+    "id": 3593,
+    "name": "Extract Business Leads from Google Maps with Dumpling AI to Google Sheets",
+    "views": 3624,
+    "recentViews": 558,
+    "totalViews": 3624,
+    "createdAt": "2025-04-17T20:51:09.545Z",
+    "description": "### Who is this for?\n\nThis workflow is built for marketers, sales teams, agencies, virtual assistants, and anyone who regularly researches or contacts local businesses. It's ideal for building lead lists, tracking competitors, or creating location-specific outreach campaigns.\n\n---\n\n### What problem is this workflow solving?\n\nInstead of manually searching Google Maps and copying business info into spreadsheets, this automation pulls structured business data (e.g. restaurants, gyms, service providers) and logs it directly into Google Sheets. It saves hours of work and ensures cleaner, more usable data.\n\n---\n\n### What this workflow does\n\nThe workflow takes a Google Maps search query (like \"best restaurants in New York\") and sends it to Dumpling AI. It returns a list of places including their name, address, website, phone number, rating, and more. Each result is split into a row and automatically added to a Google Sheet.\n\n---\n\n### Setup\n\n1. **Dumpling AI**  \n   - Sign up at [Dumpling AI](https://www.dumplingai.com/)  \n   - Generate your API key  \n   - In the HTTP Request node, select `Header Auth` and paste your key in the Authorization field\n\n2. **Google Sheets**  \n   - Create a sheet with tab name `Leads`  \n   - Add the following column headers to row 1:  \n     `Name`, `Address`, `Phone number`, `Website`, `Rating`, `Price Level`, `Type`, `Booking Link`, `Position`  \n   - Connect your Google Sheets account and link this sheet in the node\n\n3. **Customize the Query**  \n   - In the HTTP node, replace the query string (e.g., `\"best+restaurants+in+New+York\"`) with your own search term\n\n4. **Run It**  \n   - Use the manual trigger to test  \n   - Optionally swap in a Schedule or Webhook node to run it automatically\n\n---\n\n### How to customize this workflow to your needs\n\n- Change the search query to target different cities or business types  \n- Use filters to only save leads with a minimum rating or price level  \n- Add GPT to summarize listings or qualify leads  \n- Swap Google Sheets for Airtable or a CRM system for deeper integration\n",
+    "workflow": {
+      "id": "YZpFvpXOTYkBpiUU",
+      "meta": {
+        "instanceId": "a1ae5c8dc6c65e674f9c3947d083abcc749ef2546dff9f4ff01de4d6a36ebfe6"
+      },
+      "name": "Extract Business Leads from Google Maps with Dumpling AI to Google Sheets",
+      "tags": [
+        {
+          "id": "TlcNkmb96fUfZ2eA",
+          "name": "Tutorials",
+          "createdAt": "2025-04-15T17:02:00.249Z",
+          "updatedAt": "2025-04-15T17:02:00.249Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "3a49e594-6c62-4128-825e-99cdfd7e6ed5",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -660,
+            -200
+          ],
+          "parameters": {
+            "width": 600,
+            "height": 700,
+            "content": "#### \ud83d\udd0d Workflow Goal\nAutomatically search Google Maps using Dumpling AI based on a keyword (e.g., best restaurants in New York), extract results, and log them into a structured Google Sheet.\n\n## \ud83d\ude80 Workflow Steps\n1. **Manual Trigger**\n   - Starts the workflow when testing manually.\n\n2. **Dumpling AI Google Search**\n   - Sends a POST request to Dumpling AI to search for locations on Google Maps based on your query.\n\n3. **Split Out Node**\n   - Breaks the `places[]` array into individual items so each result can be handled separately.\n\n4. **Google Sheets Node**\n   - Appends each place\u2019s data (name, address, phone, website, rating, etc.) into a specific tab of your Google Sheets.\n\n##### \ud83e\udde0 Notes\n- The search query is currently set to: `\"best+restaurants+in+New+York\"`\n- Output columns include rating, price level, website, phone, booking links, etc.\n- Each run consumes Dumpling AI credits per query.\n- You can customize search keywords or location in the HTTP Request body.\n\n#### \u2705 Tip\nTo automate this regularly, change the trigger node to a **Schedule Trigger** and add dynamic query input using a **Set** or **Webhook** node.\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0a4ee00a-19cf-4d1e-a145-b5c5619ce636",
+          "name": "Trigger: Manual Test Run",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            0,
+            120
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "26fdb640-93a0-4312-beaf-4c07fff87751",
+          "name": "Search Google Maps via Dumpling AI",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            220,
+            120
+          ],
+          "parameters": {
+            "url": "https://app.dumplingai.com/api/v1/search-maps",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"query\": \"best+restaurants+in+New+York\", \n  \"language\": \"en\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "xamyMqCpAech5BeT",
+              "name": "Header Auth account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "d3fafc2c-0b9d-4e83-83aa-de24d11fc0e1",
+          "name": "Split Places List for Processing",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            440,
+            120
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "places"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "83b48532-b1fb-4ab3-9596-6e96526bfd49",
+          "name": "Save Results to Google Sheet (Place Info)",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            660,
+            120
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "type": "={{ $json.type }}",
+                "Name ": "={{ $json.title }}",
+                "rating": "={{ $json.rating }}",
+                "Address": "={{ $json.address }}",
+                "Website": "={{ $json.website }}",
+                "Position": "={{ $json.position }}",
+                "priceLevel": "={{ $json.priceLevel }}",
+                "Booking Link": "={{ $json.bookingLinks[0] }}",
+                "Phone number": "={{ $json.phoneNumber }}"
+              },
+              "schema": [
+                {
+                  "id": "Name ",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Name ",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Address",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Address",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "rating",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "rating",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "priceLevel",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "priceLevel",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "type",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "type",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "I use an HTTP request in n8n, I returned up to 10",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "I use an HTTP request in n8n, I returned up to 10",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Booking Link",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Booking Link",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Website",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Website",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Phone number",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Phone number",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Position",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Position",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pb4WLqv2EruLM1z9-utehcINolSj0vlUqZionyLoRUs/edit#gid=1069765279",
+              "cachedResultName": "Google Maps"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pb4WLqv2EruLM1z9-utehcINolSj0vlUqZionyLoRUs/edit?usp=drivesdk",
+              "cachedResultName": "Places"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "GaJqJHuS5mQxap7q",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Search Google Maps via Dumpling AI": [
+          {
+            "json": {
+              "ll": "@40.7381076,-73.9928178,13z",
+              "places": [
+                {
+                  "cid": "14366891226444778354",
+                  "fid": "0x89c25993862d9fab:0xc76173738eeacb72",
+                  "type": "French restaurant",
+                  "title": "Boucherie West Village",
+                  "types": [
+                    "French restaurant"
+                  ],
+                  "rating": 4.7,
+                  "address": "99 7th Ave S, New York, NY 10014",
+                  "placeId": "ChIJq58thpNZwokRcsvqjnNzYcc",
+                  "website": "https://www.boucherieus.com/",
+                  "latitude": 40.733047,
+                  "position": 1,
+                  "longitude": -74.0028772,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Two-floor bistro serving dry-aged steaks and other French fare, with a bar that's strong on absinthe.",
+                  "phoneNumber": "(212) 837-1616",
+                  "ratingCount": 6138,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/346609?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/ECNC2O-BTkI?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11\u202fAM\u201312\u202fAM",
+                    "Monday": "11\u202fAM\u201312\u202fAM",
+                    "Sunday": "10\u202fAM\u201312\u202fAM",
+                    "Tuesday": "11\u202fAM\u201312\u202fAM",
+                    "Saturday": "10\u202fAM\u201312\u202fAM",
+                    "Thursday": "11\u202fAM\u201312\u202fAM",
+                    "Wednesday": "11\u202fAM\u201312\u202fAM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipOIjrjzX_gCxhEnqpn_1KwaVrrTIdgTOZv9FrJY"
+                },
+                {
+                  "cid": "13799948123386944265",
+                  "fid": "0x89c259892cccb7b7:0xbf8343b3f54c1b09",
+                  "type": "French restaurant",
+                  "title": "Balthazar",
+                  "types": [
+                    "French restaurant",
+                    "Bakery",
+                    "Seafood restaurant"
+                  ],
+                  "rating": 4.4,
+                  "address": "80 Spring St, New York, NY 10012",
+                  "placeId": "ChIJt7fMLIlZwokRCRtM9bNDg78",
+                  "website": "http://www.balthazarny.com/",
+                  "latitude": 40.722668,
+                  "position": 2,
+                  "longitude": -73.99822979999999,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Iconic French brasserie with steak frites, brunch & pastries in a classy space with red banquettes.",
+                  "phoneNumber": "(212) 965-1414",
+                  "ratingCount": 7020,
+                  "bookingLinks": [
+                    "https://resy.com/cities/new-york-ny/venues/balthazar-nyc?rwg_token=AAiGsoaFc5Wv1TTL-PUVXIuvsKOdGTH7uz27wICtr-QZZbjYmtOgFXVt1boLwB31S7tdch1sPVym_QaoNS3VfiwZhmQrQOLWbA%3D%3D"
+                  ],
+                  "openingHours": {
+                    "Friday": "8\u202fAM\u201312\u202fAM",
+                    "Monday": "8\u202fAM\u201312\u202fAM",
+                    "Sunday": "9\u202fAM\u201312\u202fAM",
+                    "Tuesday": "8\u202fAM\u201312\u202fAM",
+                    "Saturday": "9\u202fAM\u201312\u202fAM",
+                    "Thursday": "8\u202fAM\u201312\u202fAM",
+                    "Wednesday": "8\u202fAM\u201312\u202fAM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipMPYp_acWrBa6fa2F0TsosyYI-wDt_rL9wFVcvC"
+                },
+                {
+                  "cid": "3132777853886366741",
+                  "fid": "0x89c259a1820824bd:0x2b79dcdc251b8415",
+                  "type": "Restaurant",
+                  "title": "Gramercy Tavern",
+                  "types": [
+                    "Restaurant",
+                    "American restaurant",
+                    "Bar",
+                    "Fine dining restaurant",
+                    "Lunch restaurant",
+                    "New American restaurant"
+                  ],
+                  "rating": 4.6,
+                  "address": "42 E 20th St, New York, NY 10003",
+                  "placeId": "ChIJvSQIgqFZwokRFYQbJdzceSs",
+                  "website": "http://www.gramercytavern.com/?utm_source=GoogleBusinessProfile&utm_medium=Website&utm_campaign=MapLabs",
+                  "latitude": 40.7384555,
+                  "position": 3,
+                  "longitude": -73.98850639999999,
+                  "priceLevel": "$100+",
+                  "description": "Danny Meyer's Flatiron District tavern with a fixed-price-only dining room & a bustling bar area.",
+                  "phoneNumber": "(212) 477-0777",
+                  "ratingCount": 4319,
+                  "openingHours": {
+                    "Friday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Monday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Sunday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Tuesday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Saturday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Thursday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Wednesday": "11:30\u202fAM\u201310:30\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipP-6Q-5hmlzRWjc4E5FDa7K2OeNqJS3BxQMp_ln"
+                },
+                {
+                  "cid": "7298340055988969067",
+                  "fid": "0x89c25947ea10b457:0x6548e99cd73a1e6b",
+                  "type": "French restaurant",
+                  "title": "Le Bernardin",
+                  "types": [
+                    "French restaurant",
+                    "Fine dining restaurant",
+                    "Restaurant"
+                  ],
+                  "rating": 4.6,
+                  "address": "155 W 51st St, New York, NY 10019",
+                  "placeId": "ChIJV7QQ6kdZwokRax4615zpSGU",
+                  "website": "https://www.le-bernardin.com/home",
+                  "latitude": 40.7614218,
+                  "position": 4,
+                  "longitude": -73.9817558,
+                  "priceLevel": "$100+",
+                  "description": "Elite French restaurant offers chef Eric Ripert's refined seafood, expert service & luxurious decor.",
+                  "phoneNumber": "(212) 554-1515",
+                  "ratingCount": 3762,
+                  "openingHours": {
+                    "Friday": "12\u20132:30\u202fPM, 5\u201311\u202fPM",
+                    "Monday": "12\u20132:30\u202fPM, 5\u201310:30\u202fPM",
+                    "Sunday": "Closed",
+                    "Tuesday": "12\u20132:30\u202fPM, 5\u201310:30\u202fPM",
+                    "Saturday": "5\u201311\u202fPM",
+                    "Thursday": "12\u20132:30\u202fPM, 5\u201310:30\u202fPM",
+                    "Wednesday": "12\u20132:30\u202fPM, 5\u201310:30\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipMC-dJ9gfcpFIX8PS-8yPYhjCMfjl6q35zAn1t8"
+                },
+                {
+                  "cid": "3442553861032018645",
+                  "fid": "0x89c259a1ec5f5573:0x2fc6687f46f682d5",
+                  "type": "French restaurant",
+                  "title": "Boucherie Union Square",
+                  "types": [
+                    "French restaurant",
+                    "Steak house"
+                  ],
+                  "rating": 4.7,
+                  "address": "225 Park Ave S, New York, NY 10003",
+                  "placeId": "ChIJc1Vf7KFZwokR1YL2Rn9oxi8",
+                  "website": "https://www.boucherieus.com/",
+                  "latitude": 40.7372552,
+                  "position": 5,
+                  "longitude": -73.9882246,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Bistro for dry-aged steaks and other French fare, with a bar that's strong on absinthe.",
+                  "phoneNumber": "(212) 353-0200",
+                  "ratingCount": 3890,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/1004143?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/4rmpVcuKUVY?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11\u202fAM\u201312\u202fAM",
+                    "Monday": "11\u202fAM\u201312\u202fAM",
+                    "Sunday": "11\u202fAM\u201312\u202fAM",
+                    "Tuesday": "11\u202fAM\u201312\u202fAM",
+                    "Saturday": "11\u202fAM\u201312\u202fAM",
+                    "Thursday": "11\u202fAM\u201312\u202fAM",
+                    "Wednesday": "11\u202fAM\u201312\u202fAM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipOa4JTlKpkY1_xlxnfahmd6H2FquTfCHzJJWto7"
+                },
+                {
+                  "cid": "5472139628830047106",
+                  "fid": "0x89c2598c596508a3:0x4bf0f1fff1c0bb82",
+                  "type": "Italian restaurant",
+                  "title": "Piccola Cucina Osteria Siciliana",
+                  "types": [
+                    "Italian restaurant",
+                    "Sicilian restaurant"
+                  ],
+                  "rating": 4.6,
+                  "address": "196 Spring St, New York, NY 10012",
+                  "placeId": "ChIJowhlWYxZwokRgrvA8f_x8Es",
+                  "website": "http://www.piccolacucinagroup.com/",
+                  "latitude": 40.7250308,
+                  "position": 6,
+                  "longitude": -74.0032774,
+                  "priceLevel": "$30\u201350",
+                  "description": "Simple Italian outpost serving salads & homestyle pastas along with an extensive wine list.",
+                  "phoneNumber": "(646) 478-7488",
+                  "ratingCount": 2199,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/105838?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/Psao8Sv98GA?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11:30\u202fAM\u201311\u202fPM",
+                    "Monday": "11:30\u202fAM\u201311\u202fPM",
+                    "Sunday": "11:30\u202fAM\u201311\u202fPM",
+                    "Tuesday": "11:30\u202fAM\u201311\u202fPM",
+                    "Saturday": "11:30\u202fAM\u201311\u202fPM",
+                    "Thursday": "11:30\u202fAM\u201311\u202fPM",
+                    "Wednesday": "11:30\u202fAM\u201311\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipMk3ppXOP_aW2Yrb-krDInf1tjUY6K8adRhg5XT"
+                },
+                {
+                  "cid": "12751425680490052044",
+                  "fid": "0x89c258fbc4a06f31:0xb0f62a18b16739cc",
+                  "type": "Restaurant",
+                  "title": "The Modern",
+                  "types": [
+                    "Restaurant",
+                    "American restaurant",
+                    "Fine dining restaurant",
+                    "French restaurant",
+                    "Lunch restaurant",
+                    "New American restaurant"
+                  ],
+                  "rating": 4.6,
+                  "address": "9 W 53rd St, New York, NY 10019",
+                  "placeId": "ChIJMW-gxPtYwokRzDlnsRgq9rA",
+                  "website": "https://www.themodernnyc.com/?utm_source=GoogleBusinessProfile&utm_medium=Website&utm_campaign=MapLabs",
+                  "latitude": 40.761081,
+                  "position": 7,
+                  "longitude": -73.976753,
+                  "priceLevel": "$100+",
+                  "description": "French/New American fare in a modernist space with garden views at the Museum of Modern Art.",
+                  "phoneNumber": "(212) 333-1220",
+                  "ratingCount": 2477,
+                  "bookingLinks": [
+                    "https://resy.com/cities/new-york-ny/venues/the-modern?rwg_token=AAiGsobdabLYAQWI0wKR3bXQzJR2xZTshjVp3Uxere391AzDkVal9-Ur8wUduvr_d8bjXUYgsQ2UBTV3fUaQ4cK8AL4sIDHf9g%3D%3D",
+                    "https://www.google.com/maps/reserve/v/dine/c/IqhMF1j7prg?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "12\u20132\u202fPM, 5\u20139\u202fPM",
+                    "Monday": "12\u20132\u202fPM, 5:30\u20139\u202fPM",
+                    "Sunday": "12\u20132\u202fPM",
+                    "Tuesday": "12\u20132\u202fPM, 5:30\u20139\u202fPM",
+                    "Saturday": "12\u20132\u202fPM, 5\u20139\u202fPM",
+                    "Thursday": "12\u20132\u202fPM, 5:30\u20139\u202fPM",
+                    "Wednesday": "12\u20132\u202fPM, 5:30\u20139\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipPFegcqnHSeW_Ngyd9kDff_bofmJx6cA0Woh95o"
+                },
+                {
+                  "cid": "12769026215543562150",
+                  "fid": "0x89c259941967edc9:0xb134b1b0991fdfa6",
+                  "type": "French restaurant",
+                  "title": "Petite Boucherie",
+                  "types": [
+                    "French restaurant"
+                  ],
+                  "rating": 4.7,
+                  "address": "First Floor, 14 Christopher St, New York, NY 10014",
+                  "placeId": "ChIJye1nGZRZwokRpt8fmbCxNLE",
+                  "website": "https://www.boucherieus.com/",
+                  "latitude": 40.733870599999996,
+                  "position": 8,
+                  "longitude": -74.0004319,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Parisian-style cafe serving comforting French fare in a snug space with an open kitchen.",
+                  "phoneNumber": "(646) 756-4145",
+                  "ratingCount": 1787,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/157048?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/E_LrlO_LqlY?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11\u202fAM\u201312\u202fAM",
+                    "Monday": "11\u202fAM\u201312\u202fAM",
+                    "Sunday": "10\u202fAM\u201312\u202fAM",
+                    "Tuesday": "11\u202fAM\u201312\u202fAM",
+                    "Saturday": "10\u202fAM\u201312\u202fAM",
+                    "Thursday": "11\u202fAM\u201312\u202fAM",
+                    "Wednesday": "11\u202fAM\u201312\u202fAM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipO9zp1up2rYreJpE-GCYOSwGAiFxyl_iQO2No91"
+                },
+                {
+                  "cid": "6967162704871465124",
+                  "fid": "0x89c25bc797d635a1:0x60b055910436a0a4",
+                  "type": "Restaurant",
+                  "title": "Manhatta",
+                  "types": [
+                    "Restaurant",
+                    "Bar",
+                    "Cocktail bar",
+                    "Event venue",
+                    "Fine dining restaurant",
+                    "New American restaurant",
+                    "Wine bar"
+                  ],
+                  "rating": 4.7,
+                  "address": "28 Liberty St 60th floor, New York, NY 10005",
+                  "placeId": "ChIJoTXWl8dbwokRpKA2BJFVsGA",
+                  "website": "https://www.manhattarestaurant.com/?utm_source=GoogleBusinessProfile&utm_medium=Website&utm_campaign=MapLabs",
+                  "latitude": 40.707997399999996,
+                  "position": 9,
+                  "longitude": -74.00888259999999,
+                  "priceLevel": "$100+",
+                  "description": "Set on the 60th floor, this ritzy, high-end restaurant features New American cuisine and city views.",
+                  "phoneNumber": "(212) 230-5788",
+                  "ratingCount": 2764,
+                  "bookingLinks": [
+                    "https://www.google.com/maps/reserve/v/dine/c/pyjjUZqJ9lQ?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Monday": "11:30\u202fAM\u20139:30\u202fPM",
+                    "Sunday": "11:30\u202fAM\u20139:30\u202fPM",
+                    "Tuesday": "11:30\u202fAM\u20139:30\u202fPM",
+                    "Saturday": "11:30\u202fAM\u201310:30\u202fPM",
+                    "Thursday": "11:30\u202fAM\u20139:30\u202fPM",
+                    "Wednesday": "11:30\u202fAM\u20139:30\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipObmWt-zmje4apfGS8o6xO7AQ2Y38KE_0Nzlo3L"
+                },
+                {
+                  "cid": "8813431814842646952",
+                  "fid": "0x89c25986daaa7ce7:0x7a4f998a3fd281a8",
+                  "type": "American restaurant",
+                  "title": "Russ & Daughters Cafe",
+                  "types": [
+                    "American restaurant",
+                    "Breakfast restaurant",
+                    "Brunch restaurant",
+                    "Jewish restaurant",
+                    "Lunch restaurant",
+                    "Restaurant"
+                  ],
+                  "rating": 4.6,
+                  "address": "127 Orchard St, New York, NY 10002",
+                  "placeId": "ChIJ53yq2oZZwokRqIHSP4qZT3o",
+                  "website": "https://russanddaughterscafe.com/",
+                  "latitude": 40.7196181,
+                  "position": 10,
+                  "longitude": -73.9895779,
+                  "priceLevel": "$20\u201330",
+                  "description": "From a legendary appetizing shop comes this retro, full-service outpost serving Jewish comfort food.",
+                  "phoneNumber": "(212) 475-4881",
+                  "ratingCount": 3319,
+                  "openingHours": {
+                    "Friday": "8:30\u202fAM\u20133:30\u202fPM",
+                    "Monday": "8:30\u202fAM\u20132:30\u202fPM",
+                    "Sunday": "8:30\u202fAM\u20133:30\u202fPM",
+                    "Tuesday": "8:30\u202fAM\u20132:30\u202fPM",
+                    "Saturday": "8:30\u202fAM\u20133:30\u202fPM",
+                    "Thursday": "8:30\u202fAM\u20132:30\u202fPM",
+                    "Wednesday": "8:30\u202fAM\u20132:30\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipPCCdN4u4VxmoNVS3aFIXzgR3lvU2XOcmHf_our"
+                },
+                {
+                  "cid": "2975234135803511093",
+                  "fid": "0x89c25996bd0915fd:0x294a27aedc2f4135",
+                  "type": "Italian restaurant",
+                  "title": "OLIO E PI\u00d9",
+                  "types": [
+                    "Italian restaurant",
+                    "Restaurant"
+                  ],
+                  "rating": 4.7,
+                  "address": "3 Greenwich Ave, New York, NY 10014",
+                  "placeId": "ChIJ_RUJvZZZwokRNUEv3K4nSik",
+                  "website": "https://www.olioepiu.com/",
+                  "latitude": 40.7338208,
+                  "position": 11,
+                  "longitude": -73.99979309999999,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Naples meets NYC at this trattoria with thin-crust pizza, Italian wines & ample sidewalk seating.",
+                  "phoneNumber": "(212) 243-6546",
+                  "ratingCount": 8301,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/55837?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/2Ujk-qKjG0Y?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11\u202fAM\u201312\u202fAM",
+                    "Monday": "11\u202fAM\u201312\u202fAM",
+                    "Sunday": "10\u202fAM\u201312\u202fAM",
+                    "Tuesday": "11\u202fAM\u201312\u202fAM",
+                    "Saturday": "10\u202fAM\u201312\u202fAM",
+                    "Thursday": "11\u202fAM\u201312\u202fAM",
+                    "Wednesday": "11\u202fAM\u201312\u202fAM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipNdy8VOWBkFpkuFzY4WdZ0v7TRcquFXviC1hFyW"
+                },
+                {
+                  "cid": "5618924015427954654",
+                  "fid": "0x89c2585492286ae9:0x4dfa6d9f277ea7de",
+                  "type": "Taco restaurant",
+                  "title": "LOS TACOS No.1",
+                  "types": [
+                    "Taco restaurant",
+                    "Mexican restaurant"
+                  ],
+                  "rating": 4.8,
+                  "address": "229 W 43rd St, New York, NY 10036",
+                  "placeId": "ChIJ6WooklRYwokR3qd-J59t-k0",
+                  "website": "http://www.lostacos1.com/",
+                  "latitude": 40.757321399999995,
+                  "position": 12,
+                  "longitude": -73.98765399999999,
+                  "priceLevel": "$10\u201320",
+                  "description": "Small pit stop with standing tables serving authentic Mexican street food.",
+                  "ratingCount": 12659,
+                  "openingHours": {
+                    "Friday": "11\u202fAM\u201311\u202fPM",
+                    "Monday": "11\u202fAM\u201311\u202fPM",
+                    "Sunday": "11\u202fAM\u20139\u202fPM",
+                    "Tuesday": "11\u202fAM\u201311\u202fPM",
+                    "Saturday": "11\u202fAM\u201311\u202fPM",
+                    "Thursday": "11\u202fAM\u201311\u202fPM",
+                    "Wednesday": "11\u202fAM\u201311\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipPaLR3wTNi8SIIqvDFYGFJ-nG_sAiR6sZCOFqOZ"
+                },
+                {
+                  "cid": "16472713729583313083",
+                  "fid": "0x89c259937f4eb1af:0xe49ad5dc628370bb",
+                  "type": "Italian restaurant",
+                  "title": "Via Carota",
+                  "types": [
+                    "Italian restaurant"
+                  ],
+                  "rating": 4.4,
+                  "address": "51 Grove St, New York, NY 10014",
+                  "placeId": "ChIJr7FOf5NZwokRu3CDYtzVmuQ",
+                  "website": "http://viacarota.com/",
+                  "latitude": 40.7331437,
+                  "position": 13,
+                  "longitude": -74.0036671,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Italian trattoria serving traditional plates & ap\u00e9ritifs in a rustic, cozy space.",
+                  "phoneNumber": "(212) 255-1962",
+                  "ratingCount": 2842,
+                  "openingHours": {
+                    "Friday": "10\u202fAM\u201311\u202fPM",
+                    "Monday": "11\u202fAM\u201311\u202fPM",
+                    "Sunday": "10\u202fAM\u201311\u202fPM",
+                    "Tuesday": "11\u202fAM\u201311\u202fPM",
+                    "Saturday": "10\u202fAM\u201311\u202fPM",
+                    "Thursday": "11\u202fAM\u201311\u202fPM",
+                    "Wednesday": "11\u202fAM\u201311\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipOpMXlOGFvZovcoxb-XjqCV2kdYQHODTlpUbc8I"
+                },
+                {
+                  "cid": "9312603855358623759",
+                  "fid": "0x89c259f337272b95:0x813d03ddbc95800f",
+                  "type": "American restaurant",
+                  "title": "RH Rooftop Restaurant at RH New York",
+                  "types": [
+                    "American restaurant",
+                    "Restaurant"
+                  ],
+                  "rating": 4.4,
+                  "address": "9 9th Ave, New York, NY 10014",
+                  "placeId": "ChIJlSsnN_NZwokRD4CVvN0DPYE",
+                  "website": "http://www.rh.com/newyork/restaurant",
+                  "latitude": 40.73985,
+                  "position": 14,
+                  "longitude": -74.00639,
+                  "priceLevel": "$50\u2013100",
+                  "description": "Glamorous rooftop restaurant offering American fare amid chandeliers, greenery, and skyline views.",
+                  "phoneNumber": "(212) 217-2210",
+                  "ratingCount": 2176,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/1050247?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/YEEToh7bBlo?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11:30\u202fAM\u20139\u202fPM",
+                    "Monday": "11:30\u202fAM\u20139\u202fPM",
+                    "Sunday": "10\u202fAM\u20139\u202fPM",
+                    "Tuesday": "11:30\u202fAM\u20139\u202fPM",
+                    "Saturday": "10\u202fAM\u20139\u202fPM",
+                    "Thursday": "11:30\u202fAM\u20139\u202fPM",
+                    "Wednesday": "11:30\u202fAM\u20139\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipNrIo_odwUa7D5xnOrEfdeOq7vGMprNLMPnyOhT"
+                },
+                {
+                  "cid": "18303949408079626176",
+                  "fid": "0x89c25b5ac3fc353f:0xfe04b102174ebfc0",
+                  "type": "Taco restaurant",
+                  "title": "LOS TACOS No.1",
+                  "types": [
+                    "Taco restaurant",
+                    "Restaurant"
+                  ],
+                  "rating": 4.7,
+                  "address": "75 9th Ave, New York, NY 10011",
+                  "placeId": "ChIJPzX8w1pbwokRwL9OFwKxBP4",
+                  "website": "https://www.lostacos1.com/",
+                  "latitude": 40.742252099999995,
+                  "position": 15,
+                  "longitude": -74.0059635,
+                  "priceLevel": "$10\u201320",
+                  "description": "Bustling taqueria serving tacos, quesadillas & aguas frescas in a street-style setup (no seating).",
+                  "ratingCount": 4772,
+                  "openingHours": {
+                    "Friday": "11\u202fAM\u201310\u202fPM",
+                    "Monday": "11\u202fAM\u201310\u202fPM",
+                    "Sunday": "11\u202fAM\u20139\u202fPM",
+                    "Tuesday": "11\u202fAM\u201310\u202fPM",
+                    "Saturday": "11\u202fAM\u201310\u202fPM",
+                    "Thursday": "11\u202fAM\u201310\u202fPM",
+                    "Wednesday": "11\u202fAM\u201310\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipPqkAkh_eP9f-WUBiRoN-_nlyKVWCSTUp-47dpu"
+                },
+                {
+                  "cid": "1412917795118885020",
+                  "fid": "0x89c2598c5dde0695:0x139bb13faae3a89c",
+                  "type": "Italian restaurant",
+                  "title": "Piccola Cucina Estiatorio",
+                  "types": [
+                    "Italian restaurant",
+                    "Seafood market"
+                  ],
+                  "rating": 4.7,
+                  "address": "75 Thompson St, New York, NY 10012",
+                  "placeId": "ChIJlQbeXYxZwokRnKjjqj-xmxM",
+                  "website": "http://www.piccolacucinagroup.com/",
+                  "latitude": 40.7246336,
+                  "position": 16,
+                  "longitude": -74.00297619999999,
+                  "priceLevel": "$30\u201350",
+                  "phoneNumber": "(646) 781-9183",
+                  "ratingCount": 1660,
+                  "bookingLinks": [
+                    "https://www.opentable.com/restaurant/profile/343939?ref=1068",
+                    "https://www.google.com/maps/reserve/v/dine/c/pcvDAa-RKIU?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11:30\u202fAM\u201312\u202fAM",
+                    "Monday": "11:30\u202fAM\u201311\u202fPM",
+                    "Sunday": "11:30\u202fAM\u201311\u202fPM",
+                    "Tuesday": "11:30\u202fAM\u201311\u202fPM",
+                    "Saturday": "11:30\u202fAM\u201312\u202fAM",
+                    "Thursday": "11:30\u202fAM\u201311\u202fPM",
+                    "Wednesday": "11:30\u202fAM\u201311\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipNoIV4fOazNCv4q04hA-CLCxMmuV9q3-ua81HR8"
+                },
+                {
+                  "cid": "6783566240304368229",
+                  "fid": "0x89c258f62fec73a7:0x5e24118dffac8a65",
+                  "type": "Fine dining restaurant",
+                  "title": "Per Se",
+                  "types": [
+                    "Fine dining restaurant",
+                    "French restaurant"
+                  ],
+                  "rating": 4.5,
+                  "address": "10 Columbus Cir, New York, NY 10019",
+                  "placeId": "ChIJp3PsL_ZYwokRZYqs_40RJF4",
+                  "website": "https://www.thomaskeller.com/perseny",
+                  "latitude": 40.768217799999995,
+                  "position": 17,
+                  "longitude": -73.9828988,
+                  "priceLevel": "$100+",
+                  "description": "Chef Thomas Keller's New American restaurant offers luxe fixed-price menus, with Central Park views.",
+                  "phoneNumber": "(212) 823-9335",
+                  "ratingCount": 1863,
+                  "openingHours": {
+                    "Friday": "4:30\u20138:30\u202fPM",
+                    "Monday": "4:30\u20138:30\u202fPM",
+                    "Sunday": "4:30\u20138:30\u202fPM",
+                    "Tuesday": "4:30\u20138:30\u202fPM",
+                    "Saturday": "4:30\u20138:30\u202fPM",
+                    "Thursday": "4:30\u20138:30\u202fPM",
+                    "Wednesday": "4:30\u20138:30\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipO7nQNiCyD5Fw4CUQ17RSfRfjX-pDQkD26wXJHy"
+                },
+                {
+                  "cid": "3538632692129109557",
+                  "fid": "0x89c258f6339d1b6f:0x311bbfaf5cf09635",
+                  "type": "American restaurant",
+                  "title": "ROBERT",
+                  "types": [
+                    "American restaurant"
+                  ],
+                  "rating": 4.5,
+                  "address": "2 Columbus Cir, New York, NY 10019",
+                  "placeId": "ChIJbxudM_ZYwokRNZbwXK-_GzE",
+                  "website": "https://robertnyc.com/",
+                  "latitude": 40.767438,
+                  "position": 18,
+                  "longitude": -73.9819871,
+                  "priceLevel": "$$$",
+                  "description": "New American fare & city views in an arty space on the top-floor of the Museum of Arts & Design.",
+                  "phoneNumber": "(212) 299-7730",
+                  "ratingCount": 1719,
+                  "bookingLinks": [
+                    "https://www.opentable.com/r/robert-new-york"
+                  ],
+                  "openingHours": {
+                    "Friday": "12\u201311\u202fPM",
+                    "Monday": "12\u201310\u202fPM",
+                    "Sunday": "11\u202fAM\u201311\u202fPM",
+                    "Tuesday": "12\u201310\u202fPM",
+                    "Saturday": "11\u202fAM\u201311\u202fPM",
+                    "Thursday": "12\u201310\u202fPM",
+                    "Wednesday": "12\u201310\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipMn17D7rwlR14fK8bCmgxV_UqzsK4fBzNP6fFaw"
+                },
+                {
+                  "cid": "3545819340560108778",
+                  "fid": "0x89c2598f7ff4aa09:0x313547e757cb8cea",
+                  "type": "Restaurant",
+                  "title": "Katz's Delicatessen",
+                  "types": [
+                    "Restaurant",
+                    "American restaurant",
+                    "Jewish restaurant",
+                    "Deli",
+                    "Sandwich shop"
+                  ],
+                  "rating": 4.5,
+                  "address": "205 E Houston St, New York, NY 10002",
+                  "placeId": "ChIJCar0f49ZwokR6ozLV-dHNTE",
+                  "website": "https://katzsdelicatessen.com/",
+                  "latitude": 40.722232999999996,
+                  "position": 19,
+                  "longitude": -73.98742899999999,
+                  "priceLevel": "$20\u201330",
+                  "description": "No-frills deli with theatrically cranky service serving mile-high sandwiches since 1888.",
+                  "phoneNumber": "(212) 254-2246",
+                  "ratingCount": 44962,
+                  "openingHours": {
+                    "Friday": "8\u202fAM\u201311:30\u202fPM",
+                    "Monday": "8\u202fAM\u201311\u202fPM",
+                    "Sunday": "12\u202fAM\u201311\u202fPM",
+                    "Tuesday": "8\u202fAM\u201311\u202fPM",
+                    "Saturday": "Open 24 hours",
+                    "Thursday": "8\u202fAM\u201311\u202fPM",
+                    "Wednesday": "8\u202fAM\u201311\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipNedb29MPPEqzCoheQ79l26VPnn6dcTGtcvF4w7"
+                },
+                {
+                  "cid": "1614607817747620329",
+                  "fid": "0x89c25a1f689722d3:0x16683d41746a61e9",
+                  "type": "Cajun restaurant",
+                  "title": "1803 NYC",
+                  "types": [
+                    "Cajun restaurant",
+                    "Bar",
+                    "Brunch restaurant",
+                    "Creole restaurant",
+                    "Event venue",
+                    "Live music venue",
+                    "Lunch restaurant",
+                    "Restaurant",
+                    "Seafood restaurant",
+                    "Soul food restaurant"
+                  ],
+                  "rating": 4.5,
+                  "address": "82 Reade St, New York, NY 10007",
+                  "placeId": "ChIJ0yKXaB9awokR6WFqdEE9aBY",
+                  "website": "https://1803nyc.com/",
+                  "latitude": 40.7154539,
+                  "position": 20,
+                  "longitude": -74.00733009999999,
+                  "priceLevel": "$30\u201350",
+                  "description": "Elevated Cajun-Creole food and drinks served in a New Orleans's French quarters-inspired restaurant.",
+                  "phoneNumber": "(212) 267-3000",
+                  "ratingCount": 1791,
+                  "bookingLinks": [
+                    "https://1803nyc.com/#reservation",
+                    "https://resy.com/cities/new-york-ny/venues/1803?rwg_token=AAiGsoZQZUVMZ4dhDz6Sg9qsvG6tjLIhQZvXBSU9opEklGTc20X2Oby6LmmRgAp1IrhjAUd79G_k3s0VP3tEuEu5J_T1DCCazwmMhQpGVRyVaiJWH8RBrM0%3D",
+                    "https://www.google.com/maps/reserve/v/dine/c/knKVX6xdexM?source=pa&opi=79508299"
+                  ],
+                  "openingHours": {
+                    "Friday": "11:30\u202fAM\u201311\u202fPM",
+                    "Monday": "11:30\u202fAM\u201311\u202fPM",
+                    "Sunday": "11\u202fAM\u201311\u202fPM",
+                    "Tuesday": "11:30\u202fAM\u201311\u202fPM",
+                    "Saturday": "11\u202fAM\u201312\u202fAM",
+                    "Thursday": "11:30\u202fAM\u201311\u202fPM",
+                    "Wednesday": "11:30\u202fAM\u201311\u202fPM"
+                  },
+                  "thumbnailUrl": "https://lh3.googleusercontent.com/p/AF1QipMD6CTvhAgGtyrqyIkqwTB_iiJh1FKAdDcV_XKA"
+                }
+              ],
+              "credits": 3,
+              "searchParameters": {
+                "q": "best+restaurants+in+New+York",
+                "hl": "en",
+                "type": "maps",
+                "engine": "google"
+              }
+            }
+          }
+        ],
+        "Save Results to Google Sheet (Place Info)": [
+          {
+            "json": {
+              "type": "French restaurant",
+              "Name ": "Boucherie West Village",
+              "rating": 4.7,
+              "Address": "99 7th Ave S, New York, NY 10014",
+              "Website": "https://www.boucherieus.com/",
+              "Position": 1,
+              "priceLevel": "$50\u2013100",
+              "Description": "Two-floor bistro serving dry-aged steaks and other French fare, with a bar that's strong on absinthe.",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/346609?ref=1068",
+              "Phone number": "(212) 837-1616"
+            }
+          },
+          {
+            "json": {
+              "type": "French restaurant",
+              "Name ": "Balthazar",
+              "rating": 4.4,
+              "Address": "80 Spring St, New York, NY 10012",
+              "Website": "http://www.balthazarny.com/",
+              "Position": 2,
+              "priceLevel": "$50\u2013100",
+              "Description": "Iconic French brasserie with steak frites, brunch & pastries in a classy space with red banquettes.",
+              "Booking Link": "https://resy.com/cities/new-york-ny/venues/balthazar-nyc?rwg_token=AAiGsoaFc5Wv1TTL-PUVXIuvsKOdGTH7uz27wICtr-QZZbjYmtOgFXVt1boLwB31S7tdch1sPVym_QaoNS3VfiwZhmQrQOLWbA%3D%3D",
+              "Phone number": "(212) 965-1414"
+            }
+          },
+          {
+            "json": {
+              "type": "Restaurant",
+              "Name ": "Gramercy Tavern",
+              "rating": 4.6,
+              "Address": "42 E 20th St, New York, NY 10003",
+              "Website": "http://www.gramercytavern.com/?utm_source=GoogleBusinessProfile&utm_medium=Website&utm_campaign=MapLabs",
+              "Position": 3,
+              "priceLevel": "$100+",
+              "Description": "Danny Meyer's Flatiron District tavern with a fixed-price-only dining room & a bustling bar area.",
+              "Phone number": "(212) 477-0777"
+            }
+          },
+          {
+            "json": {
+              "type": "French restaurant",
+              "Name ": "Le Bernardin",
+              "rating": 4.6,
+              "Address": "155 W 51st St, New York, NY 10019",
+              "Website": "https://www.le-bernardin.com/home",
+              "Position": 4,
+              "priceLevel": "$100+",
+              "Description": "Elite French restaurant offers chef Eric Ripert's refined seafood, expert service & luxurious decor.",
+              "Phone number": "(212) 554-1515"
+            }
+          },
+          {
+            "json": {
+              "type": "French restaurant",
+              "Name ": "Boucherie Union Square",
+              "rating": 4.7,
+              "Address": "225 Park Ave S, New York, NY 10003",
+              "Website": "https://www.boucherieus.com/",
+              "Position": 5,
+              "priceLevel": "$50\u2013100",
+              "Description": "Bistro for dry-aged steaks and other French fare, with a bar that's strong on absinthe.",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/1004143?ref=1068",
+              "Phone number": "(212) 353-0200"
+            }
+          },
+          {
+            "json": {
+              "type": "Italian restaurant",
+              "Name ": "Piccola Cucina Osteria Siciliana",
+              "rating": 4.6,
+              "Address": "196 Spring St, New York, NY 10012",
+              "Website": "http://www.piccolacucinagroup.com/",
+              "Position": 6,
+              "priceLevel": "$30\u201350",
+              "Description": "Simple Italian outpost serving salads & homestyle pastas along with an extensive wine list.",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/105838?ref=1068",
+              "Phone number": "(646) 478-7488"
+            }
+          },
+          {
+            "json": {
+              "type": "Restaurant",
+              "Name ": "The Modern",
+              "rating": 4.6,
+              "Address": "9 W 53rd St, New York, NY 10019",
+              "Website": "https://www.themodernnyc.com/?utm_source=GoogleBusinessProfile&utm_medium=Website&utm_campaign=MapLabs",
+              "Position": 7,
+              "priceLevel": "$100+",
+              "Description": "French/New American fare in a modernist space with garden views at the Museum of Modern Art.",
+              "Booking Link": "https://resy.com/cities/new-york-ny/venues/the-modern?rwg_token=AAiGsobdabLYAQWI0wKR3bXQzJR2xZTshjVp3Uxere391AzDkVal9-Ur8wUduvr_d8bjXUYgsQ2UBTV3fUaQ4cK8AL4sIDHf9g%3D%3D",
+              "Phone number": "(212) 333-1220"
+            }
+          },
+          {
+            "json": {
+              "type": "French restaurant",
+              "Name ": "Petite Boucherie",
+              "rating": 4.7,
+              "Address": "First Floor, 14 Christopher St, New York, NY 10014",
+              "Website": "https://www.boucherieus.com/",
+              "Position": 8,
+              "priceLevel": "$50\u2013100",
+              "Description": "Parisian-style cafe serving comforting French fare in a snug space with an open kitchen.",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/157048?ref=1068",
+              "Phone number": "(646) 756-4145"
+            }
+          },
+          {
+            "json": {
+              "type": "Restaurant",
+              "Name ": "Manhatta",
+              "rating": 4.7,
+              "Address": "28 Liberty St 60th floor, New York, NY 10005",
+              "Website": "https://www.manhattarestaurant.com/?utm_source=GoogleBusinessProfile&utm_medium=Website&utm_campaign=MapLabs",
+              "Position": 9,
+              "priceLevel": "$100+",
+              "Description": "Set on the 60th floor, this ritzy, high-end restaurant features New American cuisine and city views.",
+              "Booking Link": "https://www.google.com/maps/reserve/v/dine/c/pyjjUZqJ9lQ?source=pa&opi=79508299",
+              "Phone number": "(212) 230-5788"
+            }
+          },
+          {
+            "json": {
+              "type": "American restaurant",
+              "Name ": "Russ & Daughters Cafe",
+              "rating": 4.6,
+              "Address": "127 Orchard St, New York, NY 10002",
+              "Website": "https://russanddaughterscafe.com/",
+              "Position": 10,
+              "priceLevel": "$20\u201330",
+              "Description": "From a legendary appetizing shop comes this retro, full-service outpost serving Jewish comfort food.",
+              "Phone number": "(212) 475-4881"
+            }
+          },
+          {
+            "json": {
+              "type": "Italian restaurant",
+              "Name ": "OLIO E PI\u00d9",
+              "rating": 4.7,
+              "Address": "3 Greenwich Ave, New York, NY 10014",
+              "Website": "https://www.olioepiu.com/",
+              "Position": 11,
+              "priceLevel": "$50\u2013100",
+              "Description": "Naples meets NYC at this trattoria with thin-crust pizza, Italian wines & ample sidewalk seating.",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/55837?ref=1068",
+              "Phone number": "(212) 243-6546"
+            }
+          },
+          {
+            "json": {
+              "type": "Taco restaurant",
+              "Name ": "LOS TACOS No.1",
+              "rating": 4.8,
+              "Address": "229 W 43rd St, New York, NY 10036",
+              "Website": "http://www.lostacos1.com/",
+              "Position": 12,
+              "priceLevel": "$10\u201320",
+              "Description": "Small pit stop with standing tables serving authentic Mexican street food."
+            }
+          },
+          {
+            "json": {
+              "type": "Italian restaurant",
+              "Name ": "Via Carota",
+              "rating": 4.4,
+              "Address": "51 Grove St, New York, NY 10014",
+              "Website": "http://viacarota.com/",
+              "Position": 13,
+              "priceLevel": "$50\u2013100",
+              "Description": "Italian trattoria serving traditional plates & ap\u00e9ritifs in a rustic, cozy space.",
+              "Phone number": "(212) 255-1962"
+            }
+          },
+          {
+            "json": {
+              "type": "American restaurant",
+              "Name ": "RH Rooftop Restaurant at RH New York",
+              "rating": 4.4,
+              "Address": "9 9th Ave, New York, NY 10014",
+              "Website": "http://www.rh.com/newyork/restaurant",
+              "Position": 14,
+              "priceLevel": "$50\u2013100",
+              "Description": "Glamorous rooftop restaurant offering American fare amid chandeliers, greenery, and skyline views.",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/1050247?ref=1068",
+              "Phone number": "(212) 217-2210"
+            }
+          },
+          {
+            "json": {
+              "type": "Taco restaurant",
+              "Name ": "LOS TACOS No.1",
+              "rating": 4.7,
+              "Address": "75 9th Ave, New York, NY 10011",
+              "Website": "https://www.lostacos1.com/",
+              "Position": 15,
+              "priceLevel": "$10\u201320",
+              "Description": "Bustling taqueria serving tacos, quesadillas & aguas frescas in a street-style setup (no seating)."
+            }
+          },
+          {
+            "json": {
+              "type": "Italian restaurant",
+              "Name ": "Piccola Cucina Estiatorio",
+              "rating": 4.7,
+              "Address": "75 Thompson St, New York, NY 10012",
+              "Website": "http://www.piccolacucinagroup.com/",
+              "Position": 16,
+              "priceLevel": "$30\u201350",
+              "Booking Link": "https://www.opentable.com/restaurant/profile/343939?ref=1068",
+              "Phone number": "(646) 781-9183"
+            }
+          },
+          {
+            "json": {
+              "type": "Fine dining restaurant",
+              "Name ": "Per Se",
+              "rating": 4.5,
+              "Address": "10 Columbus Cir, New York, NY 10019",
+              "Website": "https://www.thomaskeller.com/perseny",
+              "Position": 17,
+              "priceLevel": "$100+",
+              "Description": "Chef Thomas Keller's New American restaurant offers luxe fixed-price menus, with Central Park views.",
+              "Phone number": "(212) 823-9335"
+            }
+          },
+          {
+            "json": {
+              "type": "American restaurant",
+              "Name ": "ROBERT",
+              "rating": 4.5,
+              "Address": "2 Columbus Cir, New York, NY 10019",
+              "Website": "https://robertnyc.com/",
+              "Position": 18,
+              "priceLevel": "$$$",
+              "Description": "New American fare & city views in an arty space on the top-floor of the Museum of Arts & Design.",
+              "Booking Link": "https://www.opentable.com/r/robert-new-york",
+              "Phone number": "(212) 299-7730"
+            }
+          },
+          {
+            "json": {
+              "type": "Restaurant",
+              "Name ": "Katz's Delicatessen",
+              "rating": 4.5,
+              "Address": "205 E Houston St, New York, NY 10002",
+              "Website": "https://katzsdelicatessen.com/",
+              "Position": 19,
+              "priceLevel": "$20\u201330",
+              "Description": "No-frills deli with theatrically cranky service serving mile-high sandwiches since 1888.",
+              "Phone number": "(212) 254-2246"
+            }
+          },
+          {
+            "json": {
+              "type": "Cajun restaurant",
+              "Name ": "1803 NYC",
+              "rating": 4.5,
+              "Address": "82 Reade St, New York, NY 10007",
+              "Website": "https://1803nyc.com/",
+              "Position": 20,
+              "priceLevel": "$30\u201350",
+              "Description": "Elevated Cajun-Creole food and drinks served in a New Orleans's French quarters-inspired restaurant.",
+              "Booking Link": "https://1803nyc.com/#reservation",
+              "Phone number": "(212) 267-3000"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "171ef405-bac6-42c0-a3c3-c28cb49ff21a",
+      "connections": {
+        "Trigger: Manual Test Run": {
+          "main": [
+            [
+              {
+                "node": "Search Google Maps via Dumpling AI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Places List for Processing": {
+          "main": [
+            [
+              {
+                "node": "Save Results to Google Sheet (Place Info)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Google Maps via Dumpling AI": {
+          "main": [
+            [
+              {
+                "node": "Split Places List for Processing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Yang",
+      "username": "yang",
+      "bio": "",
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/6c996ff9ed140535b522858466c376f84e755b851b34b0ad900e4e6568568f84?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "\u2764\ufe0f",
+                  "label": "Love at first sight: Ricardo\u2019s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "\ud83e\uddec",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "\ud83e\uddfe",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "\ud83c\udfab",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "\u23f2",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " \ud83d\udda5\ufe0f",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "\ud83c\udf54",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "\ud83d\udcbb",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "\ud83e\udde0",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "\ud83d\ude4c",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "\ud83e\uddec",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "\u270d\ufe0f",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "\ud83e\uddfe",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "\ud83d\udef3",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " \ud83e\udea2",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "\u26a1\ufe0f",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "\ud83d\udcdc",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "\ud83c\udfa8",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "\ud83e\udd16",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "\ud83e\uddf0",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "\ud83e\udd84",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "\ud83c\udfa1",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "\u2728",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "\ud83e\udd1f",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "\ud83d\udef5",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking \u2018Test workflow\u2019",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

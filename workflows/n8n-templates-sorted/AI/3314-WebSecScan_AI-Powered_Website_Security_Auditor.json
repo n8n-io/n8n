@@ -1,0 +1,1187 @@
+{
+  "workflow": {
+    "id": 3314,
+    "name": "WebSecScan: AI-Powered Website Security Auditor",
+    "views": 7088,
+    "recentViews": 55,
+    "totalViews": 7088,
+    "createdAt": "2025-03-24T18:13:24.596Z",
+    "description": "# WebSecScan: AI-Powered Website Security Auditor\n\nThis n8n workflow provides comprehensive website security analysis by leveraging OpenAI's models to detect vulnerabilities, configuration issues, and security misconfigurations. The workflow generates a professional HTML security report delivered directly via Gmail.\n\n## Key Features\n\n- **Dual-Layer Security Analysis:** Performs parallel security audits using specialized OpenAI agents:\n  - Header Configuration Audit: Analyzes HTTP headers, CORS policies, CSP implementation, and cookie security\n  - Vulnerability Assessment: Identifies XSS vectors, information disclosure, and client-side weaknesses\n  \n- **Detailed Security Grading:** Automatically calculates a security grade (A+ to F) based on findings severity and quantity\n\n- **Professional Report Generation:** Creates a comprehensive HTML report with:\n  - Security grade visualization\n  - Color-coded vulnerability categories\n  - Detailed recommendations with example configuration fixes\n  - Header presence/absence indicators\n  - Implementation guidance for remediation\n\n- **Non-Invasive Testing:** Performs analysis without active scanning or exploitation attempts\n\n## Technical Implementation\n\n- **Multi-Agent Architecture:** Utilizes two specialized OpenAI agents with custom prompts tailored for security analysis\n- **Advanced Header Analysis:** Detects presence and proper implementation of critical security headers:\n  - Content-Security-Policy\n  - Strict-Transport-Security\n  - X-Content-Type-Options\n  - X-Frame-Options\n  - Referrer-Policy\n  - Permissions-Policy\n\n- **Intelligent Issue Detection:** Uses JavaScript processing to analyze OpenAI outputs and count critical/warning issues\n- **Responsive HTML Report:** Dynamically generates a mobile-friendly report with detailed findings and recommendations\n\n## Setup Requirements\n\n### 1. OpenAI API Configuration\n1. Create an OpenAI API key at [platform.openai.com](https://platform.openai.com/)\n2. In n8n, go to **Settings → Credentials → New → OpenAI API**\n3. Enter your API key and save\n\n### 2. Gmail Integration\n1. Navigate to **Settings → Credentials → New → Gmail OAuth2 API**\n2. Complete the OAuth authentication flow\n3. Configure recipient email in the \"Send Security Report\" node\n\n### 3. Workflow Customization (Optional)\n- Modify the form title/description in the Landing Page node\n- Upgrade from gpt-4o-mini to gpt-4o for more comprehensive analysis\n- Add additional recipients to the email report\n\n## Usage Instructions\n\n1. Activate the workflow and access the form via the generated URL\n2. Enter any website URL to analyze (including the http:// or https:// prefix)\n3. Receive a detailed security report via email within minutes\n4. Share findings with your development team to implement fixes\n\n---\n\nThis workflow represents a non-invasive security assessment tool. For production environments, complement with professional penetration testing services.",
+    "workflow": {
+      "meta": {
+        "instanceId": "c2589fa234defe76e8a1321c3a7d0a73579d0120d64d927e88f5e3be584ae8d4"
+      },
+      "nodes": [
+        {
+          "id": "634f2fc5-0ba7-42ad-bdf5-ade3415dd288",
+          "name": "Landing Page Url",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            -200,
+            580
+          ],
+          "webhookId": "afe067a5-4878-4c9d-b746-691f77190f54",
+          "parameters": {
+            "options": {},
+            "formTitle": "Website Security Scanner",
+            "formFields": {
+              "values": [
+                {
+                  "fieldLabel": "Landing Page Url",
+                  "placeholder": "https://example.com",
+                  "requiredField": true
+                }
+              ]
+            },
+            "formDescription": "Check your website for security vulnerabilities and get a detailed report"
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6cee63ca-d0f6-444a-b882-22da1a9fd70c",
+          "name": "Scrape Website",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            0,
+            580
+          ],
+          "parameters": {
+            "url": "={{ $json['Landing Page Url'] }}",
+            "options": {
+              "redirect": {
+                "redirect": {
+                  "maxRedirects": 5
+                }
+              },
+              "response": {
+                "response": {
+                  "fullResponse": true,
+                  "responseFormat": "text"
+                }
+              }
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "0d5d1e76-e627-4565-a1ee-6a610f4b2028",
+          "name": "OpenAI Headers Analysis",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            340,
+            600
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "yZ0AIg9abV8HJadB",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "04427ef7-515d-4a1a-88d2-ade10aeefc87",
+          "name": "OpenAI Content Analysis",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            340,
+            980
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "yZ0AIg9abV8HJadB",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d4ee4db8-aa04-4068-9b97-d16acf98c027",
+          "name": "Security Vulnerabilities Audit",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            360,
+            780
+          ],
+          "parameters": {
+            "text": "=You are an elite cybersecurity expert specializing in web application security.\n\nIn this task, you will analyze the HTML and visible content of the webpage to identify potential security vulnerabilities.\n\nAudit Structure\nYou will review all client-side security aspects of the page and present your findings in three sections:\n- Critical Vulnerabilities – Issues that could lead to immediate compromise\n- Information Leakage – Sensitive data exposed in page source\n- Client-Side Weaknesses – JavaScript vulnerabilities, XSS opportunities, etc.\n\nFor each issue found, provide:\n1. A clear description of the vulnerability\n2. The potential impact\n3. A specific recommendation to fix it\n\nIf you find no issues in a particular section, explicitly state that no issues were found in that category.\n\nEnsure the output is properly formatted, clean, and highly readable. Focus only on issues that can be detected from the client-side code.\n\nHere is the content of the webpage: {{ $json.data }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "c9702f2b-845b-464d-9c32-3d5be308ef77",
+          "name": "Security Configuration Audit",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            360,
+            380
+          ],
+          "parameters": {
+            "text": "=You are an elite web security expert specializing in secure configurations.\n\nIn this task, you will analyze the HTTP headers, cookies, and overall configuration of a webpage to identify security misconfigurations.\n\nAudit Structure\nYou will begin by listing ALL security headers that ARE present and properly configured.\n\nBe very clear and explicit about which headers are present and which are missing. For each header, clearly state whether it is present or missing, and if present, what its value is.\n\nThen, present your findings in three sections:\n- Header Security – Missing or misconfigured security headers\n- Cookie Security – Insecure cookie configurations\n- Content Security – CSP issues, mixed content, etc.\n\nFor each finding, provide:\n1. A clear description of the misconfiguration\n2. The security implications\n3. The recommended secure configuration with example code\n\nIf you find no issues in a particular section, explicitly state that no issues were found.\n\nUse proper formatting with code blocks for configuration examples. Only include issues that can be detected from client-side inspection.\nHere are the response headers: {{ $json.formattedHeaders }}\n\nPlease Respond like this\n\n### [any section heading that includes \"Headers]\n\n1. **[Header Title]**\n   - **Present?** Yes/No\n   - **Value:** `actual-header-value`\n",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "3b43be75-c35c-44e4-8ecc-a29c48e3625c",
+          "name": "Merge Security Results",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            860,
+            580
+          ],
+          "parameters": {},
+          "typeVersion": 3,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "da134256-d7fa-4a3f-ba24-acc320a944a2",
+          "name": "Aggregate Audit Results",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1060,
+            580
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToAggregate": {
+              "fieldToAggregate": [
+                {
+                  "fieldToAggregate": "output"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aef1da93-0b01-4a7f-9439-1f74c2af12d6",
+          "name": "Process Audit Results",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1240,
+            580
+          ],
+          "parameters": {
+            "jsCode": "// ✅ Updated extractSecurityHeaders and related logic remains unchanged\n\nfunction extractSecurityHeaders(rawHeaders = {}, configOutput = '') {\n  const securityHeaders = [\n    'Content-Security-Policy',\n    'Strict-Transport-Security',\n    'X-Content-Type-Options',\n    'X-Frame-Options',\n    'Referrer-Policy',\n    'Permissions-Policy',\n    'X-XSS-Protection',\n    'Cross-Origin-Embedder-Policy',\n    'Cross-Origin-Opener-Policy',\n    'X-Permitted-Cross-Domain-Policies'\n  ];\n\n  const headerStatus = {};\n  for (const header of securityHeaders) {\n    headerStatus[header] = { present: false, value: '' };\n  }\n\n  for (const header in rawHeaders) {\n    const norm = header.trim().toLowerCase();\n    for (const standard of securityHeaders) {\n      if (norm === standard.toLowerCase()) {\n        headerStatus[standard].present = true;\n        headerStatus[standard].value = rawHeaders[header];\n      }\n    }\n  }\n\n  const presentSection = configOutput.match(/(?:###|##|\\*\\*)[^\\n]*?\\bheaders?\\b[\\s\\S]*?(?=###|##|\\*\\*|$)/i);\n  if (presentSection) {\n    const section = presentSection[0];\n    for (const header of securityHeaders) {\n      const title = header.replace(/-/g, ' ').replace(/\\b\\w/g, c => c.toUpperCase());\n      const regex = new RegExp(`\\\\*\\\\*${title}\\\\*\\\\*[^\\\\n]*?\\\\*\\\\*Present\\\\?\\\\*\\\\*\\\\s*Yes[^\\\\n]*?\\\\*\\\\*Value:\\\\*\\\\*\\\\s*\\`([^\\\\\\`]+)\\``, 'is');\n      const match = section.match(regex);\n      if (match && match[1]) {\n        headerStatus[header].present = true;\n        headerStatus[header].value = match[1].trim();\n      }\n    }\n  }\n\n  return headerStatus;\n}\n\nfunction hasUnsafeInline(value) {\n  return value && value.includes('unsafe-inline');\n}\n\nfunction determineGrade(headerStatus) {\n  const critical = [\n    'Content-Security-Policy',\n    'Strict-Transport-Security',\n    'X-Content-Type-Options',\n    'X-Frame-Options'\n  ];\n  const important = ['Referrer-Policy', 'Permissions-Policy'];\n  const additional = [\n    'X-XSS-Protection',\n    'Cross-Origin-Embedder-Policy',\n    'Cross-Origin-Opener-Policy',\n    'X-Permitted-Cross-Domain-Policies'\n  ];\n\n  let criticalCount = 0;\n  let importantCount = 0;\n  let hasCSPIssue = false;\n\n  for (const h of critical) {\n    if (headerStatus[h]?.present) {\n      criticalCount++;\n      if (h === 'Content-Security-Policy' && hasUnsafeInline(headerStatus[h].value)) {\n        hasCSPIssue = true;\n      }\n    }\n  }\n\n  for (const h of important) {\n    if (headerStatus[h]?.present) importantCount++;\n  }\n\n  if (criticalCount === critical.length) {\n    if (importantCount === important.length) return hasCSPIssue ? 'A-' : 'A+';\n    if (importantCount >= 1) return hasCSPIssue ? 'B+' : 'A-';\n    return hasCSPIssue ? 'B' : 'B+';\n  } else if (criticalCount >= critical.length - 1) {\n    return importantCount >= 1 ? 'B' : 'C+';\n  } else if (criticalCount >= 2) {\n    return 'C';\n  } else if (criticalCount >= 1) {\n    return 'D';\n  } else {\n    return 'F';\n  }\n}\n\nfunction formatHeadersForDisplay(headerStatus) {\n  const present = Object.keys(headerStatus).filter(h => headerStatus[h].present);\n  return present.length > 0 ? present.join(', ') : 'No security headers detected';\n}\n\nfunction processSecurityHeaders(items) {\n  try {\n    const json = items[0].json || items[0];\n\n    // ⛏️ Try to grab from originalHeaders if available\n    const rawHeaders =\n      json?.originalHeaders ||\n      $('Extract Headers for Debug')?.first()?.json?.originalHeaders ||\n      json?.headers ||\n      {};\n\n    const configOutput = json.configOutput || json.output?.[0] || '';\n    const vulnOutput = json.vulnOutput || json.output?.[1] || '';\n\n    const headerStatus = extractSecurityHeaders(rawHeaders, configOutput);\n    const presentHeaders = formatHeadersForDisplay(headerStatus);\n    const grade = determineGrade(headerStatus);\n\n    const timestamp = new Date().toLocaleString('en-US', {\n      year: 'numeric',\n      month: 'long',\n      day: 'numeric',\n      hour: '2-digit',\n      minute: '2-digit'\n    });\n\n    const url =\n      json?.formValues?.url ||\n      json?.['Landing Page Url'] ||\n      $('Landing Page Url')?.first()?.json?.['Landing Page Url'] ||\n      json?.Landing_Page_Url ||\n      json?.landingPageUrl ||\n      json?.url ||\n      'https://example.com';\n\n    return [\n      {\n        json: {\n          ...json,\n          auditData: {\n            url,\n            timestamp,\n            grade,\n            criticalCount:\n              headerStatus['Content-Security-Policy'].present &&\n              hasUnsafeInline(headerStatus['Content-Security-Policy'].value)\n                ? 1\n                : 0,\n            warningCount: Object.keys(headerStatus).filter(\n              h =>\n                !headerStatus[h].present &&\n                !['Strict-Transport-Security', 'Content-Security-Policy'].includes(h)\n            ).length,\n            presentHeaders,\n            configOutput,\n            vulnOutput,\n            headerStatus,\n            originalHeaders: rawHeaders\n          }\n        }\n      }\n    ];\n  } catch (err) {\n    return [{ json: { ...items[0].json, error: err.message } }];\n  }\n}\n\nreturn processSecurityHeaders(items);\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ced29b26-474c-4d62-808a-3284103c9d60",
+          "name": "Send Security Report",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1580,
+            580
+          ],
+          "webhookId": "2979e4dc-1689-447e-8cd4-eb907b4eedf4",
+          "parameters": {
+            "sendTo": "=example@here.com",
+            "message": "={{ $json.emailHtml }}",
+            "options": {},
+            "subject": "=Website Security Audit - {{ $json.auditData.url }}"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "9CEpbF4jIWb2OETv",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "918c0fc4-2f02-4594-bfc9-e36035f2d802",
+          "name": "Sticky Note - Setup Instructions",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -820,
+            400
+          ],
+          "parameters": {
+            "width": 500,
+            "height": 440,
+            "content": "## Quick Setup Guide\n\n1. **Add OpenAI API Credentials**\n   - Go to Settings → Credentials → New → OpenAI API\n   - Enter your API key from platform.openai.com\n\n2. **Add Gmail Credentials**\n   - Go to Settings → Credentials → New → Gmail OAuth2 API\n   - Complete the OAuth setup process\n\n3. **Update Email Configuration**\n   - Open the 'Send Security Report' node\n   - Change the recipient email address from the default\n\n4. **Activate and Deploy Workflow**\n   - Click 'Active' toggle in the top right\n   - Copy the form URL to share with others or use yourself"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6e31b9b8-ae02-4da4-a75e-5d784b210c64",
+          "name": "Sticky Note - OpenAI Analysis",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            120
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 420,
+            "height": 240,
+            "content": "## OpenAI Security Analysis\n\n- Add your OpenAI credentials (required)\n- Using GPT-4o models provides more detailed security analysis\n- Analyzes for XSS, information disclosure, CSRF, and more\n- Each agent scans different aspects of website security\n- Consider upgrading to GPT-4o (not mini) for production use"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "590b1f1c-024d-4002-a8eb-d9dc81528f89",
+          "name": "Sticky Note - Email Configuration",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1480,
+            220
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 360,
+            "height": 200,
+            "content": "## Send Security Report\n\n- Connects securely to Gmail for sending detailed reports\n- Report is sent as HTML formatted email\n- Subject line includes the scanned URL\n- Requires Gmail OAuth credentials to be set up"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dc6223f8-a98c-497a-97c9-af39e80e6d66",
+          "name": "Sticky Note - Audit Process",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -200,
+            780
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 420,
+            "height": 300,
+            "content": "## Security Audit Process\n\n- This workflow performs two parallel security analyses\n- Top path: Checks headers, cookies, and security configurations\n- Bottom path: Analyzes HTML/JavaScript for client-side vulnerabilities\n- Results are merged and formatted into a comprehensive report\n- Analysis is non-invasive and only examines client-side content"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cbda16d4-f1f4-491c-b38c-43d7544e129b",
+          "name": "Sticky Note - How To Use",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            240
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 400,
+            "height": 280,
+            "content": "## How To Use This Workflow\n\n1. **Deploy the workflow** and activate it\n2. **Access the form** via the provided URL\n3. **Enter any website URL** to scan (must include http:// or https://)\n4. **Submit the form** to trigger the analysis\n5. **Check your email** for the detailed security report\n6. **Share the results** with your development team to implement fixes"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4859416f-4de3-43ea-9461-3ead8a38db6e",
+          "name": "Sticky Note - Report Formatting",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1160,
+            220
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 300,
+            "height": 280,
+            "content": "## Report Formatting\n\n- Creates beautiful, professional HTML email report\n- Visual grade indicator (A-F) based on findings\n- Includes count of critical issues and warnings\n- Color-coded sections for easy readability\n- Mobile-friendly responsive design"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a02db4c7-2cad-41ff-b5ad-e1b19604a699",
+          "name": "Sticky Note - Results Processing",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            840,
+            240
+          ],
+          "parameters": {
+            "width": 300,
+            "height": 240,
+            "content": "## Results Processing\n\n- Analyzes AI output to determine security grade\n- Counts critical issues and warnings\n- Extracts present security headers\n- Prepares data for the email report template\n- Generates timestamp for the report"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "41b834c8-62f7-47e7-9d9d-e0e1244faecb",
+          "name": "Extract Headers for Debug",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            200,
+            460
+          ],
+          "parameters": {
+            "jsCode": "// Format headers into a readable string\nlet formattedHeaders = '';\nif (items[0].json.headers) {\n  for (const key in items[0].json.headers) {\n    formattedHeaders += `${key}: ${items[0].json.headers[key]}\\n`;\n  }\n}\n\n// Return both the original data and the formatted headers\nreturn [{\n  json: {\n    ...items[0].json,\n    formattedHeaders: formattedHeaders,\n    originalHeaders: items[0].json.headers // Keep the original headers too\n  }\n}];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0b76b396-fc96-41fc-a095-30971dd88271",
+          "name": "convert to HTML",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1400,
+            580
+          ],
+          "parameters": {
+            "jsCode": "// Create a direct HTML template with improved styling\nconst auditData = items[0].json.auditData;\n\nfunction formatConfigurationIssues() {\n  if (!auditData.configOutput || auditData.configOutput.trim() === '') {\n    return '<p>No specific configuration issues detected.</p>';\n  }\n\n  try {\n    const config = auditData.configOutput.trim();\n    let html = '';\n    const renderedKeys = new Set();\n\n    const renderBlock = (title, description, impact, recommendation) => `\n      <div style=\"border-left: 4px solid #3498DB; padding: 10px; margin-bottom: 15px;\">\n        <div style=\"font-weight: bold; color: #3498DB;\">${title}</div>\n        ${description ? `<div style=\"margin-top: 5px;\">${description}</div>` : ''}\n        ${impact ? `<div style=\"margin-top: 5px; font-style: italic; color: #7F8C8D;\">Impact: ${impact}</div>` : ''}\n        ${recommendation ? `<div style=\"margin-top: 5px;\"><strong>Recommendation:</strong></div>\n          <pre style=\"background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-family: monospace;\">${recommendation}</pre>` : ''}\n      </div>`;\n\n    const sections = config.split(/(?=^###\\s+)/gm).filter(Boolean);\n\n    for (const section of sections) {\n      const sectionTitleMatch = section.match(/^###\\s+(.*)/);\n      const sectionTitle = sectionTitleMatch?.[1]?.trim() || 'Unnamed Section';\n      const sectionKey = sectionTitle.toLowerCase();\n\n      // Skip \"no issues found\" sections\n      if (/no issues? (found|were found)/i.test(section)) continue;\n\n      const lines = section.split(/\\n+/).filter(line => line.trim() !== '');\n\n      let currentTitle = '';\n      let description = '';\n      let impact = '';\n      let recommendation = '';\n\n      for (let i = 0; i < lines.length; i++) {\n        const line = lines[i].trim();\n\n        // Start of a new numbered or bolded issue\n        const numberedTitle = line.match(/^\\d+\\.\\s+\\*\\*(.*?)\\*\\*/);\n        const bulletTitle = line.match(/^\\*\\*(.*?)\\*\\*/);\n\n        if (numberedTitle || (!currentTitle && bulletTitle)) {\n          // Flush last block\n          if (currentTitle && !renderedKeys.has(`${sectionKey}::${currentTitle.toLowerCase()}`)) {\n            html += renderBlock(currentTitle, description, impact, recommendation);\n            renderedKeys.add(`${sectionKey}::${currentTitle.toLowerCase()}`);\n          }\n\n          currentTitle = (numberedTitle || bulletTitle)[1].trim();\n          description = '';\n          impact = '';\n          recommendation = '';\n          continue;\n        }\n\n        const valueMatch = line.match(/- \\*\\*Value:\\*\\*\\s*`?(.*?)`?$/i);\n        const presentMatch = line.match(/- \\*\\*Present\\?\\*\\*.*?(Yes|No)/i);\n        const descMatch = line.match(/- \\*\\*Description:\\*\\*\\s*(.*)/i);\n        const impactMatch = line.match(/- \\*\\*(?:Impact|Security Implication|Potential Impact):\\*\\*\\s*(.*)/i);\n        const recMatch = line.match(/```(?:\\w*)?\\n([\\s\\S]*?)```/i);\n\n        if (descMatch) {\n          description = descMatch[1].trim();\n        } else if (valueMatch || presentMatch) {\n          const present = presentMatch?.[1]?.trim() || 'Unknown';\n          const value = valueMatch?.[1]?.trim() || '[Not provided]';\n          description = `This header is ${present.toLowerCase()}. Value: ${value}.`;\n        }\n\n        if (impactMatch) {\n          impact = impactMatch[1].trim();\n        }\n\n        if (recMatch) {\n          recommendation = recMatch[1].trim();\n        }\n      }\n\n      // Final block in section\n      if (currentTitle && !renderedKeys.has(`${sectionKey}::${currentTitle.toLowerCase()}`)) {\n        html += renderBlock(currentTitle, description, impact, recommendation);\n        renderedKeys.add(`${sectionKey}::${currentTitle.toLowerCase()}`);\n      }\n    }\n\n    return html || '<p>No configuration issues detected.</p>';\n  } catch (e) {\n    console.error('Error in formatConfigurationIssues:', e);\n    return `<p>Error processing configuration issues: ${e.message}</p>`;\n  }\n}\n\n\n\n// Create header badge HTML\nfunction createHeaderBadge(headerName, isWarning = false) {\n  const isPresent = auditData.headerStatus && \n                   auditData.headerStatus[headerName] && \n                   auditData.headerStatus[headerName].present;\n  \n  const color = isWarning && isPresent ? \"#F39C12\" : (isPresent ? \"#27AE60\" : \"#E74C3C\");\n  const icon = isPresent ? \"✓\" : \"✗\";\n  \n  return `<span style=\"display: inline-block; margin: 2px; padding: 4px 8px; background-color: ${color}; color: white; border-radius: 4px; font-size: 12px;\">${icon} ${headerName}</span>`;\n}\n\n// Format warnings section\nfunction formatWarningsSection() {\n  if (!auditData.warningCount || auditData.warningCount === 0 || !auditData.headerStatus) {\n    return '<p>No warnings detected.</p>';\n  }\n\n  const csp = Object.entries(auditData.headerStatus).find(([k]) => k.toLowerCase() === 'content-security-policy');\n  const hsts = Object.entries(auditData.headerStatus).find(([k]) => k.toLowerCase() === 'strict-transport-security');\n  const xss = Object.entries(auditData.headerStatus).find(([k]) => k.toLowerCase() === 'x-xss-protection');\n\n  let warnings = '';\n\n  if (csp && csp[1].value && csp[1].value.includes('unsafe-inline')) {\n    warnings += `\n      <div style=\"margin-top: 15px;\">\n        <div style=\"border-left: 4px solid #F39C12; padding: 10px;\">\n          <strong style=\"color: #F39C12;\">Content-Security-Policy: unsafe-inline</strong>\n          <p>The use of 'unsafe-inline' allows potentially malicious scripts to execute.</p>\n        </div>\n      </div>`;\n  }\n\n  if (hsts && hsts[1].value) {\n    const match = hsts[1].value.match(/max-age=(\\d+)/);\n    const age = match ? parseInt(match[1]) : 0;\n    if (age < 2592000) {\n      warnings += `\n        <div style=\"margin-top: 15px;\">\n          <div style=\"border-left: 4px solid #F39C12; padding: 10px;\">\n            <strong style=\"color: #F39C12;\">Strict-Transport-Security</strong>\n            <p>max-age is too low (${age}). Should be at least 2592000 (30 days).</p>\n          </div>\n        </div>`;\n    }\n  }\n\n  if (xss && !xss[1].present) {\n    warnings += `\n      <div style=\"margin-top: 15px;\">\n        <div style=\"border-left: 4px solid #F39C12; padding: 10px;\">\n          <strong style=\"color: #F39C12;\">Missing X-XSS-Protection</strong>\n          <p>This header enables the browser's XSS filter. Lack of it increases XSS risks.</p>\n        </div>\n      </div>`;\n  }\n\n  if (!warnings) {\n    warnings = `\n      <div style=\"margin-top: 15px;\">\n        <div style=\"border-left: 4px solid #F39C12; padding: 10px;\">\n          <strong style=\"color: #F39C12;\">${auditData.warningCount} warnings detected</strong>\n          <p>See the Configuration Issues section below for more info.</p>\n        </div>\n      </div>`;\n  }\n\n  return warnings;\n}\n\nfunction formatLongValue(value) {\n  if (!value || typeof value !== 'string') return '[empty]';\n\n  // Convert URLs into clickable links\n  value = value.replace(/(https?:\\/\\/[^\\s]+)/g, '<a href=\"$1\" style=\"color: #3498DB; text-decoration: none;\" target=\"_blank\">$1</a>');\n\n  // Add line breaks after commas or semicolons for readability\n  if (value.length > 100) {\n    value = value.replace(/([,;])\\s*/g, '$1<br>');\n  }\n\n  return value;\n}\n\nfunction formatDetailedRawHeaders() {\n  const allHeaders = [];\n  const seen = new Set();\n\n  const addHeader = (name, value) => {\n    const key = name.toLowerCase();\n    if (seen.has(key)) return;\n    seen.add(key);\n\n    const status = Object.entries(auditData.headerStatus || {}).find(\n      ([k]) => k.toLowerCase() === name.toLowerCase()\n    );\n    const present = status ? status[1].present : !!value;\n\n    allHeaders.push({\n      name: name.trim(),\n      present,\n      value: value || '[empty]'\n    });\n  };\n\n  Object.entries(auditData.originalHeaders || {}).forEach(([key, value]) => {\n    if (key) addHeader(key, value);\n  });\n\n  const securityHeaders = [\n    'content-security-policy',\n    'strict-transport-security',\n    'x-content-type-options',\n    'x-frame-options',\n    'referrer-policy',\n    'permissions-policy',\n    'x-xss-protection'\n  ];\n\n  const isWarningHeader = (name, value) => {\n    const lower = name.toLowerCase();\n    if (lower === 'strict-transport-security') {\n      const match = value.match(/max-age=(\\d+)/);\n      return match && parseInt(match[1]) < 2592000;\n    }\n    if (lower === 'content-security-policy') return value.includes(\"'unsafe-inline'\");\n    return false;\n  };\n\n  const tableRows = allHeaders.map(header => {\n    const isSecurity = securityHeaders.includes(header.name.toLowerCase());\n    const warning = isSecurity && isWarningHeader(header.name, header.value);\n    const missing = isSecurity && !header.present;\n\n    let bgColor = '#F8F9FA';\n    let textColor = '#333';\n\n    if (isSecurity) {\n      if (missing) {\n        bgColor = '#FFEBEE';\n        textColor = '#C62828';\n      } else if (warning) {\n        bgColor = '#FFF9C4';\n        textColor = '#F57F17';\n      } else {\n        bgColor = '#E8F5E9';\n        textColor = '#2E7D32';\n      }\n    }\n\n    return `\n      <tr style=\"background-color: ${bgColor}; color: ${textColor};\">\n        <td title=\"${isSecurity ? (missing ? 'Missing' : (warning ? 'Needs review' : 'Secure')) : 'Informational'}\" style=\"padding: 8px; font-weight: bold;\">${header.name}</td>\n        <td style=\"padding: 8px; text-align: center;\">${header.present ? 'present' : 'absent'}</td>\n        <td style=\"padding: 8px; word-break: break-word; font-family: monospace;\">${formatLongValue(header.value)}</td>\n      </tr>`;\n  }).join('');\n\n  return `\n    <table style=\"width: 100%; border-collapse: collapse; margin-top: 10px;\">\n      <thead>\n        <tr style=\"background-color: #E0E0E0;\">\n          <th style=\"padding: 10px;\">Header</th>\n          <th style=\"padding: 10px;\">Status</th>\n          <th style=\"padding: 10px;\">Value</th>\n        </tr>\n      </thead>\n      <tbody>\n        ${tableRows}\n      </tbody>\n    </table>`;\n}\n\n// Format additional information section\nfunction formatAdditionalInfo() {\n  const headers = [\n    {\n      name: 'access-control-allow-origin',\n      description: 'This is a very lax CORS policy. Such a policy should only be used on a public CDN.'\n    },\n    {\n      name: 'strict-transport-security',\n      description: 'HTTP Strict Transport Security is an excellent feature to support on your site and strengthens your implementation of TLS by getting the User Agent to enforce the use of HTTPS.'\n    },\n    {\n      name: 'content-security-policy',\n      description: 'Content Security Policy is an effective measure to protect your site from XSS attacks. By whitelisting sources of approved content, you can prevent the browser from loading malicious assets. Analyse this policy in more detail. You can sign up for a free account on Report URI to collect reports about problems on your site.'\n    },\n    {\n      name: 'permissions-policy',\n      description: 'Permissions Policy is a new header that allows a site to control which features and APIs can be used in the browser.'\n    },\n    {\n      name: 'referrer-policy',\n      description: 'Referrer Policy is a new header that allows a site to control how much information the browser includes with navigations away from a document and should be set by all sites.'\n    },\n    {\n      name: 'x-content-type-options',\n      description: 'X-Content-Type-Options stops a browser from trying to MIME-sniff the content type and forces it to stick with the declared content-type. The only valid value for this header is \"X-Content-Type-Options: nosniff\".'\n    },\n    {\n      name: 'x-frame-options',\n      description: 'X-Frame-Options tells the browser whether you want to allow your site to be framed or not. By preventing a browser from framing your site you can defend against attacks like clickjacking.'\n    },\n    {\n      name: 'report-to',\n      description: 'Report-To enables the Reporting API. This allows a website to collect reports from the browser about various errors that may occur. You can sign up for a free account on Report URI to collect these reports.'\n    },\n    {\n      name: 'nel',\n      description: 'Network Error Logging is a new header that instructs the browser to send reports during various network or application errors. You can sign up for a free account on Report URI to collect these reports.'\n    },\n    {\n      name: 'server',\n      description: 'Server value has been changed. Typically you will see values like \"Microsoft-IIS/8.0\" or \"nginx 1.7.2\".'\n    }\n  ];\n  \n  let rows = '';\n  \n  for (const header of headers) {\n    const isSecurityHeader = ['content-security-policy', 'strict-transport-security', 'x-content-type-options', 'x-frame-options', 'referrer-policy', 'permissions-policy'].includes(header.name);\n    const headerColor = isSecurityHeader ? '#27AE60' : '#3498DB';\n    \n    rows += `\n      <tr>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee; color: ${headerColor}; font-weight: bold;\">${header.name}</td>\n        <td style=\"padding: 8px; border-bottom: 1px solid #eee;\">${header.description}</td>\n      </tr>\n    `;\n  }\n  \n  return `\n    <table style=\"width: 100%; border-collapse: collapse; margin-top: 10px;\">\n      <tbody>\n        ${rows}\n      </tbody>\n    </table>\n  `;\n}\n\nfunction formatSecurityGrade() {\n  const gradeColors = {\n    'A+': '#27AE60',\n    'A': '#27AE60',\n    'A-': '#27AE60',\n    'B+': '#3498DB',\n    'B': '#3498DB',\n    'B-': '#3498DB',\n    'C+': '#F39C12',\n    'C': '#F39C12',\n    'C-': '#F39C12',\n    'D+': '#E74C3C',\n    'D': '#E74C3C',\n    'D-': '#E74C3C',\n    'F': '#E74C3C'\n  };\n  \n  return `<div class=\"grade\" style=\"font-size: 64px; font-weight: bold; width: 100px; height: 100px; line-height: 100px; text-align: center; background-color: ${gradeColors[auditData.grade] || '#E74C3C'}; color: white; border-radius: 5px; margin: 0 auto;\">${auditData.grade}</div>`;\n}\n\nfunction formatCriticalVulnerabilities() {\n  if (!auditData.vulnOutput || auditData.vulnOutput.trim() === '') {\n    return '<p>No vulnerabilities detected.</p>';\n  }\n\n  try {\n    const vuln = auditData.vulnOutput.trim();\n    let html = '';\n    const renderedTitles = new Set();\n\n    // Match sections like ## Category (e.g., ## Critical Vulnerabilities)\n    const categories = vuln.split(/(?=^##\\s+)/gm).filter(Boolean);\n\n    for (const categoryBlock of categories) {\n      const categoryMatch = categoryBlock.match(/^##\\s+(.*)/);\n      const categoryTitle = categoryMatch?.[1]?.trim() || 'Uncategorized';\n\n      // Find numbered items: 1. **Title**\n      const vulns = categoryBlock.split(/(?=^\\d+\\.\\s+\\*\\*)/gm).filter(Boolean);\n\n      for (const vulnBlock of vulns) {\n        const titleMatch = vulnBlock.match(/^\\d+\\.\\s+\\*\\*(.*?)\\*\\*/);\n        const title = titleMatch?.[1]?.trim() || 'Unnamed Vulnerability';\n        const key = `${categoryTitle}::${title}`.toLowerCase();\n        if (renderedTitles.has(key)) continue;\n\n        const descriptionMatch = vulnBlock.match(/\\*\\*Description\\*\\*:?\\s*([\\s\\S]*?)(?=\\n\\*\\*|\\n$)/i);\n        const impactMatch = vulnBlock.match(/\\*\\*(?:Impact|Potential Impact)\\*\\*:?\\s*([\\s\\S]*?)(?=\\n\\*\\*|\\n$)/i);\n        const recommendationMatch = vulnBlock.match(/\\*\\*(?:Recommendation|Mitigation|Fix)\\*\\*:?\\s*([\\s\\S]*?)(?=\\n\\*\\*|\\n$)/i);\n\n        const description = descriptionMatch?.[1]?.trim() || '';\n        const impact = impactMatch?.[1]?.trim() || '';\n        const recommendation = recommendationMatch?.[1]?.trim() || '';\n\n        if (description || impact || recommendation) {\n          html += `\n            <div style=\"border-left: 4px solid #E74C3C; padding: 10px; margin-bottom: 15px;\">\n              <div style=\"font-weight: bold; color: #E74C3C;\">${title}</div>\n              ${description ? `<div style=\"margin-top: 5px;\">${description}</div>` : ''}\n              ${impact ? `<div style=\"margin-top: 5px; font-style: italic; color: #7F8C8D;\">Impact: ${impact}</div>` : ''}\n              ${recommendation ? `<div style=\"margin-top: 5px;\"><strong>Recommendation:</strong> ${recommendation}</div>` : ''}\n            </div>`;\n          renderedTitles.add(key);\n        }\n      }\n    }\n\n    return html || '<p>No vulnerabilities parsed from output.</p>';\n  } catch (e) {\n    console.error('Error in formatCriticalVulnerabilities:', e);\n    return `<p>Error processing vulnerabilities: ${e.message}</p>`;\n  }\n}\n\n\n// Generate all security header badges\nfunction generateAllHeaderBadges() {\n  // Only include the necessary security headers\n  const securityHeaders = [\n    'Content-Security-Policy',\n    'Strict-Transport-Security',\n    'X-Content-Type-Options',\n    'X-Frame-Options',\n    'Referrer-Policy',\n    'Permissions-Policy'\n  ];\n  \n  let badges = '';\n  securityHeaders.forEach(header => {\n                      \n    const isWarning = header === 'Strict-Transport-Security' &&\n                  auditData.headerStatus?.[header]?.value &&\n                  parseInt(auditData.headerStatus[header].value.match(/max-age=(\\d+)/)?.[1] || 0) < 2592000;\n    \n    badges += createHeaderBadge(header, isWarning);\n  });\n  \n  return badges;\n}\n\n<!-- Modify the HTML to directly access auditData.originalHeaders or allHeaders -->\nconst html = `<!DOCTYPE html>\n<html>\n<head>\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>Website Security Audit Report</title>\n    <style>\n        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f9f9f9; }\n        .container { max-width: 950px; margin: 0 auto; }\n        .header { background-color: #2c3e50; color: white; padding: 25px 20px; text-align: center; }\n        .header h1 { color: white; font-size: 28px; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); }\n        .content { padding: 20px; }\n        .summary-box { background-color: #EBF5FB; padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n        .warning-box { background-color: #FEF5E7; padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n        .headers-box { background-color: #F5F7FA; padding: 15px; margin-bottom: 20px; border-radius: 5px; }\n        .findings-box { background-color: white; padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n        .raw-headers-box { background-color: #F5F7FA; padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n        .additional-info-box { background-color: #F5F7FA; padding: 15px; margin-bottom: 20px; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }\n        .details-table { width: 100%; border-collapse: collapse; }\n        .details-table th { text-align: left; padding: 8px; background-color: #f2f2f2; }\n        .details-table td { padding: 8px; border-bottom: 1px solid #eee; }\n        .header-badges { margin-top: 10px; }\n        h1, h2, h3 { color: #2c3e50; }\n        .critical-item { border-left: 4px solid #E74C3C; padding: 10px; margin-bottom: 15px; }\n        .critical-title { font-weight: bold; color: #E74C3C; }\n        .config-item { border-left: 4px solid #3498DB; padding: 10px; margin-bottom: 15px; }\n        .config-title { font-weight: bold; color: #3498DB; }\n        pre { background-color: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-family: monospace; margin-top: 5px; }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <!-- Report Header -->\n        <div class=\"header\">\n            <h1 style=\"color: white; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);\">Website Security Audit Report</h1>\n        </div>\n        \n        <div class=\"content\">\n            <!-- Security Report Summary -->\n            <div class=\"summary-box\">\n                <h2>Security Report Summary</h2>\n                <table style=\"width: 100%;\">\n                    <tr>\n                        <td style=\"width: 120px;\" valign=\"top\">\n                            ${formatSecurityGrade()}\n                        </td>\n                        <td valign=\"top\">\n                            <table style=\"width: 100%;\">\n                                <tr>\n                                    <td><strong>Site:</strong></td>\n                                    <td><a href=\"${auditData.url}\" style=\"color: #3498db;\">${auditData.url}</a></td>\n                                </tr>\n                                <tr>\n                                    <td><strong>Report Time:</strong></td>\n                                    <td>${auditData.timestamp}</td>\n                                </tr>\n                                <tr>\n                                    <td valign=\"top\"><strong>Headers:</strong></td>\n                                    <td>\n                                        <div class=\"header-badges\">\n                                            ${generateAllHeaderBadges()}\n                                        </div>\n                                    </td>\n                                </tr>\n                                <tr>\n                                    <td><strong>Critical Issues:</strong></td>\n                                    <td>${auditData.criticalCount || 0}</td>\n                                </tr>\n                                <tr>\n                                    <td><strong>Warnings:</strong></td>\n                                    <td>${auditData.warningCount || 0}</td>\n                                </tr>\n                            </table>\n                        </td>\n                    </tr>\n                </table>\n            </div>\n\n            <!-- Warnings Section -->\n            <div class=\"warning-box\">\n                <h2>Warnings</h2>\n                ${formatWarningsSection()}\n            </div>\n\n            <!-- Raw Headers Section -->\n            <div class=\"raw-headers-box\">\n                <h2>Raw Headers</h2>\n                ${formatDetailedRawHeaders()}\n            </div>\n\n            <!-- Security Findings -->\n            <div class=\"findings-box\">\n                <h2>Security Findings</h2>\n                \n                <!-- Vulnerabilities -->\n                <h3>Vulnerabilities</h3>\n                ${formatCriticalVulnerabilities()}\n                \n                <!-- Configuration Issues -->\n                <h3>Configuration Issues</h3>\n                ${formatConfigurationIssues()}\n            </div>\n            \n            <div class=\"additional-info-box\">\n              <h2>Additional Information</h2>\n              ${formatAdditionalInfo()}\n            </div>\n            \n            <!-- Implementation Guide -->\n            <div class=\"findings-box\">\n                <h2>Implementation Guide</h2>\n                <p>This report highlights security issues detected through client-side analysis. For a comprehensive security assessment, consider engaging a professional penetration tester.</p>\n                \n                <div style=\"background-color: #eafaf1; padding: 15px; margin-top: 15px; border-left: 4px solid #2ecc71; border-radius: 3px;\">\n                    <p><strong>To implement the fixes above:</strong></p>\n                    <ol style=\"padding-left: 20px; margin-top: 10px;\">\n                        <li>Work with your development team to address each issue in order of criticality</li>\n                        <li>Retest after implementing each fix</li>\n                        <li>Consider implementing a web application firewall for additional protection</li>\n                    </ol>\n                </div>\n            </div>\n            \n            <!-- Footer -->\n            <div style=\"text-align: center; padding: 20px; font-size: 12px; color: #777;\">\n                <p>This report was automatically generated and represents an automated assessment of publicly accessible aspects of your website. For a more comprehensive security assessment, consider engaging with a professional security consultant.</p>\n                <p>&copy; 2025 Website Security Scanner | Generated on ${auditData.timestamp}</p>\n            </div>\n        </div>\n    </div>\n</body>\n</html>`;\n\nreturn [{\n  json: {\n    ...items[0].json,\n    emailHtml: html\n  }\n}];"
+          },
+          "typeVersion": 2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Scrape Website": {
+          "main": [
+            [
+              {
+                "node": "Security Vulnerabilities Audit",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Extract Headers for Debug",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "convert to HTML": {
+          "main": [
+            [
+              {
+                "node": "Send Security Report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Landing Page Url": {
+          "main": [
+            [
+              {
+                "node": "Scrape Website",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Process Audit Results": {
+          "main": [
+            [
+              {
+                "node": "convert to HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Security Results": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Audit Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate Audit Results": {
+          "main": [
+            [
+              {
+                "node": "Process Audit Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Content Analysis": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Security Vulnerabilities Audit",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Headers Analysis": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Security Configuration Audit",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Headers for Debug": {
+          "main": [
+            [
+              {
+                "node": "Security Configuration Audit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Security Configuration Audit": {
+          "main": [
+            [
+              {
+                "node": "Merge Security Results",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Security Vulnerabilities Audit": {
+          "main": [
+            [
+              {
+                "node": "Merge Security Results",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 19,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 3
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Dale Dunlop",
+      "username": "daledunlop",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/5388f694f455e66e83773a986d066ef4326c0f05c4e992a5184cddb27d7de00f?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

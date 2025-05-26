@@ -1,0 +1,207 @@
+{
+  "workflow": {
+    "id": 743,
+    "name": "Translate text from English to German",
+    "views": 2421,
+    "recentViews": 0,
+    "totalViews": 2421,
+    "createdAt": "2020-10-27T11:19:19.778Z",
+    "description": "![workflow-screenshot](fileId:287)",
+    "workflow": {
+      "id": "92",
+      "name": "Translate text from English to German",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            270,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Translate",
+          "type": "n8n-nodes-base.googleTranslate",
+          "position": [
+            470,
+            300
+          ],
+          "parameters": {
+            "text": "Hello from n8n!",
+            "translateTo": "de",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "googleTranslateOAuth2Api": "google-translate"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Google Translate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleTranslate": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 382,
+        "icon": "file:googletranslate.png",
+        "name": "n8n-nodes-base.googleTranslate",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googletranslate/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Translate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAACFlBMVEUAAADd3d3e3t5JifVSkPVVkPVQj/Xi4uJPjfZMjPXf399QivaLkslYsu5UYr5NjfVNmfdPivZKk/VsnOVLi/Xd3d1qdcLe3t5TkPRVkfVag99yfMdueMLo6OjO1uLq5+Pk5OTU1NRKifba2tpJivZLi/Xc3NxMjPVTkPVSj/VPjvVOjfVKivTe3d3f3t5JivTf39/i4eHj4uLb29tVkfXh4OBGiPZJifX69u/j4+Pl4+JEh/Zdd4dJjfn99+//+e7j4d3l5eROctZIV7pHifa5z/G9w8dmfo1ChvWKsvPY4fD08u/IzM+1vsJGVbpJVLefrLNyiJVuhZJhe4lZdINdlvVuofRlm/SUuPPE1fHj6PDW4PD39O/x8O/q7O/R1Ne4v8Sxur9bdYVGivh4pvRyo/OdvvK+0vHQ3PDs6ebO1eLm49/m4ty8wsartbxDUrg/TriKmqR/kZ1sg5FHivpalfU9g/V9qvRimfSCrPOoxPJ1o+2duee/zOPn5eDX2drLz9HCx8uGj8nAxceps7hIVLeXpq+SoauFl6GGlp1JivZSj/RQjvSFr/OsxvLZ4vDS3fDR3PDL2vBrnfBTju+MsOuUtOqHrOqpwelrmubp5uWyxeTFz+HW2d3L0dvU1tdXe9dIbtXV1dCpr9CztM9ThM6UnMyltMd5g8Y5SbZmirVXgLSSn6N7j5t4jJhfd4FWcYFcdH5U9/4yAAAAJXRSTlMA7e107e3tfeztfZVTCufgnlBIEfPx7ern5cyro4J/fn13aT4ne4RB0gAAAydJREFUSMft0VVXG0EYgOHSUsVL3W2zsJsJ2cBKkyVS4gGakODu7sUpUrzu7u7yDzszW0JpsmRzek5vynsxd8+Zb77ZsN5/VkLc/s24WNwWWIpinJyFSpNKR1HJivHmUJyUEBVOW4WpnYoxQqstFfc3eFuqQhwbipXPHRti0dxR4/QgpvcdOXps63I7cCfXxBTB8ySFo8nzExaL5TRMxzAMq4WBw/I4nU9rdF0pJniMuTsdLJK6X1aj0YDd4TAelqZK3JWCUNXciCx9sVilYZaxVsIb5TCdbhOMnqoqwVRWSEIM5zYDJjLegjBx1VhR2jBcXNJShC3N3e0AgMWYjYDJokrBRlgJnqN5mkTYegvAWLi0iNg6aiwrJCgK7g1+GMIE+dgMgKq6enJtDDfEN5tKeYoocrvLy903CgmaJA3jHUD7zFfg1UfC6lKTzUrxjUajscLjKeJJkuTG2vWWzAJxvtWiRzFh8TaIrTZTC0mTAy7XyGhF1TDCxOV3tbVd/f6+vJo8WO20Vha7hMohJ01yzkGbsRw+GJb96Zso+v3+Ooev3+EQF3RhMfrVrGtCWQNncBJNHqHJQKLqH8zY7fbOTnut74t92j6llcM0N+QRKm0lJTcrBHeWGllCndbWrtMzzMOawEKrTs8CGYz0SJnRBBNaijlsCcIw/vlrLgNAX12NDm5bDmNd2FRafr3ZRXOYItww+72X1XcFFjUqII9xvIGjaIOBQBbHX2pbquuacjhyWRXUYfF2Ugoj6ZRSO++/LHD4xFmdCgYiYUyDVu0ca63xi73QomSwjFVzWU97RdGXy0g64thBCsvIOPfxx6K3riBXujtGFmOy2kL8ZmlS7w1ALYsJWChFcberzYD1BvpnWIVYja2U4ZFZBRhvQOxkw+OkEIkpbvCeGa5ZO99XrQmPU3YFYZDWZ0vVDzwBUINMaBEO7dSJTX924IzUi+dtEEMuLUxZ8XNnUd1zr80qXDQ4ITE/Jycnv/vVxIrNhFhZh7qh7Xnb/ptVjuPhzT0XzGDFRoFTE/OxDVKMlXbww3uNJmijxPF7YjbGrGrv8Q3rrfdv+glmHSSwtlSRcgAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Google Translate",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 287,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/b369c44241b14a738fed1ba947a3dac7.png"
+      }
+    ]
+  }
+}

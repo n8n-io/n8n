@@ -1,0 +1,66 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/common-issues/
+Scraped_At: 2025-05-20T18:56:36.773425
+
+Schedule Trigger node common issues
+#
+Here are some common errors and issues with the
+Schedule Trigger node
+and steps to resolve or troubleshoot them.
+Invalid cron expression
+#
+This error occurs when you set
+Trigger Interval
+to
+Custom (Cron)
+and n8n doesn't understand your cron expression. This may mean that there is a mistake in your cron expression or that you're using an incompatible syntax.
+To debug, check that the following:
+That your cron expression follows the syntax used in the
+cron examples
+That your cron expression (after removing the
+seconds column
+) validates on
+crontab guru
+Scheduled workflows run at the wrong time
+#
+If the Schedule Trigger node runs at the wrong time, it may mean that you need to adjust the time zone n8n uses.
+Adjust the timezone globally
+#
+If you're using
+n8n Cloud
+, follow the instructions on the
+set the Cloud instance timezone
+page to ensure that n8n executes in sync with your local time.
+If you're
+self hosting
+, set your global timezone using the
+GENERIC_TIMEZONE
+environment variable
+.
+Adjust the timezone for an individual workflow
+#
+To set the timezone for an individual workflow:
+Open the workflow on the canvas.
+Select the
+Three dots icon
+in the upper-right corner.
+Select
+Settings
+.
+Change the
+Timezone
+setting.
+Select
+Save
+.
+Variables not working as expected
+#
+While variables can be used in the scheduled trigger, their values only get evaluated when the workflow is activated. After activating the worfklow, you can alter a variable's value in the settings but it won't change how often the workflow runs. To work around this, you must stop and then re-activate the workflow to apply the updated variable value.
+Changing the trigger interval
+#
+You can update the scheduled trigger interval at any time but it only gets updated when the workflow is activated. If you change the trigger interval after the workflow is active, the changes won't take effect until you stop and then re-activate the workflow.
+Also, the schedule begins from the time when you activate the workflow. For example, if you had originally set a schedule of every 1 hour and it should execute at 12:00, if you changed it to a 2 hour schedule and re-activated the workflow at 11:30, the next execution will be at 13:30, 2 hours from when you activated it.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

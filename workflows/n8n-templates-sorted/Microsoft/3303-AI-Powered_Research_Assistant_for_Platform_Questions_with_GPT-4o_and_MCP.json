@@ -1,0 +1,343 @@
+{
+  "workflow": {
+    "id": 3303,
+    "name": "AI-Powered Research Assistant for Platform Questions with GPT-4o and MCP",
+    "views": 16008,
+    "recentViews": 117,
+    "totalViews": 16008,
+    "createdAt": "2025-03-24T09:42:01.239Z",
+    "description": " ## Description\n\nThis workflow empowers you to effortlessly get answers to your n8n platform questions through an AI-powered assistant. Simply send your query, and the assistant will search documentation, forum posts, and example workflows to provide comprehensive, accurate responses tailored to your specific needs.\n\n&gt; **Note:** This workflow uses community nodes (n8n-nodes-mcp.mcpClientTool) and will only work on self-hosted n8n instances. You'll need to install the required community nodes before importing this workflow.\n\n!![image.png](fileId:1035)\n\n## What does this workflow do?\n\nThis workflow streamlines the information retrieval process by automatically researching n8n platform documentation, community forums, and example workflows, providing you with relevant answers to your questions.\n\n## Who is this for?\n\n- **New n8n Users**: Quickly get answers to basic platform questions and learn how to use n8n effectively\n- **Experienced Developers**: Find solutions to specific technical issues or discover advanced workflows\n- **Teams**: Boost productivity by automating the research process for n8n platform questions\n- **Anyone** looking to leverage AI for efficient and accurate n8n platform knowledge retrieval\n\n## Benefits\n\n- **Effortless Research**: Automate the research process across n8n documentation, forum posts, and example workflows\n- **AI-Powered Intelligence**: Leverage the power of LLMs to understand context and generate helpful responses\n- **Increased Efficiency**: Save time and resources by automating the research process\n- **Quick Solutions**: Get immediate answers to your n8n platform questions\n- **Enhanced Learning**: Discover new workflows, features, and best practices to improve your n8n experience\n\n## How It Works\n\n1. **Receive Request**: The workflow starts when a chat message is received containing your n8n-related question\n2. **AI Processing**: The AI agent powered by OpenAI GPT-4o analyzes your question\n3. **Research and Information Gathering**: The system searches across multiple sources:\n   - Official n8n documentation for general knowledge and how-to guides\n   - Community forums for bug reports and specific issues\n   - Example workflow repository for relevant implementations\n4. **Response Generation**: The AI agent compiles the research and generates a clear, comprehensive answer\n5. **Output**: The workflow provides you with the relevant information and step-by-step guidance when applicable\n\n## n8n Nodes Used\n\n- When chat message received (Chat Trigger)\n- OpenAI Chat Model (GPT-4o mini)\n- N8N AI Agent\n- n8n-assistant tools (MCP Client Tool - Community Node)\n- n8n-assistant execute (MCP Client Tool - Community Node)\n\n## Prerequisites\n\n- Self-hosted n8n instance\n- OpenAI API credentials\n- MCP client community node installed\n- MCP server configured to search n8n resources\n\n## Setup\n\n1. Import the workflow JSON into your n8n instance\n2. Configure the OpenAI credentials\n3. Configure your MCP client API credentials\n4. In the n8n-assistant execute node, ensure the parameter is set to \"specific\" (corrected from \"spesific\")\n5. Test the workflow by sending a message with an n8n-related question\n\n## MCP Server Connection\n\nTo connect to the MCP server that powers this assistant's research capabilities, you need to use the following URL:\nhttps://smithery.ai/server/@onurpolat05/n8n-assistant\n\nThis MCP server is specifically designed to search across three types of n8n resources:\n1. Official documentation for general platform information and workflow creation guidance\n2. Community forums for bug-related issues and troubleshooting\n3. Example workflow repositories for reference implementations\n\nConfigure this URL in your MCP client credentials to enable the assistant to retrieve relevant information based on user queries.\n\nThis workflow combines the convenience of chat with the power of AI to provide a seamless n8n platform research experience. Start getting instant answers to your n8n questions today!",
+    "workflow": {
+      "meta": {
+        "instanceId": "02e782574ebb30fbddb2c3fd832c946466d718819d25f6fe4b920124ff3fc2c1",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "bc58bd73-921a-445c-a905-6f1bbbc0e9c3",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            1160,
+            420
+          ],
+          "webhookId": "cf762550-98e7-42f0-a0f3-cd9594331c00",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "308aea70-2831-4abd-90f6-d4cbf3901be4",
+          "name": "n8n Research AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1440,
+            420
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "You are an assistant integrated with the n8n Multi-Channel Platform (MCP). Your primary role is to interact with the MCP to retrieve available tools and content based on user queries about n8n. When a user asks for information or assistance regarding n8n, first send a request to the MCP to fetch the relevant tools and content. Analyze the retrieved data to understand the available options, then create a tailored response that addresses their specific needs regarding n8n functionalities, documentation, forum posts, or example workflows. Ensure that your responses are clear, actionable, and directly related to the user's queries about n8n."
+            }
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "94cb78f5-3520-4432-b3c9-0524411113e9",
+          "name": "n8n-assistant Tool Lookup",
+          "type": "n8n-nodes-mcp.mcpClientTool",
+          "position": [
+            1500,
+            640
+          ],
+          "parameters": {},
+          "credentials": {
+            "mcpClientApi": {
+              "id": "w1ZOoPXYGz6W2g1T",
+              "name": "n8n-assistant"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "78a87949-afda-4c52-ae9f-f8d343fb6567",
+          "name": "n8n-assistant Execute Tool",
+          "type": "n8n-nodes-mcp.mcpClientTool",
+          "position": [
+            1700,
+            640
+          ],
+          "parameters": {
+            "toolName": "={{$fromAI(\"tool\",\"Set this specific tool name\")}}",
+            "operation": "executeTool",
+            "toolParameters": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Tool_Parameters', ``, 'json') }}"
+          },
+          "credentials": {
+            "mcpClientApi": {
+              "id": "w1ZOoPXYGz6W2g1T",
+              "name": "n8n-assistant"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cc1619ec-6f49-45e6-8a7b-440da7ee5bc5",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1320,
+            640
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "q2i0xAiFxUOYOlJ0",
+              "name": "OpenAI_BCP"
+            }
+          },
+          "typeVersion": 1.2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "n8n Research AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "n8n-assistant Tool Lookup": {
+          "ai_tool": [
+            [
+              {
+                "node": "n8n Research AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "n8n Research AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "n8n-assistant Execute Tool": {
+          "ai_tool": [
+            [
+              {
+                "node": "n8n Research AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-mcp.mcpClientTool": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Onur",
+      "username": "onurpolat05",
+      "bio": "Hello, I'm Onur\nI've been working as a freelance software developer for about four years. In addition, I develop my own projects. For some time, I have been improving myself and providing various services related to AI and AI workflows. Both by writing low code and code. If you have any questions, don't hesitate to contact me.",
+      "verified": true,
+      "links": [
+        "https://onurpolat.bio"
+      ],
+      "avatar": "https://gravatar.com/avatar/1b89c2342766e3851ac5f68ac7f001c946e313d47a6e0b0d396b62ba9f850c37?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1035,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_4d5a12762a.png"
+      }
+    ]
+  }
+}

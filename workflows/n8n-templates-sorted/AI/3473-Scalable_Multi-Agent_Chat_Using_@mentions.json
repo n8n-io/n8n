@@ -1,0 +1,1202 @@
+{
+  "workflow": {
+    "id": 3473,
+    "name": "Scalable Multi-Agent Chat Using @mentions",
+    "views": 8576,
+    "recentViews": 177,
+    "totalViews": 8576,
+    "createdAt": "2025-04-08T12:49:14.252Z",
+    "description": "### Summary\n\nEngage multiple, uniquely configured AI agents (using different models via OpenRouter) in a single conversation. Trigger specific agents with @mentions or let them all respond. Easily scalable by editing simple JSON settings.\n\n### Overview\n\nThis workflow is for users who want to experiment with or utilize multiple AI agents with distinct personalities, instructions, and underlying models within a single chat interface, without complex setup. It solves the problem of managing and interacting with diverse AI assistants simultaneously for tasks like brainstorming, comparative analysis, or role-playing scenarios.\n\nIt enables dynamic conversations with multiple AI assistants simultaneously within a single chat interface. You can:\n\n* Define multiple unique AI agents.\n* Configure each agent with its own name, system instructions, and LLM model (via OpenRouter).\n* Interact with specific agents using `@AgentName` mentions.\n* Have all agents respond (in random order) if no specific agents are mentioned.\n* Maintain conversation history across multiple turns.\n\nIt's designed for flexibility and scalability, allowing you to easily add or modify agents without complex workflow restructuring.\n\n### Key Features\n\n* **Multi-Agent Interaction:** Chat with several distinct AI personalities at once.\n* **Individual Agent Configuration:** Customize name, system prompt, and LLM for each agent.\n* **OpenRouter Integration:** Access a wide variety of LLMs compatible with OpenRouter.\n* **Mention-Based Triggering:** Direct messages to specific agents using `@AgentName`.\n* **All-Agent Fallback:** Engages all defined agents randomly if no mentions are used.\n* **Scalable Setup:** Agent configuration is centralized in a single Code node (as JSON).\n* **Conversation Memory:** Remembers previous interactions within the session.\n\n### How to Set Up\n\n1.  **Configure Settings (Code Nodes):**\n    * Open the `Define Global Settings` Code node: Edit the JSON to set user details (name, location, notes) and add any system message instructions that *all* agents should follow.\n    * Open the `Define Agent Settings` Code node: Edit the JSON to define your agents. Add or remove agent objects as needed. For each agent, specify:\n        * `\"name\"`: The unique name for the agent (used for @mentions).\n        * `\"model\"`: The OpenRouter model identifier (e.g., `\"openai/gpt-4o\"`, `\"anthropic/claude-3.7-sonnet\"`).\n        * `\"systemMessage\"`: Specific instructions or persona for *this* agent.\n2.  **Add OpenRouter Credentials:**\n    * Locate the `AI Agent` node.\n    * Click the `OpenRouter Chat Model` node connected below it via the `Language Model` input.\n    * In the 'Credential for OpenRouter API' field, select or create your OpenRouter API credentials.\n\n### How to Use\n\n1.  Start a conversation using the Chat Trigger input.\n2.  To address specific agents, include `@AgentName` in your message. Agents will respond sequentially in the order they are mentioned.\n    * *Example:* `\"@Gemma @Claude, please continue the count: 1\"` will trigger Gemma first, followed by Claude.\n3.  If your message contains no `@mentions`, *all* agents defined in `Define Agent Settings` will respond in a randomized order.\n    * *Example:* `\"What are your thoughts on the future of AI?\"` will trigger Chad, Claude, and Gemma (based on your default settings) in a random sequence.\n4.  The workflow will collect responses from all triggered agents and return them as a single, formatted message.\n\n### How It Works (Technical Details)\n\n1.  **Settings Nodes:** `Define Global Settings` and `Define Agent Settings` load your configurations.\n2.  **Mention Extraction:** The `Extract mentions` Code node parses the user's input (`chatInput`) from the `When chat message received` trigger. It looks for `@AgentName` patterns matching the names defined in `Define Agent Settings`.\n3.  **Agent Selection:**\n    * If mentions are found, it creates a list of the corresponding agent configurations in the order they were mentioned.\n    * If no mentions are found, it creates a list of *all* defined agent configurations and shuffles them randomly.\n4.  **Looping:** The `Loop Over Items` node iterates through the selected agent list.\n5.  **Dynamic Agent Execution:** Inside the loop:\n    * An `If` node (`First loop?`) checks if it's the first agent responding. If yes (`true` path -&gt; `Set user message as input`), it passes the original user message to the Agent. If no (`false` path -&gt; `Set last Assistant message as input`), it passes the *previous* agent's formatted output (`lastAssistantMessage`) to the *next* agent, creating a sequential chain.\n    * The `AI Agent` node receives the input message. Its `System Message` and the `Model` in the connected `OpenRouter Chat Model` node are dynamically populated using expressions referencing the current agent's data from the loop (`{{ $('Loop Over Items').item.json.* }}`).\n    * The `Simple Memory` node provides conversation history to the `AI Agent`.\n    * The agent's response is formatted (e.g., `**AgentName**:\\n\\nResponse`) in the `Set lastAssistantMessage` node.\n6.  **Response Aggregation:** After the loop finishes, the `Combine and format responses` Code node gathers all the `lastAssistantMessage` outputs and joins them into a single text block, separated by horizontal rules (`---`), ready to be sent back to the user.\n\n### Benefits\n\n* **Scalability & Flexibility:** Instead of complex branching logic, adding, removing, or modifying agents only requires editing simple JSON in the `Define Agent Settings` node, making setup and maintenance significantly easier, especially for those managing multiple assistants.\n* **Model Choice:** Use the best model for each agent's specific task or persona via OpenRouter.\n* **Centralized Configuration:** Keeps agent setup tidy and manageable.\n\n### Limitations\n\n* **Sequential Responses:** Agents respond one after another based on mention order (or randomly), not in parallel.\n* **No Direct Agent-to-Agent Interaction (within a turn):** Agents cannot directly call or reply to each other *during* the processing of a single user message. Agent B sees Agent A's response only because the workflow passes it as input in the next loop iteration.\n* **Delayed Output:** The user receives the combined response only *after* all triggered agents have completed their generation.",
+    "workflow": {
+      "id": "0QQxgdQABUbbDJ0G",
+      "meta": {
+        "instanceId": "c98909b50b05c4069bd93ee5a4753d07322c9680e81da8568e96de2c713adb5c"
+      },
+      "name": "Multi-Agent Conversation",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "218308e2-dc68-43ee-ae84-d931ad7a4ac5",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -1880,
+            -3280
+          ],
+          "webhookId": "a74752f3-419a-4510-856f-3efeaceec019",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "a519fe1e-8739-46e0-9770-deb256ab96cf",
+          "name": "AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -340,
+            -3280
+          ],
+          "parameters": {
+            "text": "={{ $json.chatInput }}",
+            "options": {
+              "systemMessage": "=Current date is {{ $now.format('yyyy-MM-dd') }}. The current time is {{ $now.format('HH:MM:ss') }}.\n\nThe user is {{ $('Define Global Settings').item.json.user.name }}, based in {{ $('Define Global Settings').item.json.user.location }}. {{ $('Define Global Settings').item.json.user.notes }}\n\nYou are part of a conversation with a user and multiple AI Assistants: {{ $('Define Agent Settings').item.json.keys() }}\n\nYou are {{ $('First loop?').item.json.name }}.\n\n{{ $('Loop Over Items').item.json.systemMessage }}\n\n{{ $('Define Global Settings').item.json.global.systemMessage }}"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "2e00f0ff-e7af-45d5-99bc-23031b5d7892",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            -1000,
+            -3280
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "1c979a20-46a5-4591-92da-82c1c96277c6",
+          "name": "Extract mentions",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1220,
+            -3280
+          ],
+          "parameters": {
+            "jsCode": "// Analyzes the user message and extracts @mentions in the order they appear. If there are none, all Assistants will be called in random order.\n// --- Configuration: Adjust these lines ---\nconst chatMessageNodeName = 'When chat message received'; // <-- Replace with your Chat Message node name\nconst agentSetupNodeName = 'Define Agent Settings';         // <-- Replace with your Agent Setup node name\nconst chatTextPath = 'json.chatInput';               // <-- Replace with path to text in Chat node output (e.g., 'json.message')\n// --- End Configuration ---\n\n// Helper function for safe nested property access (alternative to _.get)\nfunction getSafe(obj, path, defaultValue = undefined) {\n    const pathParts = path.split('.');\n    let current = obj;\n    for (const part of pathParts) {\n        if (current === null || current === undefined || typeof current !== 'object' || !Object.prototype.hasOwnProperty.call(current, part)) {\n            return defaultValue;\n        }\n        current = current[part];\n    }\n    return current ?? defaultValue;\n}\n\n// 1. Get Chat Text\nconst chatMessageNode = $(chatMessageNodeName);\nconst chatText = getSafe(chatMessageNode.item, chatTextPath, '');\n\n// 2. Get Agent Data and Names\nconst agentSetupNode = $(agentSetupNodeName);\nconst agentData = getSafe(agentSetupNode.item, 'json', {}); // e.g., { Chad: {...}, Gemma: {...}, Claude: {...} }\nconst agentNames = Object.keys(agentData);\n\n// 3. Find all mentions, their names, and their positions in the text\nconst foundMentions = [];\nif (chatText && agentNames.length > 0) {\n    const escapeRegex = (s) => s.replace(/[-\\/\\\\^$*+?.()|[\\]{}]/g, '\\\\$&');\n    const agentPatternPart = agentNames.map(escapeRegex).join('|');\n\n    if (agentPatternPart) {\n        const mentionPattern = new RegExp(`\\\\B@(${agentPatternPart})\\\\b`, 'gi');\n        const matches = chatText.matchAll(mentionPattern);\n\n        for (const match of matches) {\n            const matchedNameCaseInsensitive = match[1];\n            const matchIndex = match.index;\n            const canonicalName = agentNames.find(name => name.toLowerCase() === matchedNameCaseInsensitive.toLowerCase());\n            if (canonicalName) {\n                foundMentions.push({ name: canonicalName, index: matchIndex });\n            }\n        }\n    }\n}\n\n// 4. Sort the found mentions by their index (order of appearance)\nfoundMentions.sort((a, b) => a.index - b.index);\n\n// 5. Map the sorted mentions to the desired output format (array of agent detail objects)\nlet outputArray = foundMentions.map(mention => {\n    const agentDetails = agentData[mention.name];\n    if (!agentDetails) {\n        console.warn(`Could not find details for agent: ${mention.name}`);\n        return null;\n    }\n    return {\n        name: agentDetails.name,\n        model: agentDetails.model,\n        systemMessage: agentDetails.systemMessage\n    };\n}).filter(item => item !== null);\n\n// 6. Check if any mentions were specifically found. If not, populate outputArray with ALL agents in RANDOM order.\nif (outputArray.length === 0 && foundMentions.length === 0) { // Check if NO mentions were found initially\n    // --- NO MENTIONS FOUND ---\n    // Populate outputArray with ALL agents from agentData\n    const allAgentDetailsArray = Object.values(agentData);\n\n    // --- Simple Randomization ---\n    // Shuffle the array in place using sort with a random comparator\n    allAgentDetailsArray.sort(() => 0.5 - Math.random());\n    // --- End Randomization ---\n\n    // Map all agents (now in random order) to the output structure\n    outputArray = allAgentDetailsArray.map(agentObject => ({\n        name: agentObject.name,\n        model: agentObject.model,\n        systemMessage: agentObject.systemMessage\n    }));\n} // Intentionally no 'else' here, if outputArray already had items from mentions, we use that.\n\n// 7. Final Output Formatting (Handles both cases: specific mentions OR all agents)\n// Check if, after everything, the outputArray is *still* empty (e.g., if agentData was empty initially)\nif (outputArray.length === 0) {\n    // If still empty, return a status or error as a fallback\n     return [{ json: { status: \"no_agents_available\", message: \"No mentions found and no agents defined.\" } }];\n} else {\n    // Return the array of agent objects formatted for n8n (multiple items)\n    return outputArray.map(agentObject => ({ json: agentObject }));\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "45f635ca-f4fa-4f6c-a32a-9722906255fd",
+          "name": "Simple Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -192,
+            -3060
+          ],
+          "parameters": {
+            "sessionKey": "={{ $('When chat message received').first().json.sessionId }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 99
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "5c903044-bce2-4aa8-b168-a460a4999c54",
+          "name": "Set last Assistant message as input",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -560,
+            -3180
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "38aa959a-e1e5-4c84-a7bd-ff5e0f61b62d",
+                  "name": "=chatInput",
+                  "type": "string",
+                  "value": "={{ $('Set lastAssistantMessage').first().json.lastAssistantMessage }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7b389b9f-1751-4bc1-9c6f-bf6a04a1e09f",
+          "name": "Set user message as input",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -560,
+            -3380
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "75b61275-7526-4431-b624-f8e098aa812d",
+                  "name": "chatInput",
+                  "type": "string",
+                  "value": "={{ $('When chat message received').item.json.chatInput }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a238817f-0d10-4cd4-9760-53f69bb179f7",
+          "name": "First loop?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -780,
+            -3280
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "51c41fdf-f4d3-4c7a-ac18-06815a59a958",
+                  "operator": {
+                    "type": "number",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $runIndex}}",
+                  "rightValue": 0
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "415927d7-b1a4-42b2-9607-c6ff707a528b",
+          "name": "Set lastAssistantMessage",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            36,
+            -3155
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b93025b2-f5a7-476b-bd09-b5b4af050e73",
+                  "name": "lastAssistantMessage",
+                  "type": "string",
+                  "value": "=**{{ $('Loop Over Items').item.json.name }}**:\n\n{{ $json.output }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "77861e4b-a1d2-4c35-bf50-15914602a8b5",
+          "name": "Combine and format responses",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -780,
+            -3480
+          ],
+          "parameters": {
+            "jsCode": "// Get the array of items from the input (output of the loop)\nconst inputItems = items;\n\n// Extract the 'lastAssistantMessage' from each item's JSON data.\n// If the field is missing or not a string, use an empty string to avoid errors.\nconst messages = inputItems.map(item => {\n  const message = item.json.lastAssistantMessage;\n  return typeof message === 'string' ? message : '';\n});\n\n// Join the extracted messages together with a horizontal rule separator\nconst combinedText = messages.join('\\n\\n---\\n\\n');\n\n// Return a new single item containing the combined text.\n// You can rename 'output' if you like.\nreturn [{ json: { output: combinedText } }];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "4da2f95d-bce4-4844-a23c-63ca777efbfd",
+          "name": "Define Global Settings",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1660,
+            -3280
+          ],
+          "parameters": {
+            "jsCode": "// Configure Global settings. This includes information about you - the user - and a section of the System Message that all Assistants will see. (Assistant-specific System Message sections can be set in the 'Define Agent Settings' node.)\nreturn [\n  {\n    json: {\n      \"user\": {\n        \"name\": \"Jon\",\n        \"location\": \"Melbourne, Australia\",\n        \"notes\": \"Jon likes a casual, informal conversation style.\"\n      },\n      \"global\": {\n        \"systemMessage\": \"Don't overdo the helpful, agreeable approach.\"\n      }\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6639a554-9e5f-40ac-b68e-b8eaa777252d",
+          "name": "Define Agent Settings",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1440,
+            -3280
+          ],
+          "parameters": {
+            "jsCode": "// Configure Assistants. The number of Assistants can be changed by adding or removing JSON objects. Use the OpenRouter model naming convention.\nreturn [\n  {\n    json: {\n      \"Chad\": {\n        \"name\": \"Chad\",\n        \"model\": \"openai/gpt-4o\",\n        \"systemMessage\": \"You are a helpful Assistant. You are eccentric and creative, and try to take discussions into unexpected territory.\"\n      },\n      \"Claude\": {\n        \"name\": \"Claude\",\n        \"model\": \"anthropic/claude-3.7-sonnet\",\n        \"systemMessage\": \"You are logical and practical.\"\n      },\n      \"Gemma\": {\n        \"name\": \"Gemma\",\n        \"model\": \"google/gemini-2.0-flash-lite-001\",\n        \"systemMessage\": \"You are super friendly and love to debate.\"\n      }\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d55a7e02-3574-4d78-a141-db8d3657857b",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1750,
+            -3620
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 500,
+            "height": 500,
+            "content": "## Step 1: Configure Settings Nodes\n\nEdit the JSON in these nodes to:\n\n- Configure details about you (the user)\n- Define content that will appear in all system messages\n- Define Agents.\n\nFor Agents, you can configure:\n- How many you create\n- Their names\n- The LLM model they use (choose any that are available via OpenRouter)\n- Agent-specific system prompt content"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d3eb2797-4008-4bdb-a588-b2412ed5ffa7",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -400,
+            -3620
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 360,
+            "height": 720,
+            "content": "## Step 2: Connect Agent to OpenRouter\n\nSet your OpenRouter credentials, and all other parameters including system messages and model selection are dynamically populated."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a6085a55-db36-42d8-8c57-c9123490581f",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1940,
+            -3900
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 2180,
+            "height": 1100,
+            "content": "# Scalable Multi-Agent Conversations\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d2ee6317-3a9c-4df8-8fce-87daa3530233",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1200,
+            -3860
+          ],
+          "parameters": {
+            "width": 380,
+            "height": 360,
+            "content": "## About this workflow\n\n**What does this workflow do?**\nEnables you to initiate a conversation with multiple AI agents at once. Each agent can be configured with a unique name, system instructions, a different model.\n\n**How do I use it?**\n1. Configure the settings nodes to create the Agents you need.\n2. Call one or more individual agents using @Name mentions in your messages. If your message does not have @mentions, all agents will be called, in random order."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a190a268-7f90-4c4e-aceb-482545d0b72b",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -820,
+            -3860
+          ],
+          "parameters": {
+            "width": 380,
+            "height": 360,
+            "content": "**How does it work?**\nSettings are configured in the first two nodes after the chat trigger. Then @mentions in your message are extracted and fed into a loop. With each loop, the agent's system message and model are dynamically populated, avoiding the need to create multiple agent nodes and complex routing logic.\n\nWhen all agents have had their say, their responses are combined and formatted. The use of a shared memory node enables multi-round conversations.\n\n**What are the limitations?**\nAgents cannot call each other or respond in parallel. Agents' responses are not visible to the user until all agents have responded.\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "30d8c207-9a7a-46c5-be89-0deafc6c183f",
+          "name": "OpenRouter Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+          "position": [
+            -312,
+            -3060
+          ],
+          "parameters": {
+            "model": "={{ $('Extract mentions').item.json.model }}",
+            "options": {}
+          },
+          "credentials": {
+            "openRouterApi": {
+              "id": "jB56IT6KRdHSBbkw",
+              "name": "OpenRouter account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "6c0312e7-7a81-41cd-9403-8ad947100b80",
+      "connections": {
+        "AI Agent": {
+          "main": [
+            [
+              {
+                "node": "Set lastAssistantMessage",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "First loop?": {
+          "main": [
+            [
+              {
+                "node": "Set user message as input",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Set last Assistant message as input",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [
+              {
+                "node": "Combine and format responses",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "First loop?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract mentions": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Define Agent Settings": {
+          "main": [
+            [
+              {
+                "node": "Extract mentions",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenRouter Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Define Global Settings": {
+          "main": [
+            [
+              {
+                "node": "Define Agent Settings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set lastAssistantMessage": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set user message as input": {
+          "main": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Define Global Settings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine and format responses": {
+          "main": [
+            []
+          ]
+        },
+        "Set last Assistant message as input": {
+          "main": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 18,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.code": {
+          "count": 4
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenRouter": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Jon Doran",
+      "username": "jondoran",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/ab9ba42e4020de1c012fcb716f96c14a4e293ca8f605bbb0f34bf1dfb84fc99c?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1281,
+        "icon": "file:openrouter.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenrouter/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenRouter Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyBmaWxsPSIjOTRBM0I4IiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjx0aXRsZT5PcGVuUm91dGVyPC90aXRsZT48cGF0aCBkPSJNMTYuODA0IDEuOTU3bDcuMjIgNC4xMDV2LjA4N0wxNi43MyAxMC4yMWwuMDE3LTIuMTE3LS44MjEtLjAzYy0xLjA1OS0uMDI4LTEuNjExLjAwMi0yLjI2OC4xMS0xLjA2NC4xNzUtMi4wMzguNTc3LTMuMTQ3IDEuMzUyTDguMzQ1IDExLjAzYy0uMjg0LjE5NS0uNDk1LjMzNi0uNjguNDU1bC0uNTE1LjMyMi0uMzk3LjIzNC4zODUuMjMuNTMuMzM4Yy40NzYuMzE0IDEuMTcuNzk2IDIuNzAxIDEuODY2IDEuMTEuNzc1IDIuMDgzIDEuMTc3IDMuMTQ3IDEuMzUybC4zLjA0NWMuNjk0LjA5MSAxLjM3NS4wOTQgMi44MjUuMDMzbC4wMjItMi4xNTkgNy4yMiA0LjEwNXYuMDg3TDE2LjU4OSAyMmwuMDE0LTEuODYyLS42MzUuMDIyYy0xLjM4Ni4wNDItMi4xMzcuMDAyLTMuMTM4LS4xNjItMS42OTQtLjI4LTMuMjYtLjkyNi00Ljg4MS0yLjA1OWwtMi4xNTgtMS41YTIxLjk5NyAyMS45OTcgMCAwMC0uNzU1LS40OThsLS40NjctLjI4YTU1LjkyNyA1NS45MjcgMCAwMC0uNzYtLjQzQzIuOTA4IDE0LjczLjU2MyAxNC4xMTYgMCAxNC4xMTZWOS44ODhsLjE0LjAwNGMuNTY0LS4wMDcgMi45MS0uNjIyIDMuODA5LTEuMTI0bDEuMDE2LS41OC40MzgtLjI3NGMuNDI4LS4yOCAxLjA3Mi0uNzI2IDIuNjg2LTEuODUzIDEuNjIxLTEuMTMzIDMuMTg2LTEuNzggNC44ODEtMi4wNTkgMS4xNTItLjE5IDEuOTc0LS4yMTMgMy44MTQtLjEzOGwuMDItMS45MDd6Ij48L3BhdGg+PC9zdmc+Cg=="
+        },
+        "displayName": "OpenRouter Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

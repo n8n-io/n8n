@@ -1,0 +1,46 @@
+URL: https://docs.n8n.io/advanced-ai/examples/agent-chain-comparison/
+Scraped_At: 2025-05-20T18:40:07.483618
+
+Demonstration of key differences between agents and chains
+#
+In this workflow you can choose whether your chat query goes to an
+agent
+or
+chain
+. It shows some of the ways that agents are more powerful than chains.
+View workflow file
+Key features
+#
+This workflow uses:
+Chat Trigger
+: start your workflow and respond to user chat interactions. The node provides a customizable chat interface.
+Switch node
+: directs your query to either the agent or chain, depending on which you specify in your query. If you say "agent" it sends it to the agent. If you say "chain" it sends it to the chain.
+Agent
+: the Agent node interacts with other components of the workflow and makes decisions about what
+tools
+to use.
+Basic LLM Chain
+: the Basic LLM Chain node supports chatting with a connected LLM, but doesn't support
+memory
+or tools.
+Using the example
+#
+To load the template into your n8n instance:
+Download the workflow JSON file.
+Open a new workflow in your n8n instance.
+Copy in the JSON, or select
+Workflow menu
+>
+Import from file...
+.
+The example workflows use Sticky Notes to guide you:
+Yellow: notes and information.
+Green: instructions to run the workflow.
+Orange: you need to change something to make the workflow work.
+Blue: draws attention to a key feature of the example.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

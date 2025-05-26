@@ -1,0 +1,110 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/common-issues/
+Scraped_At: 2025-05-20T18:56:05.869333
+
+HTTP Request node common issues
+#
+Here are some common errors and issues with the
+HTTP Request node
+and steps to resolve or troubleshoot them.
+Bad request - please check your parameters
+#
+This error displays when the node receives a 400 error indicating a bad request. This error most often occurs because:
+You're using an invalid name or value in a
+Query Parameter
+.
+You're passing array values in a
+Query Parameter
+but the array isn't formatted correctly. Try using the
+Array Format in Query Parameters
+option.
+Review the API documentation for your service to format your query parameters.
+The resource you are requesting could not be found
+#
+This error displays when the endpoint
+URL
+you entered is invalid.
+This may be due to a typo in the URL or a deprecated API. Refer to your service's API documentation to verify you have a valid endpoint.
+JSON parameter need to be an valid JSON
+#
+This error displays when you've passed a parameter as JSON and it's not formatted as valid JSON.
+To resolve, review the JSON you've entered for these issues:
+Test your JSON in a JSON checker or syntax parser to find errors like missing quotation marks, extra or missing commas, incorrectly formatted arrays, extra or missing square brackets or curly brackets, and so on.
+If you've used an
+Expression
+in the node, be sure you've wrapped the entire JSON in double curly brackets, for example:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+{{
+    {
+    "myjson":
+    {
+        "name1": "value1",
+        "name2": "value2",
+        "array1":
+            ["value1","value2"]
+    }
+    }
+}}
+Forbidden - perhaps check your credentials
+#
+This error displays when the node receives a 403 error indicating authentication failed.
+To resolve, review the selected credentials and make sure you can authenticate with them. You may need to:
+Update permissions or scopes so that your API key or account can perform the operation you've selected.
+Format your generic credential in a different way.
+Generate a new API key or token with the appropriate permissions or scopes.
+429 - The service is receiving too many requests from you
+#
+This error displays when the node receives a
+429 error
+from the service that you're calling. This often means that you have hit the rate limits of that service. You can find out more on the
+Handling API rate limits
+page.
+To resolve the error, you can use one of the built-in options of the HTTP request node:
+Batching
+#
+Use this option to send requests in batches and introduce a delay between them.
+In the HTTP Request node, select
+Add Option > Batching
+.
+Set
+Items per Batch
+to the number of input items to include in each request.
+Set
+Batch Interval (ms)
+to introduce a delay between requests in milliseconds. For example, to send one request to an API per second, set
+Batch Interval (ms)
+to
+1000
+.
+Retry on Fail
+#
+Use this option to retry the node after a failed attempt.
+In the HTTP Request node, go to
+Settings
+and enable
+Retry on Fail
+.
+Set
+Max Tries
+to the maximum number of times n8n should retry the node.
+Set
+Wait Between Tries (ms)
+to the desired delay in milliseconds between retries. For example, to wait one second before retrying the request again, set
+Wait Between Tries (ms)
+to
+1000
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

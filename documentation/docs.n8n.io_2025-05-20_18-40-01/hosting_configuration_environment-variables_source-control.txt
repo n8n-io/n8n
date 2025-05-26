@@ -1,0 +1,31 @@
+URL: https://docs.n8n.io/hosting/configuration/environment-variables/source-control/
+Scraped_At: 2025-05-20T18:44:07.721579
+
+Source control environment variables
+#
+File-based configuration
+You can add
+_FILE
+to individual variables to provide their configuration in a separate file. Refer to
+Keeping sensitive data in separate files
+for more details.
+n8n uses Git-based source control to support environments. Refer to
+Source control and environments
+for more information on how to link a Git repository to an n8n instance and configure your source control.
+Variable
+Type
+Default
+Description
+N8N_SOURCECONTROL_DEFAULT_SSH_KEY_TYPE
+String
+ed25519
+Set to
+rsa
+to make RSA the default SSH key type for
+Source control setup
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

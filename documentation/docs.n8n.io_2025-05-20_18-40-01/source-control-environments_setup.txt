@@ -1,0 +1,69 @@
+URL: https://docs.n8n.io/source-control-environments/setup/
+Scraped_At: 2025-05-20T19:09:56.945580
+
+Set up source control for environments
+#
+Link a Git repository to an n8n instance and configure your source control.
+n8n uses source control to provide environments. Refer to
+Environments in n8n
+for more information.
+Prerequisites
+#
+To use source control with n8n, you need a Git repository that allows SSH access.
+This document assumes you are familiar with Git and your Git provider.
+Step 1: Set up your repository and branches
+#
+For a new setup:
+Create a new repository for use with n8n.
+Create the branches you need. For example, if you plan to have different environments for test and production, set up a branch for each.
+To help decide what branches you need for your use case, refer to
+Branch patterns
+.
+Step 2: Configure Git in n8n
+#
+Go to
+Settings
+>
+Environments
+.
+In
+Git repository URL
+enter the SSH URL for your repository.
+n8n supports ED25519 and RSA public key algorithms. ED25519 is the default. Select
+RSA
+under
+SSH Key
+if your git host requires RSA.
+Copy the SSH key.
+Step 3: Set up a deploy key
+#
+Set up SSH access by creating a deploy key for the repository using the SSH key from n8n. The key must have write access.
+The steps depend on your Git provider. Help links for common providers:
+GitHub | Managing deploy keys
+GitLab | Deploy keys
+Step 4: Connect n8n and configure your instance
+#
+In
+Settings
+>
+Environments
+in n8n, select
+Connect
+. n8n connects to your Git repository.
+Under
+Instance settings
+, choose which branch you want to use for the current n8n instance.
+Optional
+: select
+Protected instance
+to prevent users editing workflows in this instance. This is useful for protecting production instances.
+Optional
+: choose a custom color for the instance. This will appear in the menu next to the source control push and pull buttons. It helps users know which instance they're in.
+Select
+Save settings
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

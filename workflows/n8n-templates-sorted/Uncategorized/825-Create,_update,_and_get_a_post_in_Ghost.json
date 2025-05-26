@@ -1,0 +1,269 @@
+{
+  "workflow": {
+    "id": 825,
+    "name": "Create, update, and get a post in Ghost",
+    "views": 2628,
+    "recentViews": 0,
+    "totalViews": 2628,
+    "createdAt": "2020-12-14T07:16:24.287Z",
+    "description": "![workflow-screenshot](fileId:338)",
+    "workflow": {
+      "id": "170",
+      "name": "Create, update, and get a post in Ghost",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            310,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Ghost",
+          "type": "n8n-nodes-base.ghost",
+          "position": [
+            510,
+            300
+          ],
+          "parameters": {
+            "title": "Running ghost with n8n!",
+            "source": "adminApi",
+            "content": "<p>In this article, you will learn how to automate your Ghost site with n8n!</p>",
+            "operation": "create",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "ghostAdminApi": "Ghost Admin API"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Ghost1",
+          "type": "n8n-nodes-base.ghost",
+          "position": [
+            710,
+            300
+          ],
+          "parameters": {
+            "postId": "={{$node[\"Ghost\"].json[\"id\"]}}",
+            "source": "adminApi",
+            "operation": "update",
+            "updateFields": {
+              "status": "published"
+            }
+          },
+          "credentials": {
+            "ghostAdminApi": "Ghost Admin API"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Ghost2",
+          "type": "n8n-nodes-base.ghost",
+          "position": [
+            910,
+            300
+          ],
+          "parameters": {
+            "by": "id",
+            "source": "adminApi",
+            "options": {},
+            "identifier": "={{$node[\"Ghost\"].json[\"id\"]}}"
+          },
+          "credentials": {
+            "ghostAdminApi": "Ghost Admin API"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Ghost": {
+          "main": [
+            [
+              {
+                "node": "Ghost1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ghost1": {
+          "main": [
+            [
+              {
+                "node": "Ghost2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Ghost",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.ghost": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 420,
+        "icon": "file:ghost.svg",
+        "name": "n8n-nodes-base.ghost",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.ghost/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/ghost/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Ghost"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUxIDE1MSI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iLjUiIHk9Ii41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIGZpbGwtcnVsZT0ibm9uemVybyI+PHBhdGggZmlsbD0iI2U4ZTllYiIgc3Ryb2tlPSJub25lIiBkPSJNMCAyMi41QTIyLjQ1IDIyLjQ1IDAgMCAxIDIyLjUgMGgxMDVBMjIuNDUgMjIuNDUgMCAwIDEgMTUwIDIyLjV2MTA1YTIyLjQ1IDIyLjQ1IDAgMCAxLTIyLjUgMjIuNWgtMTA1QTIyLjQ1IDIyLjQ1IDAgMCAxIDAgMTI3LjV6Ii8+PHBhdGggZmlsbD0iIzAwMCIgc3Ryb2tlPSIjM2Q1MTViIiBzdHJva2UtbGluZWpvaW49Im1pdGVyIiBzdHJva2Utd2lkdGg9IjE3Ljg3MSIgZD0iTTI5LjU5IDM5LjI1OGg1NC43ODV6bTcyLjA3IDBoMTcuODcxek0yOS41OSA3NS4yOTNoOTAuODJ6bTAgMzUuNDQ5aDM2LjAzNXptNTQuNzg1IDBoMzYuMDM1eiIvPjwvZz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Ghost",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 338,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/32c5f383516f4625adc22f7bc688f583.png"
+      }
+    ]
+  }
+}

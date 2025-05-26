@@ -1,0 +1,43 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.redis/
+Scraped_At: 2025-05-20T18:51:07.763413
+
+Redis node
+#
+Use the Redis node to automate work in Redis, and integrate Redis with other applications. n8n has built-in support for a wide range of Redis features, including deleting keys, getting key values, setting key value, and publishing messages to the Redis channel.
+On this page, you'll find a list of operations the Redis node supports and links to more resources.
+Credentials
+Refer to
+Redis credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Delete a key from Redis.
+Get the value of a key from Redis.
+Returns generic information about the Redis instance.
+Atomically increments a key by 1. Creates the key if it doesn't exist.
+Returns all the keys matching a pattern.
+Set the value of a key in Redis.
+Publish message to Redis channel.
+Templates and examples
+#
+Conversational Interviews with AI Agents and n8n Forms
+by Jimleuk
+View template details
+Advanced Telegram Bot, Ticketing System, LiveChat, User Management, Broadcasting
+by Nskha
+View template details
+Build your own N8N Workflows MCP Server
+by Jimleuk
+View template details
+Browse Redis integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

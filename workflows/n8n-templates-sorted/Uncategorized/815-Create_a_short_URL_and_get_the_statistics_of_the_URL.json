@@ -1,0 +1,235 @@
+{
+  "workflow": {
+    "id": 815,
+    "name": "Create a short URL and get the statistics of the URL",
+    "views": 790,
+    "recentViews": 0,
+    "totalViews": 790,
+    "createdAt": "2020-12-08T12:08:11.069Z",
+    "description": "![workflow-screenshot](fileId:334)",
+    "workflow": {
+      "id": "167",
+      "name": "Create a short URL and get the statistics of the URL",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            370,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Yourls",
+          "type": "n8n-nodes-base.yourls",
+          "position": [
+            570,
+            300
+          ],
+          "parameters": {
+            "url": "https://medium.com/n8n-io/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n-90dbde74223e?source=---------4-----------------------",
+            "additionalFields": {
+              "title": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+            }
+          },
+          "credentials": {
+            "yourlsApi": "Yourls"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Yourls1",
+          "type": "n8n-nodes-base.yourls",
+          "position": [
+            770,
+            300
+          ],
+          "parameters": {
+            "shortUrl": "={{$node[\"Yourls\"].json[\"shorturl\"]}}",
+            "operation": "stats"
+          },
+          "credentials": {
+            "yourlsApi": "Yourls"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Yourls": {
+          "main": [
+            [
+              {
+                "node": "Yourls1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Yourls",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.yourls": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 419,
+        "icon": "file:yourls.png",
+        "name": "n8n-nodes-base.yourls",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.yourls/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/yourls/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Yourls"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABsFBMVEUAAAAnYYwgYp8OOmUACAoAFSgfZpweZpwBDRkBBxoAGBogaaAfZ54gaqIgaaEgaaEhaJ4faKAfaJ8fZpwhZ5wga6QfZ54fZpwfZpwgaaEfZp0ibqkfZp0pU5gfZ54faJ8fZ50faqIgaJ8faJ4qXYgiYpEeYZQicKsfaJ8faJ8gaJ8eZ54bX5AaUHsYS3cKHzQgaKAfZp0gaqEfZ58fZ50gaqIfZ50fZZodXpEdZp0mXIgVSXAeZJgdYZMaVIUdYJAVSXEdZZkWSm4MIzMUQnAQYHUja6IfZ58gaqMeZp0fZ54faJ8iZ54jaqAgaJ4hZ6AdZZwbV4YeY5giU30fZ50YTHUPKkIfZZcnVX4ZR3EgaqMhbKcmaZ8eYJQgZ58fZ5wdX5EaU4EgZ50XSXIgZJ0haJ4aV4UWR24cXpEUQGIVRmofXaQWQWEaWIQWSW8MJjoRN1MJHC8WPmYQQmMeZpwbWYofYpYaWIYWSW4fZpsWR28gaJ4cWIUnd6UnWqUaVoAWTnUhYpIOK0AJGyQfZ50hbKYfaJ8hbqggaaEha6QfZpwhbacdZpwja6IgaqIga6Qn2Cl0AAAAhHRSTlMAAg8EBQL+/BUMCf79/cfFpfv596P9/Oz5+PT95Ab++vrkz8Y2JR399urTyoNmMSb18Ojh2ta0qqF+cGBaUEpFPjgfEAwI/vLdw7qxo5iNiXhya2djQzkxMBrv7tjJqpuXlpSPhoBuZ2NNR0Y7OjgvLhsWD+ayp3R0c3NxWk9PRDsvJBxfMhbPAAADHElEQVRIx+2UR1PbQABGd73aXduSIJIiyb1i3G16Cb2FFmooIb33BqT3IgnZlPzlyMCECMwthxz8Zr7xaJ+edZJAjRo1avw/4CDEEDIIB0+6IEYMtHQQV00hRMUv87Mzt7v71627bArD9f7umZnZ+c9FBHG1dvRWNEU4jiPixJ1hCP9uh+9MiFpFpVpujUJ8sl0NlGhI10u6HqJy6jGAfxR47NMPlUZLgSGMj8eFCO/hA12LvQ9vps1Iub0I4aGBxXZWMltuPuxb7ArwHll6jqC9dWbCYvrd5v7pRi7KKR0uCGAFPNIhhKO5jf3bNj+kRW9mDdlinPMK44NjACYaCoVnq0vNCn8j0dBw6ZK1G7ygLq0+KxQa1iBgvo0rwhy2xY60ZvYi9L0jYvK8WWI9lBrnd3fPW5MNSiS2VDlvvu1AqE8XWxttcS/PdwA0GPFTyhFKNUPTOLpDdkKEUKJZl5RwHA0l24Yh6JS5JVs8vScOAWfM25Sui9fX1dVXn88jv3aDoSa50xYHjFY3GBhX1Ocup9N12noEGn0BHBm2zRZTNuOGvZL+BjtOZxSpWssKGMt6y7a42WhjQH8T2zbMuNwM466+QYG0vABjMUG1xZN7vgT4OSGJsTNnz5452IWjHZ61ikJ8BCSaf03Z4nmZnwWoJ8lKhJByWWNN0yA7O6QywzRZrVy2hMcfHkSgW+a7bXGCcr4EQouqvr29tb3lpx6pbP3uQySJ+isX23psAKFGn+YbssXouihnnQivfbqfzy+8/fiKZbMXz527aC0/yQuB9wsL+fz9/lE85ozLTdeRLYYvoxJ77enBIfOoXhHbfxwaUGwXyeQj5uAhT68JnujLYzF4kJTCqa6+RkfjQKc35LvyBAThPkHw5IpP83YOWKqvKxWm/gcAgWN1zq8oOqsGVG0v4knePXrtgszdJBVLmtqqsnpE8OfAya8BWI57w5xhGKxyOd4D4JHCsCd+WWEtxQne7DKAEJysXV/nprNXY1P3VkYAtLuRlXtTmaux6bll14GqkiMGYzdj2Sr/zbgxZpBlatSoUeNf8huUYZu5QUSg+AAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Yourls",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 334,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/05bad89ea50a47ada78ca0c1dd111abb.png"
+      }
+    ]
+  }
+}

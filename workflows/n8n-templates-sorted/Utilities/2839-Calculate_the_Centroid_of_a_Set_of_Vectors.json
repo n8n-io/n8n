@@ -1,0 +1,702 @@
+{
+  "workflow": {
+    "id": 2839,
+    "name": "Calculate the Centroid of a Set of Vectors",
+    "views": 443,
+    "recentViews": 1,
+    "totalViews": 443,
+    "createdAt": "2025-02-03T02:28:31.005Z",
+    "description": "# n8n Workflow: Calculate the Centroid of a Set of Vectors\n\n## Overview\nThis workflow receives an array of vectors in JSON format, validates that all vectors have the same dimensions, and computes the centroid. It is designed to be reusable across different projects.\n\n## Workflow Structure\n### Nodes and Their Functions:\n1. **Receive Vectors (Webhook)**: Accepts a GET request containing an array of vectors in the `vectors` parameter.\n   - **Expected Input:** `vectors` parameter in JSON format.\n   - **Example Request:** `/webhook/centroid?vectors=[[2,3,4],[4,5,6],[6,7,8]]`\n   - **Output:** Passes the received data to the next node.\n\n2. **Extract & Parse Vectors (Set Node)**: Converts the input string into a proper JSON array for processing.\n   - **Ensures `vectors` is a valid array.**\n   - **If the parameter is missing, it may generate an error.**\n   - **Expected Output Example:**\n   ```json\n   {\n     \"vectors\": [[2,3,4],[4,5,6],[6,7,8]]\n   }\n   ```\n\n3. **Validate & Compute Centroid (Code Node)**: Validates vector dimensions and calculates the centroid.\n   - **Validation:** Ensures all vectors have the same number of dimensions.\n   - **Computation:** Averages each dimension to determine the centroid.\n   - **If validation fails:** Returns an error message indicating inconsistent dimensions.\n   - **Successful Output Example:**\n   ```json\n   {\n     \"centroid\": [4,5,6]\n   }\n   ```\n   - **Error Output Example:**\n   ```json\n   {\n     \"error\": \"Vectors have inconsistent dimensions.\"\n   }\n   ```\n\n4. **Return Centroid Response (Respond to Webhook Node)**: Sends the final response back to the client.\n   - **If the computation is successful**, it returns the centroid.\n   - **If an error occurs**, it returns a descriptive error message.\n   - **Example Response:**\n   ```json\n   {\n     \"centroid\": [4, 5, 6]\n   }\n   ```\n\n## Inputs\n- JSON array of vectors, where each vector is an array of numerical values.\n\n### Example Input\n```json\n{\n  \"vectors\": [\n    [1, 2, 3],\n    [4, 5, 6],\n    [7, 8, 9]\n  ]\n}\n```\n\n## Setup Guide\n1. **Create a new workflow in n8n**.\n2. **Add a Webhook node** (`Receive Vectors`) to receive JSON input.\n3. **Add a Set node** (`Extract & Parse Vectors`) to extract and convert the data.\n4. **Add a Code node** (`Validate & Compute Centroid`) to:\n   - Validate dimensions.\n   - Compute the centroid.\n5. **Add a Respond to Webhook node** (`Return Centroid Response`) to return the result.\n\n### Function Node Script Example\n```javascript\nconst input = items[0].json;\nconst vectors = input.vectors;\n\nif (!Array.isArray(vectors) || vectors.length === 0) {\n  return [{ json: { error: \"Invalid input: Expected an array of vectors.\" } }];\n}\n\nconst dimension = vectors[0].length;\nif (!vectors.every(v =&gt; v.length === dimension)) {\n  return [{ json: { error: \"Vectors have inconsistent dimensions.\" } }];\n}\n\nconst centroid = new Array(dimension).fill(0);\nvectors.forEach(vector =&gt; {\n  vector.forEach((val, index) =&gt; {\n    centroid[index] += val;\n  });\n});\n\nfor (let i = 0; i &lt; dimension; i++) {\n  centroid[i] /= vectors.length;\n}\n\nreturn [{ json: { centroid } }];\n```\n\n## Testing\n- Use a tool like Postman or the n8n UI to send sample inputs and verify the responses.\n- Modify the input vectors to test different scenarios.\n\nThis workflow provides a simple yet flexible solution for vector centroid computation, ensuring validation and reliability.\n",
+    "workflow": {
+      "id": "g3q68zSOQvTcydLs",
+      "meta": {
+        "instanceId": "92786e96ce436aecd3a1d62d818a74e51ca684bb36c805928bef93a3b46549ad"
+      },
+      "name": "Calculate the Centroid of a Set of Vectors",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "32a8aa56-aa7e-4c9e-a39e-f65234224bcf",
+          "name": "Receive Vectors",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -440,
+            20
+          ],
+          "webhookId": "30091e91-fc67-4bab-b1fd-ed65c8f4f860",
+          "parameters": {
+            "path": "centroid",
+            "options": {},
+            "responseMode": "responseNode"
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "a020a49a-cc9f-49af-aa95-829d9d16da04",
+          "name": "Extract & Parse Vectors",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            360,
+            20
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3e1d9e72-7668-427d-958c-42bff7270a37",
+                  "name": "vectors",
+                  "type": "array",
+                  "value": "={{ $json.query.vectors }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2f328de6-4ef1-4aac-8838-d616637f4b88",
+          "name": "Validate & Compute Centroid",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            960,
+            20
+          ],
+          "parameters": {
+            "jsCode": "const input = items[0].json;\nconst vectors = input.vectors;\n\nif (!Array.isArray(vectors) || vectors.length === 0) {\n  return [{ json: { error: \"Invalid input: Expected an array of vectors.\" } }];\n}\n\nconst dimension = vectors[0].length;\nif (!vectors.every(v => v.length === dimension)) {\n  return [{ json: { error: \"Vectors have inconsistent dimensions.\" } }];\n}\n\nconst centroid = new Array(dimension).fill(0);\nvectors.forEach(vector => {\n  vector.forEach((val, index) => {\n    centroid[index] += val;\n  });\n});\n\nfor (let i = 0; i < dimension; i++) {\n  centroid[i] /= vectors.length;\n}\n\nreturn [{ json: { centroid } }];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "821bc173-3578-4cf2-9fd7-8ea9cba8dc3f",
+          "name": "Return Centroid Response",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1640,
+            20
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "73964e7b-1217-422f-8078-09604fa2a3d7",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            20,
+            -200
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 620,
+            "height": 420,
+            "content": "📌 **Description:**  \nThis node extracts the `vectors` array from the **GET request** and converts it into a properly formatted array for processing.  \n- **Ensures `vectors` is a valid array.**  \n- **If the parameter is missing, it may generate an error.**  \n\n🔹 **Expected Output Example:**\n```json\n{\n  \"vectors\": [[2,3,4],[4,5,6],[6,7,8]]\n}\n```\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e4793b20-bfa6-4b08-b46c-f92d1c9c2622",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            640,
+            -280
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 700,
+            "height": 500,
+            "content": "📌 **Description:**  \nThis node performs **vector validation** and **centroid computation**.  \n- **Validation:** Ensures all vectors have the same number of dimensions.  \n- **Computation:** Averages each dimension to determine the centroid.  \n- **If validation fails:** Returns an error message indicating inconsistent dimensions.  \n\n🔹 **Successful Output Example:**\n```json\n{\n  \"centroid\": [4,5,6]\n}\n```\n🔹 **Error Output Example:**\n```json\n{\n  \"error\": \"Vectors have inconsistent dimensions.\"\n}\n```\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e0ac1c4d-0435-44d1-ba87-0cfc9dea207b",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1340,
+            -200
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 680,
+            "height": 420,
+            "content": "📌 **Description:**  \nThis node sends the **final response** back to the client that made the request.  \n- **If the computation is successful**, it returns the centroid.  \n- **If an error occurs**, it returns a descriptive error message.  \n\n🔹 **Example Response:**\n```json\n{\n  \"centroid\": [4, 5, 6]\n}\n```\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2b4fbae7-c2e5-4666-ba9f-72a5313fc16f",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -820,
+            -200
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 840,
+            "height": 420,
+            "content": "📌 **Description:**  \nThis node acts as the **entry point** for the workflow, receiving a **GET request** containing an array of vectors in the `vectors` parameter.  \n- **Expected Input:** `vectors` parameter in JSON format.  \n- **Example Request:**  \n  ```plaintext\n  https://actions.singular-innovation.com/webhook-test/centroid?vectors=[[2,3,4],[4,5,6],[6,7,8]]\n  ```\n- **Output:** Passes the received data to the next node for processing.\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {
+        "Receive Vectors": [
+          {
+            "json": {
+              "body": {},
+              "query": {
+                "vectors": "[[2,3,4],[4,5,6],[6,7,8]]"
+              },
+              "params": {},
+              "headers": {
+                "host": "actions.singular-innovation.com",
+                "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+                "cookie": "rl_page_init_referrer=RudderEncrypt%3AU2FsdGVkX1%2FNTT5WOkcYG%2FWSKmLWL%2F6W9TAbYFEQv8s%3D; rl_page_init_referring_domain=RudderEncrypt%3AU2FsdGVkX19thqA5y56KyQdmUG3L%2BhCiYIxQok7WXRI%3D; n8n-auth=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImZjOTg1OTJjLTcwOWUtNGI5Mi1hODk0LWZiNjVlODY1ZmRlMiIsImhhc2giOiJhOFg4MW1zcU1zIiwiaWF0IjoxNzM3OTg1MzI5LCJleHAiOjE3Mzg1OTAxMjl9.GSjpKJ_cG5CqttWwhEeHOxWwlNByvLTu8CGH7ncVug8; rl_anonymous_id=RudderEncrypt%3AU2FsdGVkX1%2BickXpx2WwsiLS3K45TJoms2IgVIMIQRvQnuaNzfjLtzG9mEXObNu4ojurRNkdq0msPjPy10UDEQ%3D%3D; rl_user_id=RudderEncrypt%3AU2FsdGVkX1%2BbvZ%2F6U02zoG3zOFSyRAIzp7gVabGBqqkm7MUCy3Wkn5WOQd%2F%2Bk5e8gVlJ%2BUkJOYJnhS%2F%2Btc7D99%2FTIaFVympE%2BjrtY7ydRWcd69oJHwZWGK%2BeCP1cKh9fqq%2B3sFCVYv7pnm4xMkAAwAM%2BDuzhFTZ0ZFWEA9t8z9M%3D; rl_trait=RudderEncrypt%3AU2FsdGVkX19s%2BCzIY1zJrLksYKMyyTZBHFB0YpKHQWouDTpomPoyyHa9MtTtEUArCVmtBaEf%2FqNhQKJrC8I4hX%2FepCmsx8TqQ6Rzxij0%2FBPvvdq6JWijlttfLovsIF%2BjDLnmVfeRsPbdVgrJXo0neA%3D%3D; ph_phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo_posthog=%7B%22distinct_id%22%3A%2292786e96ce436aecd3a1d62d818a74e51ca684bb36c805928bef93a3b46549ad%23fc98592c-709e-4b92-a894-fb65e865fde2%22%2C%22%24sesid%22%3A%5B1738160096669%2C%220194b262-b90a-74cf-ab0d-257b174571c7%22%2C1738159601930%5D%2C%22%24epp%22%3Atrue%2C%22%24initial_person_info%22%3A%7B%22r%22%3A%22%24direct%22%2C%22u%22%3A%22https%3A%2F%2Factions.singular-innovation.com%2Fsignin%3Fredirect%3D%25252F%22%7D%7D; rl_session=RudderEncrypt%3AU2FsdGVkX19G2WmuxH5ZaEfkSkfe4e2i5iyzrvY4U6jPHxAnaSaY8YaPPAFRADU%2FgEyIFzVE0cEXdOZLTBcsa%2Byoiz3Wng4SqZeqnZu2pr1a%2FT0A6mSwTn%2Bw1Ki5ozJpDTVNg6%2BWfaNDa1LGpWRzCQ%3D%3D",
+                "sec-ch-ua": "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"",
+                "x-real-ip": "177.232.86.200",
+                "connection": "close",
+                "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+                "cache-control": "max-age=0",
+                "sec-fetch-dest": "document",
+                "sec-fetch-mode": "navigate",
+                "sec-fetch-site": "none",
+                "sec-fetch-user": "?1",
+                "accept-encoding": "gzip, deflate, br, zstd",
+                "accept-language": "es-419,es;q=0.9",
+                "x-forwarded-for": "177.232.86.200",
+                "sec-ch-ua-mobile": "?0",
+                "x-forwarded-proto": "https",
+                "sec-ch-ua-platform": "\"Windows\"",
+                "upgrade-insecure-requests": "1"
+              },
+              "webhookUrl": "https://actions.singular-innovation.com/webhook-test/centroid",
+              "executionMode": "test"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "f9c7fa52-264b-4967-ae7a-62247cce7a50",
+      "connections": {
+        "Receive Vectors": {
+          "main": [
+            [
+              {
+                "node": "Extract & Parse Vectors",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract & Parse Vectors": {
+          "main": [
+            [
+              {
+                "node": "Validate & Compute Centroid",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validate & Compute Centroid": {
+          "main": [
+            [
+              {
+                "node": "Return Centroid Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 8,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Mauricio Perera",
+      "username": "rckflr",
+      "bio": "Automation consultant with over 10 years of experience specializing in AI, no-code, and workflow optimization. I’ve delivered tailored AI and NLP solutions across real estate, healthcare, and more, enhancing efficiency and customer experiences. Proficient in tools like Make, Airtable, and Zapier, I also integrate GPT models to create scalable, innovative automations. Contact me to discuss custom n8n workflows or advanced automations to streamline your processes.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/mauricioperera/"
+      ],
+      "avatar": "https://gravatar.com/avatar/a6414920fb4353a63c1bf6af3e78e0b1387fa77adcf7610f9a7ff6e6d39ee757?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

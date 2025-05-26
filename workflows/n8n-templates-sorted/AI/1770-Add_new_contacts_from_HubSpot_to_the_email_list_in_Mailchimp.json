@@ -1,0 +1,537 @@
+{
+  "workflow": {
+    "id": 1770,
+    "name": "Add new contacts from HubSpot to the email list in Mailchimp",
+    "views": 891,
+    "recentViews": 0,
+    "totalViews": 891,
+    "createdAt": "2022-08-17T12:23:13.769Z",
+    "description": "This workflow adds new HubSpot contacts to the Mailchimp email list. \n\n## Prerequisites\n- HubSpot account and [HubSpot credentials](https://docs.n8n.io/integrations/builtin/credentials/hubspot/)\n- Mailchimp account and [Mailchimp credentials](https://docs.n8n.io/integrations/builtin/credentials/mailchimp/)\n\n## How it works\n1. Cron node triggers this workflow every day at 7:00.\n2. HubSpot node searches for the new contacts created.\n3. Mailchimp node creates a new contact in a certain audience and add a 'subscribed' status.\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "4eea70f6789129b82c5f438f374db25affb0eba28902cc3663e308cff7659044"
+      },
+      "nodes": [
+        {
+          "id": "30d8dca1-8e70-443e-a5b0-a048d6e3dc1c",
+          "name": "Every day at 07:00",
+          "type": "n8n-nodes-base.cron",
+          "position": [
+            480,
+            300
+          ],
+          "parameters": {
+            "triggerTimes": {
+              "item": [
+                {
+                  "hour": 7
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e7b278f-7c6f-473c-acda-51fa5cf6bd00",
+          "name": "Get new contacts",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            700,
+            300
+          ],
+          "parameters": {
+            "resource": "contact",
+            "operation": "search",
+            "authentication": "oAuth2",
+            "filterGroupsUi": {
+              "filterGroupsValues": [
+                {
+                  "filtersUi": {
+                    "filterValues": [
+                      {
+                        "value": "={{$today.minus({day:1}).toMillis()}}",
+                        "operator": "GTE",
+                        "propertyName": "createdate"
+                      },
+                      {
+                        "value": "={{$today.toMillis()}}",
+                        "operator": "LT",
+                        "propertyName": "createdate"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "additionalFields": {}
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "34",
+              "name": "HubSpot account 2"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "003da27c-752e-47b6-b263-c90060b677f5",
+          "name": "Create member",
+          "type": "n8n-nodes-base.mailchimp",
+          "position": [
+            920,
+            300
+          ],
+          "parameters": {
+            "list": "8965eba136",
+            "email": "={{ $json[\"properties\"].email }}",
+            "status": "subscribed",
+            "options": {},
+            "mergeFieldsUi": {
+              "mergeFieldsValues": [
+                {
+                  "name": "FNAME",
+                  "value": "={{ $json[\"properties\"].firstname }}"
+                },
+                {
+                  "name": "LNAME",
+                  "value": "={{ $json[\"properties\"].lastname }}"
+                }
+              ]
+            },
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "mailchimpOAuth2Api": {
+              "id": "25",
+              "name": "Mailchimp account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Get new contacts": {
+          "main": [
+            [
+              {
+                "node": "Create member",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Every day at 07:00": {
+          "main": [
+            [
+              {
+                "node": "Get new contacts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.cron": {
+          "count": 1
+        },
+        "n8n-nodes-base.hubspot": {
+          "count": 1
+        },
+        "n8n-nodes-base.mailchimp": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 7,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.cron",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "details": "The Cron node uses Cron under the hood - a time-based job scheduler in Unix-like computer operating systems. Use this node when you want to trigger workflows periodically, especially in more complex scenarios like \"every Tuesday at 9 am\" or \"Weekdays\".",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Cron",
+          "color": "#29a568"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Cron",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 71,
+        "icon": "file:mailchimp.svg",
+        "name": "n8n-nodes-base.mailchimp",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailchimp/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mailchimp/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Mailchimp"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGcgY2xpcC1wYXRoPSJ1cmwoI2NsaXAwXzEwNDJfNjA1MSkiPgo8cGF0aCBkPSJNMjkuMzUwNiAxOC45MDI3QzI5LjYyNTQgMTguODY2NyAyOS45MDM4IDE4Ljg2NjcgMzAuMTc4NiAxOC45MDI3QzMwLjMzMTcgMTguNTYxNCAzMC4zNTMxIDE3Ljk3MzYgMzAuMjE5OSAxNy4zMzIzQzMwLjAyMSAxNi4zODAzIDI5Ljc1MTYgMTUuODAxNyAyOS4xOTQ1IDE1Ljg5MzZDMjguNjM3MyAxNS45ODU0IDI4LjYxOSAxNi42NzQyIDI4LjgxNjQgMTcuNjI2MkMyOC45MDA1IDE4LjA4NTIgMjkuMDgyNyAxOC41MjA2IDI5LjM1MDYgMTguOTAyN1oiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik0yNC41NzExIDE5LjY1NTVDMjQuOTY5IDE5LjgzIDI1LjIxMjQgMTkuOTQ2MyAyNS4zMDg4IDE5Ljg0NTNDMjUuMzcgMTkuNzgxIDI1LjM1MTYgMTkuNjYxNyAyNS4yNTY3IDE5LjUwNTVDMjUuMDAwNiAxOS4xMzY0IDI0LjY0MzUgMTguODQ4OSAyNC4yMjgyIDE4LjY3NzVDMjMuNzg0OSAxOC40OTUyIDIzLjMwMjIgMTguNDI5NiAyMi44MjY0IDE4LjQ4NjlDMjIuMzUwNSAxOC41NDQzIDIxLjg5NzIgMTguNzIyNyAyMS41MDk5IDE5LjAwNUMyMS4yNDM2IDE5LjIwMSAyMC45OTEgMTkuNDY0MiAyMS4wMjYyIDE5LjYzNDFDMjEuMDM4NSAxOS42ODc3IDIxLjA3ODMgMTkuNzI3NSAyMS4xNzE2IDE5Ljc0MTJDMjEuMzkyMSAxOS43NjU3IDIyLjE1ODkgMTkuMzc4NSAyMy4wNDIgMTkuMzIzNEMyMy41NzExIDE5LjMwODMgMjQuMDk1OSAxOS40MjIzIDI0LjU3MTEgMTkuNjU1NVoiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik0yMy43NzM1IDIwLjExMTZDMjMuNDExOCAyMC4xNTEyIDIzLjA2OSAyMC4yOTQyIDIyLjc4NjMgMjAuNTIzNEMyMi42NTUgMjAuNjE4MSAyMi41NjQ3IDIwLjc1OTMgMjIuNTMzOCAyMC45MTgzQzIyLjUzMzEgMjAuOTM1IDIyLjUzNTkgMjAuOTUxNyAyMi41NDIgMjAuOTY3M0MyMi41NDgxIDIwLjk4MjkgMjIuNTU3MyAyMC45OTcgMjIuNTY5IDIxLjAwODlDMjIuNTgwOCAyMS4wMjA5IDIyLjU5NDkgMjEuMDMwMiAyMi42MTA0IDIxLjAzNjVDMjIuNjI1OSAyMS4wNDI3IDIyLjY0MjYgMjEuMDQ1NyAyMi42NTkzIDIxLjA0NTNDMjIuNzg5MiAyMS4wMjYgMjIuOTE2MiAyMC45OTA1IDIzLjAzNzMgMjAuOTM5N0MyMy41Njk5IDIwLjczOTkgMjQuMTQ0OSAyMC42ODA0IDI0LjcwNzIgMjAuNzY2N0MyNC45Njc0IDIwLjc5NTggMjUuMDkxNCAyMC44MTI2IDI1LjE0OCAyMC43MjM5QzI1LjE2MTkgMjAuNjk3NiAyNS4xNjc5IDIwLjY2NzggMjUuMTY1MiAyMC42MzgyQzI1LjE2MjUgMjAuNjA4NSAyNS4xNTEyIDIwLjU4MDQgMjUuMTMyNyAyMC41NTdDMjUuMDExOCAyMC4zNTY1IDI0LjQ4ODMgMjAuMDI3NSAyMy43NzM1IDIwLjExMTZaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBkPSJNMjcuNzM3NCAyMS43ODkxQzI4LjA4OTQgMjEuOTYyMSAyOC40NzY3IDIxLjg5NDcgMjguNjAzNyAyMS42MzYxQzI4LjczMDcgMjEuMzc3NCAyOC41NDU1IDIxLjAyMzggMjguMTk1IDIwLjg1ODVDMjcuODQ0NSAyMC42OTMyIDI3LjQ1NDIgMjAuNzUyOSAyNy4zMjg3IDIxLjAxMTZDMjcuMjAzMiAyMS4yNzAzIDI3LjM4NTQgMjEuNjE2MiAyNy43Mzc0IDIxLjc4OTFaIiBmaWxsPSJibGFjayIvPgo8cGF0aCBkPSJNMzAuMDAxNSAxOS44MTE4QzI5LjcxNTMgMTkuODExOCAyOS40NzgxIDIwLjExNzkgMjkuNDcwNCAyMC41MTI4QzI5LjQ2MjcgMjAuOTA3NyAyOS42OTA4IDIxLjIyNzUgMjkuOTc3IDIxLjIzMjFDMzAuMjYzMiAyMS4yMzY3IDMwLjUwMDUgMjAuOTI2IDMwLjUwNjYgMjAuNTMxMUMzMC41MTI3IDIwLjEzNjIgMzAuMjg2MiAxOS44MTY0IDMwLjAwMTUgMTkuODExOFoiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik0xMC40ODkzIDI2Ljg0NjNDMTAuNDAyNSAyNi44NzAyIDEwLjMxMzEgMjYuODgzMSAxMC4yMjMgMjYuODg0NkMxMC4xMjc2IDI2Ljg4NTggMTAuMDMzNCAyNi44NjMzIDkuOTQ4NyAyNi44MTkzQzkuODY0MDQgMjYuNzc1MiA5Ljc5MTYgMjYuNzEwOSA5LjczNzgzIDI2LjYzMkM5LjYwNzczIDI2LjQzMzEgOS42MTUzOCAyNi4xMzQ2IDkuNzU5MjYgMjUuNzkzM0M5Ljc3OTE2IDI1Ljc0NzQgOS44MDA1OCAyNS42OTUzIDkuODI2NiAyNS42NDAyQzEwLjA1NjIgMjUuMTI1OSAxMC40Mzg4IDI0LjI2MjcgMTAuMDA4NyAyMy40NDM4QzkuODY5MjMgMjMuMTU0MyA5LjY2MDIyIDIyLjkwMzkgOS40MDAzNiAyMi43MTQ4QzkuMTQwNTEgMjIuNTI1NyA4LjgzNzg4IDIyLjQwMzkgOC41MTk0OSAyMi4zNjAyQzguMjE4MTYgMjIuMzIyOSA3LjkxMjI4IDIyLjM1NzggNy42MjcwMyAyMi40NjE4QzcuMzQxNzggMjIuNTY1OSA3LjA4NTMxIDIyLjczNjEgNi44Nzg3MiAyMi45NTg2QzYuMjQ2NTkgMjMuNjU2NiA2LjE0NzExIDI0LjYwNTUgNi4yNjY0OSAyNC45NDA3QzYuMzEwODggMjUuMDYzMiA2LjM4MTI4IDI1LjA5MzggNi40MzMzMiAyNS4xMDQ1QzYuNTQwNDYgMjUuMTE5OCA2LjY5OTY0IDI1LjA0MDIgNi43OTkxMyAyNC43NzI0QzYuODA2NzggMjQuNzU0IDYuODE1OTcgMjQuNzIzNCA2LjgyODIxIDI0LjY4NTFDNi44ODk1NCAyNC40NzA5IDYuOTc3NDcgMjQuMjY1MyA3LjA4OTk0IDI0LjA3MjlDNy4xNjk3OCAyMy45NDUgNy4yNzQ2NyAyMy44MzQ2IDcuMzk4MjkgMjMuNzQ4M0M3LjUyMTkyIDIzLjY2MjEgNy42NjE3MyAyMy42MDE3IDcuODA5MzEgMjMuNTcwOUM3Ljk1ODY4IDIzLjUzODIgOC4xMTMwOSAyMy41MzU3IDguMjYzNDUgMjMuNTYzNUM4LjQxMzggMjMuNTkxNCA4LjU1NzA2IDIzLjY0OTEgOC42ODQ4IDIzLjczMzFDOC45MDA5NyAyMy44NzQ5IDkuMDYxNTQgMjQuMDg3IDkuMTM5MzUgMjQuMzMzNkM5LjIxNzE2IDI0LjU4MDEgOS4yMDc0NCAyNC44NDU5IDkuMTExODMgMjUuMDg2MUM4Ljk2MDAyIDI1LjQ2ODMgOC44ODQ2MiAyNS44NzY1IDguODg5ODkgMjYuMjg3NkM4Ljk2MDMgMjcuMTM4NiA5LjQ4NTI5IDI3LjQ4MTUgOS45NjEyOSAyNy41MTIxQzEwLjQzNzMgMjcuNTQyNyAxMC43Mzg4IDI3LjI3MTggMTAuODE5OSAyNy4wODM1QzEwLjgzODUgMjcuMDUxNCAxMC44NDY3IDI3LjAxNDMgMTAuODQzNCAyNi45NzczQzEwLjg0MDEgMjYuOTQwNCAxMC44MjU1IDI2LjkwNTMgMTAuODAxNiAyNi44NzY5QzEwLjcyMzUgMjYuNzkyNyAxMC42MDU3IDI2LjgyMDMgMTAuNDg5MyAyNi44NDYzWiIgZmlsbD0iYmxhY2siLz4KPHBhdGggZD0iTTM3LjIxNDcgMjUuMzI0OEMzNy4xOTc5IDI1LjI2MjEgMzcuMDg0NiAyNC44NDczIDM2LjkyODUgMjQuMzQ4M0MzNi44MzkxIDI0LjA1ODQgMzYuNzMzMyAyMy43NzM3IDM2LjYxMTcgMjMuNDk1OEMzNy4yMzYxIDIyLjU1OTEgMzcuMjQ4NCAyMS43MjE4IDM3LjE2NDIgMjEuMjQ3NEMzNy4wNzA2IDIwLjYzNjEgMzYuNzgwNCAyMC4wNzIgMzYuMzM3NyAxOS42NDAzQzM1Ljg0NDkgMTkuMTIxNCAzNC44MzQ3IDE4LjU5MTggMzMuNDE3NCAxOC4xOTIzQzMzLjI1NTEgMTguMTQ4IDMyLjcxOTQgMTguMDAxIDMyLjY3MiAxNy45ODU3QzMyLjY3MiAxNy45NTUxIDMyLjYzMzcgMTYuMjMxNyAzMi42MDE2IDE1LjQ5MjRDMzIuNTg2OCAxNC43NTAyIDMyLjQ3NjIgMTQuMDEzIDMyLjI3MjUgMTMuMjk5MUMzMS45NjY0IDEyLjE4NjQgMzEuNDI2MSAxMS4yMTE0IDMwLjc1NDIgMTAuNTg4NUMzMi42MDc3IDguNjY3NTggMzMuNzY0OCA2LjU1MjMzIDMzLjc2MTcgNC43MzU1NEMzMy43NTQxIDEuMjQ0MzEgMjkuNDY4NSAwLjE4ODIwOSAyNC4xODQ5IDIuMzc2OTNMMjMuMDY0NiAyLjg1MTQxQzIzLjA2NDYgMi44NTE0MSAyMS4wNDExIDAuODYxNjYyIDIxLjAxMDUgMC44Mzg3MDNDMTQuOTg2MiAtNC40MTU3NSAtMy44NTA1NyAxNi41MjEgMi4xNzIyNCAyMS42MDU1TDMuNDg4NTMgMjIuNzIxM0MzLjEzMjQ2IDIzLjY3NiAzLjAwNzExIDI0LjcwMTMgMy4xMjI3MiAyNS43MTM2QzMuMjYzNTQgMjcuMTEyNSAzLjk4NDQ0IDI4LjQ1MzMgNS4xNTUzMyAyOS40OTFDNi4yNjY1MiAzMC40NzUyIDcuNzI2NjkgMzEuMDk2NiA5LjE0NCAzMS4wOTY2QzExLjQ4NzMgMzYuNDk2NSAxNi44NDEzIDM5LjgxMDIgMjMuMTE5NyAzOS45OTY5QzI5Ljg1NDIgNDAuMTk1OSAzNS41MDgxIDM3LjAzNjggMzcuODc3NSAzMS4zNTk5QzM4LjAzMDUgMzAuOTYwNCAzOC42ODg3IDI5LjE2NjYgMzguNjg4NyAyNy41ODA5QzM4LjY4ODcgMjUuOTk1MiAzNy43ODg3IDI1LjMyNDggMzcuMjE0NyAyNS4zMjQ4Wk05LjY2NDM5IDI5LjU3NTJDOS40NTgwOSAyOS42MDk1IDkuMjQ4OTcgMjkuNjIzOCA5LjAzOTkyIDI5LjYxODFDNy4wMDU3OSAyOS41NjQ1IDQuODA5NDIgMjcuNzMyNCA0LjU5MDU0IDI1LjU2MDVDNC4zNDg3MSAyMy4xNjA2IDUuNTc2MjMgMjEuMzEzMiA3Ljc0ODEyIDIwLjg3NTRDOC4wNTAzNCAyMC44MTU3IDguMzU4OCAyMC43OTM2IDguNjY2NDYgMjAuODA5NkM5Ljg4MzI3IDIwLjg3NyAxMS42NzcxIDIxLjgxMDYgMTIuMDg1OCAyNC40NjE2QzEyLjQzNzggMjYuODA5NSAxMS44NjY5IDI5LjE5ODcgOS42NjEzMyAyOS41NzUySDkuNjY0MzlaTTcuMzg5OTYgMTkuNDM4MkM2LjA2OTc5IDE5LjY4MjYgNC44OTYzNSAyMC40MzA3IDQuMTE3NiAyMS41MjQ0QzMuNjgxMzggMjEuMTYxNyAyLjg3MDE4IDIwLjQ1MyAyLjcyNzg0IDIwLjE4NTFDMS41NjQ2IDE3Ljk3NjUgMy45OTY2OCAxMy42ODE3IDUuNjk1NjIgMTEuMjU1OEM5Ljg5NTUxIDUuMjYzNTkgMTYuNDczOSAwLjcyODUwMiAxOS41MTk4IDEuNTUwNDJDMjAuMDE0MSAxLjY5MTIzIDIxLjY1MzQgMy41OTIyIDIxLjY1MzQgMy41OTIyQzE5LjU4OTIgNC43NzQ3NSAxNy42MjY5IDYuMTI2ODIgMTUuNzg2NyA3LjYzNDQ1QzExLjk4MzIgMTAuNTYwOSA5LjExMTg2IDE0LjgyMDUgNy4zODk5NiAxOS40MzgyWk0xNS4xNDY5IDExLjIzMjhDMTYuNjM5MiA5LjUwNzg3IDE4LjQ3NzQgOC4wMDc5MSAyMC4xMjQzIDcuMTY2MDlDMjAuMTM2NiA3LjE1OTYzIDIwLjE1MDcgNy4xNTczNCAyMC4xNjQ0IDcuMTU5NTVDMjAuMTc4MiA3LjE2MTc2IDIwLjE5MDggNy4xNjgzNiAyMC4yMDA1IDcuMTc4MzZDMjAuMjEwMSA3LjE4ODM2IDIwLjIxNjMgNy4yMDEyMiAyMC4yMTggNy4yMTUwMkMyMC4yMTk3IDcuMjI4ODEgMjAuMjE2OSA3LjI0Mjc5IDIwLjIxIDcuMjU0ODdDMjAuMDEwNCA3LjYxMDE4IDE5Ljg1NjEgNy45ODkxNSAxOS43NTA5IDguMzgyOUMxOS43NDc4IDguMzk2MTUgMTkuNzQ4OCA4LjQxMDAyIDE5Ljc1MzggOC40MjI2N0MxOS43NTg4IDguNDM1MzMgMTkuNzY3NSA4LjQ0NjE4IDE5Ljc3ODggOC40NTM4QzE5Ljc5IDguNDYxNDIgMTkuODAzMyA4LjQ2NTQ1IDE5LjgxNjkgOC40NjUzNkMxOS44MzA1IDguNDY1MjcgMTkuODQzOCA4LjQ2MTA3IDE5Ljg1NSA4LjQ1MzNDMjAuODc4OSA3Ljc1NTM2IDIyLjY2MDUgNy4wMDY5MSAyNC4yMjQ3IDYuOTEwNDlDMjQuMjM5MiA2LjkwOTkyIDI0LjI1MzUgNi45MTM5MyAyNC4yNjU1IDYuOTIxOTRDMjQuMjc3NiA2LjkyOTk2IDI0LjI4NjggNi45NDE1NyAyNC4yOTE5IDYuOTU1MTNDMjQuMjk3IDYuOTY4NjggMjQuMjk3NyA2Ljk4MzUgMjQuMjkzOSA2Ljk5NzQ3QzI0LjI5MDEgNy4wMTE0NCAyNC4yODE5IDcuMDIzODUgMjQuMjcwNyA3LjAzMjkzQzI0LjAxMjMgNy4yMzE4OCAyMy43ODEyIDcuNDYzOTcgMjMuNTgzNCA3LjcyMzIyQzIzLjU3NjIgNy43MzMxIDIzLjU3MTggNy43NDQ3NyAyMy41NzA3IDcuNzU2OThDMjMuNTY5NiA3Ljc2OTE4IDIzLjU3MTggNy43ODE0NiAyMy41NzcyIDcuNzkyNDhDMjMuNTgyNSA3LjgwMzUgMjMuNTkwOCA3LjgxMjg1IDIzLjYwMSA3LjgxOTUzQzIzLjYxMTMgNy44MjYyIDIzLjYyMzIgNy44Mjk5NSAyMy42MzU1IDcuODMwMzZDMjQuOTA4OCA3Ljg3MzUgMjYuMTU2NSA4LjIwMDMxIDI3LjI4NzQgOC43ODY5N0MyNy4zNTYzIDguODI1MjMgMjcuMzA3MyA4Ljk1Njg2IDI3LjIzMDggOC45NDAwM0MyNS4wNTE5IDguNDQ4OTcgMjIuNzkwMyA4LjQ1NTI1IDIwLjYxNDEgOC45NTgzOUMxOC4yOTUzIDkuNTIzMTggMTYuNTI3NSAxMC4zOTU2IDE1LjIzNDEgMTEuMzI2MkMxNS4yMjEzIDExLjMzMjEgMTUuMjA2OSAxMS4zMzM4IDE1LjE5MzEgMTEuMzMxQzE1LjE3OTIgMTEuMzI4MyAxNS4xNjY1IDExLjMyMTMgMTUuMTU2OSAxMS4zMTFDMTUuMTQ3MiAxMS4zMDA2IDE1LjE0MTEgMTEuMjg3NSAxNS4xMzkzIDExLjI3MzVDMTUuMTM3NSAxMS4yNTk1IDE1LjE0MDIgMTEuMjQ1MiAxNS4xNDY5IDExLjIzMjhaTTM3LjI4MzYgMjguMTEzNUMzNi45OTEyIDI5Ljg4NTkgMzYuMjM4MiAzMS4zMjc3IDM0Ljk3MjQgMzIuNjQ1NUMzNC4xODIxIDMzLjUwMTIgMzMuMjQxNiAzNC4yMDQ2IDMyLjE5NzUgMzQuNzIxQzMxLjYxNTUgMzUuMDI2NiAzMS4wMDg4IDM1LjI4MjYgMzAuMzgzOCAzNS40ODYzQzI1LjYxMyAzNy4wNDQ0IDIwLjcyNzQgMzUuMzMzMiAxOS4xNTM5IDMxLjY1OTlDMTkuMDI2MSAzMS4zNzg3IDE4LjkyMDEgMzEuMDg4IDE4LjgzNzEgMzAuNzkwNUMxOC4xNjY3IDI4LjM2NjEgMTguNzM2MSAyNS40NTggMjAuNTIwNyAyMy42MjU5QzIwLjY0NiAyMy41MTY5IDIwLjcyNDkgMjMuMzY0MSAyMC43NDEyIDIzLjE5ODhDMjAuNzI1IDIzLjA0OTggMjAuNjY1NCAyMi45MDg3IDIwLjU2OTcgMjIuNzkzMkMxOS45NDY4IDIxLjg5MDIgMTcuNzkwMiAyMC4zNDQzIDE4LjIyMzQgMTcuMzcwNEMxOC41Mjk1IDE1LjIyNzYgMjAuNDA2IDEzLjcyMzEgMjIuMTUwOCAxMy44MTE4TDIyLjU5MzEgMTMuODM3OUMyMy4zNDkzIDEzLjg4MjIgMjQuMDEwNSAxMy45Nzg3IDI0LjYzMTkgMTQuMDA0N0MyNS42NzQyIDE0LjA1MDYgMjYuNjEyNCAxMy44OTkxIDI3LjcyMjEgMTIuOTc0NkMyOC4wOTU2IDEyLjY2ODUgMjguMzk1NSAxMi4zOTE1IDI4LjkwMzcgMTIuMzA1OEMyOS4wNTM0IDEyLjI2NjYgMjkuMjA4NCAxMi4yNTE2IDI5LjM2MjkgMTIuMjYxNEMyOS42MzU1IDEyLjI3MDUgMjkuOTAwMyAxMi4zNTQ3IDMwLjEyODIgMTIuNTA0N0MzMS4wMTkgMTMuMDk3MSAzMS4xNDQ1IDE0LjUzMTIgMzEuMTkwNCAxNS41Nzk3QzMxLjIxNjQgMTYuMTc4MSAzMS4yODk5IDE3LjYyNzYgMzEuMzE0NCAxOC4wNDM5QzMxLjM3MSAxOC45OTQ0IDMxLjYyMDUgMTkuMTI5MSAzMi4xMjcxIDE5LjI5NDRDMzIuNDExOCAxOS4zODkyIDMyLjY3NSAxOS40NTgxIDMzLjA2MzggMTkuNTY4M0MzNC4yNDIzIDE5Ljg5ODkgMzQuOTQwMyAyMC4yMzQxIDM1LjM4MTEgMjAuNjY0MkMzNS42MDg0IDIwLjg4NzQgMzUuNzU2NyAyMS4xNzg3IDM1LjgwMzUgMjEuNDkzOEMzNS45NDEzIDIyLjUwNyAzNS4wMTY4IDIzLjc1NzUgMzIuNTY2NCAyNC44OTQ3QzI5Ljg4NzkgMjYuMTM5MSAyNi42Mzg1IDI2LjQ1MjggMjQuMzk0NiAyNi4yMDM0TDIzLjYwNzkgMjYuMTE0NkMyMS44MTEgMjUuODcyOCAyMC43ODcxIDI4LjE5MzEgMjEuODY0NiAyOS43ODhDMjIuNTU5NSAzMC44MTE5IDI0LjQ1MTMgMzEuNDc5MiAyNi4zNDQ2IDMxLjQ3OTJDMzAuNjgzOCAzMS40NzkyIDM0LjAyMDQgMjkuNjI3MyAzNS4yNjE3IDI4LjAyNjNDMzUuMjk4NCAyNy45Nzg4IDM1LjMwMTUgMjcuOTcyNyAzNS4zNjEyIDI3Ljg4NTVDMzUuNDIwOSAyNy43OTgyIDM1LjM3MTkgMjcuNzQxNiAzNS4yOTU0IDI3Ljc5MzZDMzQuMjgyMSAyOC40ODg1IDI5Ljc3NzcgMzEuMjQyIDI0Ljk2MDkgMzAuNDE0QzI0LjU3OTUgMzAuMzQ1OSAyNC4yMDUgMzAuMjQzNSAyMy44NDIxIDMwLjEwNzlDMjMuNDE2NiAyOS45NDI2IDIyLjUyODkgMjkuNTMzOSAyMi40MjAyIDI4LjYyMTdDMjYuMzA3OCAyOS44MjQ3IDI4Ljc1NTIgMjguNjg3NSAyOC43NTUyIDI4LjY4NzVDMjguNzc3OCAyOC42NzcyIDI4Ljc5NjYgMjguNjYwMiAyOC44MDkyIDI4LjYzODlDMjguODIxOCAyOC42MTc1IDI4LjgyNzYgMjguNTkyOCAyOC44MjU2IDI4LjU2ODFDMjguODI0MSAyOC41NTM0IDI4LjgxOTcgMjguNTM5MSAyOC44MTI2IDI4LjUyNjFDMjguODA1NSAyOC41MTMyIDI4Ljc5NiAyOC41MDE3IDI4Ljc4NDQgMjguNDkyNUMyOC43NzI5IDI4LjQ4MzIgMjguNzU5NiAyOC40NzYzIDI4Ljc0NTQgMjguNDcyMkMyOC43MzEyIDI4LjQ2ODEgMjguNzE2NCAyOC40NjY5IDI4LjcwMTcgMjguNDY4NkMyOC43MDE3IDI4LjQ2ODYgMjUuNTE1IDI4Ljk0IDIyLjUwNTkgMjcuODM4QzIyLjgzMzQgMjYuNzY2NiAyMy43MDU5IDI3LjE1NjkgMjUuMDIzNyAyNy4yNjRDMjcuMDcxNyAyNy4zODQ1IDI5LjEyNTQgMjcuMTYyIDMxLjEwMDEgMjYuNjA1OUMzMi40NjM4IDI2LjIxNTYgMzQuMjU0NiAyNS40NDQyIDM1LjY0NDMgMjQuMzQ2OEMzNS45NDQ4IDI1LjAzOTEgMzYuMTU4MSAyNS43NjYxIDM2LjI3OTUgMjYuNTExQzM2LjUwOTIgMjYuNDc2OSAzNi43NDM4IDI2LjUxOTMgMzYuOTQ2OSAyNi42MzE5QzM3LjIxNzggMjYuNzk4OCAzNy40Mjc1IDI3LjE2NDYgMzcuMjgzNiAyOC4xMTM1WiIgZmlsbD0iYmxhY2siLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMDQyXzYwNTEiPgo8cmVjdCB3aWR0aD0iMzcuNjg4OCIgaGVpZ2h0PSI0MCIgZmlsbD0id2hpdGUiIHRyYW5zZm9ybT0idHJhbnNsYXRlKDEpIi8+CjwvY2xpcFBhdGg+CjwvZGVmcz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Mailchimp",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 76,
+        "icon": "file:hubspot.svg",
+        "name": "n8n-nodes-base.hubspot",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hubspot/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/hubspot/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HubSpot"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjIuODgzIDY5Ljg4MyI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iMi40NDIiIHk9IjIuNDQyIi8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxwYXRoIGZpbGw9IiNmODc2MWYiIGZpbGwtcnVsZT0ibm9uemVybyIgc3Ryb2tlPSJub25lIiBkPSJNNTUuNTA0IDMwLjQwMWExNi4yNiAxNi4yNiAwIDAgMC01LjkwNC01Ljg2NGMtMS44NjUtMS4wODQtMy43OTQtMS43NzMtNS45NzItMi4wN3YtNy43OThhNS43MSA1LjcxIDAgMCAwIDMuNTI1LTUuMzU3IDUuODYgNS44NiAwIDAgMC01Ljg1OS01Ljg4OSA1LjkxIDUuOTEgMCAwIDAtNS45MDggNS44ODljMCAyLjM5MyAxLjI3IDQuNDM0IDMuNDUyIDUuMzU3djcuNzU0YTE3IDE3IDAgMCAwLTUuMTk1IDEuNjMxTDEyLjc2OSA4LjI0N2MuMTQ2LS41NTIuMjczLTEuMTIzLjI3My0xLjcyNEE2LjUyIDYuNTIgMCAwIDAgNi41MTkgMCA2LjUyIDYuNTIgMCAwIDAgMCA2LjUyNGE2LjUyMyA2LjUyMyAwIDAgMCA2LjUyNCA2LjUyNCA2LjQ3IDYuNDcgMCAwIDAgMy4zNS0uOTUybDEuMzY3IDEuMDM1IDE4LjcyNiAxMy41MDFjLS45OTEuOTA4LTEuOTE0IDEuOTQzLTIuNjUxIDMuMTA1LTEuNDk0IDIuMzY4LTIuNDA3IDQuOTcxLTIuNDA3IDcuODEzdi41ODZhMTYuNCAxNi40IDAgMCAwIDEuMDI1IDUuNjQ1QzI2LjUgNDUuMzI0IDI3LjMzIDQ2LjczIDI4LjM2MSA0OGwtNi4yMjEgNi4yMzVhNS4wMSA1LjAxIDAgMCAwLTUuMjk4IDEuMTYyYy0uOTQ3Ljk0Mi0xLjQ4IDIuMjI3LTEuNDc1IDMuNTY1cy41MjcgMi42MTIgMS40NzkgMy41NjQgMi4yMjcgMS40OCAzLjU2NSAxLjQ4YTUgNSAwIDAgMCAzLjU2NS0xLjQ4IDUuMDUgNS4wNSAwIDAgMCAxLjQ3NS0zLjU2NCA1IDUgMCAwIDAtLjIzNC0xLjUxNGw2LjQyNi02LjQyNmExNiAxNiAwIDAgMCAyLjg1NiAxLjU2MyAxNi43IDE2LjcgMCAwIDAgNi42ODUgMS40MDZoLjQzOWExNS43NiAxNS43NiAwIDAgMCA3LjYyNy0xLjkyOSAxNS43NyAxNS43NyAwIDAgMCA1Ljk3Ny01LjYzYzEuNDk5LTIuMzkzIDIuMzE5LTUuMDQ0IDIuMzE5LTcuOTU5di0uMTQ2YzAtMi44NjYtLjY2NC01LjUwOC0yLjA1MS03Ljkzem0tNy44NDcgMTMuNDg3Yy0xLjc0MyAxLjkzOC0zLjc1IDMuMTM1LTYuMDE2IDMuMTM1aC0uNDNjLTEuMjk0IDAtMi41NjQtLjM1Ni0zLjc5OS0xLjAxMWE4LjggOC44IDAgMCAxLTMuMzMtMy4wMzJjLS44OTgtMS4yNy0xLjM4Ny0yLjY1Ni0xLjM4Ny00LjEyNnYtLjQzOWMwLTEuNDQ1LjI3OC0yLjgxNy45NzctNC4xMTEuNzQ3LTEuNDY1IDEuNzU4LTIuNTE1IDMuMTAxLTMuMzg5YTcuNiA3LjYgMCAwIDEgNC4yOTctMS4yOTRoLjE0N2MxLjQxNiAwIDIuNzY5LjI3OCA0LjAzOC45MjhhOC41NiA4LjU2IDAgMCAxIDMuMTc0IDIuODg2IDkuMiA5LjIgMCAwIDEgMS40MjEgNC4wNTNsLjAzNC45MTNjMCAxLjk4Ny0uNzYyIDMuODI4LTIuMjggNS40OTh6Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "HubSpot",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

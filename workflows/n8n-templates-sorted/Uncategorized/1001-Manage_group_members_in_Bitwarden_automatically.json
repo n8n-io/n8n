@@ -1,0 +1,195 @@
+{
+  "workflow": {
+    "id": 1001,
+    "name": "Manage group members in Bitwarden automatically",
+    "views": 726,
+    "recentViews": 0,
+    "totalViews": 726,
+    "createdAt": "2021-03-25T10:52:17.734Z",
+    "description": "This workflow allows you to create a group, add members to the group, and get the members of the group.\n\n![workflow-screenshot](fileId:456)\n\n**Bitwarden node:** This node will create a new group called `documentation` in Bitwarden.\n\n**Bitwarden1 node:** This node will get all the members from Bitwarden.\n\n**Bitwarden2 node:** This node will update all the members in the group that we created earlier.\n\n**Bitwarden3 node:** This node will get all the members in the group that we created earlier.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Bitwarden",
+          "type": "n8n-nodes-base.bitwarden",
+          "position": [
+            470,
+            320
+          ],
+          "parameters": {
+            "name": "documentation",
+            "resource": "group",
+            "operation": "create",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "bitwardenApi": "Bitwarden API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Bitwarden1",
+          "type": "n8n-nodes-base.bitwarden",
+          "position": [
+            670,
+            320
+          ],
+          "parameters": {
+            "resource": "member",
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "bitwardenApi": "Bitwarden API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Bitwarden2",
+          "type": "n8n-nodes-base.bitwarden",
+          "position": [
+            870,
+            320
+          ],
+          "parameters": {
+            "groupId": "={{$node[\"Bitwarden\"].json[\"id\"]}}",
+            "resource": "group",
+            "memberIds": "={{$json[\"id\"]}}",
+            "operation": "updateMembers"
+          },
+          "credentials": {
+            "bitwardenApi": "Bitwarden API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Bitwarden3",
+          "type": "n8n-nodes-base.bitwarden",
+          "position": [
+            1070,
+            320
+          ],
+          "parameters": {
+            "groupId": "={{$node[\"Bitwarden\"].json[\"id\"]}}",
+            "resource": "group",
+            "operation": "getMembers"
+          },
+          "credentials": {
+            "bitwardenApi": "Bitwarden API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Bitwarden": {
+          "main": [
+            [
+              {
+                "node": "Bitwarden1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bitwarden1": {
+          "main": [
+            [
+              {
+                "node": "Bitwarden2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bitwarden2": {
+          "main": [
+            [
+              {
+                "node": "Bitwarden3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.bitwarden": {
+          "count": 4
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 456,
+        "icon": "file:bitwarden.svg",
+        "name": "n8n-nodes-base.bitwarden",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bitwarden/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/bitwarden/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Bitwarden"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNTUgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjM2M4ZGJjIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTUzLjMzMyAyLjY2N3YzMnEwIDMuNTgyLTEuMzk2IDcuMTAzYy0xLjM5NiAzLjUyMS0yLjA4NCA0LjQzLTMuNDU4IDYuMjVzLTMuMDE1IDMuNTktNC45MTcgNS4zMTItMy42NiAzLjE1My01LjI3MiA0LjI5MmwtNS4wNCAzLjIzLTMuNzMgMi4wNjItMS43Ny44MzRxLS41LjI1LTEuMDgzLjI1YTIuNCAyLjQgMCAwIDEtMS4wODMtLjI1bC0xLjc3LS44MzQtMy43My0yLjA2Mi01LjA0Mi0zLjIzcS0yLjQxNi0xLjcxLTUuMjctNC4yOTJjLTIuODU0LTIuNTgyLTMuNTQtMy40OTItNC45MTYtNS4zMTJzLTIuNTI4LTMuOTAzLTMuNDYtNi4yNVMwIDM3LjA1NSAwIDM0LjY2N3YtMzJBMi41NiAyLjU2IDAgMCAxIC43OTEuNzkyIDIuNTYgMi41NiAwIDAgMSAyLjY2NiAwaDQ4cTEuMDgxIDAgMS44NzQuNzkyYTIuNTYgMi41NiAwIDAgMSAuNzkyIDEuODc1bS04IDMyVjhIMjYuNjY2djQ3LjM3NXE0Ljk1OC0yLjYyNSA4Ljg3NS01LjcwOCA5Ljc5LTcuNjY1IDkuNzktMTUiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Bitwarden",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 456,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/e8239b595a474f499b0a6af150c752e9.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,73 @@
+URL: https://docs.n8n.io/workflows/executions/single-workflow-executions/
+Scraped_At: 2025-05-20T19:10:55.639960
+
+Workflow-level executions list
+#
+The
+Executions
+list in a workflow shows all executions for that workflow.
+Deleted workflows
+When you delete a workflow, n8n deletes its execution history as well. This means you can't view executions for deleted workflows.
+Execution history and workflow history
+Don't confuse the execution list with
+Workflow history
+.
+Executions are workflow runs. With the executions list, you can see previous runs of the current version of the workflow. You can copy previous executions into the editor to
+Debug and re-run past executions
+in your current workflow.
+Workflow history is previous versions of the workflow: for example, a version with a different node, or different parameters set.
+View executions for a single workflow
+#
+In the workflow, select the
+Executions
+tab in the top menu. You can preview all executions of that workflow.
+Filter executions
+#
+You can filter the executions list.
+In your workflow, select
+Executions
+.
+Select
+Filters
+.
+Enter your filters. You can filter by:
+Status
+: choose from
+Failed
+,
+Running
+,
+Success
+, or
+Waiting
+.
+Execution start
+: see executions that started in the given time.
+Saved custom data
+: this is data you create within the workflow using the Code node. Enter the key and value to filter. Refer to
+Custom executions data
+for information on adding custom data.
+Feature availability
+Custom executions data is available on:
+Cloud: Pro, Enterprise
+Self-Hosted: Enterprise, registered Community
+Available in version 0.222.0 and above.
+Retry failed workflows
+#
+If your workflow execution fails, you can retry the execution. To retry a failed workflow:
+Open the
+Executions
+list.
+For the workflow execution you want to retry, select
+Refresh
+.
+Select either of the following options to retry the execution:
+Retry with currently saved workflow
+: Once you make changes to your workflow, you can select this option to execute the workflow with the previous execution data.
+Retry with original workflow
+: If you want to retry the execution without making changes to your workflow, you can select this option to retry the execution with the previous execution data.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

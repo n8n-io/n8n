@@ -1,0 +1,311 @@
+{
+  "workflow": {
+    "id": 1530,
+    "name": "Create Onfleet tasks from local Spreadsheets",
+    "views": 515,
+    "recentViews": 0,
+    "totalViews": 515,
+    "createdAt": "2022-03-16T23:07:39.840Z",
+    "description": "**Summary**\n\nOnfleet is a last-mile delivery software that provides end-to-end route planning, dispatch, communication, and analytics to handle the heavy lifting while you can focus on your customers.\n\nThis workflow template loads in a spreadsheet from your **local storage** and **automatically creates Onfleet tasks** on a one-time basis upon workflow trigger. You can use this workflow as a task importer.\n\n**Configurations**\n\n- Update the `Read Binary File` node with the absolute file path to the local spreadsheet of interest\n- Update the Onfleet node with your own Onfleet credentials, to register for an **Onfleet API key**, please visit https://onfleet.com/signup to get started\n- You can easily change how the Onfleet task is created by mapping to additional data in the spreadsheet\n- For import templates, visit [Onfleet Support](https://support.onfleet.com/hc/en-us/articles/360023910131-Task-Overview#h_4667f289-d298-49bc-9faa-00898a922dab) to learn more 👍",
+    "workflow": {
+      "id": 12,
+      "name": "Create Onfleet tasks from Spreadsheets",
+      "nodes": [
+        {
+          "name": "Onfleet",
+          "type": "n8n-nodes-base.onfleet",
+          "position": [
+            900,
+            280
+          ],
+          "parameters": {
+            "operation": "create",
+            "destination": {
+              "destinationProperties": {
+                "address": "={{$json[\"Address_Line1\"]}}, {{$json[\"Address_Line2\"]}}, {{$json[\"City/Town\"]}} {{$json[\"State/Province\"]}}, {{$json[\"Country\"]}}, {{$json[\"Postal_Code\"]}}",
+                "unparsed": true,
+                "addressNotes": "=",
+                "addressApartment": "={{$json[\"Address_Line2\"]}}"
+              }
+            },
+            "additionalFields": {
+              "notes": "={{$json[\"Task_Details\"]}}",
+              "recipient": {
+                "recipientProperties": {
+                  "recipientName": "={{$json[\"Recipient_Name\"]}}",
+                  "recipientNotes": "={{$json[\"Recipient_Notes\"]}}",
+                  "recipientPhone": "=+1{{$json[\"Recipient_Phone\"]}}"
+                }
+              }
+            }
+          },
+          "credentials": {
+            "onfleetApi": {
+              "id": "2",
+              "name": "Onfleet API Key"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Read Binary File",
+          "type": "n8n-nodes-base.readBinaryFile",
+          "position": [
+            500,
+            280
+          ],
+          "parameters": {
+            "filePath": "=/Users/jamesli/Downloads/Onfleet Import Google Sheet.xlsx"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Spreadsheet File1",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            700,
+            280
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Read Binary File": {
+          "main": [
+            [
+              {
+                "node": "Spreadsheet File1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spreadsheet File1": {
+          "main": [
+            [
+              {
+                "node": "Onfleet",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.onfleet": {
+          "count": 1
+        },
+        "n8n-nodes-base.readBinaryFile": {
+          "count": 1
+        },
+        "n8n-nodes-base.spreadsheetFile": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "James Li",
+      "username": "ilsemaj",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f2676b8a1c6bf7a2b2c9c4df054571d29662ea0dab6f11e7a423c01af7259574?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 31,
+        "icon": "fa:file-import",
+        "name": "n8n-nodes-base.readBinaryFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "Text",
+              "Open",
+              "Import"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Read Binary File",
+          "color": "#449922"
+        },
+        "iconData": {
+          "icon": "file-import",
+          "type": "icon"
+        },
+        "displayName": "Read Binary File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 41,
+        "icon": "fa:table",
+        "name": "n8n-nodes-base.spreadsheetFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "_Excel",
+              "Excel",
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "xls",
+              "xlsx",
+              "ods"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Spreadsheet File",
+          "color": "#2244FF"
+        },
+        "iconData": {
+          "icon": "table",
+          "type": "icon"
+        },
+        "displayName": "Spreadsheet File",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 555,
+        "icon": "file:Onfleet.svg",
+        "name": "n8n-nodes-base.onfleet",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.onfleet/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/onfleet/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Onfleet"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSIjQUE4MUYzIiBkPSJNMCAwaDYwdjYwSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMyLjU1IDMyLjA2NmMuNDgyLjQ1NCAxLjIwNyAxLjA2NiAyLjE0NSAxLjgxMS45MzguNzIxIDIuMTY5IDEuNTQ1IDMuNjQzIDIuMTg4Ljc1LjI5IDEuNTUzLjUzMyAyLjQxMi41NTcuNDI3IDAgLjg2IDAgMS4yNjEtLjEzMy4yMTMtLjAyNC40MDItLjEzMy41OTEtLjIxMi4xODktLjExLjM3OC0uMTg4LjU2LS4zMjEuMzQ4LS4yNDMuNjk1LS41MzQuOTYzLS45MDMuMjY4LS4zNy41MTItLjc3LjcyNS0xLjIyNC4zNzgtLjkwMy42MTUtMS45Mi42Ny0yLjk4MWE4LjcgOC43IDAgMCAwLS40MjYtMy4yYy0uMzQ4LTEuMDExLS45MDgtMS45NDUtMS43MTItMi41MzItLjc3NC0uNTU4LTEuNzY3LS43Ny0yLjgzOS0uNjEyLS41MzYuMTA5LTEuMDk2LjI0Mi0xLjYzMi40NzgtLjI2OS4xMS0uNTM3LjI0My0uODI5LjM3Ni0uMjY4LjE1OC0uNTM2LjI5LS44MDQuNDU0LTEuMDcyLjY0My0yLjExNCAxLjQzNi0zLjEwNyAyLjI5LS40ODEuNDU1LS45OTMuODgtMS40NDQgMS4zNTgtLjI0My4yNDItLjQ4LjQ1NS0uNjk0LjcyMWwtLjcyNS43NDVhNDAgNDAgMCAwIDEtMy4wODMgMi45MzNjLTEuMDk2LjkzMy0yLjI0NyAxLjc4OC0zLjUzMyAyLjUzMy0xLjI2LjcyMS0yLjY4IDEuMzMzLTQuMjU4IDEuNTQ1YTYuNyA2LjcgMCAwIDEtMi40MzctLjEwOSA1LjcgNS43IDAgMCAxLTIuMjIzLTEuMDY2IDYuNCA2LjQgMCAwIDEtMS41My0xLjc1OCA4IDggMCAwIDEtLjg1OC0yIDEwLjcgMTAuNyAwIDAgMS0uMzQ4LTIuMDIzIDkuNyA5LjcgMCAwIDEgLjAyNS0xLjk3IDkuOSA5LjkgMCAwIDEgMS4wNi0zLjYzNSA3IDcgMCAwIDEgMS4wNzItMS41MiA1LjMgNS4zIDAgMCAxIDEuNDItMS4xNDZjLjUzNS0uMjkgMS4wOTYtLjUwOSAxLjY2Mi0uNTg4LjU2LS4xMDMgMS4xMjEtLjA3MiAxLjY1Ny0uMDI0IDEuMDQyLjEzMyAxLjk1Ni41MSAyLjczLjkwMyAxLjU1My44NTQgMi42OCAxLjgzNiAzLjU2MyAyLjY5Ljg2Ljg1NSAxLjQ3NSAxLjYgMS45MDEgMi4xMDNsLjYxNS43Ny0uNzI1LS42NjdjLS40OC0uNDU1LTEuMjA2LTEuMDY3LTIuMTQ0LTEuNzg4LS45MzgtLjcyLTIuMTY5LTEuNTQ1LTMuNjQzLTIuMTg3LS43NS0uMjktMS41NTMtLjUzMy0yLjQxMi0uNTU3LS44MjktLjAyNS0xLjY4OC4xNTctMi4zODIuNjY2LS4zNDcuMjQyLS42OTUuNTMzLS45NjMuOTAzcy0uNTM2Ljc3LS43MjUgMS4yMjRhNy45IDcuOSAwIDAgMC0uNjcgMy4wMTEgOC43IDguNyAwIDAgMCAuNDI3IDMuMmMuMzQ3IDEuMDExLjkwNyAxLjk0NSAxLjcxMSAyLjUwMi43NzQuNTU3IDEuNzY3Ljc3IDIuODQuNTg4LjEzMyAwIC4yNjctLjA1NS40MDEtLjA3OXMuMjY4LS4wNTUuNDAyLS4xMDlsLjQwMi0uMTMzLjQwMy0uMTU4Yy4xMzQtLjA1NC4yNjgtLjEwOS40MDItLjE4OGwuNDAyLS4xODhjLjI2OC0uMTU3LjUzNi0uMjkuODA0LS40NTQgMS4wNzItLjY0MiAyLjExNC0xLjQzNiAzLjEwNy0yLjI5Ljk5My0uODc5IDEuOS0xLjc1OCAyLjg5My0yLjhsLjcyNS0uNzQ1Yy4yNDQtLjI2Ny41MTItLjUxLjc1LS43NDVhMjUgMjUgMCAwIDEgMS41NzctMS40MzZjMS4wOTctLjkzNCAyLjI0OC0xLjc4OCAzLjUzNC0yLjUzMyAxLjI2LS43MjEgMi42OC0xLjMzMyA0LjI1OC0xLjU0NWE2LjggNi44IDAgMCAxIDIuNDM2LjEzMyA1LjYgNS42IDAgMCAxIDIuMiAxLjA5Yy42NDUuNTEgMS4xMjcgMS4xMjIgMS41MjkgMS43NThhOCA4IDAgMCAxIC44NTkgMmMuMTg4LjY2Ni4yOTIgMS4zNTcuMzQ3IDIuMDIzYTkuNyA5LjcgMCAwIDEtLjAyNSAxLjk3Yy0uMTM0IDEuMjc4LS40OCAyLjUzMi0xLjA0MSAzLjYyM2E3IDcgMCAwIDEtMS4wNzIgMS41MiA1IDUgMCAwIDEtMS40NDQgMS4xNDYgNSA1IDAgMCAxLS44MjkuMzc2Yy0uMjkyLjA3OC0uNTYuMTg3LS44NTkuMjEyLS41Ni4xMDktMS4xMjcuMDc5LTEuNjYzLjAyNC0xLjA0MS0uMTU4LTEuOTU1LS41MzMtMi43MjktLjkzMy0xLjU1My0uODU1LTIuNjgtMS44NjYtMy41NjQtMi43MTUtLjg1OS0uODU0LTEuNDc0LTEuNi0xLjktMi4xMDJsLS42MTUtLjc3Yy4wNzktLjAxMi44MDQuNjU1LjgwNC42NTUiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Onfleet",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

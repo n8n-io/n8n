@@ -1,0 +1,511 @@
+{
+  "workflow": {
+    "id": 3089,
+    "name": "Reply to Outlook Emails with OpenAI",
+    "views": 8277,
+    "recentViews": 27,
+    "totalViews": 8277,
+    "createdAt": "2025-03-05T20:50:48.843Z",
+    "description": "## Who is this template for?\nThis template is for any Microsoft Outlook user who wants a trained AI agent to reason and reply on their behalf. Teach your agent tone and writing style to replicate your own, or develop a persona for a shared inbox.\n\n## Requirements\n- Outlook with authentication credentials\n- OpenAI account with authentication credentials\n- A few sample email replies of various lengths and topics\n\n### How it works:\n1. Connect your Outlook account.\n\n![Screenshot 20250305 at 5.27.06 PM.png](fileId:984)\n\n2. Select (filter) which email sender(s) your trained AI agent will reply to. \n\n*[Tip: pick a sender that has some repeatability either with a topic (ie. sales) or an individual (coworker@yourcompany.com)]*\n\n![Screenshot 20250305 at 6.22.11 PM.png](fileId:983)\n\n3. Connect your OpenAI account. Choose your AI model (ie. gpt-4o-mini)\n\n![Screenshot 20250305 at 5.41.05 PM.png](fileId:982)\n\n4. Add Prompt (User Message) and select \"system message\" from the option below \n\n![Screenshot 20250305 at 5.46.13 PM.png](fileId:987)\n\n\n5. Update the instructions by filling in your name (or persona), response style, and add full email replies from the topic or individual you want the AI agent to emulate.\n\n[Tip: Add actual replies from your email sent folder, including your greeting and sign off. Paste each email sample between a set of &lt;example&gt; .... &lt;/example&gt; tags]\n\n![Screenshot 20250305 at 5.47.32 PM.png](fileId:986)\n\n6. Configure the reply (or reply all) to remain within the original email string\n\n![Screenshot 20250305 at 6.03.30 PM.png](fileId:985)\n\n7. Test it! Send an email from the address to which your agent wants to respond. Check your sent (or draft) folder for the result.\n\n\n![Screenshot 20250305 at 6.30.21 PM.png](fileId:981)\n\n8. Enjoy all the free time you now have!!\n9. If you have questions or need assistance, email us at: support@teambisonandbird.com\n\n\n++This template does not include retrieving email addresses out of the message or body of the email.++",
+    "workflow": {
+      "id": "mqindLlOy0A0e5aA",
+      "meta": {
+        "instanceId": "aae6cde6c06a77e3bf2445b060051b4c63107a8258d59cb57184495848d659de",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Outlook",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "b2e6066f-a4c7-486c-aa0d-06a4c92aa745",
+          "name": "Connect Outlook & Set Filter",
+          "type": "n8n-nodes-base.microsoftOutlookTrigger",
+          "position": [
+            -240,
+            -260
+          ],
+          "parameters": {
+            "output": "raw",
+            "filters": {
+              "sender": "sales@yourcompany.com"
+            },
+            "options": {},
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "microsoftOutlookOAuth2Api": {
+              "id": "nRYwUzhHrSBFtcSS",
+              "name": "Microsoft Outlook account 2"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "98f20649-4842-44b8-86c3-a153cd7f4ce2",
+          "name": "Add OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            140,
+            100
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "sXujPvtyB7ZEzKZs",
+              "name": "OpenAi account 2"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "bf4cb647-91c6-4f3d-a685-ed928b431ef5",
+          "name": "Add AI Agent Instructions",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            140,
+            -120
+          ],
+          "parameters": {
+            "text": "=Write a reply to the following email, then save it as a draft to the email thread:\n<email>\nID: {{ $json.id }}\nFrom: {{ $json.from.emailAddress.address }}\nSubject: {{ $json.subject }}\nMessage: {{ $json.body.content }}\n</email>",
+            "options": {
+              "systemMessage": "#role\nYou are an AI assistant specializing in replying to incoming emails to [YOUR NAME] Outlook inbox.\n\n#capabilities and limitations\nYour reply will be limited to the current email message, not the email string. Do not hallucinate.\n\n#response\nReply in a casual, modern, professional, concise writing style. You should sound like [YOUR NAME HERE]. Here are examples of [YOUR NAME HERE] voice:\n<example>\n[COPY & PASTE REPLY SAMPLES FROM YOUR EMAIL]\n</example>\n<example>\n[COPY & PASTE REPLY SAMPLES FROM YOUR EMAIL]\n</example>\n<example>\n[ADD A VARIETY OF REPLY SAMPLES SO THE AGENT UNDERSTANDS YOUR TONE & STYLE]\n</example>"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "8432a5b8-db95-4e1a-b573-6d4f6a026659",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -60,
+            -320
+          ],
+          "parameters": {
+            "color": 5,
+            "content": "Trigger Action\n1) Connect a Microsoft email account you can authenticate\n2) Trigger is set to \"message received\" and the output \"raw\"\n3) Add the email address(es) you want the AI agent to handle"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "72b652a4-cebe-48d6-81ad-d078f0655041",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -300,
+            -80
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 340,
+            "height": 440,
+            "content": "Agent Instructions\n\n#role\nYou are an AI assistant specializing in replying to incoming emails to [YOUR NAME] Outlook inbox.\n\n#capabilities and limitations\nYour reply will be limited to the current email message, not the email string. Do not hallucinate.\n\n#response\nReply in a casual, modern, professional, concise writing style. You should sound like [YOUR NAME HERE]. Here are examples of [YOUR NAME HERE] voice:\n<example>\n[COPY & PASTE REPLY SAMPLES FROM YOUR EMAIL]\n</example>\n<example>\n[COPY & PASTE REPLY SAMPLES FROM YOUR EMAIL]\n</example>\n<example>\n[ADD A VARIETY OF REPLY SAMPLES SO THE AGENT UNDERSTANDS YOUR TONE & STYLE]\n</example>"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e2e761a3-9744-439c-9764-ab4c68621c69",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            260
+          ],
+          "parameters": {
+            "color": 5,
+            "height": 100,
+            "content": "Add AI Model\n1) OpenAI Account Credentials Required\n2) Select model (ie. gpt-4o-mini)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "555f37e2-a8fe-4cd4-9a55-758c07b6a4c4",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            320,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "height": 180,
+            "content": "Reply Settings\n1) Manually set the resource, operation, and message\n2) Toggle switch to reply only to sender\n3) Let the AI model define the \"message\"\n4) Additional fields for the \"reply to\" and \"subject\""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9b1a5b51-e502-42f4-80ad-03d050a3c7cb",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            580,
+            120
+          ],
+          "parameters": {
+            "height": 140,
+            "content": "Draft a Reply\n1. Follows all the same \"Reply to Email\" settings EXCEPT the email reply is saved in your DRAFTS folder\n2. This setting is great if you want a human checkpoint before sending"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "46f4b974-4da7-471b-ba49-3737685d123e",
+          "name": "Reply to Email",
+          "type": "n8n-nodes-base.microsoftOutlookTool",
+          "position": [
+            400,
+            40
+          ],
+          "webhookId": "6d01cb74-0463-4042-8917-acd2f552d4b5",
+          "parameters": {
+            "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+            "options": {},
+            "messageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json.id }}"
+            },
+            "operation": "reply",
+            "descriptionType": "manual",
+            "additionalFields": {
+              "replyTo": "={{ $json.sender.emailAddress.address }}",
+              "subject": "={{ $json.subject }}"
+            },
+            "replyToSenderOnly": true
+          },
+          "credentials": {
+            "microsoftOutlookOAuth2Api": {
+              "id": "nRYwUzhHrSBFtcSS",
+              "name": "Microsoft Outlook"
+            }
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "fcd52e16-512c-4655-ae18-1a4b87190e0d",
+      "connections": {
+        "Reply to Email": {
+          "ai_tool": [
+            [
+              {
+                "node": "Add AI Agent Instructions",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Add AI Agent Instructions",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Draft a Reply [optional]": {
+          "ai_tool": [
+            [
+              {
+                "node": "Add AI Agent Instructions",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Connect Outlook & Set Filter": {
+          "main": [
+            [
+              {
+                "node": "Add AI Agent Instructions",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 9,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftOutlookTool": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftOutlookTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Ryan",
+      "username": "ryanh",
+      "bio": "Proven track record of helping businesses achieve operational excellence and profitability.\n\nCore Expertise:\n→ Digital adoption strategy\n→ Operational efficiency\n→ Profitability optimization\n→ Board governance\n→ Management advisory",
+      "verified": false,
+      "links": [
+        "https://www.teambisonandbird.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/60d47d46422d7aeda358d905ce82cbacd76720b541174068ba0c9cafbd5cd751?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1249,
+        "icon": "file:outlook.svg",
+        "name": "n8n-nodes-base.microsoftOutlookTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "email"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.microsoftoutlooktrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Microsoft Outlook Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODEiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMjM3MmJhIiBzdHJva2U9Im5vbmUiIGQ9Ik03Ny45IDE5LjJINDYuODZWMEwwIDguMjMyVjcxLjk4TDQ2Ljg2IDgwVjYxLjg0N0g3Ny45YzEuMjY2IDAgMi4xLTEuMDU1IDIuMS0yLjFWMjEuMzJjMC0xLjI2Ni0uODQ0LTIuMS0yLjEtMi4xek0yMS45NTIgNTQuNDZjLTE1LjQtMS4wNTUtMTQuNzc2LTI5LjEzLjQyMi0yOS45NzQgMTYuNjc1LS44NDQgMTYuMjUzIDMxLjAzLS40MjIgMjkuOTc0bTU1LjUxNSA0LjY0NEg0Ni44NlYzNS4wNGw5LjUgOS4wNzdjLjQyMi40MjIuODQ0LjYzMyAxLjQ3Ny42MzNzMS4wNTUtLjIgMS40NzgtLjYzM0w3Ny40NjcgMjcuMjN6bTAtMzUuNDYyLTE5LjYzIDE4LjE1M0w0Ni44NiAzMS40NXYtOS43aDMwLjM5NnYxLjloLjJ6bS01NS4wOTIgNi41NDNjLTguMjMyLjQyMi04LjQ0MyAxOC4zNjQtLjIgMTguNTc1IDguNjU0LjQyMiA4LjY1NC0xOC45OTcuMi0xOC41NzUiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Microsoft Outlook Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 981,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_6_30_21_PM_721ceacd21.png"
+      },
+      {
+        "id": 982,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_5_41_05_PM_93ea0105a9.png"
+      },
+      {
+        "id": 983,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_6_22_11_PM_96a8dc0910.png"
+      },
+      {
+        "id": 984,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_5_27_06_PM_cd72ae79fa.png"
+      },
+      {
+        "id": 985,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_6_03_30_PM_17be113209.png"
+      },
+      {
+        "id": 986,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_5_47_32_PM_39553b09b6.png"
+      },
+      {
+        "id": 987,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_03_05_at_5_46_13_PM_d0525c1a9e.png"
+      }
+    ]
+  }
+}

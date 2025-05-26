@@ -1,0 +1,27 @@
+URL: https://docs.n8n.io/integrations/creating-nodes/build/
+Scraped_At: 2025-05-20T19:08:26.374034
+
+Build a node
+#
+This section provides tutorials on building nodes. It covers:
+Tutorial: Build a declarative-style node
+Reference
+material on
+file structure
+, parameter definitions for
+base
+,
+codex
+, and
+credentials
+files,
+node UI elements
+, and more.
+Coming soon:
+More tutorials
+Revised guidance on standards
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

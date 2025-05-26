@@ -1,0 +1,181 @@
+URL: https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreinmemory/
+Scraped_At: 2025-05-20T18:53:36.915984
+
+Simple Vector Store node
+#
+Use the Simple Vector Store node to store and retrieve
+embeddings
+in n8n's in-app memory.
+On this page, you'll find the node parameters for the Simple Vector Store node, and links to more resources.
+Parameter resolution in sub-nodes
+Sub-nodes behave differently to other nodes when processing multiple items using an expression.
+Most nodes, including root nodes, take any number of items as input, process these items, and output the results. You can use expressions to refer to input items, and the node resolves the expression for each item in turn. For example, given an input of five
+name
+values, the expression
+{{ $json.name }}
+resolves to each name in turn.
+In sub-nodes, the expression always resolves to the first item. For example, given an input of five
+name
+values, the expression
+{{ $json.name }}
+always resolves to the first name.
+This node is different from AI memory nodes
+The simple vector storage described here is different to the AI memory nodes such as
+Simple Memory
+.
+This node creates a
+vector database
+in the app memory.
+For development use only
+This node stores data in memory only and isn't recommended for production use. All data is lost when n8n restarts and may also be purged in low-memory conditions.
+Node usage patterns
+#
+You can use the Simple Vector Store node in the following patterns.
+Use as a regular node to insert and retrieve documents
+#
+You can use the Simple Vector Store as a regular node to insert or get documents. This pattern places the Simple Vector Store in the regular connection flow without using an agent.
+You can see an example of in step 2 of
+this template
+.
+Connect directly to an AI agent as a tool
+#
+You can connect the Simple Vector Store node directly to the
+tool
+connector of an
+AI agent
+to use a vector store as a resource when answering queries.
+Here, the connection would be: AI agent (tools connector) -> Simple Vector Store node.
+Use a retriever to fetch documents
+#
+You can use the
+Vector Store Retriever
+node with the Simple Vector Store node to fetch documents from the Simple Vector Store node. This is often used with the
+Question and Answer Chain
+node to fetch documents from the vector store that match the given chat input.
+An
+example of the connection flow
+(the linked example uses Pinecone, but the pattern is the same) would be: Question and Answer Chain (Retriever connector) -> Vector Store Retriever (Vector Store connector) -> Simple Vector Store.
+Use the Vector Store Question Answer Tool to answer questions
+#
+Another pattern uses the
+Vector Store Question Answer Tool
+to summarize results and answer questions from the Simple Vector Store node. Rather than connecting the Simple Vector Store directly as a tool, this pattern uses a tool specifically designed to summarizes data in the vector store.
+The
+connections flow
+in this case would look like this: AI agent (tools connector) -> Vector Store Question Answer Tool (Vector Store connector) -> Simple Vector store.
+Memory Management
+#
+The Simple Vector Store implements memory management to prevent excessive memory usage:
+Automatically cleans up old vector stores when memory pressure increases
+Removes inactive stores that haven't been accessed for a configurable amount of time
+Each workflow gets its own isolated storage space identified by the workflow ID and memory key
+Configuration Options
+#
+You can control memory usage with these environment variables:
+Variable
+Type
+Default
+Description
+N8N_VECTOR_STORE_MAX_MEMORY
+Number
+-1
+Maximum memory in MB allowed for all vector stores combined (-1 to disable limits).
+N8N_VECTOR_STORE_TTL_HOURS
+Number
+-1
+Hours of inactivity after which a store gets removed (-1 to disable TTL).
+On n8n Cloud, these values are preset to 100MB (about 8,000 documents, depending on document size and metadata) and 7 days respectively. For self-hosted instances, both values default to -1(no memory limits or time-based cleanup).
+Node parameters
+#
+Operation Mode
+#
+This Vector Store node has four modes:
+Get Many
+,
+Insert Documents
+,
+Retrieve Documents (As Vector Store for Chain/Tool)
+, and
+Retrieve Documents (As Tool for AI Agent)
+. The mode you select determines the operations you can perform with the node and what inputs and outputs are available.
+Get Many
+#
+In this mode, you can retrieve multiple documents from your vector database by providing a prompt. The prompt will be embedded and used for similarity search. The node will return the documents that are most similar to the prompt with their similarity score. This is useful if you want to retrieve a list of similar documents and pass them to an agent as additional context.
+Insert Documents
+#
+Use Insert Documents mode to insert new documents into your vector database.
+Retrieve Documents (As Vector Store for Chain/Tool)
+#
+Use Retrieve Documents (As Vector Store for Chain/Tool) mode with a vector-store retriever to retrieve documents from a vector database and provide them to the retriever connected to a chain. In this mode you must connect the node to a retriever node or root node.
+Retrieve Documents (As Tool for AI Agent)
+#
+Use Retrieve Documents (As Tool for AI Agent) mode to use the vector store as a tool resource when answering queries. When formulating responses, the agent uses the vector store when the vector store name and description match the question details.
+Get Many parameters
+#
+Memory Key
+: Enter the key to use to store the vector memory in the workflow data. n8n prefixes the key with the workflow ID to avoid collisions.
+Prompt
+: Enter the search query.
+Limit
+: Enter how many results to retrieve from the vector store. For example, set this to
+10
+to get the ten best results.
+Insert Documents parameters
+#
+Memory Key
+: Enter the key to use to store the vector memory in the workflow data. n8n prefixes the key with the workflow ID to avoid collisions.
+Clear Store
+: Use this parameter to control whether to wipe the vector store for the given memory key for this workflow before inserting data (turned on).
+Retrieve Documents (As Vector Store for Chain/Tool) parameters
+#
+Memory Key
+: Enter the key to use to store the vector memory in the workflow data. n8n prefixes the key with the workflow ID to avoid collisions.
+Retrieve Documents (As Tool for AI Agent) parameters
+#
+Name
+: The name of the vector store.
+Description
+: Explain to the LLM what this tool does. A good, specific description allows LLMs to produce expected results more often.
+Memory Key
+: Enter the key to use to store the vector memory in the workflow data. n8n prefixes the key with the workflow ID to avoid collisions.
+Limit
+: Enter how many results to retrieve from the vector store. For example, set this to
+10
+to get the ten best results.
+Templates and examples
+#
+Building Your First WhatsApp Chatbot
+by Jimleuk
+View template details
+RAG Chatbot for Company Documents using Google Drive and Gemini
+by Mihai Farcas
+View template details
+🤖 AI Powered RAG Chatbot for Your Docs + Google Drive + Gemini + Qdrant
+by Joseph LePage
+View template details
+Browse Simple Vector Store integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+LangChains's Memory Vector Store documentation
+for more information about the service.
+View n8n's
+Advanced AI
+documentation.
+AI glossary
+#
+completion
+: Completions are the responses generated by a model like GPT.
+hallucinations
+: Hallucination in AI is when an LLM (large language model) mistakenly perceives patterns or objects that don't exist.
+vector database
+: A vector database stores mathematical representations of information. Use with embeddings and retrievers to create a database that your AI can access when answering questions.
+vector store
+: A vector store, or vector database, stores mathematical representations of information. Use with embeddings and retrievers to create a database that your AI can access when answering questions.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

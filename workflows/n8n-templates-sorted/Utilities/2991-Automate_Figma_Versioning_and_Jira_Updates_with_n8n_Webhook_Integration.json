@@ -1,0 +1,325 @@
+{
+  "workflow": {
+    "id": 2991,
+    "name": "Automate Figma Versioning and Jira Updates with n8n Webhook Integration",
+    "views": 2677,
+    "recentViews": 7,
+    "totalViews": 2677,
+    "createdAt": "2025-02-24T10:06:38.772Z",
+    "description": "**How It Works:**\nThis n8n template automates the process of tracking design changes in Figma and updating relevant Jira issues. The template is triggered when a new version is created in Figma via a custom plugin. Once the version is committed, the plugin sends the design details to an n8n workflow using a webhook.\n\n**The workflow then performs the following actions:**\nFetches the Jira issue based on the provided issue link from Figma.\nAdds the design changes as a comment to the Jira issue.\nUpdates the status of the Jira issue based on the provided task status (e.g., \"In Progress\", \"Done\").\nThis streamlines the workflow, reducing the need for manual updates and ensuring that both the design team and developers have the latest design changes and task statuses in sync.\n\n**How to Use It:**\nSet up the Figma Plugin:\n\nInstall the Figma Commit Plugin from GitHub.\nIn the plugin, fill out the version name, design link, Jira issue link, and the task status.\nCommit the changes in Figma, which will trigger the webhook.\n\n**Set Up the n8n Workflow:**\nImport this template into your n8n instance.\nConnect the Figma Trigger node to capture version updates from Figma.\nConfigure the Jira nodes to retrieve the issue and update the status/comment based on the data sent from the plugin.\n\n**Automate:**\nOnce the version is committed in Figma, the workflow will automatically update the Jira issue and keep both your Figma design and Jira tasks in sync!\nBy integrating Figma, Jira, and n8n through this template, you’ll eliminate manual steps, making collaboration between design and development teams more efficient.",
+    "workflow": {
+      "id": "5kYHogzDGeo21MxE",
+      "meta": {
+        "instanceId": "e7bcfb7f83803b3561455f2e97f622835eda64ae4467d4f2b8a5cf915b534600",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Automate Figma Versioning and Jira Updates with n8n Webhook Integration",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "a3853962-36ce-4a2f-b9d6-c2807652d7ff",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -20,
+            -260
+          ],
+          "parameters": {
+            "width": 700,
+            "height": 200,
+            "content": "## Note\nTo use this automation, you will need the Figma Commit Plugin installed and configured. The plugin sends the design version details via a webhook to trigger this n8n workflow.\n\nYou can find the Figma Commit Plugin on GitHub here:\n🔗 [Figma Commit Plugin on GitHub](https://github.com/omid-d3v/Figma-Commit-plugin-with-webhook/)\n\nMake sure to follow the setup instructions in the plugin’s documentation to get started."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "843f1e0b-4c8b-4744-a9b7-8ce5725768bc",
+          "name": "Find Jira Issue",
+          "type": "n8n-nodes-base.jira",
+          "position": [
+            220,
+            0
+          ],
+          "parameters": {
+            "issueKey": "={{ $json.issueLink }}",
+            "operation": "get",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "jiraSoftwareCloudApi": {
+              "id": "CBgXAIn2agwnaJ1Y",
+              "name": "Jira SW Cloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "59101813-9625-4d1f-b2b6-7ff442c1fe0f",
+          "name": "Add Comment in Issue",
+          "type": "n8n-nodes-base.jira",
+          "position": [
+            440,
+            0
+          ],
+          "parameters": {
+            "comment": "={{ $('Figma Trigger').item.json.pageName }}{{ '\\n' }}{{ $('Figma Trigger').item.json.versionName }}{{ '\\n' }}{{ $('Figma Trigger').item.json.designLink }}{{ '\\n' }} {{ $now }}",
+            "options": {},
+            "issueKey": "={{ $json.key }}",
+            "resource": "issueComment"
+          },
+          "credentials": {
+            "jiraSoftwareCloudApi": {
+              "id": "CBgXAIn2agwnaJ1Y",
+              "name": "Jira SW Cloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "378150c5-b640-477a-861f-216e8b15c0e4",
+          "name": "Figma Trigger",
+          "type": "n8n-nodes-base.figmaTrigger",
+          "position": [
+            0,
+            0
+          ],
+          "webhookId": "b9fcde90-3e53-4958-b352-933891f95220",
+          "parameters": {
+            "teamId": "940915773877350235",
+            "triggerOn": "fileVersionUpdate"
+          },
+          "credentials": {
+            "figmaApi": {
+              "id": "DjRDveAKp5VxZRE8",
+              "name": "Figma account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {
+        "Figma Trigger": [
+          {
+            "json": {
+              "status": "IN PROGRESS",
+              "pageName": "page: Favorait",
+              "issueLink": "JAJ-368",
+              "designLink": "test url ",
+              "versionName": "Changes: \n -nothing"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "9525049e-7fca-4f83-bf6a-069d477f669e",
+      "connections": {
+        "Figma Trigger": {
+          "main": [
+            [
+              {
+                "node": "Find Jira Issue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find Jira Issue": {
+          "main": [
+            [
+              {
+                "node": "Add Comment in Issue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add Comment in Issue": {
+          "main": [
+            []
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.jira": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.figmaTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "omid dev",
+      "username": "omiddev",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/ebc74dd3889c1d32d7f861fbd351dfab69332da3f6279bb52ee5b21637f725bc?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 77,
+        "icon": "file:jira.svg",
+        "name": "n8n-nodes-base.jira",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.jira/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/jira/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Jira Software"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjguMjUgNzEuMjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjMuMTI1IiB5PSIzLjEyNSIvPjxkZWZzPjxsaW5lYXJHcmFkaWVudCBpZD0iYiIgeDE9IjkxLjklIiB4Mj0iMjguNDklIiB5MT0iNDAuMjIlIiB5Mj0iODEuNjMlIj48c3RvcCBvZmZzZXQ9IjE4JSIgc3RvcC1jb2xvcj0iIzAwNTJjYyIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzI2ODRmZiIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJjIiB4MT0iOC43JSIgeDI9IjcyLjI2JSIgeTE9IjU5LjE3JSIgeTI9IjE3Ljk5JSI+PHN0b3Agb2Zmc2V0PSIxOCUiIHN0b3AtY29sb3I9IiMwMDUyY2MiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMyNjg0ZmYiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PGcgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiPjxwYXRoIGZpbGw9IiMyNjg0ZmYiIGQ9Ik02MS4xNjEgMzAuMjExIDMwLjk1IDAgLjc0IDMwLjIxMWEyLjU0IDIuNTQgMCAwIDAgMCAzLjU4MWwzMC4yMTEgMzAuMjEgMzAuMjExLTMwLjIxYTIuNTQgMi41NCAwIDAgMCAwLTMuNTgxek0zMC45NSA0MS40NmwtOS40NjItOS40NjIgOS40NjItOS40NjIgOS40NjIgOS40NjJ6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTMwLjk1IDIyLjU5OUMyNC43NTUgMTYuNDA1IDI0LjcyNCA2LjM3IDMwLjg4MS4xMzhMMTAuMTE0IDIwLjc3NGwxMS4yNjggMTEuMjY4eiIvPjxwYXRoIGZpbGw9InVybCgjYykiIGQ9Ik00MC40MzcgMzEuOTczIDMwLjk1IDQxLjQ2YTE1LjkzIDE1LjkzIDAgMCAxIDAgMjIuNTM2bDIwLjc0OS0yMC43NDl6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Jira Software",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 542,
+        "icon": "file:figma.svg",
+        "name": "n8n-nodes-base.figmaTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.figmatrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/figma/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Figma Trigger (Beta)"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjY3IiBoZWlnaHQ9IjI1MDAiIHZpZXdCb3g9IjAgMCAyMDAgMzAwIj48cGF0aCBkPSJNNTAgMzAwYzI3LjYgMCA1MC0yMi40IDUwLTUwdi01MEg1MGMtMjcuNiAwLTUwIDIyLjQtNTAgNTBzMjIuNCA1MCA1MCA1MCIgc3R5bGU9ImZpbGw6IzBhY2Y4MyIvPjxwYXRoIGQ9Ik0wIDE1MGMwLTI3LjYgMjIuNC01MCA1MC01MGg1MHYxMDBINTBjLTI3LjYgMC01MC0yMi40LTUwLTUwIiBzdHlsZT0iZmlsbDojYTI1OWZmIi8+PHBhdGggZD0iTTAgNTBDMCAyMi40IDIyLjQgMCA1MCAwaDUwdjEwMEg1MEMyMi40IDEwMCAwIDc3LjYgMCA1MCIgc3R5bGU9ImZpbGw6I2YyNGUxZSIvPjxwYXRoIGQ9Ik0xMDAgMGg1MGMyNy42IDAgNTAgMjIuNCA1MCA1MHMtMjIuNCA1MC01MCA1MGgtNTB6IiBzdHlsZT0iZmlsbDojZmY3MjYyIi8+PHBhdGggZD0iTTIwMCAxNTBjMCAyNy42LTIyLjQgNTAtNTAgNTBzLTUwLTIyLjQtNTAtNTAgMjIuNC01MCA1MC01MCA1MCAyMi40IDUwIDUwIiBzdHlsZT0iZmlsbDojMWFiY2ZlIi8+PC9zdmc+"
+        },
+        "displayName": "Figma Trigger (Beta)",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 15,
+        "name": "Design"
+      }
+    ],
+    "image": []
+  }
+}

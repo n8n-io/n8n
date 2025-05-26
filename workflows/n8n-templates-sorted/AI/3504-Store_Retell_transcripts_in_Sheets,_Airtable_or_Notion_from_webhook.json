@@ -1,0 +1,4171 @@
+{
+  "workflow": {
+    "id": 3504,
+    "name": "Store Retell transcripts in Sheets, Airtable or Notion from webhook",
+    "views": 519,
+    "recentViews": 13,
+    "totalViews": 519,
+    "createdAt": "2025-04-09T21:21:05.383Z",
+    "description": "## Automatically store Retell transcripts in Google Sheets/Airtable/Notion from webhook\n\n## Overview\n- This workflow stores the results of a **[Retell](https://www.retellai.com/)** voice call (transcript, analysis, etc.) once it has ended and been analyzed.\n- It listens for `call_analyzed` webhook events from Retell and stores the data in **Airtable**, **Google Sheets**, and **Notion** (choose based on your stack).\n- Useful for anyone building Retell agents who want to keep a detailed history of analyzed calls in structured tools.\n\n## Who is it for\nFor builders of [Retell's](https://www.retellai.com/) Voice Agents who want to store call history and essential analytic data.\n\n## Prerequisites\n- Have a [Retell AI Account](https://www.retellai.com/)\n- [Create a Retell agent](https://docs.retellai.com/get-started/quick-start)\n- Associate a phone number with your Retell agent\n- Set up one of the following:\n  - An Airtable base and table (example: \"Transcripts\")\n  - A Google Sheet with a “Transcripts” tab\n  - A Notion database with columns to match the transcript fields\n- Templates:\n  - [Airtable](https://airtable.com/appN4jeIrD8waWCfr/shrsPtQLeqt8Sp3UZ)\n  - [Google Sheets](https://docs.google.com/spreadsheets/d/1TYgk8PK5w2l8Q5NtepdyLvgtuHXBHcODy-2hXOPP6AU/edit?usp=sharing)\n  - [Notion](https://www.notion.so/1cea19b9d4848089bda6f3d7e05a818d?v=1cea19b9d48481ea97ef000ccd20f210&pvs=4)\n\n## How it works\n- Receives a webhook POST request from Retell when a call has been analyzed.\n- Filters out any event that is not `call_analyzed` ([Retell sends webhooks](https://docs.retellai.com/features/webhook-overview#webhook-overview) for `call_started`, `call_ended` and `call_analyzed`)\n- Extracts useful fields like:\n  - Call ID, start/end time, duration, total cost\n  - Transcript, summary, sentiment\n- Stores this data in your preferred tool:\n  - Airtable\n  - Google Sheets\n  - Notion\n\n## How to use it\n1. Copy the webhook URL (e.g., `https://your-instance.app.n8n.cloud/webhook/poc-retell-analysis`) and paste it in your Retell agent under \"Webhook settings\" then \"Agent Level Webhook URL\".\n![Screenshot 20250409 at 18.05.34.png](fileId:1100)\n2. Make sure your Airtable, Google Sheet, or Notion databases are correctly configured to receive the fields.\n3. After each call, once Retell finishes the analysis, this workflow will automatically log the results.\n\n## Extension\n- If you use any \"Post-Call Analysis\" fields, you can add columns to your Airtable, Google Sheet, or Notion database.\n- Then fetch the data from the `call.call_analysis.custom_analysis_data` object.\n\n## Additional Notes\n- Phone numbers are extracted depending on the call direction (`from_number` or `to_number`).\n- Cost is converted from cents to dollars before saving.\n- Dates are converted from timestamps to local ISO strings.\n- You can remove any of the outputs (Airtable, Google Sheets, Notion) if you're only using one.\n\n\n#### 👉 [Reach out to us](mailto:hello@agentstudio.io) if you're interested in **analysing your Retell Agent conversations**.",
+    "workflow": {
+      "meta": {
+        "instanceId": "f4f5d195bb2162a0972f737368404b18be694648d365d6c6771d7b4909d28167",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "85898264-74e1-45c1-8b45-e03f0d840e85",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -760,
+            200
+          ],
+          "webhookId": "0208331f-eb06-489b-b133-c42be86b76d8",
+          "parameters": {
+            "path": "poc-retell-analysis",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f0233dbd-d4db-4e95-afd7-a61ef932eba1",
+          "name": "Set fields to export",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -300,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "bb7a4126-5192-493a-8f26-82e8d7ed1163",
+                  "name": "Call ID",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.body.call.call_id }}"
+                },
+                {
+                  "id": "fbbbf26f-219a-45b8-96f9-e22da449e874",
+                  "name": "Start Datetime",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.body.call.start_timestamp.toDateTime('ms').toLocal().toISO() }}"
+                },
+                {
+                  "id": "6e429227-e075-439d-af9d-01cad9381fe5",
+                  "name": "End Datetime",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.body.call.end_timestamp.toDateTime('ms').toLocal().toISO() }}"
+                },
+                {
+                  "id": "e371b2e7-f288-4bef-bbcc-d6f5d68d5a07",
+                  "name": "Duration in seconds",
+                  "type": "number",
+                  "value": "={{ $('Webhook').item.json.body.call.call_cost.total_duration_seconds }}"
+                },
+                {
+                  "id": "42fd4ac0-d00a-4e77-93d6-fe5deb0e8bc4",
+                  "name": "Transcript",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.body.call.transcript }}"
+                },
+                {
+                  "id": "46022591-1c73-4796-b968-dbc94b4ef24b",
+                  "name": "Call Summary",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.body.call.call_analysis.call_summary }}"
+                },
+                {
+                  "id": "68ab7134-4275-4428-978c-61fb7f229b0e",
+                  "name": "User Sentiment",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.body.call.call_analysis.user_sentiment }}"
+                },
+                {
+                  "id": "096991f9-4814-4a89-b5db-771e2f1020fa",
+                  "name": "Phone Number",
+                  "type": "string",
+                  "value": "={{ $if($('Webhook').item.json.body.call.direction == 'outbound', $('Webhook').item.json.body.call.to_number, $('Webhook').item.json.body.call.from_number)  }}"
+                },
+                {
+                  "id": "210b3594-e40a-4316-b4ff-7e944172d960",
+                  "name": "Total Cost in Dollars",
+                  "type": "number",
+                  "value": "={{ $json.body.call.call_cost.combined_cost/100 }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7918d67d-76ca-4425-975b-14a3d3772755",
+          "name": "Save to Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            100,
+            -40
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appN4jeIrD8waWCfr",
+              "cachedResultUrl": "https://airtable.com/appN4jeIrD8waWCfr",
+              "cachedResultName": "Retell sample"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tbljL3fmuOzAj1Nwo",
+              "cachedResultUrl": "https://airtable.com/appN4jeIrD8waWCfr/tbljL3fmuOzAj1Nwo",
+              "cachedResultName": "Transcripts"
+            },
+            "columns": {
+              "value": {
+                "Call ID": "={{ $json['Call ID'] }}",
+                "Transcript": "={{ $json.Transcript }}",
+                "Call Summary": "={{ $json['Call Summary'] }}",
+                "End Datetime": "={{ $json['End Datetime'] }}",
+                "Phone Number": "={{ $json['Phone Number'] }}",
+                "Start Datetime": "={{ $json['Start Datetime'] }}",
+                "User Sentiment": "={{ $json['User Sentiment'] }}",
+                "Duration in seconds": "={{ $json['Duration in seconds'] }}",
+                "Total Cost in Dollars": "={{ $json['Total Cost in Dollars'] }}"
+              },
+              "schema": [
+                {
+                  "id": "Phone Number",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Phone Number",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "First Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "First Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Last Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Last Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Call ID",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Call ID",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Start Datetime",
+                  "type": "dateTime",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Start Datetime",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "End Datetime",
+                  "type": "dateTime",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "End Datetime",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Duration in seconds",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Duration in seconds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Transcript",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Transcript",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Call Summary",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Call Summary",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "User Sentiment",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "User Sentiment",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Total Cost in Dollars",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Total Cost in Dollars",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "create"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "C8zNgAdz8w8ZVNqM",
+              "name": "Airtable Agent Studio"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "dd353466-3e65-4673-8d87-9f1f872b33e1",
+          "name": "Save to Excel",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            100,
+            200
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "Call ID": "={{ $json['Call ID'] }}",
+                "Transcript": "={{ $json.Transcript }}",
+                "Call Summary": "={{ $json['Call Summary'] }}",
+                "End Datetime": "={{ $json['End Datetime'] }}",
+                "Phone Number": "='{{ $json['Phone Number'] }}",
+                "Start Datetime": "={{ $json['Start Datetime'] }}",
+                "User Sentiment": "={{ $json['User Sentiment'] }}",
+                "Duration in seconds": "={{ $json['Duration in seconds'] }}",
+                "Total Cost in Dollars": "={{ $json['Total Cost in Dollars'] }}"
+              },
+              "schema": [
+                {
+                  "id": "Phone Number",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Phone Number",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "First Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "First Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Last Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "required": false,
+                  "displayName": "Last Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Call ID",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Call ID",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Start Datetime",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Start Datetime",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "End Datetime",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "End Datetime",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Duration in seconds",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Duration in seconds",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Transcript",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Transcript",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Call Summary",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Call Summary",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "User Sentiment",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "User Sentiment",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Total Cost in Dollars",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Total Cost in Dollars",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {
+              "useAppend": true
+            },
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": 311200653,
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1TYgk8PK5w2l8Q5NtepdyLvgtuHXBHcODy-2hXOPP6AU/edit#gid=311200653",
+              "cachedResultName": "Transcripts"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1TYgk8PK5w2l8Q5NtepdyLvgtuHXBHcODy-2hXOPP6AU",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1TYgk8PK5w2l8Q5NtepdyLvgtuHXBHcODy-2hXOPP6AU/edit?usp=drivesdk",
+              "cachedResultName": "Retell sample UserDB"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "ufBkeygvc1l17m5N",
+              "name": "Baptiste AS - Google Sheets account"
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "7ce16b86-d7aa-4239-8513-1ccc9a25cdc9",
+          "name": "Save to Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            100,
+            440
+          ],
+          "parameters": {
+            "title": "={{ $json['Call Summary'] }}",
+            "options": {},
+            "resource": "databasePage",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1cea19b9-d484-8089-bda6-f3d7e05a818d",
+              "cachedResultUrl": "https://www.notion.so/1cea19b9d4848089bda6f3d7e05a818d",
+              "cachedResultName": "UserDB - Transcripts"
+            },
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Call ID|rich_text",
+                  "textContent": "={{ $json['Call ID'] }}"
+                },
+                {
+                  "key": "Duration in seconds|number",
+                  "numberValue": "={{ $json['Duration in seconds'] }}"
+                },
+                {
+                  "key": "End Datetime|date",
+                  "date": "={{ $json['End Datetime'] }}"
+                },
+                {
+                  "key": "Phone Number|rich_text",
+                  "textContent": "={{ $json['Phone Number'] }}"
+                },
+                {
+                  "key": "Start Datetime|date",
+                  "date": "={{ $json['Start Datetime'] }}"
+                },
+                {
+                  "key": "Total Cost in Dollars|number",
+                  "numberValue": "={{ $json['Total Cost in Dollars'] }}"
+                },
+                {
+                  "key": "Transcript|rich_text",
+                  "textContent": "={{ $json.Transcript }}"
+                },
+                {
+                  "key": "User Sentiment|rich_text",
+                  "textContent": "={{ $json['User Sentiment'] }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "tOVdjeVnLcw3xu0g",
+              "name": "Template Retell"
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "bbb5b39c-8826-4f59-8c40-ff10529fa42f",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1520,
+            -540
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 601,
+            "height": 1585,
+            "content": "## Automatically store Retell transcripts in Google Sheets/Airtable/Notion from webhook\n\n## Overview\n- This workflow stores the results of a **[Retell](https://www.retellai.com/)** voice call (transcript, analysis, etc.) once it has ended and been analyzed.\n- It listens for `call_analyzed` webhook events from Retell and stores the data in **Airtable**, **Google Sheets**, and **Notion** (choose based on your stack).\n- Useful for anyone building Retell agents who want to keep a detailed history of analyzed calls in structured tools.\n\n## Who is it for\nFor builders of [Retell's](https://www.retellai.com/) Voice Agents who want to store call history and essential analytic data.\n\n## Prerequisites\n- Have a [Retell AI Account](https://www.retellai.com/)\n- [Create a Retell agent](https://docs.retellai.com/get-started/quick-start)\n- Associate a phone number with your Retell agent\n- Set up one of the following:\n  - An Airtable base and table (example: \"Transcripts\")\n  - A Google Sheet with a “Transcripts” tab\n  - A Notion database with columns to match the transcript fields\n- Templates:\n  - [Airtable](https://airtable.com/appN4jeIrD8waWCfr/shrsPtQLeqt8Sp3UZ)\n  - [Google Sheets](https://docs.google.com/spreadsheets/d/1TYgk8PK5w2l8Q5NtepdyLvgtuHXBHcODy-2hXOPP6AU/edit?usp=sharing)\n  - [Notion](https://www.notion.so/1cea19b9d4848089bda6f3d7e05a818d?v=1cea19b9d48481ea97ef000ccd20f210&pvs=4)\n\n## How it works\n- Receives a webhook POST request from Retell when a call has been analyzed.\n- Filters out any event that is not `call_analyzed` ([Retell sends webhooks](https://docs.retellai.com/features/webhook-overview#webhook-overview) for `call_started`, `call_ended` and `call_analyzed`)\n- Extracts useful fields like:\n  - Call ID, start/end time, duration, total cost\n  - Transcript, summary, sentiment\n- Stores this data in your preferred tool:\n  - Airtable\n  - Google Sheets\n  - Notion\n\n## How to use it\n1. Copy the webhook URL (e.g., `https://your-instance.app.n8n.cloud/webhook/poc-retell-analysis`) and paste it in your Retell agent under \"Webhook settings\" then \"Agent Level Webhook URL\".\n2. Make sure your Airtable, Google Sheet, or Notion databases are correctly configured to receive the fields.\n3. After each call, once Retell finishes the analysis, this workflow will automatically log the results.\n\n## Extension\n- If you use any \"Post-Call Analysis\" fields, you can add columns to your Airtable, Google Sheet, or Notion database.\n- Then fetch the data from the `call.call_analysis.custom_analysis_data` object.\n\n## Additional Notes\n- Phone numbers are extracted depending on the call direction (`from_number` or `to_number`).\n- Cost is converted from cents to dollars before saving.\n- Dates are converted from timestamps to local ISO strings.\n- You can remove any of the outputs (Airtable, Google Sheets, Notion) if you're only using one.\n\n\n#### 👉 Reach out to [us](mailto:hello@agentstudio.io) if you're interested in **analysing your Retell Agent conversations**."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5281b143-7b27-4f8e-b55a-98e2a37fa1e8",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -820,
+            60
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 300,
+            "content": "POST Webhook receiving your Retell events"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "52a7c9ca-d612-4833-9e28-783878f92e92",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -580,
+            60
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 300,
+            "content": "Only keep the `call_analyzed` events (it contains all data points)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6b11df00-34c6-4c2f-b847-f4126d2aeffe",
+          "name": "Filter - only call ended",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -520,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "d81cb5cf-8fc0-43ff-b191-feec11250154",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.body.event }}",
+                  "rightValue": "call_analyzed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "4c8cb9a2-35fe-42ae-825e-1aab42f152ad",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -340,
+            60
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 300,
+            "content": "Prepare your data to be sent to your preferred database.\nIf you add more data or post call analytics, you will add fields here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8a308e68-365c-4f0a-85f2-a857e7c8011c",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            -100
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 220,
+            "content": "Save all fields from Retell to Airtable"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c4e71141-8089-4b17-86c2-c290778c49e5",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            140
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 220,
+            "content": "Save all fields from Retell to Google Sheets"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dad436ca-68db-45c2-8b87-785c650424ca",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            380
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 220,
+            "content": "Save all fields from Retell to Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "57371198-2885-419a-9b12-9f1dfd1388f5",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            -240
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 220,
+            "height": 120,
+            "content": "Remove the unnecessary tools\n# 👇 "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {
+        "Webhook": [
+          {
+            "body": {
+              "call": {
+                "call_id": "call_0e55e4a736cd190205d31cc0792",
+                "latency": {
+                  "e2e": {
+                    "max": 2046,
+                    "min": 939,
+                    "num": 6,
+                    "p50": 1404.5,
+                    "p90": 1821.5,
+                    "p95": 1933.75,
+                    "p99": 2023.5500000000002,
+                    "values": [
+                      1597,
+                      1084,
+                      1316,
+                      2046,
+                      939,
+                      1493
+                    ]
+                  },
+                  "llm": {
+                    "max": 970,
+                    "min": 528,
+                    "num": 16,
+                    "p50": 719.5,
+                    "p90": 901.5,
+                    "p95": 926.5,
+                    "p99": 961.3,
+                    "values": [
+                      717,
+                      912,
+                      593,
+                      528,
+                      592,
+                      549,
+                      833,
+                      572,
+                      586,
+                      637,
+                      722,
+                      846,
+                      970,
+                      872,
+                      891,
+                      795
+                    ]
+                  },
+                  "tts": {
+                    "max": 1005,
+                    "min": 300,
+                    "num": 16,
+                    "p50": 346.5,
+                    "p90": 512.5,
+                    "p95": 645.75,
+                    "p99": 933.1499999999999,
+                    "values": [
+                      474,
+                      499,
+                      312,
+                      357,
+                      302,
+                      300,
+                      1005,
+                      320,
+                      364,
+                      526,
+                      354,
+                      327,
+                      314,
+                      312,
+                      339,
+                      355
+                    ]
+                  }
+                },
+                "agent_id": "agent_971837f76df12a41d1b0e939a3",
+                "metadata": {},
+                "call_cost": {
+                  "combined_cost": 12.5883333,
+                  "product_costs": [
+                    {
+                      "cost": 0,
+                      "product": "retell_platform",
+                      "unit_price": 0
+                    },
+                    {
+                      "cost": 9.6833333,
+                      "product": "elevenlabs_tts",
+                      "unit_price": 0.1166667
+                    },
+                    {
+                      "cost": 0.83,
+                      "product": "gpt_4o_mini",
+                      "unit_price": 0.01
+                    },
+                    {
+                      "cost": 2.075,
+                      "product": "us_telephony",
+                      "unit_price": 0.025
+                    }
+                  ],
+                  "total_one_time_price": 0,
+                  "total_duration_seconds": 83,
+                  "total_duration_unit_price": 0.1516667
+                },
+                "call_type": "phone_call",
+                "direction": "outbound",
+                "to_number": "+15555555555",
+                "transcript": "User: Hello. Welcome to Avelian Paradise Hotel. How can I help you today?\nAgent: Hi, I need to make a reservation for me and my wife on October 29th. Our budget is less than 150 euros. Can you help me with that? Also, does the hotel have a swimming pool?\nUser: Certainly. I can assist you with your reservation. Just to confirm, you are looking for a stay on October twenty ninth. Correct?\nUser: your budget, the standard room is available for one hundred and ten euros per night, which fits within your budget.\nUser: yes. \nAgent: Great! Let's \nUser: We do have an out may I have your name and email address, please?\nAgent: My name is Mike Smith, and my email address is mike@yahoo.com.\nUser: Thank you, Mike. Just to confirm, you would like to book a standard room for one night on October twenty ninth Is that correct?\nAgent: Yes, that's correct. Please go ahead and book it.\nUser: Your reservation for the standard room on October twenty ninth is confirmed.\nUser: That's one night, totaling one hundred and ten euros I will now send you an email with all the details and a link to complete the payment.\nUser: you, Mike, and we look forward to welcoming you. Now I will proceed with sending the confirmation email. Will shortly receive a confirmation email with all the details of your reservation.\nUser: you once again, Mike.\nAgent: Thank you! I'll look out for the confirmation email.\n",
+                "call_status": "ended",
+                "duration_ms": 82588,
+                "from_number": "+15555555555",
+                "call_analysis": {
+                  "call_summary": "The user, Mike Smith, successfully made a reservation for a standard room at Avelian Paradise Hotel for one night on October 29th for 110 euros. The agent confirmed the booking and stated that a confirmation email would be sent shortly.",
+                  "in_voicemail": false,
+                  "user_sentiment": "Positive",
+                  "call_successful": true,
+                  "custom_analysis_data": {}
+                },
+                "end_timestamp": 1743418542998,
+                "recording_url": "https://dxc03zgurdly9.cloudfront.net/2906e0f58bcc8cd6d897ac10fe21bc2c94f81477483c4f645b4ec281965a8e59/recording.wav",
+                "public_log_url": "https://dxc03zgurdly9.cloudfront.net/2906e0f58bcc8cd6d897ac10fe21bc2c94f81477483c4f645b4ec281965a8e59/public.log",
+                "start_timestamp": 1743418460410,
+                "transcript_object": [
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 1.2089998999999998,
+                        "word": "Hello. ",
+                        "start": 0.80899995
+                      },
+                      {
+                        "end": 1.369,
+                        "word": "Welcome ",
+                        "start": 1.2089998999999998
+                      },
+                      {
+                        "end": 1.529,
+                        "word": "to ",
+                        "start": 1.369
+                      },
+                      {
+                        "end": 1.9289999999999998,
+                        "word": "Avelian ",
+                        "start": 1.529
+                      },
+                      {
+                        "end": 2.3289999999999997,
+                        "word": "Paradise ",
+                        "start": 1.9289999999999998
+                      },
+                      {
+                        "end": 2.569,
+                        "word": "Hotel. ",
+                        "start": 2.3289999999999997
+                      },
+                      {
+                        "end": 3.159,
+                        "word": "How ",
+                        "start": 2.839
+                      },
+                      {
+                        "end": 3.319,
+                        "word": "can ",
+                        "start": 3.159
+                      },
+                      {
+                        "end": 3.3989998999999997,
+                        "word": "I ",
+                        "start": 3.319
+                      },
+                      {
+                        "end": 3.5589999999999997,
+                        "word": "help ",
+                        "start": 3.3989998999999997
+                      },
+                      {
+                        "end": 3.639,
+                        "word": "you ",
+                        "start": 3.5589999999999997
+                      },
+                      {
+                        "end": 3.799,
+                        "word": "today?",
+                        "start": 3.639
+                      }
+                    ],
+                    "content": "Hello. Welcome to Avelian Paradise Hotel. How can I help you today?"
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 5.849,
+                        "word": "Hi, ",
+                        "start": 5.547
+                      },
+                      {
+                        "end": 5.976,
+                        "word": "I ",
+                        "start": 5.849
+                      },
+                      {
+                        "end": 6.162,
+                        "word": "need ",
+                        "start": 5.976
+                      },
+                      {
+                        "end": 6.244,
+                        "word": "to ",
+                        "start": 6.162
+                      },
+                      {
+                        "end": 6.429,
+                        "word": "make ",
+                        "start": 6.244
+                      },
+                      {
+                        "end": 6.499,
+                        "word": "a ",
+                        "start": 6.429
+                      },
+                      {
+                        "end": 7.068,
+                        "word": "reservation ",
+                        "start": 6.499
+                      },
+                      {
+                        "end": 7.23,
+                        "word": "for ",
+                        "start": 7.068
+                      },
+                      {
+                        "end": 7.37,
+                        "word": "me ",
+                        "start": 7.23
+                      },
+                      {
+                        "end": 7.497,
+                        "word": "and ",
+                        "start": 7.37
+                      },
+                      {
+                        "end": 7.648,
+                        "word": "my ",
+                        "start": 7.497
+                      },
+                      {
+                        "end": 8.008,
+                        "word": "wife ",
+                        "start": 7.648
+                      },
+                      {
+                        "end": 8.159,
+                        "word": "on ",
+                        "start": 8.008
+                      },
+                      {
+                        "end": 8.507,
+                        "word": "October ",
+                        "start": 8.159
+                      },
+                      {
+                        "end": 8.763,
+                        "word": "29th.",
+                        "start": 8.507
+                      },
+                      {
+                        "end": 9.551208251953126,
+                        "word": " Our ",
+                        "start": 9.331208251953125
+                      },
+                      {
+                        "end": 9.911208251953125,
+                        "word": "budget ",
+                        "start": 9.551208251953126
+                      },
+                      {
+                        "end": 10.039208251953125,
+                        "word": "is ",
+                        "start": 9.911208251953125
+                      },
+                      {
+                        "end": 10.260208251953125,
+                        "word": "less ",
+                        "start": 10.039208251953125
+                      },
+                      {
+                        "end": 10.457208251953125,
+                        "word": "than ",
+                        "start": 10.260208251953125
+                      },
+                      {
+                        "end": 10.596208251953126,
+                        "word": "150 ",
+                        "start": 10.457208251953125
+                      },
+                      {
+                        "end": 10.840208251953126,
+                        "word": "euros.",
+                        "start": 10.596208251953126
+                      },
+                      {
+                        "end": 12.174958251953125,
+                        "word": " Can ",
+                        "start": 12.034958251953125
+                      },
+                      {
+                        "end": 12.278958251953124,
+                        "word": "you ",
+                        "start": 12.174958251953125
+                      },
+                      {
+                        "end": 12.429958251953124,
+                        "word": "help ",
+                        "start": 12.278958251953124
+                      },
+                      {
+                        "end": 12.522958251953124,
+                        "word": "me ",
+                        "start": 12.429958251953124
+                      },
+                      {
+                        "end": 12.673958251953126,
+                        "word": "with ",
+                        "start": 12.522958251953124
+                      },
+                      {
+                        "end": 13.149958251953125,
+                        "word": "that?",
+                        "start": 12.673958251953126
+                      },
+                      {
+                        "end": 13.962208251953125,
+                        "word": " Also, ",
+                        "start": 13.195208251953124
+                      },
+                      {
+                        "end": 14.159208251953125,
+                        "word": "does ",
+                        "start": 13.962208251953125
+                      },
+                      {
+                        "end": 14.275208251953124,
+                        "word": "the ",
+                        "start": 14.159208251953125
+                      },
+                      {
+                        "end": 14.554208251953124,
+                        "word": "hotel ",
+                        "start": 14.275208251953124
+                      },
+                      {
+                        "end": 14.682208251953124,
+                        "word": "have ",
+                        "start": 14.554208251953124
+                      },
+                      {
+                        "end": 14.728208251953125,
+                        "word": "a ",
+                        "start": 14.682208251953124
+                      },
+                      {
+                        "end": 15.030208251953125,
+                        "word": "swimming ",
+                        "start": 14.728208251953125
+                      },
+                      {
+                        "end": 15.517208251953125,
+                        "word": "pool?",
+                        "start": 15.030208251953125
+                      }
+                    ],
+                    "content": "Hi, I need to make a reservation for me and my wife on October 29th. Our budget is less than 150 euros. Can you help me with that? Also, does the hotel have a swimming pool?",
+                    "metadata": {
+                      "response_id": 2
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 17.689,
+                        "word": "Certainly. ",
+                        "start": 17.128999
+                      },
+                      {
+                        "end": 17.929000000000002,
+                        "word": "I ",
+                        "start": 17.689
+                      },
+                      {
+                        "end": 18.169,
+                        "word": "can ",
+                        "start": 17.929000000000002
+                      },
+                      {
+                        "end": 18.409,
+                        "word": "assist ",
+                        "start": 18.169
+                      },
+                      {
+                        "end": 18.489,
+                        "word": "you ",
+                        "start": 18.409
+                      },
+                      {
+                        "end": 18.649,
+                        "word": "with ",
+                        "start": 18.489
+                      },
+                      {
+                        "end": 18.889,
+                        "word": "your ",
+                        "start": 18.649
+                      },
+                      {
+                        "end": 19.288999,
+                        "word": "reservation. ",
+                        "start": 18.889
+                      },
+                      {
+                        "end": 19.889,
+                        "word": "Just ",
+                        "start": 19.649
+                      },
+                      {
+                        "end": 20.048999000000002,
+                        "word": "to ",
+                        "start": 19.889
+                      },
+                      {
+                        "end": 20.608998,
+                        "word": "confirm, ",
+                        "start": 20.048999000000002
+                      },
+                      {
+                        "end": 20.689,
+                        "word": "you ",
+                        "start": 20.608998
+                      },
+                      {
+                        "end": 20.849,
+                        "word": "are ",
+                        "start": 20.689
+                      },
+                      {
+                        "end": 21.089,
+                        "word": "looking ",
+                        "start": 20.849
+                      },
+                      {
+                        "end": 21.169,
+                        "word": "for ",
+                        "start": 21.089
+                      },
+                      {
+                        "end": 21.329,
+                        "word": "a ",
+                        "start": 21.169
+                      },
+                      {
+                        "end": 21.569,
+                        "word": "stay ",
+                        "start": 21.329
+                      },
+                      {
+                        "end": 21.729,
+                        "word": "on ",
+                        "start": 21.569
+                      },
+                      {
+                        "end": 22.128999,
+                        "word": "October ",
+                        "start": 21.729
+                      },
+                      {
+                        "end": 22.288999,
+                        "word": "twenty ",
+                        "start": 22.128999
+                      },
+                      {
+                        "end": 22.689,
+                        "word": "ninth. ",
+                        "start": 22.288999
+                      },
+                      {
+                        "end": 22.849,
+                        "word": "Correct?",
+                        "start": 22.689
+                      }
+                    ],
+                    "content": "Certainly. I can assist you with your reservation. Just to confirm, you are looking for a stay on October twenty ninth. Correct?"
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 23.969,
+                        "word": "your ",
+                        "start": 23.809
+                      },
+                      {
+                        "end": 24.209,
+                        "word": "budget, ",
+                        "start": 23.969
+                      },
+                      {
+                        "end": 24.579,
+                        "word": "the ",
+                        "start": 24.419
+                      },
+                      {
+                        "end": 24.899,
+                        "word": "standard ",
+                        "start": 24.579
+                      },
+                      {
+                        "end": 25.139,
+                        "word": "room ",
+                        "start": 24.899
+                      },
+                      {
+                        "end": 25.298999000000002,
+                        "word": "is ",
+                        "start": 25.139
+                      },
+                      {
+                        "end": 25.619,
+                        "word": "available ",
+                        "start": 25.298999000000002
+                      },
+                      {
+                        "end": 25.779,
+                        "word": "for ",
+                        "start": 25.619
+                      },
+                      {
+                        "end": 26.019000000000002,
+                        "word": "one ",
+                        "start": 25.779
+                      },
+                      {
+                        "end": 26.179000000000002,
+                        "word": "hundred ",
+                        "start": 26.019000000000002
+                      },
+                      {
+                        "end": 26.339,
+                        "word": "and ",
+                        "start": 26.179000000000002
+                      },
+                      {
+                        "end": 26.579,
+                        "word": "ten ",
+                        "start": 26.339
+                      },
+                      {
+                        "end": 26.899,
+                        "word": "euros ",
+                        "start": 26.579
+                      },
+                      {
+                        "end": 27.059,
+                        "word": "per ",
+                        "start": 26.899
+                      },
+                      {
+                        "end": 27.378999,
+                        "word": "night, ",
+                        "start": 27.059
+                      },
+                      {
+                        "end": 27.538999,
+                        "word": "which ",
+                        "start": 27.378999
+                      },
+                      {
+                        "end": 27.779,
+                        "word": "fits ",
+                        "start": 27.538999
+                      },
+                      {
+                        "end": 28.019000000000002,
+                        "word": "within ",
+                        "start": 27.779
+                      },
+                      {
+                        "end": 28.099,
+                        "word": "your ",
+                        "start": 28.019000000000002
+                      },
+                      {
+                        "end": 28.339,
+                        "word": "budget.",
+                        "start": 28.099
+                      }
+                    ],
+                    "content": "your budget, the standard room is available for one hundred and ten euros per night, which fits within your budget."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 30.199,
+                        "word": "yes. ",
+                        "start": 29.959
+                      }
+                    ],
+                    "content": "yes. "
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 30.305,
+                        "word": "Great!",
+                        "start": 29.748
+                      },
+                      {
+                        "end": 30.7,
+                        "word": " Let's ",
+                        "start": 30.456
+                      }
+                    ],
+                    "content": "Great! Let's ",
+                    "metadata": {
+                      "response_id": 8
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 30.749,
+                        "word": "We ",
+                        "start": 30.429000000000002
+                      },
+                      {
+                        "end": 30.909,
+                        "word": "do ",
+                        "start": 30.749
+                      },
+                      {
+                        "end": 31.069,
+                        "word": "have ",
+                        "start": 30.909
+                      },
+                      {
+                        "end": 31.229,
+                        "word": "an ",
+                        "start": 31.069
+                      },
+                      {
+                        "end": 31.389,
+                        "word": "out ",
+                        "start": 31.229
+                      },
+                      {
+                        "end": 33.029,
+                        "word": "may ",
+                        "start": 32.789
+                      },
+                      {
+                        "end": 33.189,
+                        "word": "I ",
+                        "start": 33.029
+                      },
+                      {
+                        "end": 33.269,
+                        "word": "have ",
+                        "start": 33.189
+                      },
+                      {
+                        "end": 33.429,
+                        "word": "your ",
+                        "start": 33.269
+                      },
+                      {
+                        "end": 33.589,
+                        "word": "name ",
+                        "start": 33.429
+                      },
+                      {
+                        "end": 33.748998,
+                        "word": "and ",
+                        "start": 33.589
+                      },
+                      {
+                        "end": 33.989,
+                        "word": "email ",
+                        "start": 33.748998
+                      },
+                      {
+                        "end": 34.309,
+                        "word": "address, ",
+                        "start": 33.989
+                      },
+                      {
+                        "end": 34.469,
+                        "word": "please?",
+                        "start": 34.309
+                      }
+                    ],
+                    "content": "We do have an out may I have your name and email address, please?"
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 36.828,
+                        "word": "My ",
+                        "start": 36.689
+                      },
+                      {
+                        "end": 37.003,
+                        "word": "name ",
+                        "start": 36.828
+                      },
+                      {
+                        "end": 37.154,
+                        "word": "is ",
+                        "start": 37.003
+                      },
+                      {
+                        "end": 37.374,
+                        "word": "Mike ",
+                        "start": 37.154
+                      },
+                      {
+                        "end": 37.804,
+                        "word": "Smith, ",
+                        "start": 37.374
+                      },
+                      {
+                        "end": 37.989,
+                        "word": "and ",
+                        "start": 37.804
+                      },
+                      {
+                        "end": 38.129,
+                        "word": "my ",
+                        "start": 37.989
+                      },
+                      {
+                        "end": 38.419,
+                        "word": "email ",
+                        "start": 38.129
+                      },
+                      {
+                        "end": 38.756,
+                        "word": "address ",
+                        "start": 38.419
+                      },
+                      {
+                        "end": 38.883,
+                        "word": "is ",
+                        "start": 38.756
+                      },
+                      {
+                        "end": 39.104,
+                        "word": "mike@yahoo.com.",
+                        "start": 38.883
+                      }
+                    ],
+                    "content": "My name is Mike Smith, and my email address is mike@yahoo.com.",
+                    "metadata": {
+                      "response_id": 9
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 42.569,
+                        "word": "Thank ",
+                        "start": 42.329
+                      },
+                      {
+                        "end": 42.809003,
+                        "word": "you, ",
+                        "start": 42.569
+                      },
+                      {
+                        "end": 43.369,
+                        "word": "Mike. ",
+                        "start": 42.809003
+                      },
+                      {
+                        "end": 43.689,
+                        "word": "Just ",
+                        "start": 43.369
+                      },
+                      {
+                        "end": 43.849000000000004,
+                        "word": "to ",
+                        "start": 43.689
+                      },
+                      {
+                        "end": 44.249,
+                        "word": "confirm, ",
+                        "start": 43.849000000000004
+                      },
+                      {
+                        "end": 44.409,
+                        "word": "you ",
+                        "start": 44.249
+                      },
+                      {
+                        "end": 44.569,
+                        "word": "would ",
+                        "start": 44.409
+                      },
+                      {
+                        "end": 44.729,
+                        "word": "like ",
+                        "start": 44.569
+                      },
+                      {
+                        "end": 44.809003,
+                        "word": "to ",
+                        "start": 44.729
+                      },
+                      {
+                        "end": 44.889,
+                        "word": "book ",
+                        "start": 44.809003
+                      },
+                      {
+                        "end": 45.049,
+                        "word": "a ",
+                        "start": 44.889
+                      },
+                      {
+                        "end": 45.499,
+                        "word": "standard ",
+                        "start": 45.099000000000004
+                      },
+                      {
+                        "end": 45.739,
+                        "word": "room ",
+                        "start": 45.499
+                      },
+                      {
+                        "end": 45.899,
+                        "word": "for ",
+                        "start": 45.739
+                      },
+                      {
+                        "end": 46.059,
+                        "word": "one ",
+                        "start": 45.899
+                      },
+                      {
+                        "end": 46.379,
+                        "word": "night ",
+                        "start": 46.059
+                      },
+                      {
+                        "end": 46.699,
+                        "word": "on ",
+                        "start": 46.379
+                      },
+                      {
+                        "end": 47.099000000000004,
+                        "word": "October ",
+                        "start": 46.699
+                      },
+                      {
+                        "end": 47.339,
+                        "word": "twenty ",
+                        "start": 47.099000000000004
+                      },
+                      {
+                        "end": 47.579,
+                        "word": "ninth ",
+                        "start": 47.339
+                      },
+                      {
+                        "end": 48.369,
+                        "word": "Is ",
+                        "start": 48.129
+                      },
+                      {
+                        "end": 48.529,
+                        "word": "that ",
+                        "start": 48.369
+                      },
+                      {
+                        "end": 48.769,
+                        "word": "correct?",
+                        "start": 48.529
+                      }
+                    ],
+                    "content": "Thank you, Mike. Just to confirm, you would like to book a standard room for one night on October twenty ninth Is that correct?"
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 50.138,
+                        "word": "Yes, ",
+                        "start": 49.859
+                      },
+                      {
+                        "end": 50.358,
+                        "word": "that's ",
+                        "start": 50.138
+                      },
+                      {
+                        "end": 50.962,
+                        "word": "correct.",
+                        "start": 50.358
+                      },
+                      {
+                        "end": 51.240125,
+                        "word": " Please ",
+                        "start": 51.007125
+                      },
+                      {
+                        "end": 51.356125,
+                        "word": "go ",
+                        "start": 51.240125
+                      },
+                      {
+                        "end": 51.530125,
+                        "word": "ahead ",
+                        "start": 51.356125
+                      },
+                      {
+                        "end": 51.634125,
+                        "word": "and ",
+                        "start": 51.530125
+                      },
+                      {
+                        "end": 51.820125,
+                        "word": "book ",
+                        "start": 51.634125
+                      },
+                      {
+                        "end": 52.122125,
+                        "word": "it.",
+                        "start": 51.820125
+                      }
+                    ],
+                    "content": "Yes, that's correct. Please go ahead and book it.",
+                    "metadata": {
+                      "response_id": 11
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 56.599000000000004,
+                        "word": "Your ",
+                        "start": 56.279
+                      },
+                      {
+                        "end": 57.159,
+                        "word": "reservation ",
+                        "start": 56.599000000000004
+                      },
+                      {
+                        "end": 57.399,
+                        "word": "for ",
+                        "start": 57.159
+                      },
+                      {
+                        "end": 57.559,
+                        "word": "the ",
+                        "start": 57.399
+                      },
+                      {
+                        "end": 57.879,
+                        "word": "standard ",
+                        "start": 57.559
+                      },
+                      {
+                        "end": 58.119,
+                        "word": "room ",
+                        "start": 57.879
+                      },
+                      {
+                        "end": 58.359,
+                        "word": "on ",
+                        "start": 58.119
+                      },
+                      {
+                        "end": 58.759,
+                        "word": "October ",
+                        "start": 58.359
+                      },
+                      {
+                        "end": 59.079,
+                        "word": "twenty ",
+                        "start": 58.759
+                      },
+                      {
+                        "end": 59.318998,
+                        "word": "ninth ",
+                        "start": 59.079
+                      },
+                      {
+                        "end": 59.559,
+                        "word": "is ",
+                        "start": 59.318998
+                      },
+                      {
+                        "end": 59.799,
+                        "word": "confirmed.",
+                        "start": 59.559
+                      }
+                    ],
+                    "content": "Your reservation for the standard room on October twenty ninth is confirmed."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 60.769002,
+                        "word": "That's ",
+                        "start": 60.449002
+                      },
+                      {
+                        "end": 60.929002,
+                        "word": "one ",
+                        "start": 60.769002
+                      },
+                      {
+                        "end": 61.409,
+                        "word": "night, ",
+                        "start": 60.929002
+                      },
+                      {
+                        "end": 61.649,
+                        "word": "totaling ",
+                        "start": 61.409
+                      },
+                      {
+                        "end": 61.889,
+                        "word": "one ",
+                        "start": 61.649
+                      },
+                      {
+                        "end": 62.129,
+                        "word": "hundred ",
+                        "start": 61.889
+                      },
+                      {
+                        "end": 62.209,
+                        "word": "and ",
+                        "start": 62.129
+                      },
+                      {
+                        "end": 62.449002,
+                        "word": "ten ",
+                        "start": 62.209
+                      },
+                      {
+                        "end": 62.769002,
+                        "word": "euros ",
+                        "start": 62.449002
+                      },
+                      {
+                        "end": 63.369,
+                        "word": "I ",
+                        "start": 63.209
+                      },
+                      {
+                        "end": 63.529,
+                        "word": "will ",
+                        "start": 63.369
+                      },
+                      {
+                        "end": 63.769,
+                        "word": "now ",
+                        "start": 63.529
+                      },
+                      {
+                        "end": 63.929,
+                        "word": "send ",
+                        "start": 63.769
+                      },
+                      {
+                        "end": 64.089,
+                        "word": "you ",
+                        "start": 63.929
+                      },
+                      {
+                        "end": 64.168996,
+                        "word": "an ",
+                        "start": 64.089
+                      },
+                      {
+                        "end": 64.488996,
+                        "word": "email ",
+                        "start": 64.168996
+                      },
+                      {
+                        "end": 64.729,
+                        "word": "with ",
+                        "start": 64.488996
+                      },
+                      {
+                        "end": 64.889,
+                        "word": "all ",
+                        "start": 64.729
+                      },
+                      {
+                        "end": 65.049,
+                        "word": "the ",
+                        "start": 64.889
+                      },
+                      {
+                        "end": 65.449,
+                        "word": "details ",
+                        "start": 65.049
+                      },
+                      {
+                        "end": 65.68900000000001,
+                        "word": "and ",
+                        "start": 65.449
+                      },
+                      {
+                        "end": 65.849,
+                        "word": "a ",
+                        "start": 65.68900000000001
+                      },
+                      {
+                        "end": 66.009,
+                        "word": "link ",
+                        "start": 65.849
+                      },
+                      {
+                        "end": 66.168996,
+                        "word": "to ",
+                        "start": 66.009
+                      },
+                      {
+                        "end": 66.409,
+                        "word": "complete ",
+                        "start": 66.168996
+                      },
+                      {
+                        "end": 66.569,
+                        "word": "the ",
+                        "start": 66.409
+                      },
+                      {
+                        "end": 66.808995,
+                        "word": "payment.",
+                        "start": 66.569
+                      }
+                    ],
+                    "content": "That's one night, totaling one hundred and ten euros I will now send you an email with all the details and a link to complete the payment."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 67.809,
+                        "word": "you, ",
+                        "start": 67.569005
+                      },
+                      {
+                        "end": 68.209005,
+                        "word": "Mike, ",
+                        "start": 67.809
+                      },
+                      {
+                        "end": 68.369,
+                        "word": "and ",
+                        "start": 68.209005
+                      },
+                      {
+                        "end": 68.609,
+                        "word": "we ",
+                        "start": 68.369
+                      },
+                      {
+                        "end": 68.849004,
+                        "word": "look ",
+                        "start": 68.609
+                      },
+                      {
+                        "end": 69.089,
+                        "word": "forward ",
+                        "start": 68.849004
+                      },
+                      {
+                        "end": 69.169,
+                        "word": "to ",
+                        "start": 69.089
+                      },
+                      {
+                        "end": 69.489,
+                        "word": "welcoming ",
+                        "start": 69.169
+                      },
+                      {
+                        "end": 69.729,
+                        "word": "you. ",
+                        "start": 69.489
+                      },
+                      {
+                        "end": 70.329,
+                        "word": "Now ",
+                        "start": 70.009
+                      },
+                      {
+                        "end": 70.649,
+                        "word": "I ",
+                        "start": 70.329
+                      },
+                      {
+                        "end": 70.889,
+                        "word": "will ",
+                        "start": 70.649
+                      },
+                      {
+                        "end": 71.209,
+                        "word": "proceed ",
+                        "start": 70.889
+                      },
+                      {
+                        "end": 71.448995,
+                        "word": "with ",
+                        "start": 71.209
+                      },
+                      {
+                        "end": 71.68900000000001,
+                        "word": "sending ",
+                        "start": 71.448995
+                      },
+                      {
+                        "end": 71.849,
+                        "word": "the ",
+                        "start": 71.68900000000001
+                      },
+                      {
+                        "end": 72.329,
+                        "word": "confirmation ",
+                        "start": 71.849
+                      },
+                      {
+                        "end": 72.649,
+                        "word": "email. ",
+                        "start": 72.329
+                      },
+                      {
+                        "end": 73.269,
+                        "word": "Will ",
+                        "start": 72.949
+                      },
+                      {
+                        "end": 73.509,
+                        "word": "shortly ",
+                        "start": 73.269
+                      },
+                      {
+                        "end": 73.749,
+                        "word": "receive ",
+                        "start": 73.509
+                      },
+                      {
+                        "end": 73.909,
+                        "word": "a ",
+                        "start": 73.749
+                      },
+                      {
+                        "end": 74.309,
+                        "word": "confirmation ",
+                        "start": 73.909
+                      },
+                      {
+                        "end": 74.629,
+                        "word": "email ",
+                        "start": 74.309
+                      },
+                      {
+                        "end": 74.869,
+                        "word": "with ",
+                        "start": 74.629
+                      },
+                      {
+                        "end": 75.109,
+                        "word": "all ",
+                        "start": 74.869
+                      },
+                      {
+                        "end": 75.269,
+                        "word": "the ",
+                        "start": 75.109
+                      },
+                      {
+                        "end": 75.829,
+                        "word": "details ",
+                        "start": 75.269
+                      },
+                      {
+                        "end": 76.149,
+                        "word": "of ",
+                        "start": 75.829
+                      },
+                      {
+                        "end": 76.469,
+                        "word": "your ",
+                        "start": 76.149
+                      },
+                      {
+                        "end": 76.949,
+                        "word": "reservation.",
+                        "start": 76.469
+                      }
+                    ],
+                    "content": "you, Mike, and we look forward to welcoming you. Now I will proceed with sending the confirmation email. Will shortly receive a confirmation email with all the details of your reservation."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 77.849004,
+                        "word": "you ",
+                        "start": 77.769
+                      },
+                      {
+                        "end": 78.089,
+                        "word": "once ",
+                        "start": 77.849004
+                      },
+                      {
+                        "end": 78.329,
+                        "word": "again, ",
+                        "start": 78.089
+                      },
+                      {
+                        "end": 78.489,
+                        "word": "Mike.",
+                        "start": 78.329
+                      }
+                    ],
+                    "content": "you once again, Mike."
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 80.412,
+                        "word": "Thank ",
+                        "start": 80.098
+                      },
+                      {
+                        "end": 80.771,
+                        "word": "you! ",
+                        "start": 80.412
+                      },
+                      {
+                        "end": 80.99170825195313,
+                        "word": "I'll ",
+                        "start": 80.78270825195312
+                      },
+                      {
+                        "end": 81.17670825195313,
+                        "word": "look ",
+                        "start": 80.99170825195313
+                      },
+                      {
+                        "end": 81.31670825195313,
+                        "word": "out ",
+                        "start": 81.17670825195313
+                      },
+                      {
+                        "end": 81.44370825195313,
+                        "word": "for ",
+                        "start": 81.31670825195313
+                      },
+                      {
+                        "end": 81.54870825195313,
+                        "word": "the ",
+                        "start": 81.44370825195313
+                      },
+                      {
+                        "end": 82.11770825195312,
+                        "word": "confirmation ",
+                        "start": 81.54870825195313
+                      },
+                      {
+                        "end": 82.58170825195313,
+                        "word": "email.",
+                        "start": 82.11770825195312
+                      }
+                    ],
+                    "content": "Thank you! I'll look out for the confirmation email.",
+                    "metadata": {
+                      "response_id": 21
+                    }
+                  }
+                ],
+                "disconnection_reason": "agent_hangup",
+                "telephony_identifier": {
+                  "twilio_call_sid": "CA2b69d7ff03d4e02e3ba1cbbf18223de8"
+                },
+                "transcript_with_tool_calls": [
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 1.2089998999999998,
+                        "word": "Hello. ",
+                        "start": 0.80899995
+                      },
+                      {
+                        "end": 1.369,
+                        "word": "Welcome ",
+                        "start": 1.2089998999999998
+                      },
+                      {
+                        "end": 1.529,
+                        "word": "to ",
+                        "start": 1.369
+                      },
+                      {
+                        "end": 1.9289999999999998,
+                        "word": "Avelian ",
+                        "start": 1.529
+                      },
+                      {
+                        "end": 2.3289999999999997,
+                        "word": "Paradise ",
+                        "start": 1.9289999999999998
+                      },
+                      {
+                        "end": 2.569,
+                        "word": "Hotel. ",
+                        "start": 2.3289999999999997
+                      },
+                      {
+                        "end": 3.159,
+                        "word": "How ",
+                        "start": 2.839
+                      },
+                      {
+                        "end": 3.319,
+                        "word": "can ",
+                        "start": 3.159
+                      },
+                      {
+                        "end": 3.3989998999999997,
+                        "word": "I ",
+                        "start": 3.319
+                      },
+                      {
+                        "end": 3.5589999999999997,
+                        "word": "help ",
+                        "start": 3.3989998999999997
+                      },
+                      {
+                        "end": 3.639,
+                        "word": "you ",
+                        "start": 3.5589999999999997
+                      },
+                      {
+                        "end": 3.799,
+                        "word": "today?",
+                        "start": 3.639
+                      }
+                    ],
+                    "content": "Hello. Welcome to Avelian Paradise Hotel. How can I help you today?"
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 5.849,
+                        "word": "Hi, ",
+                        "start": 5.547
+                      },
+                      {
+                        "end": 5.976,
+                        "word": "I ",
+                        "start": 5.849
+                      },
+                      {
+                        "end": 6.162,
+                        "word": "need ",
+                        "start": 5.976
+                      },
+                      {
+                        "end": 6.244,
+                        "word": "to ",
+                        "start": 6.162
+                      },
+                      {
+                        "end": 6.429,
+                        "word": "make ",
+                        "start": 6.244
+                      },
+                      {
+                        "end": 6.499,
+                        "word": "a ",
+                        "start": 6.429
+                      },
+                      {
+                        "end": 7.068,
+                        "word": "reservation ",
+                        "start": 6.499
+                      },
+                      {
+                        "end": 7.23,
+                        "word": "for ",
+                        "start": 7.068
+                      },
+                      {
+                        "end": 7.37,
+                        "word": "me ",
+                        "start": 7.23
+                      },
+                      {
+                        "end": 7.497,
+                        "word": "and ",
+                        "start": 7.37
+                      },
+                      {
+                        "end": 7.648,
+                        "word": "my ",
+                        "start": 7.497
+                      },
+                      {
+                        "end": 8.008,
+                        "word": "wife ",
+                        "start": 7.648
+                      },
+                      {
+                        "end": 8.159,
+                        "word": "on ",
+                        "start": 8.008
+                      },
+                      {
+                        "end": 8.507,
+                        "word": "October ",
+                        "start": 8.159
+                      },
+                      {
+                        "end": 8.763,
+                        "word": "29th.",
+                        "start": 8.507
+                      },
+                      {
+                        "end": 9.551208251953126,
+                        "word": " Our ",
+                        "start": 9.331208251953125
+                      },
+                      {
+                        "end": 9.911208251953125,
+                        "word": "budget ",
+                        "start": 9.551208251953126
+                      },
+                      {
+                        "end": 10.039208251953125,
+                        "word": "is ",
+                        "start": 9.911208251953125
+                      },
+                      {
+                        "end": 10.260208251953125,
+                        "word": "less ",
+                        "start": 10.039208251953125
+                      },
+                      {
+                        "end": 10.457208251953125,
+                        "word": "than ",
+                        "start": 10.260208251953125
+                      },
+                      {
+                        "end": 10.596208251953126,
+                        "word": "150 ",
+                        "start": 10.457208251953125
+                      },
+                      {
+                        "end": 10.840208251953126,
+                        "word": "euros.",
+                        "start": 10.596208251953126
+                      },
+                      {
+                        "end": 12.174958251953125,
+                        "word": " Can ",
+                        "start": 12.034958251953125
+                      },
+                      {
+                        "end": 12.278958251953124,
+                        "word": "you ",
+                        "start": 12.174958251953125
+                      },
+                      {
+                        "end": 12.429958251953124,
+                        "word": "help ",
+                        "start": 12.278958251953124
+                      },
+                      {
+                        "end": 12.522958251953124,
+                        "word": "me ",
+                        "start": 12.429958251953124
+                      },
+                      {
+                        "end": 12.673958251953126,
+                        "word": "with ",
+                        "start": 12.522958251953124
+                      },
+                      {
+                        "end": 13.149958251953125,
+                        "word": "that?",
+                        "start": 12.673958251953126
+                      },
+                      {
+                        "end": 13.962208251953125,
+                        "word": " Also, ",
+                        "start": 13.195208251953124
+                      },
+                      {
+                        "end": 14.159208251953125,
+                        "word": "does ",
+                        "start": 13.962208251953125
+                      },
+                      {
+                        "end": 14.275208251953124,
+                        "word": "the ",
+                        "start": 14.159208251953125
+                      },
+                      {
+                        "end": 14.554208251953124,
+                        "word": "hotel ",
+                        "start": 14.275208251953124
+                      },
+                      {
+                        "end": 14.682208251953124,
+                        "word": "have ",
+                        "start": 14.554208251953124
+                      },
+                      {
+                        "end": 14.728208251953125,
+                        "word": "a ",
+                        "start": 14.682208251953124
+                      },
+                      {
+                        "end": 15.030208251953125,
+                        "word": "swimming ",
+                        "start": 14.728208251953125
+                      },
+                      {
+                        "end": 15.517208251953125,
+                        "word": "pool?",
+                        "start": 15.030208251953125
+                      }
+                    ],
+                    "content": "Hi, I need to make a reservation for me and my wife on October 29th. Our budget is less than 150 euros. Can you help me with that? Also, does the hotel have a swimming pool?",
+                    "metadata": {
+                      "response_id": 2
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 17.689,
+                        "word": "Certainly. ",
+                        "start": 17.128999
+                      },
+                      {
+                        "end": 17.929000000000002,
+                        "word": "I ",
+                        "start": 17.689
+                      },
+                      {
+                        "end": 18.169,
+                        "word": "can ",
+                        "start": 17.929000000000002
+                      },
+                      {
+                        "end": 18.409,
+                        "word": "assist ",
+                        "start": 18.169
+                      },
+                      {
+                        "end": 18.489,
+                        "word": "you ",
+                        "start": 18.409
+                      },
+                      {
+                        "end": 18.649,
+                        "word": "with ",
+                        "start": 18.489
+                      },
+                      {
+                        "end": 18.889,
+                        "word": "your ",
+                        "start": 18.649
+                      },
+                      {
+                        "end": 19.288999,
+                        "word": "reservation. ",
+                        "start": 18.889
+                      },
+                      {
+                        "end": 19.889,
+                        "word": "Just ",
+                        "start": 19.649
+                      },
+                      {
+                        "end": 20.048999000000002,
+                        "word": "to ",
+                        "start": 19.889
+                      },
+                      {
+                        "end": 20.608998,
+                        "word": "confirm, ",
+                        "start": 20.048999000000002
+                      },
+                      {
+                        "end": 20.689,
+                        "word": "you ",
+                        "start": 20.608998
+                      },
+                      {
+                        "end": 20.849,
+                        "word": "are ",
+                        "start": 20.689
+                      },
+                      {
+                        "end": 21.089,
+                        "word": "looking ",
+                        "start": 20.849
+                      },
+                      {
+                        "end": 21.169,
+                        "word": "for ",
+                        "start": 21.089
+                      },
+                      {
+                        "end": 21.329,
+                        "word": "a ",
+                        "start": 21.169
+                      },
+                      {
+                        "end": 21.569,
+                        "word": "stay ",
+                        "start": 21.329
+                      },
+                      {
+                        "end": 21.729,
+                        "word": "on ",
+                        "start": 21.569
+                      },
+                      {
+                        "end": 22.128999,
+                        "word": "October ",
+                        "start": 21.729
+                      },
+                      {
+                        "end": 22.288999,
+                        "word": "twenty ",
+                        "start": 22.128999
+                      },
+                      {
+                        "end": 22.689,
+                        "word": "ninth. ",
+                        "start": 22.288999
+                      },
+                      {
+                        "end": 22.849,
+                        "word": "Correct?",
+                        "start": 22.689
+                      }
+                    ],
+                    "content": "Certainly. I can assist you with your reservation. Just to confirm, you are looking for a stay on October twenty ninth. Correct?"
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 23.969,
+                        "word": "your ",
+                        "start": 23.809
+                      },
+                      {
+                        "end": 24.209,
+                        "word": "budget, ",
+                        "start": 23.969
+                      },
+                      {
+                        "end": 24.579,
+                        "word": "the ",
+                        "start": 24.419
+                      },
+                      {
+                        "end": 24.899,
+                        "word": "standard ",
+                        "start": 24.579
+                      },
+                      {
+                        "end": 25.139,
+                        "word": "room ",
+                        "start": 24.899
+                      },
+                      {
+                        "end": 25.298999000000002,
+                        "word": "is ",
+                        "start": 25.139
+                      },
+                      {
+                        "end": 25.619,
+                        "word": "available ",
+                        "start": 25.298999000000002
+                      },
+                      {
+                        "end": 25.779,
+                        "word": "for ",
+                        "start": 25.619
+                      },
+                      {
+                        "end": 26.019000000000002,
+                        "word": "one ",
+                        "start": 25.779
+                      },
+                      {
+                        "end": 26.179000000000002,
+                        "word": "hundred ",
+                        "start": 26.019000000000002
+                      },
+                      {
+                        "end": 26.339,
+                        "word": "and ",
+                        "start": 26.179000000000002
+                      },
+                      {
+                        "end": 26.579,
+                        "word": "ten ",
+                        "start": 26.339
+                      },
+                      {
+                        "end": 26.899,
+                        "word": "euros ",
+                        "start": 26.579
+                      },
+                      {
+                        "end": 27.059,
+                        "word": "per ",
+                        "start": 26.899
+                      },
+                      {
+                        "end": 27.378999,
+                        "word": "night, ",
+                        "start": 27.059
+                      },
+                      {
+                        "end": 27.538999,
+                        "word": "which ",
+                        "start": 27.378999
+                      },
+                      {
+                        "end": 27.779,
+                        "word": "fits ",
+                        "start": 27.538999
+                      },
+                      {
+                        "end": 28.019000000000002,
+                        "word": "within ",
+                        "start": 27.779
+                      },
+                      {
+                        "end": 28.099,
+                        "word": "your ",
+                        "start": 28.019000000000002
+                      },
+                      {
+                        "end": 28.339,
+                        "word": "budget.",
+                        "start": 28.099
+                      }
+                    ],
+                    "content": "your budget, the standard room is available for one hundred and ten euros per night, which fits within your budget."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 30.199,
+                        "word": "yes. ",
+                        "start": 29.959
+                      }
+                    ],
+                    "content": "yes. "
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 30.305,
+                        "word": "Great!",
+                        "start": 29.748
+                      },
+                      {
+                        "end": 30.7,
+                        "word": " Let's ",
+                        "start": 30.456
+                      }
+                    ],
+                    "content": "Great! Let's ",
+                    "metadata": {
+                      "response_id": 8
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 30.749,
+                        "word": "We ",
+                        "start": 30.429000000000002
+                      },
+                      {
+                        "end": 30.909,
+                        "word": "do ",
+                        "start": 30.749
+                      },
+                      {
+                        "end": 31.069,
+                        "word": "have ",
+                        "start": 30.909
+                      },
+                      {
+                        "end": 31.229,
+                        "word": "an ",
+                        "start": 31.069
+                      },
+                      {
+                        "end": 31.389,
+                        "word": "out ",
+                        "start": 31.229
+                      },
+                      {
+                        "end": 33.029,
+                        "word": "may ",
+                        "start": 32.789
+                      },
+                      {
+                        "end": 33.189,
+                        "word": "I ",
+                        "start": 33.029
+                      },
+                      {
+                        "end": 33.269,
+                        "word": "have ",
+                        "start": 33.189
+                      },
+                      {
+                        "end": 33.429,
+                        "word": "your ",
+                        "start": 33.269
+                      },
+                      {
+                        "end": 33.589,
+                        "word": "name ",
+                        "start": 33.429
+                      },
+                      {
+                        "end": 33.748998,
+                        "word": "and ",
+                        "start": 33.589
+                      },
+                      {
+                        "end": 33.989,
+                        "word": "email ",
+                        "start": 33.748998
+                      },
+                      {
+                        "end": 34.309,
+                        "word": "address, ",
+                        "start": 33.989
+                      },
+                      {
+                        "end": 34.469,
+                        "word": "please?",
+                        "start": 34.309
+                      }
+                    ],
+                    "content": "We do have an out may I have your name and email address, please?"
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 36.828,
+                        "word": "My ",
+                        "start": 36.689
+                      },
+                      {
+                        "end": 37.003,
+                        "word": "name ",
+                        "start": 36.828
+                      },
+                      {
+                        "end": 37.154,
+                        "word": "is ",
+                        "start": 37.003
+                      },
+                      {
+                        "end": 37.374,
+                        "word": "Mike ",
+                        "start": 37.154
+                      },
+                      {
+                        "end": 37.804,
+                        "word": "Smith, ",
+                        "start": 37.374
+                      },
+                      {
+                        "end": 37.989,
+                        "word": "and ",
+                        "start": 37.804
+                      },
+                      {
+                        "end": 38.129,
+                        "word": "my ",
+                        "start": 37.989
+                      },
+                      {
+                        "end": 38.419,
+                        "word": "email ",
+                        "start": 38.129
+                      },
+                      {
+                        "end": 38.756,
+                        "word": "address ",
+                        "start": 38.419
+                      },
+                      {
+                        "end": 38.883,
+                        "word": "is ",
+                        "start": 38.756
+                      },
+                      {
+                        "end": 39.104,
+                        "word": "mike@yahoo.com.",
+                        "start": 38.883
+                      }
+                    ],
+                    "content": "My name is Mike Smith, and my email address is mike@yahoo.com.",
+                    "metadata": {
+                      "response_id": 9
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 42.569,
+                        "word": "Thank ",
+                        "start": 42.329
+                      },
+                      {
+                        "end": 42.809003,
+                        "word": "you, ",
+                        "start": 42.569
+                      },
+                      {
+                        "end": 43.369,
+                        "word": "Mike. ",
+                        "start": 42.809003
+                      },
+                      {
+                        "end": 43.689,
+                        "word": "Just ",
+                        "start": 43.369
+                      },
+                      {
+                        "end": 43.849000000000004,
+                        "word": "to ",
+                        "start": 43.689
+                      },
+                      {
+                        "end": 44.249,
+                        "word": "confirm, ",
+                        "start": 43.849000000000004
+                      },
+                      {
+                        "end": 44.409,
+                        "word": "you ",
+                        "start": 44.249
+                      },
+                      {
+                        "end": 44.569,
+                        "word": "would ",
+                        "start": 44.409
+                      },
+                      {
+                        "end": 44.729,
+                        "word": "like ",
+                        "start": 44.569
+                      },
+                      {
+                        "end": 44.809003,
+                        "word": "to ",
+                        "start": 44.729
+                      },
+                      {
+                        "end": 44.889,
+                        "word": "book ",
+                        "start": 44.809003
+                      },
+                      {
+                        "end": 45.049,
+                        "word": "a ",
+                        "start": 44.889
+                      },
+                      {
+                        "end": 45.499,
+                        "word": "standard ",
+                        "start": 45.099000000000004
+                      },
+                      {
+                        "end": 45.739,
+                        "word": "room ",
+                        "start": 45.499
+                      },
+                      {
+                        "end": 45.899,
+                        "word": "for ",
+                        "start": 45.739
+                      },
+                      {
+                        "end": 46.059,
+                        "word": "one ",
+                        "start": 45.899
+                      },
+                      {
+                        "end": 46.379,
+                        "word": "night ",
+                        "start": 46.059
+                      },
+                      {
+                        "end": 46.699,
+                        "word": "on ",
+                        "start": 46.379
+                      },
+                      {
+                        "end": 47.099000000000004,
+                        "word": "October ",
+                        "start": 46.699
+                      },
+                      {
+                        "end": 47.339,
+                        "word": "twenty ",
+                        "start": 47.099000000000004
+                      },
+                      {
+                        "end": 47.579,
+                        "word": "ninth ",
+                        "start": 47.339
+                      },
+                      {
+                        "end": 48.369,
+                        "word": "Is ",
+                        "start": 48.129
+                      },
+                      {
+                        "end": 48.529,
+                        "word": "that ",
+                        "start": 48.369
+                      },
+                      {
+                        "end": 48.769,
+                        "word": "correct?",
+                        "start": 48.529
+                      }
+                    ],
+                    "content": "Thank you, Mike. Just to confirm, you would like to book a standard room for one night on October twenty ninth Is that correct?"
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 50.138,
+                        "word": "Yes, ",
+                        "start": 49.859
+                      },
+                      {
+                        "end": 50.358,
+                        "word": "that's ",
+                        "start": 50.138
+                      },
+                      {
+                        "end": 50.962,
+                        "word": "correct.",
+                        "start": 50.358
+                      },
+                      {
+                        "end": 51.240125,
+                        "word": " Please ",
+                        "start": 51.007125
+                      },
+                      {
+                        "end": 51.356125,
+                        "word": "go ",
+                        "start": 51.240125
+                      },
+                      {
+                        "end": 51.530125,
+                        "word": "ahead ",
+                        "start": 51.356125
+                      },
+                      {
+                        "end": 51.634125,
+                        "word": "and ",
+                        "start": 51.530125
+                      },
+                      {
+                        "end": 51.820125,
+                        "word": "book ",
+                        "start": 51.634125
+                      },
+                      {
+                        "end": 52.122125,
+                        "word": "it.",
+                        "start": 51.820125
+                      }
+                    ],
+                    "content": "Yes, that's correct. Please go ahead and book it.",
+                    "metadata": {
+                      "response_id": 11
+                    }
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 56.599000000000004,
+                        "word": "Your ",
+                        "start": 56.279
+                      },
+                      {
+                        "end": 57.159,
+                        "word": "reservation ",
+                        "start": 56.599000000000004
+                      },
+                      {
+                        "end": 57.399,
+                        "word": "for ",
+                        "start": 57.159
+                      },
+                      {
+                        "end": 57.559,
+                        "word": "the ",
+                        "start": 57.399
+                      },
+                      {
+                        "end": 57.879,
+                        "word": "standard ",
+                        "start": 57.559
+                      },
+                      {
+                        "end": 58.119,
+                        "word": "room ",
+                        "start": 57.879
+                      },
+                      {
+                        "end": 58.359,
+                        "word": "on ",
+                        "start": 58.119
+                      },
+                      {
+                        "end": 58.759,
+                        "word": "October ",
+                        "start": 58.359
+                      },
+                      {
+                        "end": 59.079,
+                        "word": "twenty ",
+                        "start": 58.759
+                      },
+                      {
+                        "end": 59.318998,
+                        "word": "ninth ",
+                        "start": 59.079
+                      },
+                      {
+                        "end": 59.559,
+                        "word": "is ",
+                        "start": 59.318998
+                      },
+                      {
+                        "end": 59.799,
+                        "word": "confirmed.",
+                        "start": 59.559
+                      }
+                    ],
+                    "content": "Your reservation for the standard room on October twenty ninth is confirmed."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 60.769002,
+                        "word": "That's ",
+                        "start": 60.449002
+                      },
+                      {
+                        "end": 60.929002,
+                        "word": "one ",
+                        "start": 60.769002
+                      },
+                      {
+                        "end": 61.409,
+                        "word": "night, ",
+                        "start": 60.929002
+                      },
+                      {
+                        "end": 61.649,
+                        "word": "totaling ",
+                        "start": 61.409
+                      },
+                      {
+                        "end": 61.889,
+                        "word": "one ",
+                        "start": 61.649
+                      },
+                      {
+                        "end": 62.129,
+                        "word": "hundred ",
+                        "start": 61.889
+                      },
+                      {
+                        "end": 62.209,
+                        "word": "and ",
+                        "start": 62.129
+                      },
+                      {
+                        "end": 62.449002,
+                        "word": "ten ",
+                        "start": 62.209
+                      },
+                      {
+                        "end": 62.769002,
+                        "word": "euros ",
+                        "start": 62.449002
+                      },
+                      {
+                        "end": 63.369,
+                        "word": "I ",
+                        "start": 63.209
+                      },
+                      {
+                        "end": 63.529,
+                        "word": "will ",
+                        "start": 63.369
+                      },
+                      {
+                        "end": 63.769,
+                        "word": "now ",
+                        "start": 63.529
+                      },
+                      {
+                        "end": 63.929,
+                        "word": "send ",
+                        "start": 63.769
+                      },
+                      {
+                        "end": 64.089,
+                        "word": "you ",
+                        "start": 63.929
+                      },
+                      {
+                        "end": 64.168996,
+                        "word": "an ",
+                        "start": 64.089
+                      },
+                      {
+                        "end": 64.488996,
+                        "word": "email ",
+                        "start": 64.168996
+                      },
+                      {
+                        "end": 64.729,
+                        "word": "with ",
+                        "start": 64.488996
+                      },
+                      {
+                        "end": 64.889,
+                        "word": "all ",
+                        "start": 64.729
+                      },
+                      {
+                        "end": 65.049,
+                        "word": "the ",
+                        "start": 64.889
+                      },
+                      {
+                        "end": 65.449,
+                        "word": "details ",
+                        "start": 65.049
+                      },
+                      {
+                        "end": 65.68900000000001,
+                        "word": "and ",
+                        "start": 65.449
+                      },
+                      {
+                        "end": 65.849,
+                        "word": "a ",
+                        "start": 65.68900000000001
+                      },
+                      {
+                        "end": 66.009,
+                        "word": "link ",
+                        "start": 65.849
+                      },
+                      {
+                        "end": 66.168996,
+                        "word": "to ",
+                        "start": 66.009
+                      },
+                      {
+                        "end": 66.409,
+                        "word": "complete ",
+                        "start": 66.168996
+                      },
+                      {
+                        "end": 66.569,
+                        "word": "the ",
+                        "start": 66.409
+                      },
+                      {
+                        "end": 66.808995,
+                        "word": "payment.",
+                        "start": 66.569
+                      }
+                    ],
+                    "content": "That's one night, totaling one hundred and ten euros I will now send you an email with all the details and a link to complete the payment."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 67.809,
+                        "word": "you, ",
+                        "start": 67.569005
+                      },
+                      {
+                        "end": 68.209005,
+                        "word": "Mike, ",
+                        "start": 67.809
+                      },
+                      {
+                        "end": 68.369,
+                        "word": "and ",
+                        "start": 68.209005
+                      },
+                      {
+                        "end": 68.609,
+                        "word": "we ",
+                        "start": 68.369
+                      },
+                      {
+                        "end": 68.849004,
+                        "word": "look ",
+                        "start": 68.609
+                      },
+                      {
+                        "end": 69.089,
+                        "word": "forward ",
+                        "start": 68.849004
+                      },
+                      {
+                        "end": 69.169,
+                        "word": "to ",
+                        "start": 69.089
+                      },
+                      {
+                        "end": 69.489,
+                        "word": "welcoming ",
+                        "start": 69.169
+                      },
+                      {
+                        "end": 69.729,
+                        "word": "you. ",
+                        "start": 69.489
+                      },
+                      {
+                        "end": 70.329,
+                        "word": "Now ",
+                        "start": 70.009
+                      },
+                      {
+                        "end": 70.649,
+                        "word": "I ",
+                        "start": 70.329
+                      },
+                      {
+                        "end": 70.889,
+                        "word": "will ",
+                        "start": 70.649
+                      },
+                      {
+                        "end": 71.209,
+                        "word": "proceed ",
+                        "start": 70.889
+                      },
+                      {
+                        "end": 71.448995,
+                        "word": "with ",
+                        "start": 71.209
+                      },
+                      {
+                        "end": 71.68900000000001,
+                        "word": "sending ",
+                        "start": 71.448995
+                      },
+                      {
+                        "end": 71.849,
+                        "word": "the ",
+                        "start": 71.68900000000001
+                      },
+                      {
+                        "end": 72.329,
+                        "word": "confirmation ",
+                        "start": 71.849
+                      },
+                      {
+                        "end": 72.649,
+                        "word": "email. ",
+                        "start": 72.329
+                      },
+                      {
+                        "end": 73.269,
+                        "word": "Will ",
+                        "start": 72.949
+                      },
+                      {
+                        "end": 73.509,
+                        "word": "shortly ",
+                        "start": 73.269
+                      },
+                      {
+                        "end": 73.749,
+                        "word": "receive ",
+                        "start": 73.509
+                      },
+                      {
+                        "end": 73.909,
+                        "word": "a ",
+                        "start": 73.749
+                      },
+                      {
+                        "end": 74.309,
+                        "word": "confirmation ",
+                        "start": 73.909
+                      },
+                      {
+                        "end": 74.629,
+                        "word": "email ",
+                        "start": 74.309
+                      },
+                      {
+                        "end": 74.869,
+                        "word": "with ",
+                        "start": 74.629
+                      },
+                      {
+                        "end": 75.109,
+                        "word": "all ",
+                        "start": 74.869
+                      },
+                      {
+                        "end": 75.269,
+                        "word": "the ",
+                        "start": 75.109
+                      },
+                      {
+                        "end": 75.829,
+                        "word": "details ",
+                        "start": 75.269
+                      },
+                      {
+                        "end": 76.149,
+                        "word": "of ",
+                        "start": 75.829
+                      },
+                      {
+                        "end": 76.469,
+                        "word": "your ",
+                        "start": 76.149
+                      },
+                      {
+                        "end": 76.949,
+                        "word": "reservation.",
+                        "start": 76.469
+                      }
+                    ],
+                    "content": "you, Mike, and we look forward to welcoming you. Now I will proceed with sending the confirmation email. Will shortly receive a confirmation email with all the details of your reservation."
+                  },
+                  {
+                    "role": "user",
+                    "words": [
+                      {
+                        "end": 77.849004,
+                        "word": "you ",
+                        "start": 77.769
+                      },
+                      {
+                        "end": 78.089,
+                        "word": "once ",
+                        "start": 77.849004
+                      },
+                      {
+                        "end": 78.329,
+                        "word": "again, ",
+                        "start": 78.089
+                      },
+                      {
+                        "end": 78.489,
+                        "word": "Mike.",
+                        "start": 78.329
+                      }
+                    ],
+                    "content": "you once again, Mike."
+                  },
+                  {
+                    "role": "agent",
+                    "words": [
+                      {
+                        "end": 80.412,
+                        "word": "Thank ",
+                        "start": 80.098
+                      },
+                      {
+                        "end": 80.771,
+                        "word": "you! ",
+                        "start": 80.412
+                      },
+                      {
+                        "end": 80.99170825195313,
+                        "word": "I'll ",
+                        "start": 80.78270825195312
+                      },
+                      {
+                        "end": 81.17670825195313,
+                        "word": "look ",
+                        "start": 80.99170825195313
+                      },
+                      {
+                        "end": 81.31670825195313,
+                        "word": "out ",
+                        "start": 81.17670825195313
+                      },
+                      {
+                        "end": 81.44370825195313,
+                        "word": "for ",
+                        "start": 81.31670825195313
+                      },
+                      {
+                        "end": 81.54870825195313,
+                        "word": "the ",
+                        "start": 81.44370825195313
+                      },
+                      {
+                        "end": 82.11770825195312,
+                        "word": "confirmation ",
+                        "start": 81.54870825195313
+                      },
+                      {
+                        "end": 82.58170825195313,
+                        "word": "email.",
+                        "start": 82.11770825195312
+                      }
+                    ],
+                    "content": "Thank you! I'll look out for the confirmation email.",
+                    "metadata": {
+                      "response_id": 21
+                    }
+                  },
+                  {
+                    "name": "end_call",
+                    "role": "tool_call_invocation",
+                    "arguments": "{\"execution_message\":\"Thank you! I'll look out for the confirmation email.\"}",
+                    "tool_call_id": "a3593a543094ccc3"
+                  }
+                ],
+                "retell_llm_dynamic_variables": {},
+                "opt_out_sensitive_data_storage": false
+              },
+              "event": "call_analyzed"
+            },
+            "query": {},
+            "params": {},
+            "headers": {
+              "host": "your-instance.app.n8n.cloud",
+              "accept": "application/json, text/plain, */*",
+              "cf-ray": "928f50f10524f820-PDX",
+              "cdn-loop": "cloudflare; loops=1; subreqs=1",
+              "cf-ew-via": "15",
+              "cf-worker": "n8n.cloud",
+              "x-real-ip": "100.20.5.228",
+              "cf-visitor": "{\"scheme\":\"https\"}",
+              "user-agent": "axios/1.7.7",
+              "cf-ipcountry": "US",
+              "content-type": "application/json",
+              "x-is-trusted": "yes",
+              "content-length": "31373",
+              "accept-encoding": "gzip, br",
+              "x-forwarded-for": "100.20.5.228, 104.23.160.74",
+              "cf-connecting-ip": "100.20.5.228",
+              "x-forwarded-host": "your-instance.app.n8n.cloud",
+              "x-forwarded-port": "443",
+              "x-forwarded-proto": "https",
+              "x-forwarded-server": "traefik-prod-users-gwc-44-68df68bcf-shrw2",
+              "x-retell-signature": "v=1743418544785,d=2cf5cda8a44189e9077241eb123d8ba0013a7139f9bae51cd5bb3052f3f724b2"
+            },
+            "webhookUrl": "https://your-instance.app.n8n.cloud/webhook/retell",
+            "executionMode": "production"
+          }
+        ]
+      },
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Filter - only call ended",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save to Excel": {
+          "main": [
+            []
+          ]
+        },
+        "Set fields to export": {
+          "main": [
+            [
+              {
+                "node": "Save to Excel",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Save to Airtable",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Save to Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter - only call ended": {
+          "main": [
+            [
+              {
+                "node": "Set fields to export",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.notion": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 8
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Agent Studio",
+      "username": "agentstudio",
+      "bio": "We are a product studio that helps organizations leverage no-code and generative AI to automate internal processes and launch new digital products.\nLinkedIn: https://www.linkedin.com/in/baptistej/",
+      "verified": true,
+      "links": [
+        "https://agentstudio.io/"
+      ],
+      "avatar": "https://gravatar.com/avatar/e9cf0d0fccead46655b11b2ce215cf14d33ecdaa2ce52828f003574c1800e77a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 13,
+        "name": "Support"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1100,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Screenshot_2025_04_09_at_18_05_34_7c0cc16547.png"
+      }
+    ]
+  }
+}

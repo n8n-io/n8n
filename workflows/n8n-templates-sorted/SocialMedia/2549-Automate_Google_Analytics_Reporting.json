@@ -1,0 +1,1473 @@
+{
+  "workflow": {
+    "id": 2549,
+    "name": "Automate Google Analytics Reporting",
+    "views": 9948,
+    "recentViews": 4,
+    "totalViews": 9948,
+    "createdAt": "2024-11-15T03:56:10.002Z",
+    "description": "# Automate Google Analytics Reporting with n8n\n\nThis n8n workflow collects, processes, and formats Google Analytics data into a comprehensive HTML report. The report is segmented into three primary categories: Engagement Stats, Search Results, and Country Views. The formatted report can be emailed or saved as a document, and the workflow includes error handling and logging for better debugging.\n\n## Overview\n\n### Purpose\n\nTo automate the extraction, processing, and presentation of Google Analytics data in a visually appealing and structured format for easier insights and decision-making.\n\n### Features\n\n- **Data Parsing**: Individual parsers process raw Google Analytics data for different time periods and categories.\n- **Data Aggregation**: Combines parsed data into a single structured JSON object.\n- **HTML Report Generation**: Formats the aggregated data into an HTML table with color-coded segments for better readability.\n- **Email or Document Output**: The formatted report can be emailed or saved as a Google Doc (will need additional setup).\n- **Error Handling**: Includes checks for missing data and detailed error messages for debugging.\n\n## Workflow Steps\n\n1. **Data Fetching**:\n\n   - Six separate Google Analytics data pulls:\n     - Page Engagement Stats (This Week and Prior Week)\n     - Google Search Results (This Week and Prior Week)\n     - Country Views (This Week and Prior Week)\n\n2. **Data Parsing**:\n\n   - Each data pull is processed using a dedicated parser node to generate a URL-safe string.\n   - Example nodes:\n     - `Parse - Get Page Engagement This Week`\n     - `Parse - Country Views Prior Week`\n\n3. **Data Aggregation**:\n\n   - Aggregates parsed data into a structured JSON object using the `Aggregate Data` node.\n   - Ensures consistency and handles missing or malformed data.\n\n4. **HTML Report Generation**:\n\n   - Creates a formatted HTML report with color-coded tables for each segment:\n     - **Engagement Stats**: Green\n     - **Search Results**: Blue\n     - **Country Views**: Orange\n   - Includes headers and neatly formatted tables for each data set.\n\n5. **Output**:\n\n   - The report can be sent via email using the Gmail API or saved to Google Docs.\n   - Example nodes:\n     - `Gmail` node for email delivery.\n     - `Google Docs` node for saving the report as a document.\n\n## Requirements\n\n### Prerequisites\n\n- **Google Cloud Setup**:\n  - Enable Google Analytics API.\n  - Enable Gmail API (if using email output).\n  - Generate OAuth credentials for API access.\n- **n8n Installation**:\n  - Self-hosted n8n instance with required nodes (Gmail, Google Docs, etc.).\n  - [Free Cloud-based n8n account]( https://n8n.partnerlinks.io/alexk1919).\n\n### Environment Variables\n\n- Ensure API credentials and tokens are set up in the n8n environment.\n- Update the respective nodes with client ID, client secret, and access tokens.\n\n## Configuration\n\n### Google Analytics\n\n- Configure the `Get Report` nodes with the appropriate property ID and metrics.\n- Ensure correct date ranges are selected for each node.\n\n### Formatting Node\n\n- The `Format Data` node processes aggregated data and generates the HTML content.\n- Customize the HTML styling and segment colors as needed.\n\n### Email Node\n\n- Configure the Gmail node with OAuth credentials.\n- Set the recipient email address and subject line dynamically.\n\n## Error Handling\n\n### Common Issues\n\n1. **Authentication Errors**:\n\n   - Ensure OAuth credentials are correct.\n   - Verify that the APIs are enabled in the Google Cloud Console.\n\n2. **Empty Data**:\n\n   - Check the raw data from Google Analytics.\n   - Validate the property ID and query parameters in the `Get Report` nodes.\n\n3. **Parsing Errors**:\n\n   - Ensure the parser nodes are correctly configured and match the expected input format.\n\n### Debugging\n\n- Use debug logs in each node to identify data flow issues.\n- Add error-handling nodes to capture and log issues during execution.\n\n## Example Usage\n\n1. **Run the Workflow**\n   - Trigger the workflow to fetch, process, and format Google Analytics data.\n2. **Verify Output**\n   - Check the formatted HTML output in the debug logs.\n   - Ensure the email or Google Doc contains the correctly formatted report.\n\n## Future Enhancements\n\n- Add support for additional metrics or dimensions.\n- Integrate with Slack for notifications.\n- Enable scheduling for automated reports.\n- Add a visual dashboard for real-time analytics.\n\n---\n",
+    "workflow": {
+      "id": "21IdmArlNT9LlaFf",
+      "meta": {
+        "instanceId": "d868e3d040e7bda892c81b17cf446053ea25d2556fcef89cbe19dd61a3e876e9",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Automate Google Analytics Reporting - AlexK1919",
+      "tags": [
+        {
+          "id": "BimZXo1NKE7JdlXm",
+          "name": "Google Analytics",
+          "createdAt": "2024-11-13T18:08:04.053Z",
+          "updatedAt": "2024-11-13T18:08:04.053Z"
+        },
+        {
+          "id": "nezaWFCGa7eZsVKu",
+          "name": "Utility",
+          "createdAt": "2024-11-13T18:08:08.207Z",
+          "updatedAt": "2024-11-13T18:08:08.207Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "1b3a0365-92e0-4b51-9a5f-2562b7f3de39",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            560,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5c35f802-82e7-457a-9f11-4d9026cbf0e0",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            760,
+            360
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 1270.4518485107694,
+            "height": 209.13454984057833,
+            "content": "# Aggregate Google Analytics data and Email the results\n\nThis workflow will check for country views, page engagement and google search console results. It will take this week's data and compare it to last week's data.\n\n[Credit to Keith Rumjahn for the original workflow, which I modified.](https://rumjahn.com/how-i-used-a-i-to-be-an-seo-expert-and-analyzed-my-google-analytics-data-in-n8n-and-make-com/)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "54288de3-60ec-4119-a067-e6b8e67949b9",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            760,
+            600
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1269.8517211291685,
+            "height": 745.919853945687,
+            "content": "## Property ID\n\n1. Create your [Google Analytics Credentials](https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/?utm_source=n8n_app&utm_medium=credential_settings&utm_campaign=create_new_credentials_modal)\n2. Enter your [property ID](https://developers.google.com/analytics/devguides/reporting/data/v1/property-id) or Choose from the List of Properties."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cc1c37f3-6354-4413-9ee1-473509fc23e7",
+          "name": "Get Page Engagement Stats for this week",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            840,
+            740
+          ],
+          "parameters": {
+            "simple": false,
+            "returnAll": true,
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "name": "screenPageViews",
+                  "listName": "other"
+                },
+                {
+                  "name": "activeUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "screenPageViewsPerUser",
+                  "listName": "other"
+                },
+                {
+                  "name": "eventCount",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "420633845",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p420633845/",
+              "cachedResultName": "Kenetic Brand Builders"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {
+                  "name": "unifiedScreenName",
+                  "listName": "other"
+                }
+              ]
+            },
+            "additionalFields": {
+              "keepEmptyRows": true
+            }
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "8OdVzOGJqhJ3ti8k",
+              "name": "KBB Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c6b8f171-0e43-4d55-9ba0-c17a8cddca5b",
+          "name": "Get Page Engagement Stats for prior week",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            1240,
+            740
+          ],
+          "parameters": {
+            "simple": false,
+            "endDate": "={{$today.minus({days: 7})}}",
+            "dateRange": "custom",
+            "returnAll": true,
+            "startDate": "={{$today.minus({days: 14})}}",
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "name": "screenPageViews",
+                  "listName": "other"
+                },
+                {
+                  "name": "activeUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "screenPageViewsPerUser",
+                  "listName": "other"
+                },
+                {
+                  "name": "eventCount",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "420633845",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p420633845/",
+              "cachedResultName": "Kenetic Brand Builders"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {
+                  "name": "unifiedScreenName",
+                  "listName": "other"
+                }
+              ]
+            },
+            "additionalFields": {
+              "keepEmptyRows": true
+            }
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "8OdVzOGJqhJ3ti8k",
+              "name": "KBB Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "3c056c98-055d-4dc5-870d-d9c01c467714",
+          "name": "Get Google Search Results for this week",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            1640,
+            740
+          ],
+          "parameters": {
+            "simple": false,
+            "returnAll": true,
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "name": "activeUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagedSessions",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagementRate",
+                  "listName": "other"
+                },
+                {
+                  "name": "eventCount",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchAveragePosition",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchClickThroughRate",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchClicks",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchImpressions",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "420633845",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p420633845/",
+              "cachedResultName": "Kenetic Brand Builders"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {
+                  "name": "landingPagePlusQueryString",
+                  "listName": "other"
+                }
+              ]
+            },
+            "additionalFields": {
+              "keepEmptyRows": true
+            }
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "8OdVzOGJqhJ3ti8k",
+              "name": "KBB Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ea5cdc7a-b00b-45d6-86e9-dd2a61451cca",
+          "name": "Get Country views data for this week",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            1240,
+            940
+          ],
+          "parameters": {
+            "simple": false,
+            "returnAll": true,
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "name": "activeUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "newUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagementRate",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagedSessions",
+                  "listName": "other"
+                },
+                {
+                  "name": "eventCount",
+                  "listName": "other"
+                },
+                {
+                  "listName": "other"
+                },
+                {
+                  "name": "sessions",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "420633845",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p420633845/",
+              "cachedResultName": "Kenetic Brand Builders"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {
+                  "name": "country",
+                  "listName": "other"
+                }
+              ]
+            },
+            "additionalFields": {
+              "keepEmptyRows": true
+            }
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "8OdVzOGJqhJ3ti8k",
+              "name": "KBB Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d52e9084-d00b-490f-b107-ed9904423a03",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            500,
+            360
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 231.71528995536218,
+            "height": 986.0715248510506,
+            "content": "## AlexK1919 \n![Alex Kim](https://media.licdn.com/dms/image/v2/D5603AQFOYMkqCPl6Sw/profile-displayphoto-shrink_400_400/profile-displayphoto-shrink_400_400/0/1718309808352?e=1736985600&v=beta&t=pQKm7lQfUU1ytuC2Gq1PRxNY-XmROFWbo-BjzUPxWOs)\n\nI’m Alex Kim, an AI-Native Workflow Automation Architect Building Solutions to Optimize your Personal and Professional Life.\n\n[Info](https://beacons.ai/alexk1919)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d1160f2f-80ca-4900-8b85-d94073cf38e3",
+          "name": "Aggregate Data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1040,
+            1140
+          ],
+          "parameters": {
+            "jsCode": "// Helper function to decode and parse a URL-encoded JSON string\nfunction decodeUrlString(urlString) {\n    try {\n        const decoded = JSON.parse(decodeURIComponent(urlString));\n        console.log('Decoded URL string:', JSON.stringify(decoded, null, 2));\n        return decoded;\n    } catch (error) {\n        console.log('Error decoding URL string:', error.message);\n        return [];\n    }\n}\n\n// Main function to aggregate data\nfunction aggregateData(items) {\n    // Extract each urlString from the input\n    const data = items[0]?.json; // Get the first JSON object from input\n\n    if (!data) {\n        console.log('No data found in input items.');\n        return {};\n    }\n\n    // Decode each urlString\n    const engagementStatsThisWeek = decodeUrlString(data.urlString1 || '');\n    const engagementStatsPriorWeek = decodeUrlString(data.urlString2 || '');\n    const searchResultsThisWeek = decodeUrlString(data.urlString3 || '');\n    const searchResultsLastWeek = decodeUrlString(data.urlString4 || '');\n    const countryViewsThisWeek = decodeUrlString(data.urlString5 || '');\n    const countryViewsLastWeek = decodeUrlString(data.urlString6 || '');\n\n    // Aggregate the decoded data into a structured object\n    const aggregatedData = {\n        engagementStats: {\n            thisWeek: engagementStatsThisWeek,\n            priorWeek: engagementStatsPriorWeek,\n        },\n        searchResults: {\n            thisWeek: searchResultsThisWeek,\n            lastWeek: searchResultsLastWeek,\n        },\n        countryViews: {\n            thisWeek: countryViewsThisWeek,\n            lastWeek: countryViewsLastWeek,\n        },\n    };\n\n    console.log('Final Aggregated Data:', JSON.stringify(aggregatedData, null, 2));\n    return aggregatedData;\n}\n\n// Get input data from all nodes\nconst items = $input.all();\nconsole.log('Input items to Aggregate Data:', JSON.stringify(items, null, 2));\n\n// Perform aggregation\nconst aggregatedResult = aggregateData(items);\n\n// Output the aggregated result for downstream processing\nreturn { json: aggregatedResult };\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "14fea93c-7d9c-4f58-96a3-b241f6b0bcec",
+          "name": "Get Google Search Results for prior week",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            840,
+            940
+          ],
+          "parameters": {
+            "simple": false,
+            "endDate": "={{$today.minus({days: 7})}}",
+            "dateRange": "custom",
+            "returnAll": true,
+            "startDate": "={{$today.minus({days: 14})}}",
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "name": "activeUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagedSessions",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagementRate",
+                  "listName": "other"
+                },
+                {
+                  "name": "eventCount",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchAveragePosition",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchClickThroughRate",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchClicks",
+                  "listName": "other"
+                },
+                {
+                  "name": "organicGoogleSearchImpressions",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "420633845",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p420633845/",
+              "cachedResultName": "Kenetic Brand Builders"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {
+                  "name": "landingPagePlusQueryString",
+                  "listName": "other"
+                }
+              ]
+            },
+            "additionalFields": {
+              "keepEmptyRows": true
+            }
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "8OdVzOGJqhJ3ti8k",
+              "name": "KBB Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "436c7977-0214-4b23-924a-3915c0f27d28",
+          "name": "Get Country views data for prior week",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            1640,
+            940
+          ],
+          "parameters": {
+            "simple": false,
+            "endDate": "={{$today.minus({days: 7})}}",
+            "dateRange": "custom",
+            "returnAll": true,
+            "startDate": "={{$today.minus({days: 14})}}",
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "name": "activeUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "newUsers",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagementRate",
+                  "listName": "other"
+                },
+                {
+                  "name": "engagedSessions",
+                  "listName": "other"
+                },
+                {
+                  "name": "eventCount",
+                  "listName": "other"
+                },
+                {
+                  "listName": "other"
+                },
+                {
+                  "name": "sessions",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "420633845",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p420633845/",
+              "cachedResultName": "Kenetic Brand Builders"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {
+                  "name": "country",
+                  "listName": "other"
+                }
+              ]
+            },
+            "additionalFields": {
+              "keepEmptyRows": true
+            }
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "8OdVzOGJqhJ3ti8k",
+              "name": "KBB Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "15f3edcb-2e31-4faa-8db2-62da69bbfe8d",
+          "name": "Parse - Get Page Engagement This Week",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1040,
+            740
+          ],
+          "parameters": {
+            "jsCode": "function transformToUrlString(items) {\n    // Debug logging\n    console.log('Input items:', JSON.stringify(items, null, 2));\n    \n    // Check if items is an array and has content\n    if (!Array.isArray(items) || items.length === 0) {\n        console.log('Items is not an array or is empty');\n        throw new Error('Invalid data structure');\n    }\n\n    // Check if first item exists and has json property\n    if (!items[0] || !items[0].json) {\n        console.log('First item is missing or has no json property');\n        throw new Error('Invalid data structure');\n    }\n\n    // Get the analytics data\n    const analyticsData = items[0].json;\n    \n    // Check if analyticsData has rows\n    if (!analyticsData || !Array.isArray(analyticsData.rows)) {\n        console.log('Analytics data is missing or has no rows array');\n        throw new Error('Invalid data structure');\n    }\n    \n    // Map each row to a simplified object\n    const simplified = analyticsData.rows.map(row => {\n        if (!row.dimensionValues?.[0]?.value || !row.metricValues?.length) {\n            console.log('Invalid row structure:', row);\n            throw new Error('Invalid row structure');\n        }\n        \n        return {\n            page: row.dimensionValues[0].value,\n            pageViews: parseInt(row.metricValues[0].value) || 0,\n            activeUsers: parseInt(row.metricValues[1].value) || 0,\n            viewsPerUser: parseFloat(row.metricValues[2].value) || 0,\n            eventCount: parseInt(row.metricValues[3].value) || 0\n        };\n    });\n    \n    // Convert to JSON string and encode for URL\n    return encodeURIComponent(JSON.stringify(simplified));\n}\n\n// Get input data and transform it\nconst urlString = transformToUrlString($input.all());\n\n// Return the result\nreturn { json: { urlString } };"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "46cd21cd-c7f4-45cb-a724-db8a122f9de3",
+          "name": "Parse - Get Page Engagement Prior Week",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1440,
+            740
+          ],
+          "parameters": {
+            "jsCode": "function transformToUrlString(items) {\n    // Debug logging\n    console.log('Input items:', JSON.stringify(items, null, 2));\n    \n    // Check if items is an array and has content\n    if (!Array.isArray(items) || items.length === 0) {\n        console.log('Items is not an array or is empty');\n        throw new Error('Invalid data structure');\n    }\n\n    // Check if first item exists and has json property\n    if (!items[0] || !items[0].json) {\n        console.log('First item is missing or has no json property');\n        throw new Error('Invalid data structure');\n    }\n\n    // Get the analytics data\n    const analyticsData = items[0].json;\n    \n    // Check if analyticsData has rows\n    if (!analyticsData || !Array.isArray(analyticsData.rows)) {\n        console.log('Analytics data is missing or has no rows array');\n        throw new Error('Invalid data structure');\n    }\n    \n    // Filter out invalid rows and map each valid row to a simplified object\n    const simplified = analyticsData.rows\n        .filter(row => {\n            // Check if row is valid and its properties exist\n            const isValid = row \n                && row.dimensionValues \n                && row.dimensionValues[0] \n                && row.dimensionValues[0].value \n                && row.metricValues \n                && row.metricValues.length > 0;\n            \n            if (!isValid) {\n                console.log('Ignoring invalid or null row:', row);\n            }\n            return isValid;\n        })\n        .map(row => ({\n            page: row.dimensionValues[0].value,\n            pageViews: parseInt(row.metricValues[0].value) || 0,\n            activeUsers: parseInt(row.metricValues[1]?.value) || 0,\n            viewsPerUser: parseFloat(row.metricValues[2]?.value) || 0,\n            eventCount: parseInt(row.metricValues[3]?.value) || 0\n        }));\n    \n    // Convert to JSON string and encode for URL\n    return encodeURIComponent(JSON.stringify(simplified));\n}\n\n// Get input data and transform it\nconst urlString = transformToUrlString($input.all());\n\n// Return the result\nreturn { json: { urlString } };\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6bef6c5c-74a1-4566-8b8d-372414ae9b0d",
+          "name": "Parse - Get Google Search This Week",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1840,
+            740
+          ],
+          "parameters": {
+            "jsCode": "function transformToUrlString(items) {\n    // Check if items is an array and get the JSON property\n    const data = items[0]?.json;\n\n    if (!data || !Array.isArray(data.rows)) {\n        console.log('No valid data found');\n        return encodeURIComponent(JSON.stringify([]));\n    }\n\n    try {\n        // Process each row, skipping invalid or null entries\n        const simplified = data.rows\n            .filter(row => {\n                // Skip null rows or rows without dimensionValues or metricValues\n                const isValid = row && row.dimensionValues && Array.isArray(row.metricValues);\n                if (!isValid) {\n                    console.log('Skipping invalid row:', row);\n                }\n                return isValid;\n            })\n            .map(row => ({\n                page: row.dimensionValues[0]?.value || 'Unknown',\n                activeUsers: parseInt(row.metricValues[0]?.value) || 0,\n                engagedSessions: parseInt(row.metricValues[1]?.value) || 0,\n                engagementRate: parseFloat(row.metricValues[2]?.value) || 0.0,\n                eventCount: parseInt(row.metricValues[3]?.value) || 0,\n                avgPosition: parseFloat(row.metricValues[4]?.value) || 0.0,\n                ctr: parseFloat(row.metricValues[5]?.value) || 0.0,\n                clicks: parseInt(row.metricValues[6]?.value) || 0,\n                impressions: parseInt(row.metricValues[7]?.value) || 0\n            }));\n\n        // Encode the simplified data as a URL-safe string\n        return encodeURIComponent(JSON.stringify(simplified));\n    } catch (error) {\n        console.log('Error processing data:', error.message);\n        throw new Error('Invalid data structure');\n    }\n}\n\n// Get the input data\nconst items = $input.all();\n\n// Process the data\nconst result = transformToUrlString(items);\n\n// Return the result\nreturn { json: { urlString: result } };\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d0c2b575-6bf0-40d7-80e9-c4f1702df7c8",
+          "name": "Parse - Get Google Search Prior Week",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1040,
+            940
+          ],
+          "parameters": {
+            "jsCode": "function transformToUrlString(items) {\n    // Ensure the input is valid and contains data\n    const data = items[0]?.json;\n\n    if (!data || !Array.isArray(data.rows)) {\n        console.log('No valid data found');\n        return encodeURIComponent(JSON.stringify([]));\n    }\n\n    try {\n        // Process each row, skipping null or invalid rows\n        const simplified = data.rows\n            .filter(row => {\n                // Skip null rows\n                const isValid = row && row.dimensionValues && Array.isArray(row.metricValues);\n                if (!isValid) {\n                    console.log('Skipping invalid or null row:', row);\n                }\n                return isValid;\n            })\n            .map(row => ({\n                page: row.dimensionValues[0]?.value || 'Unknown',\n                activeUsers: parseInt(row.metricValues[0]?.value) || 0,\n                engagedSessions: parseInt(row.metricValues[1]?.value) || 0,\n                engagementRate: parseFloat(row.metricValues[2]?.value) || 0.0,\n                eventCount: parseInt(row.metricValues[3]?.value) || 0,\n                avgPosition: parseFloat(row.metricValues[4]?.value) || 0.0,\n                ctr: parseFloat(row.metricValues[5]?.value) || 0.0,\n                clicks: parseInt(row.metricValues[6]?.value) || 0,\n                impressions: parseInt(row.metricValues[7]?.value) || 0\n            }));\n\n        // If no valid rows, return an empty array\n        if (simplified.length === 0) {\n            console.log('No valid rows to process');\n            return encodeURIComponent(JSON.stringify([]));\n        }\n\n        // Encode the simplified data as a URL-safe string\n        return encodeURIComponent(JSON.stringify(simplified));\n    } catch (error) {\n        console.log('Error processing data:', error.message);\n        throw new Error('Invalid data structure');\n    }\n}\n\n// Get the input data\nconst items = $input.all();\n\n// Process the data\nconst result = transformToUrlString(items);\n\n// Return the result\nreturn { json: { urlString: result } };\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "1fca2a6c-1b60-4860-ad60-3e0696f2cb07",
+          "name": "Parse - Country Views This Week",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1440,
+            940
+          ],
+          "parameters": {
+            "jsCode": "function transformToUrlString(items) {\n    // In n8n, we need to check if items is an array and get the json property\n    const data = items[0].json;\n    \n    if (!data || !data.rows) {\n        console.log('No valid data found');\n        return encodeURIComponent(JSON.stringify([]));\n    }\n    \n    try {\n        // Process each row\n        const simplified = data.rows.map(row => ({\n            country: row.dimensionValues[0].value,\n            activeUsers: parseInt(row.metricValues[0].value) || 0,\n            newUsers: parseInt(row.metricValues[1].value) || 0,\n            engagementRate: parseFloat(row.metricValues[2].value) || 0,\n            engagedSessions: parseInt(row.metricValues[3].value) || 0,\n            eventCount: parseInt(row.metricValues[4].value) || 0,\n            totalUsers: parseInt(row.metricValues[5].value) || 0,\n            sessions: parseInt(row.metricValues[6].value) || 0\n        }));\n        \n        return encodeURIComponent(JSON.stringify(simplified));\n    } catch (error) {\n        console.log('Error processing data:', error);\n        throw new Error('Invalid data structure');\n    }\n}\n\n// Get the input data\nconst items = $input.all();\n\n// Process the data\nconst result = transformToUrlString(items);\n\n// Return the result\nreturn { json: { urlString: result } };"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "23679bde-bf02-465a-a656-5eeea0e82f34",
+          "name": "Parse - Country Views Prior Week",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1840,
+            940
+          ],
+          "parameters": {
+            "jsCode": "function transformToUrlString(items) {\n    // Ensure the input is valid and contains data\n    const data = items[0]?.json;\n\n    if (!data || !Array.isArray(data.rows)) {\n        console.log('No valid data found');\n        return encodeURIComponent(JSON.stringify([]));\n    }\n\n    try {\n        // Process each row, skipping invalid or null rows\n        const simplified = data.rows\n            .filter(row => {\n                // Skip null rows or rows without required properties\n                const isValid = row && row.dimensionValues && Array.isArray(row.metricValues);\n                if (!isValid) {\n                    console.log('Skipping invalid or null row:', row);\n                }\n                return isValid;\n            })\n            .map(row => ({\n                country: row.dimensionValues[0]?.value || 'Unknown',\n                activeUsers: parseInt(row.metricValues[0]?.value) || 0,\n                newUsers: parseInt(row.metricValues[1]?.value) || 0,\n                engagementRate: parseFloat(row.metricValues[2]?.value) || 0.0,\n                engagedSessions: parseInt(row.metricValues[3]?.value) || 0,\n                eventCount: parseInt(row.metricValues[4]?.value) || 0,\n                totalUsers: parseInt(row.metricValues[5]?.value) || 0,\n                sessions: parseInt(row.metricValues[6]?.value) || 0\n            }));\n\n        // If no valid rows, return an empty array\n        if (simplified.length === 0) {\n            console.log('No valid rows to process');\n            return encodeURIComponent(JSON.stringify([]));\n        }\n\n        // Encode the simplified data as a URL-safe string\n        return encodeURIComponent(JSON.stringify(simplified));\n    } catch (error) {\n        console.log('Error processing data:', error.message);\n        throw new Error('Invalid data structure');\n    }\n}\n\n// Get the input data\nconst items = $input.all();\n\n// Process the data\nconst result = transformToUrlString(items);\n\n// Return the result\nreturn { json: { urlString: result } };\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d6797f36-d715-4821-9747-cea5c87dc2cb",
+          "name": "Set urlStrings",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            840,
+            1140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "93efb02f-f2f2-4e52-aa7a-3ccd1fb171cc",
+                  "name": "urlString1",
+                  "type": "string",
+                  "value": "={{ $('Parse - Get Page Engagement This Week').first().json.urlString }}"
+                },
+                {
+                  "id": "5dea3377-0af2-48da-8666-5ee9452e25c5",
+                  "name": "urlString2",
+                  "type": "string",
+                  "value": "={{ $('Parse - Get Page Engagement Prior Week').first().json.urlString }}"
+                },
+                {
+                  "id": "c6aa5d4d-d1e5-4493-96fd-60b2298ff6da",
+                  "name": "urlString3",
+                  "type": "string",
+                  "value": "={{ $('Parse - Get Google Search This Week').first().json.urlString }}"
+                },
+                {
+                  "id": "711cb4fa-3e8c-4ad6-9b25-e2447d7492d1",
+                  "name": "urlString4",
+                  "type": "string",
+                  "value": "={{ $('Parse - Get Google Search Prior Week').first().json.urlString }}"
+                },
+                {
+                  "id": "775bc64a-7986-48fb-a36d-4101158b83f0",
+                  "name": "urlString5",
+                  "type": "string",
+                  "value": "={{ $('Parse - Country Views This Week').first().json.urlString }}"
+                },
+                {
+                  "id": "a6ae27a0-89b5-4a6f-8328-327750835c8d",
+                  "name": "urlString6",
+                  "type": "string",
+                  "value": "={{ $('Parse - Country Views Prior Week').first().json.urlString }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5990f2af-1fc4-4ed5-aea6-c46bebb463a8",
+          "name": "Format Data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            840,
+            1480
+          ],
+          "parameters": {
+            "jsCode": "const input = $input.first().json;\n\n// Extract data\nconst engagementStats = input.engagementStats || {};\nconst searchResults = input.searchResults || {};\nconst countryViews = input.countryViews || {};\n\n// Helper function to generate HTML for a table\nfunction generateTable(headers, rows, color) {\n    let table = `<table border=\"1\" style=\"border-collapse:collapse; width:100%; border:1px solid ${color};\">`;\n    // Add table headers\n    table += `<thead style=\"background-color:${color}; color:white;\"><tr>`;\n    headers.forEach(header => {\n        table += `<th style=\"padding:8px; text-align:left; border:1px solid ${color};\">${header}</th>`;\n    });\n    table += '</tr></thead>';\n    // Add table rows\n    table += '<tbody>';\n    rows.forEach(row => {\n        table += '<tr>';\n        row.forEach(cell => {\n            table += `<td style=\"padding:8px; border:1px solid ${color};\">${cell}</td>`;\n        });\n        table += '</tr>';\n    });\n    table += '</tbody></table>';\n    return table;\n}\n\n// Get today's date\nconst today = new Date();\nconst formattedDate = today.toLocaleDateString(undefined, {\n    year: 'numeric',\n    month: 'long',\n    day: 'numeric',\n});\n\n// Generate HTML content\nconst title = `GA Report for ${formattedDate}`;\nlet htmlContent = `<h1 style=\"text-align:center; color:#333;\">${title}</h1>`;\n\n// Colors for each segment\nconst engagementColor = '#4CAF50';\nconst searchColor = '#2196F3';\nconst countryColor = '#FF9800';\n\nhtmlContent += `<h2 style=\"color:${engagementColor};\">Engagement Stats</h2>`;\nhtmlContent += `<h3 style=\"color:#333;\">This Week</h3>`;\nif (engagementStats.thisWeek?.length) {\n    const headers = ['Page', 'Page Views', 'Active Users', 'Views per User', 'Event Count'];\n    const rows = engagementStats.thisWeek.map(stat => [\n        stat.page,\n        stat.pageViews,\n        stat.activeUsers,\n        stat.viewsPerUser.toFixed(2),\n        stat.eventCount,\n    ]);\n    htmlContent += generateTable(headers, rows, engagementColor);\n} else {\n    htmlContent += `<p style=\"color:${engagementColor};\">No data available for this week.</p>`;\n}\n\nhtmlContent += `<h3 style=\"color:#333;\">Prior Week</h3>`;\nif (engagementStats.priorWeek?.length) {\n    const headers = ['Page', 'Page Views', 'Active Users', 'Views per User', 'Event Count'];\n    const rows = engagementStats.priorWeek.map(stat => [\n        stat.page,\n        stat.pageViews,\n        stat.activeUsers,\n        stat.viewsPerUser.toFixed(2),\n        stat.eventCount,\n    ]);\n    htmlContent += generateTable(headers, rows, engagementColor);\n} else {\n    htmlContent += `<p style=\"color:${engagementColor};\">No data available for prior week.</p>`;\n}\n\nhtmlContent += `<h2 style=\"color:${searchColor};\">Search Results</h2>`;\nhtmlContent += `<h3 style=\"color:#333;\">This Week</h3>`;\nif (searchResults.thisWeek?.length) {\n    const headers = ['Page', 'Active Users', 'Engaged Sessions', 'Engagement Rate', 'Event Count', 'Avg Position', 'CTR', 'Clicks', 'Impressions'];\n    const rows = searchResults.thisWeek.map(result => [\n        result.page,\n        result.activeUsers,\n        result.engagedSessions,\n        result.engagementRate.toFixed(2),\n        result.eventCount,\n        result.avgPosition.toFixed(2),\n        result.ctr.toFixed(2),\n        result.clicks,\n        result.impressions,\n    ]);\n    htmlContent += generateTable(headers, rows, searchColor);\n} else {\n    htmlContent += `<p style=\"color:${searchColor};\">No data available for this week.</p>`;\n}\n\nhtmlContent += `<h3 style=\"color:#333;\">Last Week</h3>`;\nif (searchResults.lastWeek?.length) {\n    const headers = ['Page', 'Active Users', 'Engaged Sessions', 'Engagement Rate', 'Event Count', 'Avg Position', 'CTR', 'Clicks', 'Impressions'];\n    const rows = searchResults.lastWeek.map(result => [\n        result.page,\n        result.activeUsers,\n        result.engagedSessions,\n        result.engagementRate.toFixed(2),\n        result.eventCount,\n        result.avgPosition.toFixed(2),\n        result.ctr.toFixed(2),\n        result.clicks,\n        result.impressions,\n    ]);\n    htmlContent += generateTable(headers, rows, searchColor);\n} else {\n    htmlContent += `<p style=\"color:${searchColor};\">No data available for last week.</p>`;\n}\n\nhtmlContent += `<h2 style=\"color:${countryColor};\">Country Views</h2>`;\nhtmlContent += `<h3 style=\"color:#333;\">This Week</h3>`;\nif (countryViews.thisWeek?.length) {\n    const headers = ['Country', 'Active Users', 'New Users', 'Engagement Rate', 'Engaged Sessions', 'Event Count', 'Total Users', 'Sessions'];\n    const rows = countryViews.thisWeek.map(view => [\n        view.country,\n        view.activeUsers,\n        view.newUsers,\n        view.engagementRate.toFixed(2),\n        view.engagedSessions,\n        view.eventCount,\n        view.totalUsers,\n        view.sessions,\n    ]);\n    htmlContent += generateTable(headers, rows, countryColor);\n} else {\n    htmlContent += `<p style=\"color:${countryColor};\">No data available for this week.</p>`;\n}\n\nhtmlContent += `<h3 style=\"color:#333;\">Last Week</h3>`;\nif (countryViews.lastWeek?.length) {\n    const headers = ['Country', 'Active Users', 'New Users', 'Engagement Rate', 'Engaged Sessions', 'Event Count', 'Total Users', 'Sessions'];\n    const rows = countryViews.lastWeek.map(view => [\n        view.country,\n        view.activeUsers,\n        view.newUsers,\n        view.engagementRate.toFixed(2),\n        view.engagedSessions,\n        view.eventCount,\n        view.totalUsers,\n        view.sessions,\n    ]);\n    htmlContent += generateTable(headers, rows, countryColor);\n} else {\n    htmlContent += `<p style=\"color:${countryColor};\">No data available for last week.</p>`;\n}\n\n// Output the title and formatted HTML\nreturn {\n    json: {\n        title,\n        htmlContent,\n    }\n};\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "74ad1eef-3a5b-4939-83ee-be0c4b6c13cb",
+          "name": "Input All",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1240,
+            1140
+          ],
+          "parameters": {
+            "jsCode": "console.log($input.all());\nreturn $input.all();\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "019a40de-80c8-4ede-a86b-babb2c6288eb",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            760,
+            1380
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1264.897623827279,
+            "height": 295.7350020039967,
+            "content": "## Format the data and Email"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f81326ce-ac35-4463-8444-e9c2b7be027b",
+          "name": "Email the Report",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1040,
+            1480
+          ],
+          "webhookId": "80d4d964-449a-4599-b2de-bca9c8822bbd",
+          "parameters": {
+            "sendTo": "info@alexk1919.com",
+            "message": "={{ $json.htmlContent }}",
+            "options": {
+              "senderName": "Alex Kim"
+            },
+            "subject": "=KBB {{ $json.title }}"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "7eQtesjR8Fht0INE",
+              "name": "AlexK1919 Gmail"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9358a6bc-3696-4647-b02d-891c597d1cb6",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            560,
+            1140
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {}
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "timezone": "America/Los_Angeles",
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "executionTimeout": -1,
+        "saveManualExecutions": false
+      },
+      "versionId": "34428c27-6f55-44a6-9b0b-f3de72fe2383",
+      "connections": {
+        "Input All": {
+          "main": [
+            [
+              {
+                "node": "Format Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format Data": {
+          "main": [
+            [
+              {
+                "node": "Email the Report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate Data": {
+          "main": [
+            [
+              {
+                "node": "Input All",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set urlStrings": {
+          "main": [
+            [
+              {
+                "node": "Aggregate Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse - Country Views This Week": {
+          "main": [
+            [
+              {
+                "node": "Get Country views data for prior week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse - Country Views Prior Week": {
+          "main": [
+            [
+              {
+                "node": "Set urlStrings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Get Page Engagement Stats for this week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse - Get Google Search This Week": {
+          "main": [
+            [
+              {
+                "node": "Get Google Search Results for prior week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Country views data for this week": {
+          "main": [
+            [
+              {
+                "node": "Parse - Country Views This Week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse - Get Google Search Prior Week": {
+          "main": [
+            [
+              {
+                "node": "Get Country views data for this week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Country views data for prior week": {
+          "main": [
+            [
+              {
+                "node": "Parse - Country Views Prior Week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse - Get Page Engagement This Week": {
+          "main": [
+            [
+              {
+                "node": "Get Page Engagement Stats for prior week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse - Get Page Engagement Prior Week": {
+          "main": [
+            [
+              {
+                "node": "Get Google Search Results for this week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Google Search Results for this week": {
+          "main": [
+            [
+              {
+                "node": "Parse - Get Google Search This Week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Page Engagement Stats for this week": {
+          "main": [
+            [
+              {
+                "node": "Parse - Get Page Engagement This Week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Google Search Results for prior week": {
+          "main": [
+            [
+              {
+                "node": "Parse - Get Google Search Prior Week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Page Engagement Stats for prior week": {
+          "main": [
+            [
+              {
+                "node": "Parse - Get Page Engagement Prior Week",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 23,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 9
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleAnalytics": {
+          "count": 6
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Alex Kim",
+      "username": "alexk1919",
+      "bio": "n8n Ambassador & Verified Partner",
+      "verified": true,
+      "links": [
+        "https://alexk1919.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/2b74c7f530e250439f5d752f2623ead4921fbb8aef56343c922b2873ef8a619f?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 435,
+        "icon": "file:analytics.svg",
+        "name": "n8n-nodes-base.googleAnalytics",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleanalytics/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Analytics"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz48cGF0aCBmaWxsPSIjRjlBQjAwIiBkPSJNMTMwIDI5djEzMmMwIDE0Ljc3IDEwLjE5IDIzIDIxIDIzIDEwIDAgMjEtNyAyMS0yM1YzMGMwLTEzLjU0LTEwLTIyLTIxLTIycy0yMSA5LjMzLTIxIDIxIi8+PHBhdGggZmlsbD0iI0UzNzQwMCIgZD0iTTc1IDk2djY1YzAgMTQuNzcgMTAuMTkgMjMgMjEgMjMgMTAgMCAyMS03IDIxLTIzVjk3YzAtMTMuNTQtMTAtMjItMjEtMjJzLTIxIDkuMzMtMjEgMjEiLz48Y2lyY2xlIGN4PSI0MSIgY3k9IjE2MyIgcj0iMjEiIGZpbGw9IiNFMzc0MDAiLz48L3N2Zz4="
+        },
+        "displayName": "Google Analytics",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

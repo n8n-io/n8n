@@ -1,0 +1,175 @@
+{
+  "workflow": {
+    "id": 810,
+    "name": "Receive updates when an event occurs in TheHive",
+    "views": 754,
+    "recentViews": 0,
+    "totalViews": 754,
+    "createdAt": "2020-12-03T13:16:43.841Z",
+    "description": "![workflow-screenshot](fileId:329)",
+    "workflow": {
+      "id": "161",
+      "name": "Receive updates when an event occurs in TheHive",
+      "nodes": [
+        {
+          "name": "TheHive Trigger",
+          "type": "n8n-nodes-base.theHiveTrigger",
+          "position": [
+            690,
+            220
+          ],
+          "webhookId": "bef3fea8-2d68-43e8-9061-6c17c1059c86",
+          "parameters": {
+            "events": [
+              "*"
+            ]
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.theHiveTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 418,
+        "icon": "file:thehive.svg",
+        "name": "n8n-nodes-base.theHiveTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.thehivetrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "TheHive Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGlkPSJMYXllcl8xIiBkYXRhLW5hbWU9IkxheWVyIDEiIHZpZXdCb3g9IjAgMCAzMDAgMzAwIj48ZGVmcz48c3R5bGU+LmNscy0ye2ZpbGw6I2ZmZn08L3N0eWxlPjwvZGVmcz48cGF0aCBmaWxsPSIjZjNkMDJmIiBkPSJNMjkwIDE1MEExNDAgMTQwIDAgMSAxIDE1MCAxMGExNDAgMTQwIDAgMCAxIDE0MCAxNDAiLz48cGF0aCBkPSJNMjA0LjYyIDIxMC42YTE1LjEgMTUuMSAwIDAgMS02LjY4IDEuMzggMTcuNDkgMTcuNDkgMCAwIDEtMTYuMTEtMTAuOTNsLTQuODMtMTEuNi03LjMxLTE4LjI4YTUuMDUgNS4wNSAwIDAgMC0uNy0yLjEybC0xMC4xLTI1LjMxYzE2LjE1IDIuODYgNDUuOTMgMjAuMTYgNTUuNjggNDMuNzIgMy40OCA5LjQ5LS43NiAxOS42Ni05LjkgMjMuMTRtLTU0Ljg3IDI3LjIxYy0xMS41OCAwLTIxLTguNS0yNC44NS0yMS41bDQ5Ljg1LjE2Yy0zLjkgMTMuMzMtMTMuNDEgMjEuMzgtMjUgMjEuMzRtLTQ4LTI2LjE0YTE0LjMgMTQuMyAwIDAgMS02LjY3LTEuNDNjLTguNzYtMy44OS0xMy4yOS0xNC4wOS05LjQtMjIuODUgOS45MS0yMy44NSAzOS44MS00MC45NSA1Ni00My4zNkwxMzEgMTcwbC03Ljc5IDE5LjI5LTUgMTEuNTdhMTguMzQgMTguMzQgMCAwIDEtMTYuNTMgMTAuODNtNDIuNjMtNDUuMTYgNS42OS0xMy42OSA1LjU3IDEzLjcxem0tNy43OSAxOS4yOSAzLjE5LTguMDYgMjAuMzcuMDcgMy4xMyA4LjA4em0tNSAxMS41NyAzNi4xNy4xMiAzLjEzIDguMDktNDIuNDgtLjE1em0xOC41Ni05MC44N2M5LjQ4IDAgMTcuNTMgOS4xOCAxNy41IDE2LjU2IDAgOC43Ny0xNC40MyA5LjQzLTE3LjIzIDkuNDEtMy4xNiAwLTE3LjIxLS40LTE3LjE4LTkuNTMtLjY3LTcuMzggNy40My0xNi40OCAxNi45MS0xNi40NG0tMTMuMi0uNDJhMy43NSAzLjc1IDAgMCAxLTMuMzktMi4xNWwtNS44MS0xMi4zNGEzLjc0IDMuNzQgMCAxIDEgNi43Ny0zLjE5bDUuODEgMTIuMzRhMy43NCAzLjc0IDAgMCAxLTEuNzkgNSAzLjggMy44IDAgMCAxLTEuNTkuMzZtMjYuMjQtLjAyYTMuOCAzLjggMCAwIDEtMS41OS0uMzYgMy43NCAzLjc0IDAgMCAxLTEuNzktNWw1LjgyLTEyLjM1YTMuNzQgMy43NCAwIDEgMSA2Ljc3IDMuMkwxNjYuNTEgMTA0YTMuNzUgMy43NSAwIDAgMS0zLjM5IDIuMTUiIGNsYXNzPSJjbHMtMiIvPjxwYXRoIGQ9Ik0yMDQuMzYgMTU3LjgxYTMuNzQgMy43NCAwIDAgMS0zLjI2LTUuNTZsMTQuNDEtMjUuODctMzIuODctNTYuN2gtNjUuMjhMODQuNTQgMTI2LjNsMTUuNjYgMjUuODNhMy43NCAzLjc0IDAgMCAxLTYuNCAzLjg3TDc3IDEyOC4yOGEzLjcyIDMuNzIgMCAwIDEgMC0zLjgxbDM1LTYwLjQxYTMuNzcgMy43NyAwIDAgMSAzLjI0LTEuODdoNjkuNmEzLjc1IDMuNzUgMCAwIDEgMy4xNiAxLjg3bDM1IDYwLjQxYTMuNzMgMy43MyAwIDAgMSAwIDMuN2wtMTUuNDQgMjcuNzJhMy43NSAzLjc1IDAgMCAxLTMuMjggMS45MiIgY2xhc3M9ImNscy0yIi8+PC9zdmc+"
+        },
+        "displayName": "TheHive Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": [
+      {
+        "id": 329,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/636240c6376f48f3b4fe70b80254516a.png"
+      }
+    ]
+  }
+}

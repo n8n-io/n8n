@@ -1,0 +1,52 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executiondata/
+Scraped_At: 2025-05-20T18:55:51.238173
+
+Execution Data
+#
+Use this node to save metadata for workflow executions. You can then search by this data in the
+Executions
+list.
+You can retrieve custom execution data during workflow execution using the Code node. Refer to
+Custom executions data
+for more information.
+Feature availability
+Available on Pro and Enterprise plans.
+Operations
+#
+Save Execution Data for Search
+Data to Save
+#
+Add a
+Saved Field
+for each key/value pair of metadata you'd like to save.
+Limitations
+#
+The Execution Data node has the following restrictions when storing execution metadata:
+key
+: limited to 50 characters
+value
+: limited to 512 characters
+If either the
+key
+or
+value
+exceed the above limitations, n8n truncates to their maximum length and outputs a log entry.
+Templates and examples
+#
+Host Your Own AI Deep Research Agent with n8n, Apify and OpenAI o3
+by Jimleuk
+View template details
+API Schema Extractor
+by Polina Medvedieva
+View template details
+Realtime Notion Todoist 2-way Sync with Redis
+by Mario
+View template details
+Browse Execution Data integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

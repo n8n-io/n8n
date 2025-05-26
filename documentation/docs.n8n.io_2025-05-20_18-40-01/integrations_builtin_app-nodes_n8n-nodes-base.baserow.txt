@@ -1,0 +1,42 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.baserow/
+Scraped_At: 2025-05-20T18:46:09.131974
+
+Baserow node
+#
+Use the Baserow node to automate work in Baserow, and integrate Baserow with other applications. n8n has built-in support for a wide range of Baserow features, including creating, getting, retrieving, and updating rows.
+On this page, you'll find a list of operations the Baserow node supports and links to more resources.
+Credentials
+Refer to
+Baserow credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Row
+Create a row
+Delete a row
+Retrieve a row
+Retrieve all rows
+Update a row
+Templates and examples
+#
+All-in-One Telegram/Baserow AI Assistant 🤖🧠 Voice/Photo/Save Notes/Long Term Mem
+by Rod
+View template details
+User Enablement Demo
+by jason
+View template details
+Track investments using Baserow and n8n
+by Tom
+View template details
+Browse Baserow integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

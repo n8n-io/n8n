@@ -1,0 +1,2736 @@
+{
+  "workflow": {
+    "id": 2825,
+    "name": "Spot Workplace Discrimination Patterns with AI",
+    "views": 4152,
+    "recentViews": 5,
+    "totalViews": 4152,
+    "createdAt": "2025-01-30T19:31:39.617Z",
+    "description": "![Spot Workplace Discrimination Patterns with AI.png](fileId:924)\n\n## How It Works:\n• Scrapes company review data from Glassdoor using ScrapingBee.\n• Extracts demographic-based ratings using AI-powered text analysis.\n• Calculates workplace disparities with statistical measures like z-scores, effect sizes, and p-values.\n• Generates visualizations (scatter plots, bar charts) to highlight patterns of discrimination or bias.\n\n\n### Example Visualizations:\n![twilio_effect_size.png](fileId:922)![twilio_scatter_plot.png](fileId:923)\n\n## Set Up Steps:\n*Estimated time: ~20 minutes.*\n• Replace ScrapingBee and OpenAI credentials with your own.\n• Input the company name you want to analyze (best results with large U.S.-based organizations).\n• Run the workflow and review the AI-generated insights and visual reports.\n\nThis workflow empowers users to identify potential workplace discrimination trends, helping advocate for greater equity and accountability.\n\n#### Additional Credit: [Wes Medford](https://medium.com/@wryanmedford/an-open-letter-to-twilios-leadership-f06f661ecfb4)\nFor algorithms and inspiration",
+    "workflow": {
+      "id": "vzU9QRZsHcyRsord",
+      "meta": {
+        "instanceId": "a9f3b18652ddc96459b459de4fa8fa33252fb820a9e5a1593074f3580352864a",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Spot Workplace Discrimination Patterns with AI",
+      "tags": [
+        {
+          "id": "76EYz9X3GU4PtgSS",
+          "name": "human_resources",
+          "createdAt": "2025-01-30T18:52:17.614Z",
+          "updatedAt": "2025-01-30T18:52:17.614Z"
+        },
+        {
+          "id": "ey2Mx4vNaV8cKvao",
+          "name": "openai",
+          "createdAt": "2024-12-23T07:10:13.400Z",
+          "updatedAt": "2024-12-23T07:10:13.400Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "b508ab50-158a-4cbf-a52e-f53e1804e770",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            280,
+            380
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "11a1a2d5-a274-44f7-97ca-5666a59fcb31",
+          "name": "OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            2220,
+            800
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "XXXXXX",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "395f7b67-c914-4aae-8727-0573fdbfc6ad",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            2220,
+            380
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "XXXXXX",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6ab194a9-b869-4296-aea9-19afcbffc0d7",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2940,
+            600
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "1eba1dd7-a164-4c70-8c75-759532bd16a0",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            3840,
+            420
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "XXXXXX",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f25f1b07-cded-4ca7-9655-8b8f463089ab",
+          "name": "SET company_name",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            540,
+            380
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "dd256ef7-013c-4769-8580-02c2d902d0b2",
+                  "name": "company_name",
+                  "type": "string",
+                  "value": "=Twilio"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "87264a93-ab97-4e39-8d40-43365189f704",
+          "name": "Define dictionary of demographic keys",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            740,
+            380
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "6ae671be-45d0-4a94-a443-2f1d4772d31b",
+                  "name": "asian",
+                  "type": "string",
+                  "value": "Asian"
+                },
+                {
+                  "id": "6c93370c-996c-44a6-a34c-4cd3baeeb846",
+                  "name": "hispanic",
+                  "type": "string",
+                  "value": "Hispanic or Latinx"
+                },
+                {
+                  "id": "dee79039-6051-4e9d-98b5-63a07d30f6b0",
+                  "name": "white",
+                  "type": "string",
+                  "value": "White"
+                },
+                {
+                  "id": "08d42380-8397-412f-8459-7553e9309b5d",
+                  "name": "pacific_islander",
+                  "type": "string",
+                  "value": "Native Hawaiian or other Pacific Islander"
+                },
+                {
+                  "id": "09e8ebc5-e7e7-449a-9036-9b9b54cdc828",
+                  "name": "black",
+                  "type": "string",
+                  "value": "Black or African American"
+                },
+                {
+                  "id": "39e910f8-3a8b-4233-a93a-3c5693e808c6",
+                  "name": "middle_eastern",
+                  "type": "string",
+                  "value": "Middle Eastern"
+                },
+                {
+                  "id": "169b3471-efa0-476e-aa83-e3f717c568f1",
+                  "name": "indigenous",
+                  "type": "string",
+                  "value": "Indigenous American or Native Alaskan"
+                },
+                {
+                  "id": "b6192296-4efa-4af5-ae02-1e31d28aae90",
+                  "name": "male",
+                  "type": "string",
+                  "value": "Men"
+                },
+                {
+                  "id": "4b322294-940c-459d-b083-8e91e38193f7",
+                  "name": "female",
+                  "type": "string",
+                  "value": "Women"
+                },
+                {
+                  "id": "1940eef0-6b76-4a26-9d8f-7c8536fbcb1b",
+                  "name": "trans",
+                  "type": "string",
+                  "value": "Transgender and/or Non-Binary"
+                },
+                {
+                  "id": "3dba3e18-2bb1-4078-bde9-9d187f9628dd",
+                  "name": "hetero",
+                  "type": "string",
+                  "value": "Heterosexual"
+                },
+                {
+                  "id": "9b7d10ad-1766-4b18-a230-3bd80142b48c",
+                  "name": "lgbtqia",
+                  "type": "string",
+                  "value": "LGBTQ+"
+                },
+                {
+                  "id": "458636f8-99e8-4245-9950-94e4cf68e371",
+                  "name": "nondisabled",
+                  "type": "string",
+                  "value": "Non-Disabled"
+                },
+                {
+                  "id": "a466e258-7de1-4453-a126-55f780094236",
+                  "name": "disabled",
+                  "type": "string",
+                  "value": "People with Disabilities"
+                },
+                {
+                  "id": "98735266-0451-432f-be7c-efcb09512cb1",
+                  "name": "caregiver",
+                  "type": "string",
+                  "value": "Caregivers"
+                },
+                {
+                  "id": "ebe2353c-9ff5-47bc-8c11-b66d3436f5b4",
+                  "name": "parent",
+                  "type": "string",
+                  "value": "Parents/Guardians"
+                },
+                {
+                  "id": "ab51c80c-d81d-41ab-94d9-c0a263743c17",
+                  "name": "nonparent",
+                  "type": "string",
+                  "value": "Not a Parent or Caregiver"
+                },
+                {
+                  "id": "cb7df429-c600-43f4-aa7e-dbc2382a85a0",
+                  "name": "nonveteran",
+                  "type": "string",
+                  "value": "Non-Veterans"
+                },
+                {
+                  "id": "dffbdb13-189a-462d-83d1-c5ec39a17d41",
+                  "name": "veteran",
+                  "type": "string",
+                  "value": "Veterans"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "862f1c77-44a8-4d79-abac-33351ebb731b",
+          "name": "ScrapingBee Search Glassdoor",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            940,
+            380
+          ],
+          "parameters": {
+            "url": "https://app.scrapingbee.com/api/v1",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpQueryAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "=https://www.glassdoor.com/Search/results.htm?keyword={{ $json.company_name.toLowerCase().urlEncode() }}"
+                },
+                {
+                  "name": "premium_proxy",
+                  "value": "true"
+                },
+                {
+                  "name": "block_resources",
+                  "value": "false"
+                },
+                {
+                  "name": "stealth_proxy",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpQueryAuth": {
+              "id": "XXXXXX",
+              "name": "ScrapingBee Query Auth"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "4c9bf05e-9c50-4895-b20b-b7c329104615",
+          "name": "Extract company url path",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            1140,
+            380
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "url_path",
+                  "attribute": "href",
+                  "cssSelector": "body main div a",
+                  "returnValue": "attribute"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d20bb0e7-4ca7-41d0-a3e9-41abc811b064",
+          "name": "ScrapingBee GET company page contents",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1340,
+            380
+          ],
+          "parameters": {
+            "url": "https://app.scrapingbee.com/api/v1",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpQueryAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "=https://www.glassdoor.com{{ $json.url_path }}"
+                },
+                {
+                  "name": "premium_proxy",
+                  "value": "true"
+                },
+                {
+                  "name": "block_resources",
+                  "value": "false"
+                },
+                {
+                  "name": "stealth_proxy",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpQueryAuth": {
+              "id": "XXXXXX",
+              "name": "ScrapingBee Query Auth"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "fce70cab-8ce3-4ce2-b040-ce80d66b1e62",
+          "name": "Extract reviews page url path",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            1540,
+            380
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "url_path",
+                  "attribute": "href",
+                  "cssSelector": "#reviews a",
+                  "returnValue": "attribute"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d2e7fee9-e3d4-42bf-8be6-38b352371273",
+          "name": "ScrapingBee GET Glassdoor Reviews Content",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1760,
+            380
+          ],
+          "parameters": {
+            "url": "https://app.scrapingbee.com/api/v1",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpQueryAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "=https://www.glassdoor.com{{ $json.url_path }}"
+                },
+                {
+                  "name": "premium_proxy",
+                  "value": "True"
+                },
+                {
+                  "name": "block_resources",
+                  "value": "False"
+                },
+                {
+                  "name": "stealth_proxy",
+                  "value": "true"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpQueryAuth": {
+              "id": "XXXXXX",
+              "name": "ScrapingBee Query Auth"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "0c322823-0569-4bd5-9c4e-af3de0f8d7b4",
+          "name": "Extract Overall Review Summary",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            1980,
+            260
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "review_summary",
+                  "cssSelector": "div[data-test=\"review-summary\"]",
+                  "returnValue": "html"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "851305ba-0837-4be9-943d-7282e8d74aee",
+          "name": "Extract Demographics Module",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            1980,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "demographics_content",
+                  "cssSelector": "div[data-test=\"demographics-module\"]",
+                  "returnValue": "html"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "cf9a6ee2-53b5-4fbf-a36c-4b9dab53b795",
+          "name": "Extract overall ratings and distribution percentages",
+          "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+          "position": [
+            2200,
+            200
+          ],
+          "parameters": {
+            "text": "={{ $json.review_summary }}",
+            "options": {},
+            "attributes": {
+              "attributes": [
+                {
+                  "name": "average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "The overall average rating for this company."
+                },
+                {
+                  "name": "total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "The total number of reviews for this company."
+                },
+                {
+                  "name": "5_star_distribution_percentage",
+                  "type": "number",
+                  "required": true,
+                  "description": "The percentage distribution of 5 star reviews"
+                },
+                {
+                  "name": "4_star_distribution_percentage",
+                  "type": "number",
+                  "required": true,
+                  "description": "The percentage distribution of 4 star reviews"
+                },
+                {
+                  "name": "3_star_distribution_percentage",
+                  "type": "number",
+                  "required": true,
+                  "description": "The percentage distribution of 3 star reviews"
+                },
+                {
+                  "name": "2_star_distribution_percentage",
+                  "type": "number",
+                  "required": true,
+                  "description": "The percentage distribution of 2 star reviews"
+                },
+                {
+                  "name": "1_star_distribution_percentage",
+                  "type": "number",
+                  "required": true,
+                  "description": "The percentage distribution of 1 star reviews"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ae164f6e-04e7-4d8b-951e-a17085956f4b",
+          "name": "Extract demographic distributions",
+          "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+          "position": [
+            2200,
+            620
+          ],
+          "parameters": {
+            "text": "={{ $json.demographics_content }}",
+            "options": {
+              "systemPromptTemplate": "You are an expert extraction algorithm.\nOnly extract relevant information from the text.\nIf you do not know the value of an attribute asked to extract, you may use 0 for the attribute's value."
+            },
+            "attributes": {
+              "attributes": [
+                {
+                  "name": "asian_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as asian."
+                },
+                {
+                  "name": "asian_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as asian."
+                },
+                {
+                  "name": "hispanic_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as hispanic."
+                },
+                {
+                  "name": "hispanic_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as hispanic."
+                },
+                {
+                  "name": "white_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as white."
+                },
+                {
+                  "name": "white_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as white."
+                },
+                {
+                  "name": "pacific_islander_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as native hawaiian or pacific islander."
+                },
+                {
+                  "name": "pacific_islander_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as native hawaiian or pacific islander."
+                },
+                {
+                  "name": "black_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as black."
+                },
+                {
+                  "name": "black_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as black."
+                },
+                {
+                  "name": "middle_eastern_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as middle eastern."
+                },
+                {
+                  "name": "middle_eastern_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as middle_eastern."
+                },
+                {
+                  "name": "indigenous_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as indigenous american or native alaskan."
+                },
+                {
+                  "name": "indigenous_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as indigenous american or native alaskan."
+                },
+                {
+                  "name": "male_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as men."
+                },
+                {
+                  "name": "male_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as men."
+                },
+                {
+                  "name": "female_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as women."
+                },
+                {
+                  "name": "female_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as women."
+                },
+                {
+                  "name": "trans_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as transgender and/or non-binary."
+                },
+                {
+                  "name": "trans_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as trans and/or non-binary."
+                },
+                {
+                  "name": "hetero_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as heterosexual."
+                },
+                {
+                  "name": "hetero_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as heterosexual."
+                },
+                {
+                  "name": "lgbtqia_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as lgbtqia+."
+                },
+                {
+                  "name": "lgbtqia_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as lgbtqia+."
+                },
+                {
+                  "name": "nondisabled_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as non-disabled."
+                },
+                {
+                  "name": "nondisabled_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as non-disabled."
+                },
+                {
+                  "name": "disabled_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as people with disabilities."
+                },
+                {
+                  "name": "disabled_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as people with disabilities."
+                },
+                {
+                  "name": "caregiver_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as caregivers."
+                },
+                {
+                  "name": "caregiver_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as caregivers."
+                },
+                {
+                  "name": "parent_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as parents/guardians."
+                },
+                {
+                  "name": "parent_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as parents/guardians."
+                },
+                {
+                  "name": "nonparent_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as not a parent or caregiver."
+                },
+                {
+                  "name": "nonparent_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as not a parent or guardian."
+                },
+                {
+                  "name": "nonveteran_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as non-veterans."
+                },
+                {
+                  "name": "nonveteran_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as non-veterans."
+                },
+                {
+                  "name": "veteran_average_rating",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The average rating for this company by employees who self identified as veterans."
+                },
+                {
+                  "name": "veteran_total_number_of_reviews",
+                  "type": "number",
+                  "required": true,
+                  "description": "=The number of reviews for this company by employees who self-identified as veterans."
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c8d9e45c-7d41-47bd-b9a9-0fa70de5d154",
+          "name": "Define contributions to variance",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2560,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7360b2c2-1e21-45de-8d1a-e72b8abcb56b",
+                  "name": "contribution_to_variance.5_star",
+                  "type": "number",
+                  "value": "={{ ($json.output['5_star_distribution_percentage'] / 100)  * Math.pow(5 - $json.output.average_rating,2) }}"
+                },
+                {
+                  "id": "acdd308a-fa33-4e33-b71b-36b9441bfa06",
+                  "name": "contribution_to_variance.4_star",
+                  "type": "number",
+                  "value": "={{ ($json.output['4_star_distribution_percentage'] / 100)  * Math.pow(4 - $json.output.average_rating,2) }}"
+                },
+                {
+                  "id": "376818f3-d429-4abe-8ece-e8e9c5585826",
+                  "name": "contribution_to_variance.3_star",
+                  "type": "number",
+                  "value": "={{ ($json.output['3_star_distribution_percentage'] / 100)  * Math.pow(3 - $json.output.average_rating,2) }}"
+                },
+                {
+                  "id": "620d5c37-8b93-4d39-9963-b7ce3a7f431e",
+                  "name": "contribution_to_variance.2_star",
+                  "type": "number",
+                  "value": "={{ ($json.output['2_star_distribution_percentage'] / 100)  * Math.pow(2 - $json.output.average_rating,2) }}"
+                },
+                {
+                  "id": "76357980-4f9b-4b14-be68-6498ba25af67",
+                  "name": "contribution_to_variance.1_star",
+                  "type": "number",
+                  "value": "={{ ($json.output['1_star_distribution_percentage'] / 100)  * Math.pow(1 - $json.output.average_rating,2) }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "8ea03017-d5d6-46ef-a5f1-dae4372f6256",
+          "name": "Set variance and std_dev",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2740,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3217d418-f1b0-45ff-9f9a-6e6145cc29ca",
+                  "name": "variance",
+                  "type": "number",
+                  "value": "={{ $json.contribution_to_variance.values().sum() }}"
+                },
+                {
+                  "id": "acdb9fea-15ec-46ed-bde9-073e93597f17",
+                  "name": "average_rating",
+                  "type": "number",
+                  "value": "={{ $('Extract overall ratings and distribution percentages').item.json.output.average_rating }}"
+                },
+                {
+                  "id": "1f3a8a29-4bd4-4b40-8694-c74a0285eadb",
+                  "name": "total_number_of_reviews",
+                  "type": "number",
+                  "value": "={{ $('Extract overall ratings and distribution percentages').item.json.output.total_number_of_reviews }}"
+                },
+                {
+                  "id": "1906c796-1964-446b-8b56-d856269da938",
+                  "name": "std_dev",
+                  "type": "number",
+                  "value": "={{ Math.sqrt($json.contribution_to_variance.values().sum()) }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0570d531-8480-4446-8f02-18640b4b891e",
+          "name": "Calculate P-Scores",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            3340,
+            440
+          ],
+          "parameters": {
+            "jsCode": "// Approximate CDF for standard normal distribution\nfunction normSDist(z) {\n  const t = 1 / (1 + 0.3275911 * Math.abs(z));\n  const d = 0.254829592 * t - 0.284496736 * t * t + 1.421413741 * t * t * t - 1.453152027 * t * t * t * t + 1.061405429 * t * t * t * t * t;\n  return 0.5 * (1 + Math.sign(z) * d * Math.exp(-z * z / 2));\n}\n\nfor (const item of $input.all()) {\n  if (!item.json.population_analysis.p_scores) {\n    item.json.population_analysis.p_scores = {};\n  }\n\n  for (const score of Object.keys(item.json.population_analysis.z_scores)) {\n    // Check if review count exists and is greater than zero\n    if (item.json.population_analysis.review_count[score] > 0) {\n      // Apply the p_score formula: 2 * NORM.S.DIST(-ABS(z_score))\n      const p_score = 2 * normSDist(-Math.abs(item.json.population_analysis.z_scores[score]));\n\n      // Store the calculated p_score\n      item.json.population_analysis.p_scores[score] = p_score;\n    } else {\n      // Remove z_scores, effect_sizes, and p_scores for groups with no reviews\n      delete item.json.population_analysis.z_scores[score];\n      delete item.json.population_analysis.effect_sizes[score];\n      delete item.json.population_analysis.p_scores[score];\n    }\n  }\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0bdb9732-67ef-440d-bdd2-42c4f64ff6b6",
+          "name": "Sort Effect Sizes",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3540,
+            440
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "61cf92ba-bc4e-40b8-a234-9b993fd24019",
+                  "name": "population_analysis.effect_sizes",
+                  "type": "object",
+                  "value": "={{ Object.fromEntries(Object.entries($json.population_analysis.effect_sizes).sort(([,a],[,b]) => a-b )) }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "fd9026ef-e993-410a-87d6-40a3ad10b7a7",
+          "name": "Calculate Z-Scores and Effect Sizes",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3140,
+            600
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "790a53e8-5599-45d3-880e-ab1ad7d165d2",
+                  "name": "population_analysis.z_scores.asian",
+                  "type": "number",
+                  "value": "={{ ($json.output.asian_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.asian_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "ebd61097-8773-45b9-a8e6-cdd840d73650",
+                  "name": "population_analysis.effect_sizes.asian",
+                  "type": "number",
+                  "value": "={{ ($json.output.asian_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "627b1293-efdc-485a-83c8-bd332d6dc225",
+                  "name": "population_analysis.z_scores.hispanic",
+                  "type": "number",
+                  "value": "={{ ($json.output.hispanic_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.hispanic_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "822028d0-e94f-4cf7-9e13-8f8cc5c72ec0",
+                  "name": "population_analysis.z_scores.white",
+                  "type": "number",
+                  "value": "={{ ($json.output.white_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.white_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "d32321f9-0fcf-4e54-9059-c3fd5a901ce0",
+                  "name": "population_analysis.z_scores.pacific_islander",
+                  "type": "number",
+                  "value": "={{ ($json.output.pacific_islander_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.pacific_islander_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "e212d683-247f-45c4-9668-c290230a10ed",
+                  "name": "population_analysis.z_scores.black",
+                  "type": "number",
+                  "value": "={{ ($json.output.black_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.black_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "882049c3-eb81-4c09-af0c-5c79b0ef0154",
+                  "name": "population_analysis.z_scores.middle_eastern",
+                  "type": "number",
+                  "value": "={{ ($json.output.middle_eastern_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.middle_eastern_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "9bdc187f-3d8d-4030-9143-479eff441b7e",
+                  "name": "population_analysis.z_scores.indigenous",
+                  "type": "number",
+                  "value": "={{ ($json.output.indigenous_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.indigenous_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "0cf11453-dbae-4250-a01a-c98e35aab224",
+                  "name": "population_analysis.z_scores.male",
+                  "type": "number",
+                  "value": "={{ ($json.output.male_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.male_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "35a18fbc-7c2c-40fe-829d-2fffbdb13bb8",
+                  "name": "population_analysis.z_scores.female",
+                  "type": "number",
+                  "value": "={{ ($json.output.female_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.female_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "a6e17c1b-a89b-4c05-8184-10f7248c159f",
+                  "name": "population_analysis.z_scores.trans",
+                  "type": "number",
+                  "value": "={{ ($json.output.trans_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.trans_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "5e7dbccf-3011-4dba-863c-5390c1ee9e50",
+                  "name": "population_analysis.z_scores.hetero",
+                  "type": "number",
+                  "value": "={{ ($json.output.hetero_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.hetero_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "1872152f-2c7e-4c24-bcd5-e2777616bfe2",
+                  "name": "population_analysis.z_scores.lgbtqia",
+                  "type": "number",
+                  "value": "={{ ($json.output.lgbtqia_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.lgbtqia_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "91b2cb00-173e-421a-929a-51d2a6654767",
+                  "name": "population_analysis.z_scores.nondisabled",
+                  "type": "number",
+                  "value": "={{ ($json.output.nondisabled_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.nondisabled_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "8bb7429e-0500-482c-8e8d-d2c63733ffe1",
+                  "name": "population_analysis.z_scores.disabled",
+                  "type": "number",
+                  "value": "={{ ($json.output.disabled_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.disabled_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "89f00d0f-80db-4ad9-bf60-9385aa3d915b",
+                  "name": "population_analysis.z_scores.caregiver",
+                  "type": "number",
+                  "value": "={{ ($json.output.caregiver_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.caregiver_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "0bb2b96c-d882-4ac1-9432-9fce06b26cf5",
+                  "name": "population_analysis.z_scores.parent",
+                  "type": "number",
+                  "value": "={{ ($json.output.parent_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.parent_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "9aae7169-1a25-4fab-b940-7f2cd7ef39d9",
+                  "name": "population_analysis.z_scores.nonparent",
+                  "type": "number",
+                  "value": "={{ ($json.output.nonparent_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.nonparent_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "aac189a0-d6fc-4581-a15d-3e75a0cb370a",
+                  "name": "population_analysis.z_scores.nonveteran",
+                  "type": "number",
+                  "value": "={{ ($json.output.nonveteran_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.nonveteran_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "d40f014a-9c1d-4aea-88ac-d8a3de143931",
+                  "name": "population_analysis.z_scores.veteran",
+                  "type": "number",
+                  "value": "={{ ($json.output.veteran_average_rating - $json.average_rating) / ($json.std_dev / Math.sqrt($json.output.veteran_total_number_of_reviews)) }}"
+                },
+                {
+                  "id": "67e0394f-6d55-4e80-8a7d-814635620b1d",
+                  "name": "population_analysis.effect_sizes.hispanic",
+                  "type": "number",
+                  "value": "={{ ($json.output.hispanic_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "65cd3a22-2c97-4da1-8fcc-cc1af39118f2",
+                  "name": "population_analysis.effect_sizes.white",
+                  "type": "number",
+                  "value": "={{ ($json.output.white_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "a03bdf0f-e294-4a01-bb08-ddc16e9997a5",
+                  "name": "population_analysis.effect_sizes.pacific_islander",
+                  "type": "number",
+                  "value": "={{ ($json.output.pacific_islander_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "b0bdc40e-ed5f-475b-9d8b-8cf5beff7002",
+                  "name": "population_analysis.effect_sizes.black",
+                  "type": "number",
+                  "value": "={{ ($json.output.black_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "45cac3f0-7270-4fa4-8fc4-94914245a77d",
+                  "name": "population_analysis.effect_sizes.middle_eastern",
+                  "type": "number",
+                  "value": "={{ ($json.output.middle_eastern_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "cf5b7650-8766-45f6-8241-49aea62bf619",
+                  "name": "population_analysis.effect_sizes.indigenous",
+                  "type": "number",
+                  "value": "={{ ($json.output.indigenous_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "7c6a8d38-02b7-47a1-af44-5eebfb4140ec",
+                  "name": "population_analysis.effect_sizes.male",
+                  "type": "number",
+                  "value": "={{ ($json.output.male_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "4bf3dba9-4d07-4315-83ce-5fba288a00c9",
+                  "name": "population_analysis.effect_sizes.female",
+                  "type": "number",
+                  "value": "={{ ($json.output.female_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "d5e980b8-d7a8-4d4c-bcd9-fd9cbd20c729",
+                  "name": "population_analysis.effect_sizes.trans",
+                  "type": "number",
+                  "value": "={{ ($json.output.trans_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "2c8271c1-b612-4292-9d48-92c342b83727",
+                  "name": "population_analysis.effect_sizes.hetero",
+                  "type": "number",
+                  "value": "={{ ($json.output.hetero_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "996f2ea0-2e46-424b-9797-2d58fd56b1d3",
+                  "name": "population_analysis.effect_sizes.lgbtqia",
+                  "type": "number",
+                  "value": "={{ ($json.output.lgbtqia_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "8c987b6e-764d-422e-82de-00bd89269b22",
+                  "name": "population_analysis.effect_sizes.nondisabled",
+                  "type": "number",
+                  "value": "={{ ($json.output.nondisabled_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "ab796bb7-06ff-4282-b4b3-eefd129c743e",
+                  "name": "population_analysis.effect_sizes.disabled",
+                  "type": "number",
+                  "value": "={{ ($json.output.disabled_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "a17bf413-a098-4f24-8162-821a6a0ddb5e",
+                  "name": "population_analysis.effect_sizes.caregiver",
+                  "type": "number",
+                  "value": "={{ ($json.output.caregiver_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "99911e1e-06e8-4bbd-915d-b92b8b37b374",
+                  "name": "population_analysis.effect_sizes.parent",
+                  "type": "number",
+                  "value": "={{ ($json.output.parent_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "4ddf729b-361e-4d81-a67c-b6c18509e60b",
+                  "name": "population_analysis.effect_sizes.nonparent",
+                  "type": "number",
+                  "value": "={{ ($json.output.nonparent_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "725b8abb-7f72-45fc-a0c0-0e0a4f2cb131",
+                  "name": "population_analysis.effect_sizes.nonveteran",
+                  "type": "number",
+                  "value": "={{ ($json.output.nonveteran_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "20e54fa5-2faa-4134-90e5-81224ec9659e",
+                  "name": "population_analysis.effect_sizes.veteran",
+                  "type": "number",
+                  "value": "={{ ($json.output.veteran_average_rating - $json.average_rating) / $json.std_dev }}"
+                },
+                {
+                  "id": "2cc6465a-3a1c-4eb5-9e5a-72d41049d81e",
+                  "name": "population_analysis.review_count.asian",
+                  "type": "number",
+                  "value": "={{ $json.output.asian_total_number_of_reviews }}"
+                },
+                {
+                  "id": "0a5f6aae-ba21-47b5-8af8-fec2256e4df6",
+                  "name": "population_analysis.review_count.hispanic",
+                  "type": "number",
+                  "value": "={{ $json.output.hispanic_total_number_of_reviews }}"
+                },
+                {
+                  "id": "ae124587-7e24-4c1a-a002-ed801f859c30",
+                  "name": "population_analysis.review_count.pacific_islander",
+                  "type": "number",
+                  "value": "={{ $json.output.pacific_islander_total_number_of_reviews }}"
+                },
+                {
+                  "id": "fc790196-ca8e-4069-a093-87a413ebbf3e",
+                  "name": "population_analysis.review_count.black",
+                  "type": "number",
+                  "value": "={{ $json.output.black_total_number_of_reviews }}"
+                },
+                {
+                  "id": "7fd72701-781e-4e33-b000-174a853b172b",
+                  "name": "population_analysis.review_count.middle_eastern",
+                  "type": "number",
+                  "value": "={{ $json.output.middle_eastern_total_number_of_reviews }}"
+                },
+                {
+                  "id": "3751e7da-11a7-4af3-8aa6-1c6d53bcf27d",
+                  "name": "population_analysis.review_count.indigenous",
+                  "type": "number",
+                  "value": "={{ $json.output.indigenous_total_number_of_reviews }}"
+                },
+                {
+                  "id": "9ee0cac9-d2dd-4ba0-90ee-b2cdd22d9b77",
+                  "name": "population_analysis.review_count.male",
+                  "type": "number",
+                  "value": "={{ $json.output.male_total_number_of_reviews }}"
+                },
+                {
+                  "id": "ae7fcdc7-d373-4c24-9a65-94bd2b5847a8",
+                  "name": "population_analysis.review_count.female",
+                  "type": "number",
+                  "value": "={{ $json.output.female_total_number_of_reviews }}"
+                },
+                {
+                  "id": "3f53d065-269f-425a-b27d-dc5a3dbb6141",
+                  "name": "population_analysis.review_count.trans",
+                  "type": "number",
+                  "value": "={{ $json.output.trans_total_number_of_reviews }}"
+                },
+                {
+                  "id": "d15e976e-7599-4df0-9e65-8047b7a4cda8",
+                  "name": "population_analysis.review_count.hetero",
+                  "type": "number",
+                  "value": "={{ $json.output.hetero_total_number_of_reviews }}"
+                },
+                {
+                  "id": "c8b786d3-a980-469f-bf0e-de70ad44f0ea",
+                  "name": "population_analysis.review_count.lgbtqia",
+                  "type": "number",
+                  "value": "={{ $json.output.lgbtqia_total_number_of_reviews }}"
+                },
+                {
+                  "id": "e9429215-0858-4482-964a-75de7978ecbb",
+                  "name": "population_analysis.review_count.nondisabled",
+                  "type": "number",
+                  "value": "={{ $json.output.nondisabled_total_number_of_reviews }}"
+                },
+                {
+                  "id": "2c6e53c4-eab1-42aa-b956-ee882832f569",
+                  "name": "population_analysis.review_count.disabled",
+                  "type": "number",
+                  "value": "={{ $json.output.disabled_total_number_of_reviews }}"
+                },
+                {
+                  "id": "b5edfa25-ab11-4b94-9670-4d5589a62498",
+                  "name": "population_analysis.review_count.caregiver",
+                  "type": "number",
+                  "value": "={{ $json.output.caregiver_total_number_of_reviews }}"
+                },
+                {
+                  "id": "41084e96-c42f-4bb0-ac1a-883b46537fca",
+                  "name": "population_analysis.review_count.parent",
+                  "type": "number",
+                  "value": "={{ $json.output.parent_total_number_of_reviews }}"
+                },
+                {
+                  "id": "96496a38-9311-4ade-bd2f-2943d1d92314",
+                  "name": "population_analysis.review_count.nonparent",
+                  "type": "number",
+                  "value": "={{ $json.output.nonparent_total_number_of_reviews }}"
+                },
+                {
+                  "id": "5071771d-5f41-43cb-a8ce-e4e40ed3519b",
+                  "name": "population_analysis.review_count.nonveteran",
+                  "type": "number",
+                  "value": "={{ $json.output.nonveteran_total_number_of_reviews }}"
+                },
+                {
+                  "id": "2358e782-70da-4964-b625-5fe1946b5250",
+                  "name": "population_analysis.review_count.veteran",
+                  "type": "number",
+                  "value": "={{ $json.output.veteran_total_number_of_reviews }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "85536931-839a-476b-b0dd-fa6d01c6d5c1",
+          "name": "Format dataset for scatterplot",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            3340,
+            760
+          ],
+          "parameters": {
+            "jsCode": "// Iterate through the input data and format the dataset for QuickChart\nfor (const item of $input.all()) {\n  // Ensure the data object exists and initialize datasets\n  item.json.data = {\n    datasets: []\n  };\n\n  const z_scores = item.json.population_analysis.z_scores;\n  const effect_sizes = item.json.population_analysis.effect_sizes;\n  const review_count = item.json.population_analysis.review_count;\n\n  // Ensure z_scores, effect_sizes, and review_count are defined and are objects\n  if (z_scores && effect_sizes && review_count && typeof z_scores === 'object' && typeof effect_sizes === 'object' && typeof review_count === 'object') {\n    // Initialize the dataset object\n    const dataset = {\n      label: 'Demographics Data',\n      data: []\n    };\n\n    // Iterate through the demographic keys\n    for (const key in z_scores) {\n      // Check if review count for the demographic is greater than 0\n      if (z_scores.hasOwnProperty(key) && effect_sizes.hasOwnProperty(key) && review_count[key] > 0) {\n\n        // Add each demographic point to the dataset\n        dataset.data.push({\n          x: z_scores[key], // x = z_score\n          y: effect_sizes[key], // y = effect_size\n          label: $('Define dictionary of demographic keys').first().json[key],\n        });\n      }\n    }\n\n    // Only add the dataset if it contains data\n    if (dataset.data.length > 0) {\n      item.json.data.datasets.push(dataset);\n    }\n\n    delete item.json.population_analysis\n  }\n}\n\n// Return the updated input with the data object containing datasets and labels\nreturn $input.all();\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "957b9f6c-7cf8-4ec6-aec7-a7d59ed3a4ad",
+          "name": "Specify additional parameters for scatterplot",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3540,
+            760
+          ],
+          "parameters": {
+            "options": {
+              "ignoreConversionErrors": false
+            },
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "5cd507f6-6835-4d2e-8329-1b5d24a3fc15",
+                  "name": "type",
+                  "type": "string",
+                  "value": "scatter"
+                },
+                {
+                  "id": "80b6f981-e3c7-4c6e-a0a1-f30d028fe15e",
+                  "name": "options",
+                  "type": "object",
+                  "value": "={\n    \"title\": {\n      \"display\": true,\n      \"position\": \"top\",\n      \"fontSize\": 12,\n      \"fontFamily\": \"sans-serif\",\n      \"fontColor\": \"#666666\",\n      \"fontStyle\": \"bold\",\n      \"padding\": 10,\n      \"lineHeight\": 1.2,\n      \"text\": \"{{ $('SET company_name').item.json.company_name }} Workplace Population Bias\"\n    },\n    \"legend\": {\n      \"display\": false\n    },\n    \"scales\": {\n      \"xAxes\": [\n        {\n          \"scaleLabel\": {\n            \"display\": true,\n            \"labelString\": \"Z-Score\",\n            \"fontColor\": \"#666666\",\n            \"fontSize\": 12,\n            \"fontFamily\": \"sans-serif\"\n          }\n        }\n      ],\n      \"yAxes\": [\n        {\n          \"scaleLabel\": {\n            \"display\": true,\n            \"labelString\": \"Effect Score\",\n            \"fontColor\": \"#666666\",\n            \"fontSize\": 12,\n            \"fontFamily\": \"sans-serif\"\n          }\n        }\n      ]\n    },\n    \"plugins\": {\n      \"datalabels\": {\n        \"display\": true,\n        \"align\": \"top\",\n        \"anchor\": \"center\",\n        \"backgroundColor\": \"#eee\",\n        \"borderColor\": \"#ddd\",\n        \"borderRadius\": 6,\n        \"borderWidth\": 1,\n        \"padding\": 4,\n        \"color\": \"#000\",\n        \"font\": {\n          \"family\": \"sans-serif\",\n          \"size\": 10,\n          \"style\": \"normal\"\n        }\n      }\n    }\n  }"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a937132c-43fc-4fa0-ae35-885da89e51d1",
+          "name": "Quickchart Scatterplot",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3740,
+            760
+          ],
+          "parameters": {
+            "url": "https://quickchart.io/chart",
+            "options": {},
+            "sendQuery": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "c",
+                  "value": "={{ $json.toJsonString() }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "encoding",
+                  "value": "url"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "ede1931e-bac8-4279-b3a7-5980a190e324",
+          "name": "QuickChart Bar Chart",
+          "type": "n8n-nodes-base.quickChart",
+          "position": [
+            3740,
+            560
+          ],
+          "parameters": {
+            "data": "={{ $json.population_analysis.effect_sizes.values() }}",
+            "output": "bar_chart",
+            "labelsMode": "array",
+            "labelsArray": "={{ $json.population_analysis.effect_sizes.keys() }}",
+            "chartOptions": {
+              "format": "png"
+            },
+            "datasetOptions": {
+              "label": "={{ $('SET company_name').item.json.company_name }} Effect Size on Employee Experience"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6122fec0-619c-48d3-ad2c-05ed55ba2275",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            480,
+            40
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 3741.593083126444,
+            "height": 1044.8111554136713,
+            "content": "# Spot Workplace Discrimination Patterns using ScrapingBee, Glassdoor, OpenAI, and QuickChart\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5cda63e8-f31b-46f6-8cb2-41d1856ac537",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            900,
+            180
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1237.3377621763516,
+            "height": 575.9439659309116,
+            "content": "## Use ScrapingBee to gather raw data from Glassdoor"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "28d247b2-9020-4280-83d2-d6583622c0b7",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            920,
+            240
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 804.3951263154196,
+            "height": 125.73173301324687,
+            "content": "### Due to javascript restrictions, a normal HTTP request cannot be used to gather user-reported details from Glassdoor. \n\nInstead, [ScrapingBee](https://www.scrapingbee.com/) offers a great tool with a very generous package of free tokens per month, which works out to roughly 4-5 runs of this workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d65a239c-06d2-470b-b24a-23ec00a9f148",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2180,
+            99.69933502879758
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 311.0523273992095,
+            "height": 843.8786512173932,
+            "content": "## Extract details with AI"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3cffd188-62a1-43a7-a67f-548e21d2b187",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2516.1138215303854,
+            100
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 423.41585047129973,
+            "height": 309.71740416262054,
+            "content": "### Calculate variance and standard deviation from review rating distributions."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b5015c07-03e3-47d4-9469-e831b2c755c0",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3320,
+            706.46982689582
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 639.5579220386832,
+            "height": 242.80759628871897,
+            "content": "## Formatting datasets for Scatterplot"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e52bb9d9-617a-46f5-b217-a6f670b6714c",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            500,
+            120
+          ],
+          "parameters": {
+            "width": 356.84794255678776,
+            "height": 186.36110628732342,
+            "content": "## How this workflow works\n1. Replace ScrapingBee and OpenAI credentials\n2. Replace company_name with company of choice (workflow performs better with larger US-based organizations)\n3. Preview QuickChart data visualizations and AI data analysis"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d83c07a3-04ed-418f-94f1-e70828cba8b2",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            500,
+            880
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 356.84794255678776,
+            "height": 181.54335665904924,
+            "content": "### Inspired by [Wes Medford's Medium Post](https://medium.com/@wryanmedford/an-open-letter-to-twilios-leadership-f06f661ecfb4)\n\nWes performed the initial data analysis highlighting problematic behaviors at Twilio. I wanted to try and democratize the data analysis they performed for those less technical.\n\n**Hi, Wes!**"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ed0c1b4a-99fe-4a27-90bb-ac38dd20810b",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            4020,
+            880
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 847.5931795867759,
+            "height": 522.346478008115,
+            "content": "![image](https://quickchart.io/chart?c=%7B%0A%20%20%22type%22%3A%20%22scatter%22%2C%0A%20%20%22data%22%3A%20%7B%0A%20%20%20%20%22datasets%22%3A%20%5B%0A%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%22label%22%3A%20%22Demographics%20Data%22%2C%0A%20%20%20%20%20%20%20%20%22data%22%3A%20%5B%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%201.1786657494327952%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%200.16190219204909295%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%200.5119796850491362%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%200.0809510960245463%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-0.9300572848378476%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.16190219204909329%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-0.42835293687811976%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.16190219204909329%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-1.0890856121128139%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.08095109602454664%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-1.7362075843299012%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.16190219204909329%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-2.9142394568836774%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.971413152294559%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-1.2088576542791578%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.08095109602454664%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-2.5276971632072494%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.4047554801227329%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%200%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%200%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-5.504674529669168%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-1.376168632417292%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-0.8412684674574105%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.24285328807363996%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-2.896194457023989%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.32380438409818657%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-1.0303392409819254%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.08095109602454664%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%20-1.2670850749479952%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%20-0.08095109602454664%0A%20%20%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22x%22%3A%201.535939055147413%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22y%22%3A%200.4857065761472792%0A%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%5D%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%5D%2C%0A%20%20%20%20%22labels%22%3A%20%5B%0A%20%20%20%20%20%20%22asian%22%2C%0A%20%20%20%20%20%20%22hispanic%22%2C%0A%20%20%20%20%20%20%22black%22%2C%0A%20%20%20%20%20%20%22middle_eastern%22%2C%0A%20%20%20%20%20%20%22male%22%2C%0A%20%20%20%20%20%20%22female%22%2C%0A%20%20%20%20%20%20%22trans%22%2C%0A%20%20%20%20%20%20%22hetero%22%2C%0A%20%20%20%20%20%20%22lgbtqia%22%2C%0A%20%20%20%20%20%20%22nondisabled%22%2C%0A%20%20%20%20%20%20%22disabled%22%2C%0A%20%20%20%20%20%20%22caregiver%22%2C%0A%20%20%20%20%20%20%22parent%22%2C%0A%20%20%20%20%20%20%22nonparent%22%2C%0A%20%20%20%20%20%20%22nonveteran%22%2C%0A%20%20%20%20%20%20%22veteran%22%0A%20%20%20%20%5D%0A%20%20%7D%2C%0A%20%20%22options%22%3A%20%7B%0A%20%20%20%20%22title%22%3A%20%7B%0A%20%20%20%20%20%20%22display%22%3A%20true%2C%0A%20%20%20%20%20%20%22position%22%3A%20%22top%22%2C%0A%20%20%20%20%20%20%22fontSize%22%3A%2012%2C%0A%20%20%20%20%20%20%22fontFamily%22%3A%20%22sans-serif%22%2C%0A%20%20%20%20%20%20%22fontColor%22%3A%20%22%23666666%22%2C%0A%20%20%20%20%20%20%22fontStyle%22%3A%20%22bold%22%2C%0A%20%20%20%20%20%20%22padding%22%3A%2010%2C%0A%20%20%20%20%20%20%22lineHeight%22%3A%201.2%2C%0A%20%20%20%20%20%20%22text%22%3A%20%22Twilio%20Workplace%20Population%20Bias%22%0A%20%20%20%20%7D%2C%0A%20%20%20%20%22legend%22%3A%20%7B%0A%20%20%20%20%20%20%22display%22%3A%20false%0A%20%20%20%20%7D%2C%0A%20%20%20%20%22scales%22%3A%20%7B%0A%20%20%20%20%20%20%22xAxes%22%3A%20%5B%0A%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%22scaleLabel%22%3A%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22display%22%3A%20true%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22labelString%22%3A%20%22Z-Score%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22fontColor%22%3A%20%22%23666666%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22fontSize%22%3A%2012%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22fontFamily%22%3A%20%22sans-serif%22%0A%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%5D%2C%0A%20%20%20%20%20%20%22yAxes%22%3A%20%5B%0A%20%20%20%20%20%20%20%20%7B%0A%20%20%20%20%20%20%20%20%20%20%22scaleLabel%22%3A%20%7B%0A%20%20%20%20%20%20%20%20%20%20%20%20%22display%22%3A%20true%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22labelString%22%3A%20%22Effect%20Score%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22fontColor%22%3A%20%22%23666666%22%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22fontSize%22%3A%2012%2C%0A%20%20%20%20%20%20%20%20%20%20%20%20%22fontFamily%22%3A%20%22sans-serif%22%0A%20%20%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%5D%0A%20%20%20%20%7D%2C%0A%20%20%20%20%22plugins%22%3A%20%7B%0A%20%20%20%20%20%20%22datalabels%22%3A%20%7B%0A%20%20%20%20%20%20%20%20%22display%22%3A%20true%2C%0A%20%20%20%20%20%20%20%20%22align%22%3A%20%22top%22%2C%0A%20%20%20%20%20%20%20%20%22anchor%22%3A%20%22center%22%2C%0A%20%20%20%20%20%20%20%20%22backgroundColor%22%3A%20%22%23eee%22%2C%0A%20%20%20%20%20%20%20%20%22borderColor%22%3A%20%22%23ddd%22%2C%0A%20%20%20%20%20%20%20%20%22borderRadius%22%3A%206%2C%0A%20%20%20%20%20%20%20%20%22borderWidth%22%3A%201%2C%0A%20%20%20%20%20%20%20%20%22padding%22%3A%204%2C%0A%20%20%20%20%20%20%20%20%22color%22%3A%20%22%23000%22%2C%0A%20%20%20%20%20%20%20%20%22font%22%3A%20%7B%0A%20%20%20%20%20%20%20%20%20%20%22family%22%3A%20%22sans-serif%22%2C%0A%20%20%20%20%20%20%20%20%20%20%22size%22%3A%2010%2C%0A%20%20%20%20%20%20%20%20%20%20%22style%22%3A%20%22normal%22%0A%20%20%20%20%20%20%20%20%7D%2C%0A%20%20%20%20%20%20%20%20%22formatter%22%3A%20function(value%2C%20context)%20%7B%0A%20%20%20%20%20%20%20%20%20%20var%20idx%20%3D%20context.dataIndex%3B%0A%20%20%20%20%20%20%20%20%20%20return%20context.chart.data.labels%5Bidx%5D%3B%0A%20%20%20%20%20%20%20%20%7D%0A%20%20%20%20%20%20%7D%0A%20%20%20%20%7D%0A%20%20%7D%0A%7D%0A#full-width)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7b92edf8-3a58-4931-abf4-d9c2f57cfa32",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3980,
+            800
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 989.7621518164046,
+            "height": 636.6345107975716,
+            "content": "## Example Scatterplot output"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bd6859b4-096c-401e-9bce-91e970e1afd1",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2540,
+            800
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 737.6316136259719,
+            "height": 444.9087184962878,
+            "content": "## Glossary\n**Z-Score** – A statistical measure that indicates how many standard deviations a data point is from the mean. In this analysis, a negative z-score suggests a group rates their workplace experience lower than the average, while a positive z-score suggests a better-than-average experience.\n\n**Effect Size** – A measure of the magnitude of difference between groups. Larger negative effect sizes indicate a more substantial disparity in workplace experiences for certain groups, making it useful for identifying meaningful gaps beyond just statistical significance.\n\n**P-Score (P-Value)** – The probability that the observed differences occurred by chance. A lower p-score (typically below 0.05) suggests the difference is statistically significant and unlikely to be random. In this analysis, high p-scores confirm that the disparities in ratings for marginalized groups are unlikely to be due to chance alone.\n\n### Relevance to This Analysis\nThese metrics help quantify workplace disparities among demographic groups. Z-scores show which groups report better or worse experiences, effect sizes reveal the severity of these differences, and p-scores confirm whether the disparities are statistically meaningful. This data allows for a more informed discussion about workplace equity and areas needing improvement."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5af3ef87-ed4b-481e-b1ba-d44ffb7551d8",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            4140,
+            80
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 643.5995639515581,
+            "height": 646.0030521944287,
+            "content": "## Example AI Analysis (Twilio Example)\n\n### Key Takeaways\n1. **Significant Disparity Among Disabled Employees**\nDisabled employees reported the lowest average ratings, with a z-score of -5.50, indicating a far worse experience compared to their non-disabled peers. \n2. **LGBTQIA Community's Challenges**\nMembers of the LGBTQIA community showed significantly lower ratings (z-score of -2.53), suggesting they may experience a workplace environment that is less inclusive or supportive compared to others.\n3. **Transgender Experiences Are Particularly Negative**\nTransgender employees rated their experiences considerably lower (z-score of -2.91), highlighting a critical area for improvement in workplace culture and acceptance.\n4. **Veterans Report Higher Satisfaction**\nIn contrast, veterans had the highest ratings (z-score of 1.54), which could indicate a supportive environment or programs tailored to their needs.\n5. **Overall Gender Discrepancies**\nA noticeable gap exists in average ratings by gender, with female employees scoring below male employees, suggesting potential gender biases or challenges in workplace dynamics.\n\n### Employee Experiences\n#### Perceptions of Workplace Environment\nFor members of groups reporting significantly worse experiences, such as disabled, transgender, and LGBTQIA employees, the workplace may feel alienating or unwelcoming. These individuals might perceive that their contributions are undervalued or overlooked and that necessary support systems are lacking, creating a culture of exclusion rather than one of inclusivity. This feeling of being marginalized can lead to poorer engagement, higher turnover rates, and diminished overall job satisfaction, adversely impacting both employees and the organization."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a39cdbe7-d6ae-4a84-98c7-52ebf98242f3",
+          "name": "Text Analysis of Bias Data",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            3720,
+            280
+          ],
+          "parameters": {
+            "text": "=This data compares the average rating given by different demographic groups against a baseline (the overall mean rating).\n\nObjective:\n1. Analyze the data and offer between 2 and 5 key takeaways with a title and short (one-sentence) summary.\n2. Below the key takeaways, Include a heading called \"Employee Experiences\". Under this heading, include a subheader and paragraph describing the possible perception of the workplace for members of any groups reporting significantly worse (or better) experiences than others.\n3. Ensure there are between 2-5 key takeaways and employee experiences\n\nData for analysis:\n{{ $json.population_analysis.toJsonString() }}",
+            "promptType": "define"
+          },
+          "typeVersion": 1.4
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "ff1df786-ebaf-4ed0-aeca-1872b93ef275",
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Calculate Z-Scores and Effect Sizes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SET company_name": {
+          "main": [
+            [
+              {
+                "node": "Define dictionary of demographic keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Text Analysis of Bias Data",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sort Effect Sizes": {
+          "main": [
+            [
+              {
+                "node": "QuickChart Bar Chart",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Text Analysis of Bias Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate P-Scores": {
+          "main": [
+            [
+              {
+                "node": "Sort Effect Sizes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Extract demographic distributions",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Extract overall ratings and distribution percentages",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract company url path": {
+          "main": [
+            [
+              {
+                "node": "ScrapingBee GET company page contents",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set variance and std_dev": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Demographics Module": {
+          "main": [
+            [
+              {
+                "node": "Extract demographic distributions",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ScrapingBee Search Glassdoor": {
+          "main": [
+            [
+              {
+                "node": "Extract company url path",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract reviews page url path": {
+          "main": [
+            [
+              {
+                "node": "ScrapingBee GET Glassdoor Reviews Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Overall Review Summary": {
+          "main": [
+            [
+              {
+                "node": "Extract overall ratings and distribution percentages",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format dataset for scatterplot": {
+          "main": [
+            [
+              {
+                "node": "Specify additional parameters for scatterplot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Define contributions to variance": {
+          "main": [
+            [
+              {
+                "node": "Set variance and std_dev",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract demographic distributions": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "SET company_name",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate Z-Scores and Effect Sizes": {
+          "main": [
+            [
+              {
+                "node": "Calculate P-Scores",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Format dataset for scatterplot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Define dictionary of demographic keys": {
+          "main": [
+            [
+              {
+                "node": "ScrapingBee Search Glassdoor",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ScrapingBee GET company page contents": {
+          "main": [
+            [
+              {
+                "node": "Extract reviews page url path",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ScrapingBee GET Glassdoor Reviews Content": {
+          "main": [
+            [
+              {
+                "node": "Extract Demographics Module",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Extract Overall Review Summary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Specify additional parameters for scatterplot": {
+          "main": [
+            [
+              {
+                "node": "Quickchart Scatterplot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract overall ratings and distribution percentages": {
+          "main": [
+            [
+              {
+                "node": "Define contributions to variance",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 38,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 7
+        },
+        "n8n-nodes-base.code": {
+          "count": 2
+        },
+        "n8n-nodes-base.html": {
+          "count": 4
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.quickChart": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 12
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 4
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.informationExtractor": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Ludwig",
+      "username": "ludwig",
+      "bio": "If you have any questions about any of the templates I've built, please reach out to me on LinkedIn (https://www.linkedin.com/in/ludwiggerdes) or via my website down below. 👇",
+      "verified": true,
+      "links": [
+        "https://www.lwwg.me"
+      ],
+      "avatar": "https://gravatar.com/avatar/85fa5dd88d3b3b71e5719184d2d889fe3c0fba02e925b2b9ad4ba34d9a774002?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 843,
+        "icon": "file:quickChart.svg",
+        "name": "n8n-nodes-base.quickChart",
+        "codex": {
+          "data": {
+            "alias": [
+              "image",
+              "graph",
+              "report",
+              "chart",
+              "diagram",
+              "data",
+              "visualize"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickchart/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/quickchart/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "QuickChart"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI0NDUiIGhlaWdodD0iNDQ1Ij48ZyBzdHlsZT0ic3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwO2ZpbGw6bm9uZTtmaWxsLXJ1bGU6bm9uemVybztvcGFjaXR5OjEiPjxwYXRoIGQ9Ik00MC4xMzUgOTBoLTguNzgyYTIuNzUgMi43NSAwIDAgMS0yLjc1LTIuNzVWNDUuMzgxYTIuNzUgMi43NSAwIDAgMSAyLjc1LTIuNzVoOC43ODJhMi43NSAyLjc1IDAgMCAxIDIuNzUgMi43NVY4Ny4yNWEyLjc1IDIuNzUgMCAwIDEtMi43NSAyLjc1IiBzdHlsZT0ic3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwO2ZpbGw6I2ZmYzM2ZTtmaWxsLXJ1bGU6bm9uemVybztvcGFjaXR5OjEiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yLjQ3MiAtMi40NzIpc2NhbGUoNC45NCkiLz48cGF0aCBkPSJNNTguNjQ3IDkwaC04Ljc4MmEyLjc1IDIuNzUgMCAwIDEtMi43NS0yLjc1VjMxLjQ0OWEyLjc1IDIuNzUgMCAwIDEgMi43NS0yLjc1aDguNzgyYTIuNzUgMi43NSAwIDAgMSAyLjc1IDIuNzVWODcuMjVhMi43NSAyLjc1IDAgMCAxLTIuNzUgMi43NSIgc3R5bGU9InN0cm9rZTpub25lO3N0cm9rZS13aWR0aDoxO3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDtmaWxsOiNhNWQ3NmU7ZmlsbC1ydWxlOm5vbnplcm87b3BhY2l0eToxIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMi40NzIgLTIuNDcyKXNjYWxlKDQuOTQpIi8+PHBhdGggZD0iTTIxLjYyNCA5MGgtOC43ODJhMi43NSAyLjc1IDAgMCAxLTIuNzUtMi43NVY1OS4zMTNhMi43NSAyLjc1IDAgMCAxIDIuNzUtMi43NWg4Ljc4MmEyLjc1IDIuNzUgMCAwIDEgMi43NSAyLjc1Vjg3LjI1YTIuNzUgMi43NSAwIDAgMS0yLjc1IDIuNzUiIHN0eWxlPSJzdHJva2U6bm9uZTtzdHJva2Utd2lkdGg6MTtzdHJva2UtZGFzaGFycmF5Om5vbmU7c3Ryb2tlLWxpbmVjYXA6YnV0dDtzdHJva2UtbGluZWpvaW46bWl0ZXI7c3Ryb2tlLW1pdGVybGltaXQ6MTA7ZmlsbDojZDI1NTVhO2ZpbGwtcnVsZTpub256ZXJvO29wYWNpdHk6MSIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTIuNDcyIC0yLjQ3MilzY2FsZSg0Ljk0KSIvPjxwYXRoIGQ9Ik03Ny4xNTggOTBoLTguNzgyYTIuNzUgMi43NSAwIDAgMS0yLjc1LTIuNzVWMTcuNTE3YTIuNzUgMi43NSAwIDAgMSAyLjc1LTIuNzVoOC43ODJhMi43NSAyLjc1IDAgMCAxIDIuNzUgMi43NVY4Ny4yNWEyLjc1IDIuNzUgMCAwIDEtMi43NSAyLjc1IiBzdHlsZT0ic3Ryb2tlOm5vbmU7c3Ryb2tlLXdpZHRoOjE7c3Ryb2tlLWRhc2hhcnJheTpub25lO3N0cm9rZS1saW5lY2FwOmJ1dHQ7c3Ryb2tlLWxpbmVqb2luOm1pdGVyO3N0cm9rZS1taXRlcmxpbWl0OjEwO2ZpbGw6Izc4ZDJiZTtmaWxsLXJ1bGU6bm9uemVybztvcGFjaXR5OjEiIHRyYW5zZm9ybT0idHJhbnNsYXRlKC0yLjQ3MiAtMi40NzIpc2NhbGUoNC45NCkiLz48cGF0aCBkPSJNNjcuNzczIDE3Ljk3N2gxOC4xODNjMS43ODcgMCAyLjY4Mi0yLjI1OCAxLjQxOC0zLjU3OEw3NC4xODUuNjE0YTEuOTQ0IDEuOTQ0IDAgMCAwLTIuODM2IDBMNTguMTYgMTQuMzk4Yy0xLjI2NCAxLjMyMS0uMzY5IDMuNTc4IDEuNDE4IDMuNTc4eiIgc3R5bGU9InN0cm9rZTpub25lO3N0cm9rZS13aWR0aDoxO3N0cm9rZS1kYXNoYXJyYXk6bm9uZTtzdHJva2UtbGluZWNhcDpidXR0O3N0cm9rZS1saW5lam9pbjptaXRlcjtzdHJva2UtbWl0ZXJsaW1pdDoxMDtmaWxsOiM3OGQyYmU7ZmlsbC1ydWxlOm5vbnplcm87b3BhY2l0eToxIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtMi40NzIgLTIuNDcyKXNjYWxlKDQuOTQpIi8+PC9nPjwvc3ZnPg=="
+        },
+        "displayName": "QuickChart",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1273,
+        "icon": "fa:project-diagram",
+        "name": "@n8n/n8n-nodes-langchain.informationExtractor",
+        "codex": {
+          "data": {
+            "alias": [
+              "NER",
+              "parse",
+              "parsing",
+              "JSON",
+              "data extraction",
+              "structured"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.information-extractor/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Information Extractor"
+        },
+        "iconData": {
+          "icon": "project-diagram",
+          "type": "icon"
+        },
+        "displayName": "Information Extractor",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 922,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/twilio_effect_size_c6e44eabe5.png"
+      },
+      {
+        "id": 923,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/twilio_scatter_plot_30e3aebd38.png"
+      },
+      {
+        "id": 924,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Spot_Workplace_Discrimination_Patterns_with_AI_214c3fa3ce.png"
+      }
+    ]
+  }
+}

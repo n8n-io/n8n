@@ -1,0 +1,61 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecalendar/
+Scraped_At: 2025-05-20T18:47:45.732485
+
+Google Calendar node
+#
+Use the Google Calendar node to automate work in Google Calendar, and integrate Google Calendar with other applications. n8n has built-in support for a wide range of Google Calendar features, including adding, retrieving, deleting and updating calendar events.
+On this page, you'll find a list of operations the Google Calendar node supports and links to more resources.
+Credentials
+Refer to
+Google Calendar credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Calendar
+Availability
+: If a time-slot is available in a calendar
+Event
+Create
+: Add an event to calendar
+Delete
+: Delete an event
+Get
+: Retrieve an event
+Get Many
+: Retrieve all events from a calendar
+Update
+: Update an event
+Templates and examples
+#
+AI Agent : Google calendar assistant using OpenAI
+by Dataki
+View template details
+Build an MCP Server with Google Calendar and Custom Functions
+by Solomon
+View template details
+Actioning Your Meeting Next Steps using Transcripts and AI
+by Jimleuk
+View template details
+Browse Google Calendar integration templates
+, or
+search all templates
+Related resources
+#
+n8n provides a trigger node for Google Calendar. You can find the trigger node docs
+here
+.
+Refer to
+Google Calendar's documentation
+for more information about the service.
+View
+example workflows and related content
+on n8n's website.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

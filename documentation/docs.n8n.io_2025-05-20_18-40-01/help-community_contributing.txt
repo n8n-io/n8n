@@ -1,0 +1,121 @@
+URL: https://docs.n8n.io/help-community/contributing/
+Scraped_At: 2025-05-20T18:43:15.099010
+
+How can you contribute?
+#
+There are a several ways in which you can contribute to n8n, depending on your skills and interests. Each form of contribution is valuable to us!
+Share some love: Review us
+#
+Star n8n on
+GitHub
+and
+Docker Hub
+.
+Follow us on
+Twitter
+,
+LinkedIn
+, and
+Facebook
+.
+Upvote n8n on
+AlternativeTo
+and
+Alternative.me
+.
+Add n8n to your stack on
+Stackshare
+.
+Write a review about n8n on
+G2
+,
+Slant
+, and
+Capterra
+.
+Help out the community
+#
+You can participate in the
+forum
+and help the community members out with their questions.
+When sharing workflows in the community forum for debugging, use code blocks. Use triple backticks
+```
+to wrap the workflow JSON in a code block.
+The following video demonstrates the steps of sharing workflows on the community forum:
+Contribute a workflow template
+#
+You can submit your workflows to n8n's template library.
+n8n is working on a creator program, and developing a marketplace of templates. This is an ongoing project, and details are likely to change.
+Refer to
+n8n Creator hub
+for information on how to submit templates and become a creator.
+Build a node
+#
+Create an integration for a third party service. Check out
+the node creation docs
+for guidance on how to create and publish a community node.
+Contribute to the code
+#
+There are different ways in which you can contribute to the n8n code base:
+Fix
+issues
+reported on GitHub. The
+CONTRIBUTING guide
+will help you get your development environment ready in minutes.
+Add additional functionality to an existing third party integration.
+Add a new feature to n8n.
+Contribute to the docs
+#
+You can contribute to the n8n documentation, for example by documenting nodes or fixing issues.
+The repository for the docs is
+here
+and the guidelines for contributing to the docs are
+here
+.
+Contribute to the blog
+#
+You can write an article for the
+n8n blog
+. Your article can be, for example, a
+workflow tutorial
+, an opinion piece on automation, or some domain-specific
+automation guides
+.
+How to submit a post
+#
+n8n appreciates all contributions. Publishing a tutorial on your own site that supports the community is a great contribution. If you want n8n to highlight your post on the blog, follow these steps:
+Email your idea to
+marketing@n8n.io
+with the subject "Blog contribution: [Your Topic]."
+Submit your draft:
+Write your post in a Google Doc following the
+style guide
+.
+If your blog post includes example workflows, include the workflow JSON in a separate section at the end.
+For author credit, provide a second Google Doc with your full name, a short byline, and your image. n8n will use this to create your author page and credit you as the author of the post.
+Wait for feedback. We will respond if your draft fits with the blog's strategy and requirements. If you don't hear back within 30 days, it means we won't be moving forward with your blog post.
+Refer a candidate
+#
+Do you know someone who would be a great fit for one of our
+open positions
+? Refer them to us! In return, we'll pay you €1,000 when the referral successfully passes their probationary period.
+Here's how this works:
+Search
+: Have a look at the description and requirements of each role, and consider if someone you know would be a great fit.
+Referral
+: Once you've identified a potential candidate, send an email to
+Jobs at n8n
+with the subject line
+Employee referral - [job title]
+and a short description of the person you're referring (and the reason why). Also, tell your referral to apply for the job through our
+careers page
+.
+Evaluation
+: We'll screen the application and inform you about the next steps of the hiring process.
+Reward
+: As soon as your referral has successfully finished the probationary period, we'll reward you for your efforts by transferring the €1,000 to your bank account.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,270 @@
+{
+  "workflow": {
+    "id": 968,
+    "name": "Create an event in PostHog when a request is made to a webhook URL",
+    "views": 1019,
+    "recentViews": 0,
+    "totalViews": 1019,
+    "createdAt": "2021-03-03T12:27:30.560Z",
+    "description": "This workflow automatically creates an event in PostHog when a request is made to a webhook URL.\n\n## Prerequisites\n\n- A PostHog account and [credentials](https://docs.n8n.io/integrations/credentials/posthog/)\n\n## Nodes\n\n- [Webhook node](https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/) triggers the workflow when a URL is accessed.\n- [PostHog node](https://docs.n8n.io/integrations/nodes/n8n-nodes-base.posthog/) creates a new event in PostHog.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "PostHog",
+          "type": "n8n-nodes-base.postHog",
+          "position": [
+            640,
+            280
+          ],
+          "parameters": {
+            "eventName": "={{$json[\"query\"][\"event\"]}}",
+            "distinctId": "n8n",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "postHogApi": "PostHog Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            440,
+            280
+          ],
+          "webhookId": "f6d0071e-3cf9-49fd-8bbd-afdbea6b0c67",
+          "parameters": {
+            "path": "f6d0071e-3cf9-49fd-8bbd-afdbea6b0c67",
+            "options": {}
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "PostHog",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.postHog": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 454,
+        "icon": "file:postHog.svg",
+        "name": "n8n-nodes-base.postHog",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.posthog/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/postHog/"
+                }
+              ]
+            },
+            "categories": [
+              "Analytics",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "PostHog"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDMwMHYzMDBIMHoiLz48cGF0aCBmaWxsPSIjRjlCRDJCIiBkPSJtMzMgMTc5LjM3OSAzOS4wMDQgMzguOTUxSDMzem0wLTkuNzM4IDQ4Ljc1NSA0OC42ODloMzkuMDA0TDMzIDEzMC42ODl6bTAtNDguNjkgOTcuNTEgOTcuMzc5aDM5LjAwM0wzMyA4MnptNDguNzU1IDAgOTcuNTA5IDk3LjM3OXYtMzguOTUxTDgxLjc1NCA4MnpNMTMwLjUxIDgydjM4Ljk1MWw0OC43NTQgNDguNjl2LTM4Ljk1MnoiLz48cGF0aCBmaWxsPSIjMDAwIiBkPSJNMjY3LjAyMyAyMDIuNzVhMzcuNyAzNy43IDAgMCAxLTI2LjYzMi0xMS4wMTZsLTU0LjIzMS01NC4xNTh2ODAuNzU0aDgwLjg2M3oiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMjA5LjU2MyAyMDIuNzVjNC4zMDggMCA3LjgtMy40ODggNy44LTcuNzkxIDAtNC4zMDItMy40OTItNy43OS03LjgtNy43OS00LjMwOSAwLTcuODAxIDMuNDg4LTcuODAxIDcuNzkgMCA0LjMwMyAzLjQ5MiA3Ljc5MSA3LjgwMSA3Ljc5MSIvPjxwYXRoIGZpbGw9IiMxRDRBRkYiIGQ9Ik0zMyAyMTguMzNoMzkuMDA0TDMzIDE3OS4zNzl6bTQ4Ljc1NS04Ny42NDFMMzMgODJ2MzguOTUxbDQ4Ljc1NSA0OC42OXptLTQ4Ljc1NSAwdjM4Ljk1Mmw0OC43NTUgNDguNjg5di0zOC45NTF6Ii8+PHBhdGggZmlsbD0iI0Y1NEUwMCIgZD0iTTEzMC41MSAxMzAuNjg5IDgxLjc1NSA4MnYzOC45NTFsNDguNzU1IDQ4LjY5ek04MS43NTUgMjE4LjMzaDM5LjAwNGwtMzkuMDA0LTM4Ljk1MXptMC04Ny42NDF2MzguOTUybDQ4Ljc1NSA0OC42ODl2LTM4Ljk1MXoiLz48L3N2Zz4="
+        },
+        "displayName": "PostHog",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 427,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6d72b459531a4b18ae630f7320a2ad50.png"
+      }
+    ]
+  }
+}

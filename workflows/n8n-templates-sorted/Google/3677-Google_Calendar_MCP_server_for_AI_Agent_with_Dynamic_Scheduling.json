@@ -1,0 +1,392 @@
+{
+  "workflow": {
+    "id": 3677,
+    "name": "Google Calendar MCP server for AI Agent with Dynamic Scheduling",
+    "views": 400,
+    "recentViews": 108,
+    "totalViews": 400,
+    "createdAt": "2025-04-23T18:55:26.347Z",
+    "description": "# Google Calendar AI Agent with Dynamic Scheduling  \n**Version**: 1.0.0  \n**n8n Version**: 1.88.0+  \n**Author**: Koresolucoes\n**License**: MIT  \n\n---\n\n## Description  \nAn AI-powered workflow to automate Google Calendar operations using **dynamic parameters** and **MCP (Model Control Plane)** integration. Enables event creation, availability checks, updates, and deletions with timezone-aware scheduling [[1]][[2]][[8]].  \n\n**Key Features**:  \n- 📅 **Full Calendar CRUD**: Create, read, update, and delete events in Google Calendar.  \n- ⏰ **Availability Checks**: Verify time slots using `AVALIABILITY_CALENDAR` node with timezone support (e.g., `America/Sao_Paulo`).  \n- 🤖 **AI-Driven Parameters**: Use `$fromAI()` to inject dynamic values like `Start_Time`, `End_Time`, and `Description` [[3]][[4]].  \n- 🔗 **MCP Integration**: Connects to an MCP server for centralized AI agent control [[5]][[6]].  \n\n---\n\n## Use Cases  \n1. **Automated Scheduling**: Book appointments based on AI-recommended time slots.  \n2. **Meeting Coordination**: Sync calendar events with CRM/task management systems.  \n3. **Resource Management**: Check room/equipment availability before event creation.  \n\n---\n\n## Instructions  \n### 1. Import Template  \n- Go to **n8n &gt; Templates &gt; Import from File** and upload this workflow.  \n\n### 2. Configure Credentials  \n- Add **Google Calendar OAuth2** credentials under **Settings &gt; Credentials**.  \n- Ensure the calendar ID matches your target (e.g., `ODONTOLOGIA` group calendar).  \n\n### 3. Set Up Dynamic Parameters  \n- Use `$fromAI('Parameter_Name')` in nodes like `CREATE_CALENDAR` to inject AI-generated values (e.g., event descriptions).  \n\n### 4. Activate & Test  \n- Enable the workflow and send test requests to the webhook path `/mcp/:tool/calendar`.  \n\n---\n\n## Tags  \n`Google Calendar` `Automation` `MCP` `AI Agent` `Scheduling` `CRUD`  \n\n---\n\n## Screenshots  \n![Captura de tela 20250423 155432.png](fileId:1160)\n---\n\n## License  \nThis template is licensed under the MIT License.  \n\n---\n\n### Notes:  \n- Extend multi-tenancy by adding `:userId` to the webhook path (e.g., `/mcp/:userId/calendar`) [[7]].  \n- For timezone accuracy, always specify `options.timezone` in availability checks [[8]].  \n- Refer to [n8n’s Google Calendar docs](https://docs.n8n.io/) for advanced field mappings.  ",
+    "workflow": {
+      "id": "grxwlyzZb3z4WLAa",
+      "meta": {
+        "instanceId": "6d46e25379ef430a7067964d1096b885c773564549240cb3ad4c087f6cf94bd3",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "MCP_CALENDAR",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "10e49f09-5ef8-4945-adcf-f8b99879a31c",
+          "name": "MCP_CALENDAR",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            0,
+            0
+          ],
+          "webhookId": "ceb17fa5-1937-405f-8000-ea3be7d2b032",
+          "parameters": {
+            "path": "/mcp/:tool/calendar"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "54e84792-4f4a-4501-8aae-e40f06e958c1",
+          "name": "GET_CALENDAR",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            860,
+            240
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "options": {},
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "a57a3781407f42b1ad7fe24ce76f558dc6c86fea5f349b7fd39747a2294c1654@group.calendar.google.com",
+              "cachedResultName": "ODONTOLOGIA"
+            },
+            "operation": "get"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "49eGhpwvfLcCZ0h3",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "c428d7b1-aed4-4a18-962e-fd29b8a2ac54",
+          "name": "GET_ALL_CALENDAR",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            240,
+            240
+          ],
+          "parameters": {
+            "options": {
+              "orderBy": "startTime",
+              "recurringEventHandling": "expand"
+            },
+            "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+            "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "a57a3781407f42b1ad7fe24ce76f558dc6c86fea5f349b7fd39747a2294c1654@group.calendar.google.com",
+              "cachedResultName": "ODONTOLOGIA"
+            },
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "49eGhpwvfLcCZ0h3",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "26fef8a3-5802-4f3d-ae47-b81aad813728",
+          "name": "DELETE_CALENDAR",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            480,
+            240
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "options": {},
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "a57a3781407f42b1ad7fe24ce76f558dc6c86fea5f349b7fd39747a2294c1654@group.calendar.google.com",
+              "cachedResultName": "ODONTOLOGIA"
+            },
+            "operation": "delete",
+            "descriptionType": "manual"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "49eGhpwvfLcCZ0h3",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "e46ea1b3-8597-46aa-b37a-6660aa72f74d",
+          "name": "UPDATE_CALENDAR",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            680,
+            240
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "a57a3781407f42b1ad7fe24ce76f558dc6c86fea5f349b7fd39747a2294c1654@group.calendar.google.com",
+              "cachedResultName": "ODONTOLOGIA"
+            },
+            "operation": "update",
+            "updateFields": {},
+            "useDefaultReminders": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Use_Default_Reminders', ``, 'boolean') }}"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "49eGhpwvfLcCZ0h3",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "b9c7618d-b79a-4273-a540-3d21a1c0bfb0",
+          "name": "AVALIABILITY_CALENDAR",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            80,
+            240
+          ],
+          "parameters": {
+            "options": {
+              "timezone": {
+                "__rl": true,
+                "mode": "list",
+                "value": "America/Sao_Paulo",
+                "cachedResultName": "America/Sao_Paulo"
+              }
+            },
+            "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End_Time', ``, 'string') }}",
+            "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start_Time', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "a57a3781407f42b1ad7fe24ce76f558dc6c86fea5f349b7fd39747a2294c1654@group.calendar.google.com",
+              "cachedResultName": "ODONTOLOGIA"
+            },
+            "resource": "calendar",
+            "descriptionType": "manual",
+            "toolDescription": "verifica disponibilidade"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "49eGhpwvfLcCZ0h3",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "4fda260a-4d0c-4bf3-807b-e752f06037ff",
+          "name": "CREATE_CALENDAR",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            1000,
+            240
+          ],
+          "parameters": {
+            "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+            "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "a57a3781407f42b1ad7fe24ce76f558dc6c86fea5f349b7fd39747a2294c1654@group.calendar.google.com",
+              "cachedResultName": "ODONTOLOGIA"
+            },
+            "descriptionType": "manual",
+            "toolDescription": "CRIA EVENTOS NOVOS COM O GOOGLE API",
+            "additionalFields": {
+              "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}"
+            },
+            "useDefaultReminders": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Use_Default_Reminders', ``, 'boolean') }}"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "49eGhpwvfLcCZ0h3",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "d13dc7da-f510-474c-87be-68fea85c81f2",
+      "connections": {
+        "GET_CALENDAR": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_CALENDAR",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CREATE_CALENDAR": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_CALENDAR",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DELETE_CALENDAR": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_CALENDAR",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE_CALENDAR": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_CALENDAR",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET_ALL_CALENDAR": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_CALENDAR",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "AVALIABILITY_CALENDAR": {
+          "ai_tool": [
+            [
+              {
+                "node": "MCP_CALENDAR",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.googleCalendarTool": {
+          "count": 6
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Luciano Gutierrez",
+      "username": "koresoluciones",
+      "bio": "🇧🇷 Argentino de 30 anos e fundador da KORE Soluções em Belo Horizonte (MG). Há 1 ano, fornecemos automações, cursos, configurações e manutenção de workflows, ajudando empresas a aumentar eficiência e escalar processos com tecnologia.\n\n🇺🇸 I’m a 30‑year‑old Argentine founder of KORE Soluções in Belo Horizonte (MG). For 1 year, we’ve delivered automations, courses, configuration, and workflow maintenance, helping businesses boost efficiency and scale processes with technology.",
+      "verified": true,
+      "links": [
+        "https://koresolucoes.github.io/expertise/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7caef85e3231ac83b8634980bd314fc40ba26df805b86e5f839bf75a1582a1a7?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1160,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Captura_de_tela_2025_04_23_155432_e0cc17288c.png"
+      }
+    ]
+  }
+}

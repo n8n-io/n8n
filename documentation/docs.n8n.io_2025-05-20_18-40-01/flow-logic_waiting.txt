@@ -1,0 +1,17 @@
+URL: https://docs.n8n.io/flow-logic/waiting/
+Scraped_At: 2025-05-20T18:43:12.306033
+
+Waiting
+#
+Waiting allows you to pause a workflow mid-execution, then resume where the workflow left off, with the same data. This is useful if you need to rate limit your calls to a service, or wait for an external event to complete. You can wait for a specified duration, or until a webhook fires.
+Making a workflow wait uses the
+Wait
+node. Refer to the node documentation for usage details.
+n8n provides a workflow template with a basic example of
+Rate limiting and waiting for external events
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

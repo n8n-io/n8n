@@ -1,0 +1,38 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.paypal/
+Scraped_At: 2025-05-20T18:50:34.948066
+
+PayPal node
+#
+Use the PayPal node to automate work in PayPal, and integrate PayPal with other applications. n8n has built-in support for a wide range of PayPal features, including creating a batch payout and canceling unclaimed payout items.
+On this page, you'll find a list of operations the PayPal node supports and links to more resources.
+Credentials
+Refer to
+PayPal credentials
+for guidance on setting up authentication.
+Operations
+#
+Payout
+Create a batch payout
+Show batch payout details
+Payout Item
+Cancels an unclaimed payout item
+Show payout item details
+Templates and examples
+#
+Create a PayPal batch payout
+by ivov
+View template details
+Receive updates when a billing plan is activated in PayPal
+by Harshil Agrawal
+View template details
+Automate Digital Delivery After PayPal Purchase Using n8n
+by Amjid Ali
+View template details
+Browse PayPal integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,57 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/
+Scraped_At: 2025-05-20T18:56:48.513528
+
+Stop And Error
+#
+Use the Stop And Error node to display custom error messages, cause executions to fail under certain conditions, and send custom error information to error workflows.
+Operations
+#
+Error Message
+Error Object
+Node parameters
+#
+Both operations include one node parameter, the
+Error Type
+. Use this parameter to select the type of error to throw. Choose between the two operations:
+Error Message
+and
+Error Object
+.
+The other parameters depend on which operation you select.
+Error Message parameters
+#
+The Error Message Error Type adds one parameter, the
+Error Message
+field. Enter the message you'd like to throw.
+Error Object parameters
+#
+The Error Object Error Type adds one parameter, the
+Error Object
+. Enter a JSON object that contains the error properties you'd like to throw.
+Templates and examples
+#
+Host Your Own AI Deep Research Agent with n8n, Apify and OpenAI o3
+by Jimleuk
+View template details
+Generate Leads with Google Maps
+by Alex Kim
+View template details
+Telegram chat with PDF
+by felipe biava cataneo
+View template details
+Browse Stop And Error integration templates
+, or
+search all templates
+Related resources
+#
+You can use the Stop And Error node with the
+Error trigger
+node.
+Read more about
+Error workflows
+in n8n workflows.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

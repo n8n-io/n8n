@@ -1,0 +1,182 @@
+{
+  "workflow": {
+    "id": 1546,
+    "name": "Create a QuickBooks invoice on a new Onfleet Task creation",
+    "views": 812,
+    "recentViews": 0,
+    "totalViews": 812,
+    "createdAt": "2022-03-22T02:31:44.880Z",
+    "description": "**Summary**\n\nOnfleet is a last-mile delivery software that provides end-to-end route planning, dispatch, communication, and analytics to handle the heavy lifting while you can focus on your customers.\n\nThis workflow template listens to an Onfleet event and interacts with the **QuickBooks API**. You can easily streamline this with your QuickBooks invoices or other entities. Typically, you can create an invoice when an Onfleet task is created to allow your customers to pay ahead of an upcoming delivery.\n\n**Configurations**\n\n- Update the Onfleet trigger node with your own Onfleet credentials, to register for an **Onfleet API key**, please visit https://onfleet.com/signup to get started\n- You can easily change which Onfleet event to listen to. Learn more about Onfleet webhooks with [Onfleet Support](https://support.onfleet.com/hc/en-us/articles/360045763852-Webhooks)\n- Update the QuickBooks Online node with your QuickBooks credentials",
+    "workflow": {
+      "name": "Create a QuickBooks invoice on a new Onfleet Task creation",
+      "nodes": [
+        {
+          "name": "Onfleet Trigger",
+          "type": "n8n-nodes-base.onfleetTrigger",
+          "position": [
+            460,
+            300
+          ],
+          "webhookId": "6d6a2bee-f83e-4ebd-a1d5-8708c34393dc",
+          "parameters": {
+            "triggerOn": "taskCreated",
+            "additionalFields": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "QuickBooks Online",
+          "type": "n8n-nodes-base.quickbooks",
+          "position": [
+            680,
+            300
+          ],
+          "parameters": {
+            "Line": [],
+            "resource": "invoice",
+            "operation": "create",
+            "additionalFields": {
+              "Balance": 0,
+              "TxnDate": "",
+              "ShipAddr": "",
+              "BillEmail": ""
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Onfleet Trigger": {
+          "main": [
+            [
+              {
+                "node": "QuickBooks Online",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.quickbooks": {
+          "count": 1
+        },
+        "n8n-nodes-base.onfleetTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "James Li",
+      "username": "ilsemaj",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f2676b8a1c6bf7a2b2c9c4df054571d29662ea0dab6f11e7a423c01af7259574?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 455,
+        "icon": "file:quickbooks.svg",
+        "name": "n8n-nodes-base.quickbooks",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbooks/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/quickbooks/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "QuickBooks Online"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAwIDI1MDAiPjxjaXJjbGUgY3g9IjEyNTAiIGN5PSIxMjUwIiByPSIxMjUwIiBmaWxsPSIjMmNhMDFjIi8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMwMS4zIDEyNDkuNmMuMSAyODIuNiAyMjggNTEyLjQgNTEwLjYgNTE0LjloNzIuM3YtMTg4LjloLTcyLjNjLTE3NS4yIDQ3LjgtMzU1LjktNTUuNS00MDMuNi0yMzAuNy0uNC0xLjQtLjctMi44LTEuMS00LjItNDkuMS0xNzcuNSA1My43LTM2MS40IDIzMC42LTQxMi41aDM2LjFhMzIyIDMyMiAwIDAgMSAxMzcuNSAwSDk4N3YxMDAyLjljLS45IDEwNi4xIDg0LjQgMTkyLjkgMTkwLjUgMTkzLjlWNzI5LjZIODEzYy0yODQuNiAxLjUtNTE0IDIzMy40LTUxMi41IDUxOHYuMXptMTM4Ny41LTUxOS44aC03Mi4zdjE5OC45aDcyLjNjMTc0LjgtNDcuNyAzNTUuMSA1NS4zIDQwMi44IDIzMCAuNCAxLjMuNyAyLjcgMS4xIDQgNDguOCAxNzYuOS01My43IDM2MC4xLTIyOS45IDQxMS4xaC0zNi4xYTMyMiAzMjIgMCAwIDEtMTM3LjUgMGgtMTc1LjZWNTcxYy45LTEwNi4xLTg0LjQtMTkyLjktMTkwLjUtMTkzLjl2MTM5Ny40aDM2NC41YzI4Ny4xLTQuNSA1MTYuMi0yNDAuOCA1MTEuOC01MjcuOS00LjQtMjgwLjgtMjMwLjktNTA3LjQtNTExLjgtNTExLjh6Ii8+PC9zdmc+"
+        },
+        "displayName": "QuickBooks Online",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      },
+      {
+        "id": 556,
+        "icon": "file:Onfleet.svg",
+        "name": "n8n-nodes-base.onfleetTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.onfleettrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/onfleet/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Onfleet Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSIjQUE4MUYzIiBkPSJNMCAwaDYwdjYwSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMyLjU1IDMyLjA2NmMuNDgyLjQ1NCAxLjIwNyAxLjA2NiAyLjE0NSAxLjgxMS45MzguNzIxIDIuMTY5IDEuNTQ1IDMuNjQzIDIuMTg4Ljc1LjI5IDEuNTUzLjUzMyAyLjQxMi41NTcuNDI3IDAgLjg2IDAgMS4yNjEtLjEzMy4yMTMtLjAyNC40MDItLjEzMy41OTEtLjIxMi4xODktLjExLjM3OC0uMTg4LjU2LS4zMjEuMzQ4LS4yNDMuNjk1LS41MzQuOTYzLS45MDMuMjY4LS4zNy41MTItLjc3LjcyNS0xLjIyNC4zNzgtLjkwMy42MTUtMS45Mi42Ny0yLjk4MWE4LjcgOC43IDAgMCAwLS40MjYtMy4yYy0uMzQ4LTEuMDExLS45MDgtMS45NDUtMS43MTItMi41MzItLjc3NC0uNTU4LTEuNzY3LS43Ny0yLjgzOS0uNjEyLS41MzYuMTA5LTEuMDk2LjI0Mi0xLjYzMi40NzgtLjI2OS4xMS0uNTM3LjI0My0uODI5LjM3Ni0uMjY4LjE1OC0uNTM2LjI5LS44MDQuNDU0LTEuMDcyLjY0My0yLjExNCAxLjQzNi0zLjEwNyAyLjI5LS40ODEuNDU1LS45OTMuODgtMS40NDQgMS4zNTgtLjI0My4yNDItLjQ4LjQ1NS0uNjk0LjcyMWwtLjcyNS43NDVhNDAgNDAgMCAwIDEtMy4wODMgMi45MzNjLTEuMDk2LjkzMy0yLjI0NyAxLjc4OC0zLjUzMyAyLjUzMy0xLjI2LjcyMS0yLjY4IDEuMzMzLTQuMjU4IDEuNTQ1YTYuNyA2LjcgMCAwIDEtMi40MzctLjEwOSA1LjcgNS43IDAgMCAxLTIuMjIzLTEuMDY2IDYuNCA2LjQgMCAwIDEtMS41My0xLjc1OCA4IDggMCAwIDEtLjg1OC0yIDEwLjcgMTAuNyAwIDAgMS0uMzQ4LTIuMDIzIDkuNyA5LjcgMCAwIDEgLjAyNS0xLjk3IDkuOSA5LjkgMCAwIDEgMS4wNi0zLjYzNSA3IDcgMCAwIDEgMS4wNzItMS41MiA1LjMgNS4zIDAgMCAxIDEuNDItMS4xNDZjLjUzNS0uMjkgMS4wOTYtLjUwOSAxLjY2Mi0uNTg4LjU2LS4xMDMgMS4xMjEtLjA3MiAxLjY1Ny0uMDI0IDEuMDQyLjEzMyAxLjk1Ni41MSAyLjczLjkwMyAxLjU1My44NTQgMi42OCAxLjgzNiAzLjU2MyAyLjY5Ljg2Ljg1NSAxLjQ3NSAxLjYgMS45MDEgMi4xMDNsLjYxNS43Ny0uNzI1LS42NjdjLS40OC0uNDU1LTEuMjA2LTEuMDY3LTIuMTQ0LTEuNzg4LS45MzgtLjcyLTIuMTY5LTEuNTQ1LTMuNjQzLTIuMTg3LS43NS0uMjktMS41NTMtLjUzMy0yLjQxMi0uNTU3LS44MjktLjAyNS0xLjY4OC4xNTctMi4zODIuNjY2LS4zNDcuMjQyLS42OTUuNTMzLS45NjMuOTAzcy0uNTM2Ljc3LS43MjUgMS4yMjRhNy45IDcuOSAwIDAgMC0uNjcgMy4wMTEgOC43IDguNyAwIDAgMCAuNDI3IDMuMmMuMzQ3IDEuMDExLjkwNyAxLjk0NSAxLjcxMSAyLjUwMi43NzQuNTU3IDEuNzY3Ljc3IDIuODQuNTg4LjEzMyAwIC4yNjctLjA1NS40MDEtLjA3OXMuMjY4LS4wNTUuNDAyLS4xMDlsLjQwMi0uMTMzLjQwMy0uMTU4Yy4xMzQtLjA1NC4yNjgtLjEwOS40MDItLjE4OGwuNDAyLS4xODhjLjI2OC0uMTU3LjUzNi0uMjkuODA0LS40NTQgMS4wNzItLjY0MiAyLjExNC0xLjQzNiAzLjEwNy0yLjI5Ljk5My0uODc5IDEuOS0xLjc1OCAyLjg5My0yLjhsLjcyNS0uNzQ1Yy4yNDQtLjI2Ny41MTItLjUxLjc1LS43NDVhMjUgMjUgMCAwIDEgMS41NzctMS40MzZjMS4wOTctLjkzNCAyLjI0OC0xLjc4OCAzLjUzNC0yLjUzMyAxLjI2LS43MjEgMi42OC0xLjMzMyA0LjI1OC0xLjU0NWE2LjggNi44IDAgMCAxIDIuNDM2LjEzMyA1LjYgNS42IDAgMCAxIDIuMiAxLjA5Yy42NDUuNTEgMS4xMjcgMS4xMjIgMS41MjkgMS43NThhOCA4IDAgMCAxIC44NTkgMmMuMTg4LjY2Ni4yOTIgMS4zNTcuMzQ3IDIuMDIzYTkuNyA5LjcgMCAwIDEtLjAyNSAxLjk3Yy0uMTM0IDEuMjc4LS40OCAyLjUzMi0xLjA0MSAzLjYyM2E3IDcgMCAwIDEtMS4wNzIgMS41MiA1IDUgMCAwIDEtMS40NDQgMS4xNDYgNSA1IDAgMCAxLS44MjkuMzc2Yy0uMjkyLjA3OC0uNTYuMTg3LS44NTkuMjEyLS41Ni4xMDktMS4xMjcuMDc5LTEuNjYzLjAyNC0xLjA0MS0uMTU4LTEuOTU1LS41MzMtMi43MjktLjkzMy0xLjU1My0uODU1LTIuNjgtMS44NjYtMy41NjQtMi43MTUtLjg1OS0uODU0LTEuNDc0LTEuNi0xLjktMi4xMDJsLS42MTUtLjc3Yy4wNzktLjAxMi44MDQuNjU1LjgwNC42NTUiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Onfleet Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": []
+  }
+}

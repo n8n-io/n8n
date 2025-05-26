@@ -1,0 +1,3059 @@
+{
+  "workflow": {
+    "id": 2650,
+    "name": "Extract Information from a Logo Sheet using forms, AI, Google Sheet and Airtable",
+    "views": 910,
+    "recentViews": 1,
+    "totalViews": 910,
+    "createdAt": "2024-12-17T12:35:08.190Z",
+    "description": "## Instructions\n\nThis automation enables you to just **upload any Image (via Form)** of a Logo Sheet, containing multiple Images of Product Logos (most likely) which brings them in some context to one another. \n\nAfter submitting an **AI-Agent** eats **that Logo Sheet**, turning it into an List of \"Productname\" and \"Attributes\", also checks if Tools are kind of similar to another, given the Context of the Image.\n\nWe utilize AI Vision capabilities for that. **NOTE:** It might not be able to extract all informations. For a \"upload and forget it\" Workflow it works for me. You can even run it multiple times, to be sure. \n\nBut if you need to make sure it extracts **everything** you might need to think about an Multi-Agent Setup with Validation-Agent Steps.\n\nOnce the Agent finishes the extraction, it will traditionally and deterministicly add those Attributes to Airtable (**Creates** those, if not already existing.) and also **Upserts** the Tool Informations.\n\nIt uses MD5 **Hashes** for turning Product Names into.. something fancy really, you could also use it without that, but I wanted to have something that looks atleast like an ID.  \n\n### Setup\n\n1. Set Up the Airtable like shown below.\n2. Update and set Credentials for all Airtable Nodes.\n3. Check or Adjust the Prompt of the Agent matching your use-case.\n4. Activate the Workflow. \n5. Open the Form (default: https://your-n8n.io/form/logo-sheet-feeder)\n6. Enjoy growing your Airtable.\n\n![Image](https://cloud.let-the-work-flow.com/logo-64.png)  \nEnjoy the workflow! ❤️  \n[let the work flow](https://let-the-work-flow.com) — Workflow Automation & Development",
+    "workflow": {
+      "id": "dDAqkobn2pqgdl2N",
+      "meta": {
+        "instanceId": "9e331a89ae45a204c6dee51c77131d32a8c962ec20ccf002135ea60bd285dba9"
+      },
+      "name": "AI Logo Sheet Extractor to Airtable",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "f7ecadb8-dc5d-4e8c-96b8-52c1dbad49b6",
+          "name": "On form submission",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            -660,
+            -220
+          ],
+          "webhookId": "43837a27-f752-40a8-852a-d5d63d647bfd",
+          "parameters": {
+            "options": {
+              "path": "logo-sheet-feeder"
+            },
+            "formTitle": "AI Logo Sheet Feeder",
+            "formFields": {
+              "values": [
+                {
+                  "fieldType": "file",
+                  "fieldLabel": "The Logo-Sheet as Image",
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "Addional Prompt (e.g.: What the meaning of the graphic?) *optional but helps from time to time.",
+                  "placeholder": "It's a graph chart comparing AI Tools"
+                }
+              ]
+            },
+            "formDescription": "Provide a Image with multiple Logos comparing or bringing multiple Tools into Context with one another."
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b1530578-bde9-4ee3-9cdb-545a621cdb84",
+          "name": "Retrieve and Parser Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -180,
+            -220
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "Your task is to retrieve Information from the given Input. Extract Categories and Attributes of all given and shown Tools, Softwares or Products you've got by the user.\n\nProvide the Output Array of Tools with the following Structure as JSON:\n\n[{\n\"name\": \"Name of the Tool, Software, etc.\",\n\"attributes\": [\"Some category or attribute\", \"something else you can see from the context or image\"],\n\"similar\": [\"similar tool, product, etc. from shown context\", \"another similar software, product, tool from context\"]\n},{\n\"name\": \"Name of anotherTool, Software, etc.\",\n\"attributes\": [\"Some category, subcategory or general attribute\", \"something else you can see from the context or image\"],\n\"similar\": [\"similar tool, product, etc. from shown context\", \"another similar software, product, tool from context\"]\n}]\n\nList these structure for all the Products you see!\n\nHere a description of the JSON fields:\n\"name\": Just the Name of the Software.\n\"attribute\": Turn any information from the context or image into multiple useful Attributes for this tool. Could be a category, could be a feature, etc. Try to split this information in multiple specific Attributes or Categories.\n\"similar\": if multiple tools are shown that could compare to this one (like on the same level or in the same category), list those here\n\nTake a deep breath and think step by step.\nTry to extract every mentioned tool. There are for sure multiple listed.",
+              "passthroughBinaryImages": true
+            },
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "51642a02-51a4-4894-adf0-f364736dabc1",
+          "name": "JSON it",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            220,
+            -220
+          ],
+          "parameters": {
+            "mode": "raw",
+            "options": {},
+            "jsonOutput": "={{ $json.output }}"
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ec0f0575-eb33-48a9-b3fe-c4f5b71ff548",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            40,
+            20
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n\t\"tools\": [{\n\"name\": \"Name of the Tool, Software, etc.\",\n\"attributes\": [\"Some category or attribute\", \"something else you can see from the context or image\"],\n\"similar\": [\"similar tool, product, etc. from shown context\", \"another similar software, product, tool from context\"]\n},{\n\"name\": \"Name of anotherTool, Software, etc.\",\n\"attributes\": [\"Some category, subcategory or general attribute\", \"something else you can see from the context or image\"],\n\"similar\": [\"similar tool, product, etc. from shown context\", \"another similar software, product, tool from context\"]\n}]}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "6d78005e-7277-40a9-9f10-e3d8e475cbaf",
+          "name": "Check if Attribute exists",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1380,
+            0
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appq0gcmxHAZQhswW",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW",
+              "cachedResultName": "AI Tools"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblX2rj8yNAZZRhwt",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW/tblX2rj8yNAZZRhwt",
+              "cachedResultName": "Attributes"
+            },
+            "columns": {
+              "value": {
+                "Name": "={{$json.attributes}}"
+              },
+              "schema": [
+                {
+                  "id": "id",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "id",
+                  "defaultMatch": true
+                },
+                {
+                  "id": "Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Tools",
+                  "type": "array",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Tools",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "Name"
+              ]
+            },
+            "options": {},
+            "operation": "upsert"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "jMqH6HkKUYTgyHVm",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "1c468a4b-4563-4f78-ba1b-138b18ac4821",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1620,
+            80
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "4f597962-48e5-4367-a329-bc07d42ff86d",
+          "name": "Map Attribute ID",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1840,
+            80
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "675510b1-97e7-4a71-9c9e-d3ee792d9919",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "87cc9086-effd-4f4e-84c1-9adec5774e94",
+                  "name": "attribute",
+                  "type": "string",
+                  "value": "={{ $json.attributes }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "11679757-360c-468f-b624-a9f6853e29f4",
+          "name": "Loop Over Attributes",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            720,
+            -40
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "835a09ae-2e51-488c-b0b3-d895696a135e",
+          "name": "All Attributes",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            940,
+            -60
+          ],
+          "parameters": {
+            "mode": "raw",
+            "options": {},
+            "jsonOutput": "={{ $json }}"
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b8ca6d98-ab37-4393-8a2c-561912aeff2b",
+          "name": "Wait for Attribute Creation",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1120,
+            -200
+          ],
+          "parameters": {
+            "mode": "chooseBranch"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "9eaf87d4-910b-4a6e-9cdf-ee51ff4180cc",
+          "name": "Change each Attribute to the corresponding RecID",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1340,
+            -200
+          ],
+          "parameters": {
+            "jsCode": "let knownAttributesOutput = $('All Attributes').all();\nlet knownAttributes = new Map();\nknownAttributesOutput.forEach((nodeOutput)=>{\nknownAttributes.set(nodeOutput.json.attribute.toString().trim(), nodeOutput.json.id);\n});\n\n\nfor (const item of $input.all()) {\n  item.json.attributes.forEach((attribute, index)=>{\n    item.json.attributes[index] = knownAttributes.get(attribute.toString().trim());\n  });\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ecfedff4-f6f9-429e-8514-cf8208e70048",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            600,
+            -280
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1460,
+            "height": 600,
+            "content": "## Attribute Creation and Mapping those created or existing Ids "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ad2fafed-0a42-4615-a882-01306af7caf5",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            -360
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 420,
+            "height": 540,
+            "content": "## Eat the provided Images, Extract the Information out of them as \"Tool -> Attributes\" list."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5eb89e50-7a2f-415c-82f2-99eb8a7ff82f",
+          "name": "Split Out Tools",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            440,
+            -220
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "tools"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "680dfb4b-dde4-4d8f-852d-c3eba82e6607",
+          "name": "Split Out each Attribute String",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1140,
+            100
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "attributes"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a33465e9-d469-498f-9178-7c30e15d2782",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2120,
+            -280
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 880,
+            "height": 600,
+            "content": "## Create the Tools (if not exists)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5b5ab9f2-d4ac-437f-ab0a-b113a8af34ab",
+          "name": "Generate Unique Hash for Name",
+          "type": "n8n-nodes-base.crypto",
+          "position": [
+            2180,
+            -200
+          ],
+          "parameters": {
+            "value": "={{ $json.name.toLowerCase().trim() }}",
+            "dataPropertyName": "hash"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ea8f7e6f-9004-4271-80d3-333701cce488",
+          "name": "Create if not Exist",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            2400,
+            -100
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appq0gcmxHAZQhswW",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW",
+              "cachedResultName": "AI Tools"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblrikRHbX1N6P2JI",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW/tblrikRHbX1N6P2JI",
+              "cachedResultName": "Tools"
+            },
+            "columns": {
+              "value": {
+                "Hash": "={{$json.hash}}",
+                "Name": "={{$json.name}}"
+              },
+              "schema": [
+                {
+                  "id": "id",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "id",
+                  "defaultMatch": true
+                },
+                {
+                  "id": "Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Description",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Description",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Website",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Website",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Category",
+                  "type": "array",
+                  "display": true,
+                  "options": [],
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Category",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Attributes",
+                  "type": "array",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Attributes",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Hash",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Hash",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "Hash"
+              ]
+            },
+            "options": {},
+            "operation": "upsert"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "jMqH6HkKUYTgyHVm",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "85ac3cbb-4103-4184-b686-9e5b8d48f421",
+          "name": "Merge Old Data + RecID",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2820,
+            -180
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "fieldsToMatchString": "hash"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "29d6369f-f233-46f8-8bee-aa3be854bb0c",
+          "name": "Only what we need",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2600,
+            -100
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0ff954ec-1d71-429b-b2e8-dca17ff0478d",
+                  "name": "hash",
+                  "type": "string",
+                  "value": "={{ $json.fields.Hash }}"
+                },
+                {
+                  "id": "a7f4c2e7-fa63-45d7-ad22-ce8c3aaae4d6",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "081a7613-7c06-4578-8aa4-25d21952b727",
+                  "name": "existingAttributes",
+                  "type": "array",
+                  "value": "={{ $json.fields.Attributes ? $json.fields.Attributes : [] }}"
+                },
+                {
+                  "id": "e3ace89b-d818-4448-8328-b36cdf08da2a",
+                  "name": "existingSimilars",
+                  "type": "array",
+                  "value": "={{ $json.fields.Similar ? $json.fields.Similar : [] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "bdf9c435-3994-4c25-9520-8dfa76e625eb",
+          "name": "Determine Attributes we should save",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            3040,
+            -180
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "let savingAttributes = $input.item.json.existingAttributes ? $input.item.json.existingAttributes : [];\n$input.item.json.attributes.forEach((attrId)=>{\nif($input.item.json.existingAttributes.indexOf(attrId) == -1) savingAttributes.push(attrId);\n});\n\n$input.item.json.savingAttributes = savingAttributes;\n\nreturn $input.item;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "88e9f499-87d3-46e2-b3ea-1833c14aaa1b",
+          "name": "Split Out similar",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            3300,
+            20
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "similar"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "733a8d0c-c6ea-4386-9fd1-075980289e9c",
+          "name": "Merge1",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            3960,
+            0
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "combineBy": "combineByPosition"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "dabb7e11-b4de-44d9-a80f-3302f49194fb",
+          "name": "Generate Unique Hash for Similar",
+          "type": "n8n-nodes-base.crypto",
+          "position": [
+            3520,
+            -100
+          ],
+          "parameters": {
+            "value": "={{ $json.similar.toLowerCase().trim() }}",
+            "dataPropertyName": "hash"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a1bbda24-f75c-4316-b2bd-645827d7af1f",
+          "name": "It Should exists",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            3740,
+            -100
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appq0gcmxHAZQhswW",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW",
+              "cachedResultName": "AI Tools"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblrikRHbX1N6P2JI",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW/tblrikRHbX1N6P2JI",
+              "cachedResultName": "Tools"
+            },
+            "columns": {
+              "value": {
+                "Hash": "={{$json.hash}}",
+                "Name": "={{$json.similar}}"
+              },
+              "schema": [
+                {
+                  "id": "id",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "id",
+                  "defaultMatch": true
+                },
+                {
+                  "id": "Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Description",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Description",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Website",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Website",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Category",
+                  "type": "array",
+                  "display": true,
+                  "options": [],
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Category",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Attributes",
+                  "type": "array",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Attributes",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Hash",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Hash",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "Hash"
+              ]
+            },
+            "options": {},
+            "operation": "upsert"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "jMqH6HkKUYTgyHVm",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9853b85d-fcb9-4183-8fe4-6e32d318ab01",
+          "name": "All Similar",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4180,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "675510b1-97e7-4a71-9c9e-d3ee792d9919",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "87cc9086-effd-4f4e-84c1-9adec5774e94",
+                  "name": "similar",
+                  "type": "string",
+                  "value": "={{ $json.similar }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0e98acd2-4aa5-4df0-b36b-6ac1a8a2263b",
+          "name": "Merge2",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            4400,
+            -160
+          ],
+          "parameters": {
+            "mode": "chooseBranch"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "ed94900a-78cd-4f61-a705-30f7cb8eb9b8",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3200,
+            -280
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 1600,
+            "height": 600,
+            "content": "## Map Competitors"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "74f0f703-ce73-457c-9137-88d613d2e480",
+          "name": "Change each Smiliar to the corresponding RecID",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            4600,
+            -160
+          ],
+          "parameters": {
+            "jsCode": "let knownSimilarsOutput = $('All Similar').all();\nlet knownSimilars = new Map();\nknownSimilarsOutput.forEach((nodeOutput)=>{\n  knownSimilars.set(nodeOutput.json.similar.toString().trim(), nodeOutput.json.id);\n});\n\nfor (const item of $input.all()) {\n  item.json.similar.forEach((similar, index)=>{\n    item.json.similar[index] = knownSimilars.get(similar.toString().trim());\n  });\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c9187902-f67f-4639-906b-d6b14ace6a0e",
+          "name": "Determine Similar we should save",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            4880,
+            -160
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "let savingSimilar = $input.item.json.existingSimilars ? $input.item.json.existingSimilars : [];\n$input.item.json.similar.forEach((simId)=>{\nif($input.item.json.existingSimilars.indexOf(simId) == -1) savingSimilar.push(simId);\n});\n\n$input.item.json.savingSimilars = savingSimilar;\n\nreturn $input.item;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e925a388-05e2-49e4-92ad-984517f44057",
+          "name": "Save all this juicy data",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            5120,
+            -160
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appq0gcmxHAZQhswW",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW",
+              "cachedResultName": "AI Tools"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblrikRHbX1N6P2JI",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW/tblrikRHbX1N6P2JI",
+              "cachedResultName": "Tools"
+            },
+            "columns": {
+              "value": {
+                "Hash": "={{$json.hash}}",
+                "Name": "={{$json.name}}",
+                "Similar": "={{ $json.savingSimilars }}",
+                "Attributes": "={{ $json.savingAttributes }}"
+              },
+              "schema": [
+                {
+                  "id": "id",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "id",
+                  "defaultMatch": true
+                },
+                {
+                  "id": "Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Description",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Description",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Website",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Website",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Category",
+                  "type": "array",
+                  "display": true,
+                  "options": [],
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Category",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Attributes",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Attributes",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Hash",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Hash",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Similar",
+                  "type": "array",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Similar",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "Hash"
+              ]
+            },
+            "options": {},
+            "operation": "upsert"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "jMqH6HkKUYTgyHVm",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "d2532094-9c71-4fc0-8195-fb2e29169086",
+          "name": "Map Agent Input",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -440,
+            -220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "ace29464-a2a1-44a1-87f9-255fbde042cf",
+                  "name": "chatInput",
+                  "type": "string",
+                  "value": "={{$json.Prompt}}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "8fa7273b-ebc8-40e4-9f11-e4b26784f60d",
+          "name": "gpt-4o",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -200,
+            20
+          ],
+          "parameters": {
+            "model": "gpt-4o",
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "25",
+              "name": "Key 3 vom 15. Jan. 2023\t"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fb282ffe-4871-4560-97ce-43cc381db874",
+          "name": "Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1440,
+            -580
+          ],
+          "parameters": {
+            "width": 668,
+            "height": 786,
+            "content": "## Instructions\n\nThis automation enables you to just upload any Image (via Form) of a Logo Sheet, containing multiple Images of Products, most likely and bringing them in some context to one another. \n\nAfter submitting an AI-Agent eats **that Logo Sheet**, turning it into an List of \"Productname\" and \"Attributes\", also checks if Tools are kind of similar to another, given the Context of the Image.\n\nWe utilize AI Vision capabilities for that. **NOTE:** It might not be able to extract all informations. For a \"upload and forget it\" Workflow it works for me. You can even run it multiple times, to be sure. \n\nBut if you need to make sure it extracts **everything** you might need to think about an Multi-Agent Setup with Validation-Agent Steps.\n\nOnce the Agent finishes the extraction, it will traditionally and deterministicly add those Attributes to Airtable (**Creates** those, if not already existing.) and also **Upserts** the Tool Informations.\n\nIt uses MD5 **Hashes** for turning Product Names into.. something fancy really, you could also use it without that, but I wanted to have something that looks atleast like an ID.  \n\n### Setup\n\n1. Set Up the Airtable like shown below.\n2. Update and set Credentials for all Airtable Nodes.\n3. Check or Adjust the Prompt of the Agent matching your use-case.\n4. Activate the Workflow. \n5. Open the Form (default: https://your-n8n.io/form/logo-sheet-feeder)\n6. Enjoy growing your Airtable.\n\n![Image](https://cloud.let-the-work-flow.com/logo-64.png)  \nEnjoy the workflow! ❤️  \n[let the workf low](https://let-the-work-flow.com) — Workflow Automation & Development"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9ea45b9b-ac2a-4498-b96f-5f5de50acade",
+          "name": "Table: Tools",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -1340,
+            340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6dfbc02e-36b3-4640-b9f2-940c7cd6f86e",
+          "name": "Table: Attributes",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -1000,
+            340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d8ffeff8-8df7-4fc0-9f18-49a44d10eb7d",
+          "name": "Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1440,
+            240
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 668,
+            "height": 786,
+            "content": "## Airtable Structure\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7023be89-ee1d-41e6-bcf5-ee28f1284e07",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1420,
+            580
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 300,
+            "height": 320,
+            "content": "### Tools Table Fields\n\n**Required:**\nName (singleLineText) \nAttributes (multipleRecordLinks=Link to Attributes Table) \nHash (singleLineText) \nSimilar (multipleRecordLinks=Link to the Same Table:\"Tools\") \n\n_Description (multilineText)_ \n_Website (url)_\n_Category (multipleSelects)_"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0c999f6f-11fb-472a-aa10-0915fbcd1254",
+          "name": "make it a readable list",
+          "type": "n8n-nodes-base.html",
+          "disabled": true,
+          "position": [
+            -420,
+            800
+          ],
+          "parameters": {
+            "html": ""
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "ae351db3-5c47-4e53-bf9e-e34434ad9522",
+          "name": "Get Schema",
+          "type": "n8n-nodes-base.airtable",
+          "disabled": true,
+          "position": [
+            -640,
+            800
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appq0gcmxHAZQhswW",
+              "cachedResultUrl": "https://airtable.com/appq0gcmxHAZQhswW",
+              "cachedResultName": "AI Tools"
+            },
+            "resource": "base",
+            "operation": "getSchema"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "jMqH6HkKUYTgyHVm",
+              "name": "Airtable Personal Access Token account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9da286e2-2a06-4d2a-bd5b-b6c828683ff2",
+          "name": "Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -720,
+            660
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 488,
+            "height": 366,
+            "content": "## Helper for Documentation (ignore or enjoy it)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "901a0c48-82a9-4fd3-a007-8f4b257348d3",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1080,
+            580
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 280,
+            "height": 320,
+            "content": "### Attributes Table Fields\n\n**Required:**\nName (singleLineText)\nTools (multipleRecordLinks=Link to Tools Table) "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "966243fa-a1a3-4201-9df7-6a01aa762ae8",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -160,
+            -460
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 220,
+            "height": 80,
+            "content": "### Might want to Adjust Prompt to your \"Use-Case\" 🤖"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1a4e5b87-68a6-499e-9374-e067fae12c84",
+          "name": "Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2440,
+            -580
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 968,
+            "height": 646,
+            "content": "## Example Logo Sheet\n### For these kind of sheets the Prompt is designed per default\n\n![Image](https://cloud.let-the-work-flow.com/workflow-data/example-ai-logo-sheet.jpg)  "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {
+        "Retrieve and Parser Agent": [
+          {
+            "json": {
+              "output": {
+                "tools": [
+                  {
+                    "name": "airOps",
+                    "similar": [
+                      "Cognition",
+                      "Gradial"
+                    ],
+                    "attributes": [
+                      "Agentic Application",
+                      "AI infrastructure"
+                    ]
+                  },
+                  {
+                    "name": "Cognition",
+                    "similar": [
+                      "airOps",
+                      "Gradial"
+                    ],
+                    "attributes": [
+                      "Agentic Application",
+                      "AI infrastructure"
+                    ]
+                  },
+                  {
+                    "name": "Gradial",
+                    "similar": [
+                      "Cognition",
+                      "airOps"
+                    ],
+                    "attributes": [
+                      "Agentic Application",
+                      "AI infrastructure"
+                    ]
+                  },
+                  {
+                    "name": "Cognosys",
+                    "similar": [
+                      "FIXIE",
+                      "continuia"
+                    ],
+                    "attributes": [
+                      "Agentic Application",
+                      "AI infrastructure"
+                    ]
+                  },
+                  {
+                    "name": "FIXIE",
+                    "similar": [
+                      "Cognosys",
+                      "continuia"
+                    ],
+                    "attributes": [
+                      "Agentic Application",
+                      "AI infrastructure"
+                    ]
+                  },
+                  {
+                    "name": "continuia",
+                    "similar": [
+                      "Cognosys",
+                      "FIXIE"
+                    ],
+                    "attributes": [
+                      "Agentic Application",
+                      "AI infrastructure"
+                    ]
+                  },
+                  {
+                    "name": "Agentlabs",
+                    "similar": [
+                      "OpenAI",
+                      "LangChain"
+                    ],
+                    "attributes": [
+                      "Presentation Tool",
+                      "Utilizes OpenAI and LangChain"
+                    ]
+                  },
+                  {
+                    "name": "TINY FISH",
+                    "similar": [
+                      "Superagent",
+                      "basepilot"
+                    ],
+                    "attributes": [
+                      "UI Automation",
+                      "Agent as a Service"
+                    ]
+                  },
+                  {
+                    "name": "Superagent",
+                    "similar": [
+                      "TINY FISH",
+                      "basepilot"
+                    ],
+                    "attributes": [
+                      "UI Automation",
+                      "Agent as a Service"
+                    ]
+                  },
+                  {
+                    "name": "basepilot",
+                    "similar": [
+                      "TINY FISH",
+                      "Superagent"
+                    ],
+                    "attributes": [
+                      "UI Automation",
+                      "Agent as a Service"
+                    ]
+                  },
+                  {
+                    "name": "Browserbase",
+                    "similar": [
+                      "browsersless",
+                      "APIFY"
+                    ],
+                    "attributes": [
+                      "Browser Infrastructure",
+                      "Web services"
+                    ]
+                  },
+                  {
+                    "name": "browsersless",
+                    "similar": [
+                      "Browserbase",
+                      "APIFY"
+                    ],
+                    "attributes": [
+                      "Browser Infrastructure",
+                      "Web services"
+                    ]
+                  },
+                  {
+                    "name": "APIFY",
+                    "similar": [
+                      "Browserbase",
+                      "browsersless"
+                    ],
+                    "attributes": [
+                      "Browser Infrastructure",
+                      "Web services"
+                    ]
+                  },
+                  {
+                    "name": "Cloudflare",
+                    "similar": [
+                      "bright data",
+                      "platform.sh"
+                    ],
+                    "attributes": [
+                      "Browser Infrastructure",
+                      "Web services"
+                    ]
+                  },
+                  {
+                    "name": "bright data",
+                    "similar": [
+                      "Cloudflare",
+                      "platform.sh"
+                    ],
+                    "attributes": [
+                      "Browser Infrastructure",
+                      "Web services"
+                    ]
+                  },
+                  {
+                    "name": "platform.sh",
+                    "similar": [
+                      "Cloudflare",
+                      "bright data"
+                    ],
+                    "attributes": [
+                      "Browser Infrastructure",
+                      "Web services"
+                    ]
+                  },
+                  {
+                    "name": "ingest",
+                    "similar": [
+                      "hatchet",
+                      "Trigger.dev"
+                    ],
+                    "attributes": [
+                      "Persistence Tool",
+                      "Data management"
+                    ]
+                  },
+                  {
+                    "name": "hatchet",
+                    "similar": [
+                      "ingest",
+                      "Trigger.dev"
+                    ],
+                    "attributes": [
+                      "Persistence Tool",
+                      "Data management"
+                    ]
+                  },
+                  {
+                    "name": "Trigger.dev",
+                    "similar": [
+                      "ingest",
+                      "hatchet"
+                    ],
+                    "attributes": [
+                      "Persistence Tool",
+                      "Data management"
+                    ]
+                  },
+                  {
+                    "name": "DSPy",
+                    "similar": [
+                      "AutoGen",
+                      "Scma4.ai"
+                    ],
+                    "attributes": [
+                      "Orchestration Tool",
+                      "AI Workflow Management"
+                    ]
+                  },
+                  {
+                    "name": "AutoGen",
+                    "similar": [
+                      "DSPy",
+                      "Scma4.ai"
+                    ],
+                    "attributes": [
+                      "Orchestration Tool",
+                      "AI Workflow Management"
+                    ]
+                  },
+                  {
+                    "name": "Scma4.ai",
+                    "similar": [
+                      "DSPy",
+                      "AutoGen"
+                    ],
+                    "attributes": [
+                      "Orchestration Tool",
+                      "AI Workflow Management"
+                    ]
+                  },
+                  {
+                    "name": "WhyHowAI",
+                    "similar": [
+                      "Graphlit",
+                      "LangMem"
+                    ],
+                    "attributes": [
+                      "Personalization Tool",
+                      "Memory management"
+                    ]
+                  },
+                  {
+                    "name": "Graphlit",
+                    "similar": [
+                      "WhyHowAI",
+                      "LangMem"
+                    ],
+                    "attributes": [
+                      "Personalization Tool",
+                      "Memory management"
+                    ]
+                  },
+                  {
+                    "name": "LangMem",
+                    "similar": [
+                      "WhyHowAI",
+                      "Graphlit"
+                    ],
+                    "attributes": [
+                      "Personalization Tool",
+                      "Memory management"
+                    ]
+                  },
+                  {
+                    "name": "Pinecone",
+                    "similar": [
+                      "Chroma",
+                      "Weaviate"
+                    ],
+                    "attributes": [
+                      "Storage Tool",
+                      "Memory management"
+                    ]
+                  },
+                  {
+                    "name": "Chroma",
+                    "similar": [
+                      "Pinecone",
+                      "Weaviate"
+                    ],
+                    "attributes": [
+                      "Storage Tool",
+                      "Memory management"
+                    ]
+                  },
+                  {
+                    "name": "Weaviate",
+                    "similar": [
+                      "Pinecone",
+                      "Chroma"
+                    ],
+                    "attributes": [
+                      "Storage Tool",
+                      "Memory management"
+                    ]
+                  },
+                  {
+                    "name": "MongoDB",
+                    "similar": [
+                      "WhiteLodge",
+                      "Chroma"
+                    ],
+                    "attributes": [
+                      "Context Management",
+                      "Data storage"
+                    ]
+                  },
+                  {
+                    "name": "LangServe",
+                    "similar": [
+                      "E2B",
+                      "Ollama"
+                    ],
+                    "attributes": [
+                      "Agent Hosting",
+                      "Deployment platform"
+                    ]
+                  },
+                  {
+                    "name": "E2B",
+                    "similar": [
+                      "LangServe",
+                      "Ollama"
+                    ],
+                    "attributes": [
+                      "Agent Hosting",
+                      "Deployment platform"
+                    ]
+                  },
+                  {
+                    "name": "Ollama",
+                    "similar": [
+                      "LangServe",
+                      "E2B"
+                    ],
+                    "attributes": [
+                      "Agent Hosting",
+                      "Deployment platform"
+                    ]
+                  },
+                  {
+                    "name": "LangGraph",
+                    "similar": [
+                      "Semantic Kernel",
+                      "LlamaIndex"
+                    ],
+                    "attributes": [
+                      "Framework Tool",
+                      "Graph Management"
+                    ]
+                  },
+                  {
+                    "name": "LlamaIndex",
+                    "similar": [
+                      "LangGraph",
+                      "Semantic Kernel"
+                    ],
+                    "attributes": [
+                      "Framework Tool",
+                      "Graph Management"
+                    ]
+                  },
+                  {
+                    "name": "Semantic Kernel",
+                    "similar": [
+                      "LangGraph",
+                      "LlamaIndex"
+                    ],
+                    "attributes": [
+                      "Framework Tool",
+                      "Graph Management"
+                    ]
+                  },
+                  {
+                    "name": "agentops",
+                    "similar": [
+                      "context",
+                      "LangSmith"
+                    ],
+                    "attributes": [
+                      "Agent Evaluation Tool",
+                      "Performance Assessment"
+                    ]
+                  },
+                  {
+                    "name": "context",
+                    "similar": [
+                      "agentops",
+                      "LangSmith"
+                    ],
+                    "attributes": [
+                      "Agent Evaluation Tool",
+                      "Performance Assessment"
+                    ]
+                  },
+                  {
+                    "name": "LangSmith",
+                    "similar": [
+                      "agentops",
+                      "context"
+                    ],
+                    "attributes": [
+                      "Agent Evaluation Tool",
+                      "Performance Assessment"
+                    ]
+                  },
+                  {
+                    "name": "WHYLabs",
+                    "similar": [
+                      "griptape",
+                      "braintrust"
+                    ],
+                    "attributes": [
+                      "Developer Tools",
+                      "Data Management"
+                    ]
+                  },
+                  {
+                    "name": "griptape",
+                    "similar": [
+                      "WHYLabs",
+                      "braintrust"
+                    ],
+                    "attributes": [
+                      "Developer Tools",
+                      "Data Management"
+                    ]
+                  },
+                  {
+                    "name": "braintrust",
+                    "similar": [
+                      "WHYLabs",
+                      "griptape"
+                    ],
+                    "attributes": [
+                      "Developer Tools",
+                      "Data Management"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "cd74efad-4f0c-45ea-bc7e-3f7c5554c204",
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Map Attribute ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge1": {
+          "main": [
+            [
+              {
+                "node": "All Similar",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge2": {
+          "main": [
+            [
+              {
+                "node": "Change each Smiliar to the corresponding RecID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "gpt-4o": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Retrieve and Parser Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "JSON it": {
+          "main": [
+            [
+              {
+                "node": "Split Out Tools",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Schema": {
+          "main": [
+            [
+              {
+                "node": "make it a readable list",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "All Similar": {
+          "main": [
+            [
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Table: Tools": {
+          "main": [
+            [
+              {
+                "node": "Table: Tools",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Table: Attributes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "All Attributes": {
+          "main": [
+            [
+              {
+                "node": "Wait for Attribute Creation",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Map Agent Input": {
+          "main": [
+            [
+              {
+                "node": "Retrieve and Parser Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Tools": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Attributes",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Wait for Attribute Creation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "It Should exists": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map Attribute ID": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Attributes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only what we need": {
+          "main": [
+            [
+              {
+                "node": "Merge Old Data + RecID",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Split Out similar": {
+          "main": [
+            [
+              {
+                "node": "Generate Unique Hash for Similar",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Table: Attributes": {
+          "main": [
+            []
+          ]
+        },
+        "On form submission": {
+          "main": [
+            [
+              {
+                "node": "Map Agent Input",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create if not Exist": {
+          "main": [
+            [
+              {
+                "node": "Only what we need",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Attributes": {
+          "main": [
+            [
+              {
+                "node": "All Attributes",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Split Out each Attribute String",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Old Data + RecID": {
+          "main": [
+            [
+              {
+                "node": "Determine Attributes we should save",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Retrieve and Parser Agent",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Attribute exists": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Retrieve and Parser Agent": {
+          "main": [
+            [
+              {
+                "node": "JSON it",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for Attribute Creation": {
+          "main": [
+            [
+              {
+                "node": "Change each Attribute to the corresponding RecID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate Unique Hash for Name": {
+          "main": [
+            [
+              {
+                "node": "Create if not Exist",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge Old Data + RecID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out each Attribute String": {
+          "main": [
+            [
+              {
+                "node": "Check if Attribute exists",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Determine Similar we should save": {
+          "main": [
+            [
+              {
+                "node": "Save all this juicy data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate Unique Hash for Similar": {
+          "main": [
+            [
+              {
+                "node": "It Should exists",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Determine Attributes we should save": {
+          "main": [
+            [
+              {
+                "node": "Split Out similar",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Change each Smiliar to the corresponding RecID": {
+          "main": [
+            [
+              {
+                "node": "Determine Similar we should save",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Change each Attribute to the corresponding RecID": {
+          "main": [
+            [
+              {
+                "node": "Generate Unique Hash for Name",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 44,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 6
+        },
+        "n8n-nodes-base.code": {
+          "count": 4
+        },
+        "n8n-nodes-base.html": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 5
+        },
+        "n8n-nodes-base.crypto": {
+          "count": 2
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 5
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 11
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Marcel Claus-Ahrens",
+      "username": "geckse",
+      "bio": "Hey 👋 I'm an Automation Expert with a passion for AI workflow automations and AI agents in general. Coming from a software background, I bring the necessary hard skills but love using NoCode to get the job done faster – hence n8n.",
+      "verified": true,
+      "links": [
+        "https://let-the-work-flow.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/4765e05c5f4cdab88efcfd24b9c464910cea34e6121d350b452dd166cbc27abb?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 264,
+        "icon": "fa:key",
+        "name": "n8n-nodes-base.crypto",
+        "codex": {
+          "data": {
+            "alias": [
+              "Encrypt",
+              "SHA",
+              "Hash"
+            ],
+            "details": "The Crypto node allows you to hash and Hmac string in a specified format and sign a string using a private key. Use this node when you want to encrypt your data.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Crypto",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "key",
+          "type": "icon"
+        },
+        "displayName": "Crypto",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,719 @@
+{
+  "workflow": {
+    "id": 3482,
+    "name": "Post on X using Airtop and automate content pipelines",
+    "views": 246,
+    "recentViews": 6,
+    "totalViews": 246,
+    "createdAt": "2025-04-08T18:21:21.478Z",
+    "description": "### About The Post to X Automation\n\nSeamlessly automate posting to X using Airtop and Make.\n\n### How to Automate Posting to X with Airtop\n\nConsistently engaging your audience on X (formerly Twitter) can be a challenge, particularly when done manually. Developers and automation engineers often struggle with repetitive tasks like scheduling tweets, maintaining consistent posting cycles, and integrating content from various sources or AI-generated feeds. Manually managing content updates increases fatigue, human error, and decreases scalability.\n\nThis n8n automation, powered by Airtop, simplifies automated content publishing onto X. Whether you're sharing daily updates, integrating dynamically generated AI content, or streamlining your marketing content pipeline, Airtop’s automation helps eliminate manual labor and reduces potential execution errors.\n\n### Who is this Automation for?\n\n- Social Media Managers scheduling recurring or automated posts on X\n- Content Marketers integrating AI-generated content into their publishing process\n- Developers implementing automated social media pipelines\n- Automation Engineers minimizing errors and manual posting efforts\n\n### Key Benefits\n\n- Real-time, authenticated API postings via X\n- Reliable structured workflows minimize manual errors\n- Seamless integration with AI content pipelines\n\n### Use Cases\n\n- Automatically publish scheduled daily content updates\n- Seamlessly post AI-generated insights, news summaries or industry updates\n- Distribute alerts and event announcements reliably at set intervals\n- Maintain active audience engagement by automating regular, high-frequency posts\n\n\n### How the Post to X Automation Works\n\nThis Airtop automation works by using your [Airtop Profile](https://docs.airtop.ai/guides/how-to/saving-a-profile) signed-in into X via Airtop. Once authenticated securely with your X credentials, n8n handles the structured data flow, which can come from manual inputs, AI-generated sources, databases, or RSS feeds. Airtop then securely publishes the posts, providing reliable scheduled updates directly on X, removing manual oversight and streamlining your social media workflows.\n\n\n### What You’ll Need\n\n- An [Airtop API key](https://portal.airtop.ai/?utm_campaign=n8n)\n- Your X (Twitter) account\n- An Airtop Profile signed into X\n\n### Setting Up the Automation\n\n- Connect your Airtop account using your free Airtop API key\n- Create an [Airtop Profile](https://portal.airtop.ai/browser-profiles) and connect it to your X account\n- Activate and schedule your scenario to automate regular posting\n\n### Customize the Automation\n\nCustomize your posting workflow extensively using Airtop's built-in node in n8n:\n\n- Integrate diverse sources like RSS feeds and AI tools to dynamically customize automated posts\n- Schedule precise posting intervals or diversify times for maximum audience engagement\n- Set conditional logic to automate content posting based on predefined triggers and events\n- Utilize Airtop’s structured data flows to manage categories, hashtags, or mentions in your posts\n\n### Automation Best Practices\n\n- Consistently update security credentials for uninterrupted access\n- Clearly structure your workflow to simplify troubleshooting and logic updates\n- Monitor posting frequency to ensure optimal audience reach and engagement\n- Regularly review content sources to maintain quality control of automated postings\n\nHappy Automating!\n",
+    "workflow": {
+      "id": "plzObaqgoEvV4UU0",
+      "meta": {
+        "instanceId": "28a947b92b197fc2524eaba16e57560338657b2b0b5796300b2f1cedc1d0d355",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Post on X",
+      "tags": [
+        {
+          "id": "gNiDOCnjqCXR7phD",
+          "name": "Marketing",
+          "createdAt": "2025-04-15T01:08:25.516Z",
+          "updatedAt": "2025-04-15T01:08:25.516Z"
+        },
+        {
+          "id": "zKNO4Omjzfu6J25M",
+          "name": "Demo",
+          "createdAt": "2025-04-15T18:59:57.364Z",
+          "updatedAt": "2025-04-15T18:59:57.364Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "203a06a1-2e25-46df-9465-4d5740177249",
+          "name": "Create session",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            60,
+            180
+          ],
+          "parameters": {
+            "profileName": "={{ $json.airtop_profile }}",
+            "timeoutMinutes": 5,
+            "saveProfileOnTermination": true
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "Yi4YPNnovLVUjFn5",
+              "name": "Airtop API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "18c8ade3-8492-4e75-8310-3be4d7815ab6",
+          "name": "Create window",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            280,
+            180
+          ],
+          "parameters": {
+            "url": "https://x.com/",
+            "resource": "window",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "Yi4YPNnovLVUjFn5",
+              "name": "Airtop API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c46baeac-5d91-4656-a30f-0ca932e8042c",
+          "name": "Type text",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            500,
+            180
+          ],
+          "parameters": {
+            "text": "={{ $('Parameters').item.json.post_text }}",
+            "resource": "interaction",
+            "operation": "type",
+            "pressEnterKey": true,
+            "additionalFields": {},
+            "elementDescription": "\"What's happening?\" text box on top"
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "Yi4YPNnovLVUjFn5",
+              "name": "Airtop API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cfc19d89-8fb2-49c5-97a3-38ad03dffe31",
+          "name": "Click on Post",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            720,
+            180
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "additionalFields": {
+              "visualScope": "viewport"
+            },
+            "elementDescription": "Click on the Post button "
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "Yi4YPNnovLVUjFn5",
+              "name": "Airtop API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1b2a4d37-1fcd-4b6a-8db7-a7056c569ad4",
+          "name": "End session",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            940,
+            180
+          ],
+          "parameters": {
+            "operation": "terminate"
+          },
+          "credentials": {
+            "airtopApi": {
+              "id": "Yi4YPNnovLVUjFn5",
+              "name": "Airtop API"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2fdae018-aaca-4101-acdc-42d799463880",
+          "name": "When Executed by Another Workflow",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -380,
+            280
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "airtop_profile"
+                },
+                {
+                  "name": "post_text"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "2a2125ff-6acd-4aca-bc69-d148b6cbb678",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            20
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 220,
+            "height": 320,
+            "content": "### Heads up!\nTo make sure everything works smoothly, use an [Airtop Profile](https://docs.airtop.ai/guides/how-to/saving-a-profile) signed into x.com for the \"Create session\" node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ca75bf36-55c4-4496-9a77-3870d078bec2",
+          "name": "On form submission",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            -380,
+            80
+          ],
+          "webhookId": "bf22d894-7313-40b1-aefa-98bc518473bf",
+          "parameters": {
+            "options": {
+              "buttonLabel": "Post on X",
+              "appendAttribution": false,
+              "respondWithOptions": {
+                "values": {
+                  "formSubmittedText": "✅ Your post has been published!"
+                }
+              }
+            },
+            "formTitle": "Post on X",
+            "formFields": {
+              "values": [
+                {
+                  "fieldLabel": "Airtop profile name",
+                  "placeholder": "e.g. my-x-profile",
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "Text to post",
+                  "placeholder": "e.g. This X post was made with Airtop and n8n",
+                  "requiredField": true
+                }
+              ]
+            },
+            "responseMode": "lastNode",
+            "formDescription": "Enter the <a href=\"https://docs.airtop.ai/guides/how-to/saving-a-profile\" target=\"_blank\">Airtop Profile</a> and the content you would like to post on x.com"
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "d56e067b-9825-4a81-88a4-c65dac5a919c",
+          "name": "Parameters",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -160,
+            180
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "e612bf63-72bd-4b61-82c9-786a90b58b7b",
+                  "name": "airtop_profile",
+                  "type": "string",
+                  "value": "={{ $json[\"Airtop profile name\"] || $json.airtop_profile }}"
+                },
+                {
+                  "id": "567e5e7d-4efd-4d0a-a93c-6c7aed02c305",
+                  "name": "post_text",
+                  "type": "string",
+                  "value": "={{ $json[\"Text to post\"] || $json.post_text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "9129144f-d078-48f8-825a-7f8bbda4570b",
+      "connections": {
+        "Type text": {
+          "main": [
+            [
+              {
+                "node": "Click on Post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parameters": {
+          "main": [
+            [
+              {
+                "node": "Create session",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Click on Post": {
+          "main": [
+            [
+              {
+                "node": "End session",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create window": {
+          "main": [
+            [
+              {
+                "node": "Type text",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create session": {
+          "main": [
+            [
+              {
+                "node": "Create window",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On form submission": {
+          "main": [
+            [
+              {
+                "node": "Parameters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When Executed by Another Workflow": {
+          "main": [
+            [
+              {
+                "node": "Parameters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 9,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtop": {
+          "count": 5
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Airtop",
+      "username": "cesar-at-airtop",
+      "bio": "Airtop provides an intelligent browser automation API for AI agents, enabling seamless web interaction, including login, navigation, and data extraction from any site, even those with complex authentication - all with  natural language instructions.In simple terms, we allow you to automate anything humans can do online, on any site with just words",
+      "verified": true,
+      "links": [
+        "https://www.airtop.ai/"
+      ],
+      "avatar": "https://gravatar.com/avatar/d5894c2c744b03ab0766a6d1846484ea7cc1a19e57310afad70044183766dbf4?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1282,
+        "icon": "file:airtop.svg",
+        "name": "n8n-nodes-base.airtop",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtop/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtop/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Airtop"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0ibm9uZSI+PGcgZmlsdGVyPSJ1cmwoI2EpIj48ZyBjbGlwLXBhdGg9InVybCgjYikiPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjE2IiBmaWxsPSIjMTAyNjI2Ii8+PGcgZmlsdGVyPSJ1cmwoI2MpIj48cGF0aCBzdHJva2U9IiM1OEQxRUMiIHN0cm9rZS1vcGFjaXR5PSIuMiIgc3Ryb2tlLXdpZHRoPSIyMS44MjEiIGQ9Im0tMjQuMTcyLTMzLjMyNSA0MS45NDYgNTEuNDE0Ii8+PC9nPjxwYXRoIGZpbGw9InVybCgjZCkiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyLjU5OCA5LjI1OGMxLjYwNy0yLjU0NSA1LjMxOC0yLjU0NSA2LjkyNSAwbDIuMzMgMy42OWMuNzA1IDEuMTE1LS4wOTcgMi41Ny0xLjQxNiAyLjU3LTIuMjA3IDAtMy4wODgtLjg0MS0zLjY2LTQuMTgybC0xLjQyMy4wMDVjLS40OTYgMy4zNDYtMS41MDcgNC4xNzctNC4xNyA0LjE3N2wtLjAwNSAxLjQzN2MyLjY5NiAwIDQuMTc1IDEuNDk1IDQuMTc1IDMuNDU0YTIuOTQgMi45NCAwIDAgMS0yLjk0IDIuOTRoLTEuMjg1Yy0zLjIyNSAwLTUuMTg1LTMuNTU1LTMuNDYzLTYuMjgybDQuOTMyLTcuODA5em03LjEyNSAxNC4wOTJhMi45NDUgMi45NDUgMCAwIDEtMi45NDUtMi45NDZjMC0xLjk1NCAxLjMwNS0zLjQ0OSAzLjY1OS0zLjQ0OWgxLjQ0M2MxLjQ3OSAwIDMuMDkzLjkyNCAzLjA5MyAyLjc0NiAwIDIuMjA5LTIuNTExIDMuNjQ5LTMuOTIxIDMuNjQ5aC0xLjMyOXoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48L2c+PGRlZnM+PGZpbHRlciBpZD0iYSIgd2lkdGg9IjMyIiBoZWlnaHQ9IjM1IiB4PSIwIiB5PSItMiIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iQmFja2dyb3VuZEltYWdlRml4IiByZXN1bHQ9InNoYXBlIi8+PGZlQ29sb3JNYXRyaXggaW49IlNvdXJjZUFscGhhIiByZXN1bHQ9ImhhcmRBbHBoYSIgdmFsdWVzPSIwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAxMjcgMCIvPjxmZU9mZnNldCBkeT0iMSIvPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz48ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIGsyPSItMSIgazM9IjEiIG9wZXJhdG9yPSJhcml0aG1ldGljIi8+PGZlQ29sb3JNYXRyaXggdmFsdWVzPSIwIDAgMCAwIDAuMzQ1MDk4IDAgMCAwIDAgMC44MTk2MDggMCAwIDAgMCAwLjkyNTQ5IDAgMCAwIDAuMTYgMCIvPjxmZUJsZW5kIGluMj0ic2hhcGUiIHJlc3VsdD0iZWZmZWN0MV9pbm5lclNoYWRvd184MjBfMTA0NTUiLz48ZmVDb2xvck1hdHJpeCBpbj0iU291cmNlQWxwaGEiIHJlc3VsdD0iaGFyZEFscGhhIiB2YWx1ZXM9IjAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDEyNyAwIi8+PGZlT2Zmc2V0IGR5PSItMiIvPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz48ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIGsyPSItMSIgazM9IjEiIG9wZXJhdG9yPSJhcml0aG1ldGljIi8+PGZlQ29sb3JNYXRyaXggdmFsdWVzPSIwIDAgMCAwIDAuMDE0ODk4NSAwIDAgMCAwIDAuMDkyNjkwMSAwIDAgMCAwIDAuMDkyNjkwMSAwIDAgMCAwLjQgMCIvPjxmZUJsZW5kIGluMj0iZWZmZWN0MV9pbm5lclNoYWRvd184MjBfMTA0NTUiIHJlc3VsdD0iZWZmZWN0Ml9pbm5lclNoYWRvd184MjBfMTA0NTUiLz48L2ZpbHRlcj48ZmlsdGVyIGlkPSJjIiB3aWR0aD0iNzQuODU0IiBoZWlnaHQ9IjgxLjIwOSIgeD0iLTQwLjYyNyIgeT0iLTQ4LjIyMyIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iQmFja2dyb3VuZEltYWdlRml4IiByZXN1bHQ9InNoYXBlIi8+PGZlR2F1c3NpYW5CbHVyIHJlc3VsdD0iZWZmZWN0MV9mb3JlZ3JvdW5kQmx1cl84MjBfMTA0NTUiIHN0ZERldmlhdGlvbj0iNCIvPjwvZmlsdGVyPjxyYWRpYWxHcmFkaWVudCBpZD0iZCIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC0xMS42ODQzNSAxMS43MDQ3NiAtODkuMDUyMTUgLTg4Ljg5Njg2IDE5LjI4IDkuNTU3KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iLjYxMyIgc3RvcC1jb2xvcj0iI2ZmZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZiIgc3RvcC1vcGFjaXR5PSIuOCIvPjwvcmFkaWFsR3JhZGllbnQ+PGNsaXBQYXRoIGlkPSJiIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIGZpbGw9IiNmZmYiIHJ4PSIxNiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Airtop",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

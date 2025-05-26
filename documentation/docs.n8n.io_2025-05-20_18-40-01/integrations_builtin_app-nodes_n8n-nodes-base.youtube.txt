@@ -1,0 +1,77 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.youtube/
+Scraped_At: 2025-05-20T18:52:50.716989
+
+YouTube node
+#
+Use the YouTube node to automate work in YouTube, and integrate YouTube with other applications. n8n has built-in support for a wide range of YouTube features, including retrieving and updating channels, as well as creating and deleting playlists.
+On this page, you'll find a list of operations the YouTube node supports and links to more resources.
+Credentials
+Refer to
+YouTube credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Channel
+Retrieve a channel
+Retrieve all channels
+Update a channel
+Upload a channel banner
+Playlist
+Create a playlist
+Delete a playlist
+Get a playlist
+Retrieve all playlists
+Update a playlist
+Playlist Item
+Add an item to a playlist
+Delete a item from a playlist
+Get a playlist's item
+Retrieve all playlist items
+Video
+Delete a video
+Get a video
+Retrieve all videos
+Rate a video
+Update a video
+Upload a video
+Video Category
+Retrieve all video categories
+Templates and examples
+#
+⚡AI-Powered YouTube Video Summarization & Analysis
+by Joseph LePage
+View template details
+AI Youtube Trend Finder Based On Niche
+by Leonardo Grigorio
+View template details
+Hacker News to Video Content
+by Alex Kim
+View template details
+Browse YouTube integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

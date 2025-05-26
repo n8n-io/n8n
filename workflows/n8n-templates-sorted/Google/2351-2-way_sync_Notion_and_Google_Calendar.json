@@ -1,0 +1,3888 @@
+{
+  "workflow": {
+    "id": 2351,
+    "name": "2-way sync Notion and Google Calendar",
+    "views": 1998,
+    "recentViews": 0,
+    "totalViews": 1998,
+    "createdAt": "2024-07-19T18:38:58.692Z",
+    "description": "![image 5.jpg](fileId:824)\nThis workflow syncs multiple Notion databases to your Google Calendar. And it works both ways.\n\n### What events are supported?\n\nEverything except recurring events.\n\nAll day events, multiple day events, start and end date… these are all supported.\n\nYou set them in Notion and they stay in sync with Google. And vice versa.\n### Why doesn’t it support recurring events?\n\nNotion doesn’t support recurring events yet.\n\nSo when you create a recurring event in Google, it will only consider the first date, ignoring future occurrences of the event.\n\n### Can I connect more than one Notion database?\n\nYes. You can have many Notion databases synced to one Google Calendar account.\n\nYou can see how to do it in the workflow instructions.\n\nIt is recommended that you create more calendars in your account, so that you can link each calendar to a different database in Notion. But that’s a choice.\n![image 1.png](fileId:823)\n\n### What happens if I delete an event or page?\n\n- Notion page deleted → Deletes event in Google\n- Notion date property cleared → Deletes event in Google\n- Google event deleted → Clears the date property in Notion, but keeps the page, so you don’t lose your work.\n\n### Does it update the events?\n\nYes. When you update the event in Google or in Notion it syncs both ways.\n\n### How can I know what Notion item was linked to an event?\n\nEither by the name or by clicking the hyperlink in the event description that says: **👉 View in Notion**.\n\n\n### When I create a new event in Google, does it add an item to Notion?\n\nYes. When you create an event inside one of your calendars, the item is synced to the corresponding Notion database.\n\n### Does it sync event descriptions?\n\nNo. The event description will always be “View in Notion”. Even if you change it in Google Calendar it will be overwritten when you make a change to the Notion page.\n\n🎉 When you buy this template you receive step-by-step instructions on how to set it up.\n\n### Check out my other templates\n👉 [**https://n8n.io/creators/solomon/**](https://n8n.io/creators/solomon/)",
+    "workflow": {
+      "meta": {
+        "instanceId": "f9c40bccfbfb973b8ba2bfd7b70b906c2376bb9900216d1ce424582c3097fb66"
+      },
+      "nodes": [
+        {
+          "id": "3a18e9f6-997b-4e25-922c-5b109d33f081",
+          "name": "Google Calendar1",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            1800,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "0d351d0c-372a-461a-8a3e-12f8545c04d2",
+          "name": "Add GCal ID",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2200,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "81c2f871-8186-4f51-8e4b-13970429a0d4",
+          "name": "No Operation, do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            640,
+            3360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "7e0790cf-a411-443b-b8f1-65e93ef03708",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            120,
+            3260
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "eb5e64fc-347f-4635-8314-a40637f88245",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -200,
+            1720
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4b8b515f-54b0-479a-9457-3f2f993a8a7d",
+          "name": "Remove GCal ID2",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2200,
+            2180
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "1d8ecd80-98f5-4a26-b0d2-84bde02002d5",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2680,
+            5420
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0057f168-882c-4dad-9e32-06a8c6290b7a",
+          "name": "Does it have a date?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            420,
+            1740
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "34a74d54-b591-4281-804c-8ce14a3c2d1b",
+          "name": "Does it have a time?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            820,
+            1640
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "8601e9f4-8e83-4afb-a2ca-cbb099ad3495",
+          "name": "Delete event1",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            2000,
+            2180
+          ],
+          "parameters": {},
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "6b8fab17-323c-4c20-ae02-0693e5c639ab",
+          "name": "Does it have a date?1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            420,
+            3260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "a0008135-c549-4b62-9b39-f817855fafb8",
+          "name": "Does it have a time?1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            640,
+            3200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "746e3f64-0e7b-488e-853e-90fdd4966624",
+          "name": "Find Task",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -1260,
+            5660
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "61f7b2ee-c2e2-403b-a81f-8dcab9b9144d",
+          "name": "Remove GCal ID and Date",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -1020,
+            5660
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "23c9f058-e202-4505-9488-9702628ca42f",
+          "name": "Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -3380,
+            2450
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "278b1abc-49b7-4534-84cb-4b8c8b1d5292",
+          "name": "Google Calendar3",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            1800,
+            3080
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "af8e3af6-5846-4691-a701-672087957b90",
+          "name": "Google Calendar",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            1800,
+            2840
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "4c87fa06-3c70-4080-9419-c99395eef12f",
+          "name": "Add GCal ID3",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2200,
+            2840
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "6fef88bb-db3c-46ae-a044-9d27744d4246",
+          "name": "Does it have an end date?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            960,
+            2980
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1a758385-7911-4484-8b26-bb4a26146267",
+          "name": "Add GCal ID1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2200,
+            3080
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "5985e5a6-2c1c-4e59-bf92-97ff524c9704",
+          "name": "Loop",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1220,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "832f95d9-eb18-44b7-b0bd-b50d5661e87b",
+          "name": "Loop1",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1600,
+            3080
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "73722a78-5075-4a5f-99e2-b88ab726d2fb",
+          "name": "Loop2",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1600,
+            2840
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "27811ab3-34d2-491d-921f-4b77795f330c",
+          "name": "Loop3",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1800,
+            2180
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "10ca71a6-17a7-42ab-ab5e-ee1631c6fbba",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -780,
+            2418
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bc3a3405-e4e7-4bd1-8cab-b3d7680888c4",
+          "name": "Creates defaultEndDate with 1h duration",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            -700,
+            2580
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "dc31f101-68f2-4578-8fba-a028264ef1d2",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -3760,
+            2220
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2586e103-9158-4632-aa93-e44fac8f75f0",
+          "name": "Delete event2",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            2200,
+            960
+          ],
+          "parameters": {},
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "650c353d-41c8-4049-aa07-870359d71e7f",
+          "name": "Loop4",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            2000,
+            960
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "3b5eb5d1-281a-4c9d-8017-3bd975262e3e",
+          "name": "Notion1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -3380,
+            2610
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "0fa097f3-7496-4f52-adeb-2d7af2933e58",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            -3080,
+            2530
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "f101efdc-f254-4446-bb5b-51c950fdda83",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2420,
+            2160
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a2204aef-1a1d-4f7d-ab75-0dabaee7559a",
+          "name": "Does it have an end date?1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1100,
+            1440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "32e33106-38fd-45d4-a815-2b2ab65b614e",
+          "name": "Does it have an end date?2",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            960,
+            3580
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "31ed9b79-47ad-4ddc-a364-83694c2acc60",
+          "name": "Google Calendar2",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            1800,
+            3680
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "7d3369b8-2e40-4e23-8a89-8f318face8d4",
+          "name": "Add GCal ID2",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            2200,
+            3680
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "28629dc4-4bcc-4f2c-b58c-99385ad80d79",
+          "name": "Sticky Note18",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            3700
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ae036e35-64de-427e-9316-1e60e20bf339",
+          "name": "Loop5",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1600,
+            3680
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "7aed88e8-8430-4936-b7f9-553c4e30cae0",
+          "name": "Sticky Note19",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            3460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5f071fb4-4b1c-4a11-82ce-7054944dbb09",
+          "name": "Sticky Note20",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            2840
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9b6b7eb5-48cb-45c5-8e20-afcdcd766394",
+          "name": "Sticky Note21",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            3100
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "eb9a7ba0-f5c4-40de-bf7d-4b6e733a0c24",
+          "name": "Sticky Note26",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            1920
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bf9bd2a4-5e42-465d-a3c3-78a5f49a4abe",
+          "name": "Sticky Note27",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            1720
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dd9e16eb-7270-48d5-970c-34fb75bff68e",
+          "name": "Sticky Note28",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            1300
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b704d95d-7614-4f86-8866-48e1e6a04039",
+          "name": "Sticky Note29",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            1500
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "69e20226-25e5-4e17-90cf-fd9ac6bce06a",
+          "name": "Sticky Note31",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            960
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c9a8587c-0cb4-4642-b5f1-978a91e87125",
+          "name": "GCal_ID exists in Notion?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -400,
+            2580
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ededbc5d-9737-43ef-8abd-887e4fd7b5cf",
+          "name": "Is the page deleted?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            120,
+            1720
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ec73842a-8bee-4879-9e72-f039b0dadb8c",
+          "name": "Does it have an end date?3",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1100,
+            1740
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "54e7ca30-96e5-40cc-82e3-5a56b7014dfe",
+          "name": "Sticky Note33",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2400,
+            2180
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2266b304-613e-4df0-987e-59a646a2b681",
+          "name": "Add 1 day to end date",
+          "type": "n8n-nodes-base.dateTime",
+          "notes": "Google Calendar and Notion handle end dates differently, when there's no time set.\n\nIf a date in Notion is from Nov-10 to Nov-12, in Google it will show \"Nov-10 at 00:00\" to \"Nov-12 at 00:00\".\nMeaning the event would end at the beggining of the day in Nov-12, not lasting all day.\n\nSo to make an event last all day in Nov-12 you have to make the end_date \"Nov-13 at 00:00\".",
+          "position": [
+            1600,
+            1720
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "7b96172c-353f-4b25-9742-f41940abb3e8",
+          "name": "Format date",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            1800,
+            1720
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "27ca6e66-45ec-4a1d-ae01-37b229528597",
+          "name": "Update to All Day event",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            1720
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "8641435e-564b-4be4-bbf2-3b6ee67e7333",
+          "name": "Update to All Day event2",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            1920
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "d11b3251-947c-4fbc-a78f-772f2b0e939b",
+          "name": "Update dateTime event1",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            1480
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "e585be3b-4a35-4456-9d4a-195255396d2b",
+          "name": "Add 1 day to end date1",
+          "type": "n8n-nodes-base.dateTime",
+          "notes": "Google Calendar and Notion handle end dates differently, when there's no time set.\n\nIf a date in Notion is from Nov-10 to Nov-12, in Google it will show \"Nov-10 at 00:00\" to \"Nov-12 at 00:00\".\nMeaning the event would end at the beggining of the day in Nov-12, not lasting all day.\n\nSo to make an event last all day in Nov-12 you have to make the end_date \"Nov-13 at 00:00\".",
+          "position": [
+            1420,
+            3440
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "200f2701-5598-4285-a5e5-4c203e2d5c42",
+          "name": "Format date1",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            1600,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "6c39c38d-dfa4-4dc3-ad66-84e2f72dc6c3",
+          "name": "Page edited by a user?",
+          "type": "n8n-nodes-base.if",
+          "notes": "This prevents infinite loops of pages being edited by n8n and triggering the workflow again and again.\nIt will only update Google Calendar events when a user edits the Notion pages.",
+          "position": [
+            -1220,
+            2600
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "637a1dc7-291f-41a9-90b8-c3cd6a08e2c5",
+          "name": "Do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -980,
+            2780
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "13b5c225-1ed5-453e-b9b7-febaf8da0e9e",
+          "name": "Get future events + yesterday",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            -3340,
+            4340
+          ],
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d04d3f52-1674-4f5e-99cb-97674bb36eba",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2440,
+            2060
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5da34cb8-fded-4ac0-a08d-55ee6ed4d49a",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2420,
+            4120
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0acbdf5e-9293-4384-b395-ce50708250b9",
+          "name": "Calculate timeDifference between Google's updated_at  and our own updated_at fields",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            -780,
+            4860
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "d23576c0-9fb7-432c-ae4e-bb715b645c44",
+          "name": "Only events that were edited 2s after the last update",
+          "type": "n8n-nodes-base.filter",
+          "notes": "This prevents an infinite loop.\n\nWhen you edit your Notion page, our automation edits the Google event. This would activate the Google trigger again and again.\n\nUsing the field \"lastUpdatedByAutomation\" we can check if the update happened after our automation ran. Meaning the user was the one that edited the event.",
+          "position": [
+            -580,
+            4860
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "142cfb96-24d2-4441-bd24-1ea576688a81",
+          "name": "Does it have a time?2",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -360,
+            4860
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "b45ffde6-4def-4bc5-b2d2-0caabaefab64",
+          "name": "Subtract 1 day from end_date",
+          "type": "n8n-nodes-base.dateTime",
+          "notes": "Google Calendar and Notion handle end dates differently, when there's no time set.\n\nIf a date in Notion is from Nov-10 to Nov-12, in Google it will show \"Nov-10 at 00:00\" to \"Nov-12 at 00:00\".\n\nWhen you set an event in Google from Nov-12 to Nov-13, it sets the end date to \"Nov-14 at 00:00\" behind the scenes.\nMeaning the event would end at the beggining of Nov-14, lasting all day long during Nov-13.\n\nBut Notion considers Nov-12 to Nov-13 already as all day dates.\nSo Nov-14 in Google must be Nov-13 in Notion.",
+          "position": [
+            -140,
+            4960
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "126de2b4-2f3f-4861-9000-8fecf5506498",
+          "name": "Is it a new event?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -1040,
+            4700
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "95ec58b5-c2b1-4f29-85c1-a761ba727184",
+          "name": "Format end_date",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            60,
+            4960
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "9c46514a-5fbd-49be-b7ed-1af55b68e8ac",
+          "name": "Add extendedProperties to Google event",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2200,
+            1300
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "10e06a7b-1383-41ef-b3d5-1f3cfd908c48",
+          "name": "Add extendedProperties to Google event1",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2200,
+            1480
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "ffa0be20-da4c-41c6-a9ae-3634b416e87c",
+          "name": "Add extendedProperties to Google event2",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2200,
+            1720
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "64ca51a5-07fa-45e1-8a54-6ead4509c442",
+          "name": "Add extendedProperties to Google event3",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2200,
+            1920
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "59a92520-de64-49b8-8578-d270b8fc4cd9",
+          "name": "Add extendedProperties to Google event4",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            2840
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "ac606d7f-a126-4d88-a10f-9b619dec16c0",
+          "name": "Add extendedProperties to Google event5",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            3080
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "d967e83d-5628-48b2-b2b7-4d0dfae91ebe",
+          "name": "Add extendedProperties to Google event6",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "91fe2915-76fa-43b0-b2de-3dcdc1631a13",
+          "name": "Add extendedProperties to Google event7",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            3680
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "dd406eca-e716-4b3e-b2a7-570413de04d8",
+          "name": "Does it really have an end_date?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            260,
+            4960
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "16a27549-2591-4c24-bab5-2bcb501a9020",
+          "name": "Does it have a time?3",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -800,
+            4360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ea743592-3f1a-472e-959f-9e0f290617d5",
+          "name": "Subtract 1 day from end_date1",
+          "type": "n8n-nodes-base.dateTime",
+          "notes": "Google Calendar and Notion handle end dates differently, when there's no time set.\n\nIf a date in Notion is from Nov-10 to Nov-12, in Google it will show \"Nov-10 at 00:00\" to \"Nov-12 at 00:00\".\n\nWhen you set an event in Google from Nov-12 to Nov-13, it sets the end date to \"Nov-14 at 00:00\" behind the scenes.\nMeaning the event would end at the beggining of Nov-14, lasting all day long during Nov-13.\n\nBut Notion considers Nov-12 to Nov-13 already as all day dates.\nSo Nov-14 in Google must be Nov-13 in Notion.",
+          "position": [
+            -580,
+            4460
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "47e174f1-dd50-4da5-997b-4c0d2ed4dbc4",
+          "name": "Format end_date1",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            -380,
+            4460
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "bfdea8a2-0449-4465-877b-2a65a622e264",
+          "name": "Does it really have an end_date?1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -180,
+            4460
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "8177c81d-1554-4a54-8c59-e0e63477ca5e",
+          "name": "Create page1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            40,
+            4360
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ccae88d6-d478-46ce-843c-ad067b7e50c5",
+          "name": "Create page2",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            40,
+            4560
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "cd8d6a07-8d04-49ed-af10-642183aa7890",
+          "name": "Add extendedProperties to Google event8",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -380,
+            4260
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "40beec9f-60e5-4057-abd3-1aae9f9da8c3",
+          "name": "Add extendedProperties to Google event9",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            220,
+            4360
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "e03cf1b8-ab0e-4345-afc3-f191b0e9ca1f",
+          "name": "Add extendedProperties to Google event10",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            220,
+            4560
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "21b60a3c-3c5b-4910-96a9-955e8898c159",
+          "name": "Globals",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1800,
+            2600
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ffe2583f-fa93-4cb0-a736-fd4efc6c233d",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1940,
+            1860
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6d30ab31-321b-489e-9009-f448b37e912e",
+          "name": "Set the current database and calendar IDs",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1480,
+            2600
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "d82a6ea3-a358-48eb-8b82-e34419d4ea9a",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1900,
+            4500
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2afa29f9-a466-422e-b696-8a71ea5a9b68",
+          "name": "Globals1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1800,
+            4700
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "cf4d240c-7520-4697-a479-b9c3721bcd20",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1900,
+            5460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1ab3989f-b59a-4d11-b09b-b4aca8561651",
+          "name": "Globals2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1800,
+            5660
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "271285ea-ddfa-4248-b1ac-b16100ec7db3",
+          "name": "Set the current database and calendar IDs2",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1500,
+            5660
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "6954bf0a-8e77-4c20-86e7-b54984c1f6a8",
+          "name": "Sticky Note16",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -3440,
+            4220
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7e769718-d0d7-4377-9949-12296514676a",
+          "name": "Sticky Note17",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2440,
+            4220
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f15e0a5d-f477-4041-b820-06e1810b76e4",
+          "name": "Sticky Note34",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2400,
+            5200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3bf2f095-1a25-465b-a17d-a0a8caf4589c",
+          "name": "Event Updated",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            -2240,
+            4340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "810ed24a-34bf-4051-bffa-06b31184c0a7",
+          "name": "When clicking \"Test workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "disabled": true,
+          "position": [
+            -3700,
+            2530
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "0e609ffa-048b-46aa-945f-ca68bc7e3644",
+          "name": "Event Created",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            -2400,
+            4340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "fc35dce6-ab0d-4fd3-b95a-3a0244bcf2ea",
+          "name": "Sticky Note35",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2660,
+            4340
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d104afa4-af2e-4cda-b586-021c6a741a0c",
+          "name": "Update page1 - continue on error",
+          "type": "n8n-nodes-base.notion",
+          "onError": "continueRegularOutput",
+          "position": [
+            480,
+            5060
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "e7000c4d-92e0-488c-a0af-4352341836fe",
+          "name": "Sticky Note36",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            660,
+            4880
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e9f27683-71ad-4b29-a3b1-b1d782ea7458",
+          "name": "Find deleted pages1",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -580,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "8a1a80d3-b6cc-492e-affe-04b1fb899cee",
+          "name": "Delete event3",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            -400,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "676b56d5-496d-4860-8b26-a30656222561",
+          "name": "Sticky Note38",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2420,
+            3180
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a325c4e9-95ce-4a08-8d18-746bdebd38f3",
+          "name": "Get future events1",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            -1120,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 1.1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "6f62f364-e3c7-47f7-9379-4366dc6ec07f",
+          "name": "Find related pages1",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -760,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "f43c8dfe-bbae-4075-a378-cbfbff7e8f1f",
+          "name": "extendedProperties exist?",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -940,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "587ce95b-e1f9-41a1-bde4-ae7f3e2ef901",
+          "name": "Set the current database and calendar IDs1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1500,
+            4700
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "656cd25f-d4bb-4d66-87ac-fbe34b1d5f48",
+          "name": "Update page2 - continue on error",
+          "type": "n8n-nodes-base.notion",
+          "onError": "continueRegularOutput",
+          "position": [
+            -140,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "3b40300f-09ea-44c0-b8c0-12c93da3c007",
+          "name": "Update page - continue on error",
+          "type": "n8n-nodes-base.notion",
+          "onError": "continueRegularOutput",
+          "position": [
+            480,
+            4880
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "2d0903c8-4809-42ea-a7cb-01c494173d6a",
+          "name": "Create page",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            -580,
+            4260
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "130dc415-dba1-46f7-a15b-fa42cc87146d",
+          "name": "Update dateTime event",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2000,
+            1300
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "388ee14d-8919-4776-948f-f859efdb2711",
+          "name": "Set some fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -980,
+            2580
+          ],
+          "parameters": {},
+          "typeVersion": 3.2
+        },
+        {
+          "id": "5df14c71-295d-40e5-996c-2b75f20c16f5",
+          "name": "Page Updated - Meetings",
+          "type": "n8n-nodes-base.notionTrigger",
+          "position": [
+            -2340,
+            2480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "79bd48dc-f7c6-4106-ac93-3f599ae59a01",
+          "name": "Page Updated - Tasks",
+          "type": "n8n-nodes-base.notionTrigger",
+          "position": [
+            -2340,
+            2300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "308d2ed2-ccb3-4f40-84f6-b1a733837a4b",
+          "name": "Event Updated1",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            -2240,
+            4540
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "a6acb3a9-a597-40c7-9637-460e9eb90f5f",
+          "name": "Event Created1",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            -2400,
+            4540
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "7c5e7a47-a99e-4296-b156-df38ca99fe4b",
+          "name": "Sticky Note37",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2660,
+            4540
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fddbb482-473b-4746-a1bf-87131ad7326b",
+          "name": "Deleted - Tasks",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            -2320,
+            5340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1cd44f67-489a-4810-bc7a-5b80cc76fdfe",
+          "name": "Deleted - Meetings",
+          "type": "n8n-nodes-base.googleCalendarTrigger",
+          "position": [
+            -2320,
+            5520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2e3003b9-11eb-4fbc-bfea-83e21073d43a",
+          "name": "Globals3",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1800,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "97adf269-1496-4714-a013-172bc244ae19",
+          "name": "Split fields",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -1480,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "aec3c889-a455-4572-840c-9641bfea3283",
+          "name": "Only calendarId",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -1300,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "f09c0a88-e976-4ba0-b715-a8feb71fe39a",
+          "name": "Sticky Note41",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1900,
+            3100
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "81b1a8dc-a226-4fea-933d-545c093c701b",
+          "name": "Every 3min",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -2080,
+            3300
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Loop": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Add 1 day to end date1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop1": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Google Calendar3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop2": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Google Calendar",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop3": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Delete event1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop4": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Delete event2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop5": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Google Calendar2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Globals": {
+          "main": [
+            [
+              {
+                "node": "Set the current database and calendar IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion1": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Globals1": {
+          "main": [
+            [
+              {
+                "node": "Set the current database and calendar IDs1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Globals2": {
+          "main": [
+            [
+              {
+                "node": "Set the current database and calendar IDs2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Globals3": {
+          "main": [
+            [
+              {
+                "node": "Split fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find Task": {
+          "main": [
+            [
+              {
+                "node": "Remove GCal ID and Date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Every 3min": {
+          "main": [
+            [
+              {
+                "node": "Globals3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add GCal ID": {
+          "main": [
+            [
+              {
+                "node": "Loop",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create page": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event8",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format date": {
+          "main": [
+            [
+              {
+                "node": "Update to All Day event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add GCal ID1": {
+          "main": [
+            [
+              {
+                "node": "Loop1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add GCal ID2": {
+          "main": [
+            [
+              {
+                "node": "Loop5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add GCal ID3": {
+          "main": [
+            [
+              {
+                "node": "Loop2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create page1": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event9",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create page2": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event10",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format date1": {
+          "main": [
+            [
+              {
+                "node": "Google Calendar1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split fields": {
+          "main": [
+            [
+              {
+                "node": "Only calendarId",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete event1": {
+          "main": [
+            [
+              {
+                "node": "Remove GCal ID2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete event2": {
+          "main": [
+            [
+              {
+                "node": "Loop4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Event Created": {
+          "main": [
+            [
+              {
+                "node": "Globals1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Event Updated": {
+          "main": [
+            [
+              {
+                "node": "Globals1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Event Created1": {
+          "main": [
+            [
+              {
+                "node": "Globals1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Event Updated1": {
+          "main": [
+            [
+              {
+                "node": "Globals1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Deleted - Tasks": {
+          "main": [
+            [
+              {
+                "node": "Globals2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format end_date": {
+          "main": [
+            [
+              {
+                "node": "Does it really have an end_date?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Calendar": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only calendarId": {
+          "main": [
+            [
+              {
+                "node": "Get future events1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remove GCal ID2": {
+          "main": [
+            [
+              {
+                "node": "Loop3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set some fields": {
+          "main": [
+            [
+              {
+                "node": "Creates defaultEndDate with 1h duration",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format end_date1": {
+          "main": [
+            [
+              {
+                "node": "Does it really have an end_date?1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Calendar1": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event6",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Calendar2": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event7",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Calendar3": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Deleted - Meetings": {
+          "main": [
+            [
+              {
+                "node": "Globals2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get future events1": {
+          "main": [
+            [
+              {
+                "node": "extendedProperties exist?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is it a new event?": {
+          "main": [
+            [
+              {
+                "node": "Does it have a time?3",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Calculate timeDifference between Google's updated_at  and our own updated_at fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find deleted pages1": {
+          "main": [
+            [
+              {
+                "node": "Delete event3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find related pages1": {
+          "main": [
+            [
+              {
+                "node": "Find deleted pages1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have a date?": {
+          "main": [
+            [
+              {
+                "node": "Does it have a time?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Loop3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have a time?": {
+          "main": [
+            [
+              {
+                "node": "Does it have an end date?1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Does it have an end date?3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is the page deleted?": {
+          "main": [
+            [
+              {
+                "node": "Loop4",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Does it have a date?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Page Updated - Tasks": {
+          "main": [
+            [
+              {
+                "node": "Globals",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add 1 day to end date": {
+          "main": [
+            [
+              {
+                "node": "Format date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have a date?1": {
+          "main": [
+            [
+              {
+                "node": "Does it have a time?1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "No Operation, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have a time?1": {
+          "main": [
+            [
+              {
+                "node": "Does it have an end date?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Does it have an end date?2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have a time?2": {
+          "main": [
+            [
+              {
+                "node": "Update page2 - continue on error",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Subtract 1 day from end_date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have a time?3": {
+          "main": [
+            [
+              {
+                "node": "Create page",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Subtract 1 day from end_date1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update dateTime event": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add 1 day to end date1": {
+          "main": [
+            [
+              {
+                "node": "Format date1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Page edited by a user?": {
+          "main": [
+            [
+              {
+                "node": "Set some fields",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update dateTime event1": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Page Updated - Meetings": {
+          "main": [
+            [
+              {
+                "node": "Globals",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update to All Day event": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update to All Day event2": {
+          "main": [
+            [
+              {
+                "node": "Add extendedProperties to Google event3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have an end date?": {
+          "main": [
+            [
+              {
+                "node": "Loop2",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Loop1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GCal_ID exists in Notion?": {
+          "main": [
+            [
+              {
+                "node": "Is the page deleted?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Does it have a date?1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "extendedProperties exist?": {
+          "main": [
+            [
+              {
+                "node": "Find related pages1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have an end date?1": {
+          "main": [
+            [
+              {
+                "node": "Update dateTime event",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update dateTime event1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have an end date?2": {
+          "main": [
+            [
+              {
+                "node": "Loop",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Loop5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it have an end date?3": {
+          "main": [
+            [
+              {
+                "node": "Add 1 day to end date",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update to All Day event2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subtract 1 day from end_date": {
+          "main": [
+            [
+              {
+                "node": "Format end_date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Subtract 1 day from end_date1": {
+          "main": [
+            [
+              {
+                "node": "Format end_date1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Test workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Notion1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it really have an end_date?": {
+          "main": [
+            [
+              {
+                "node": "Update page - continue on error",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update page1 - continue on error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Does it really have an end_date?1": {
+          "main": [
+            [
+              {
+                "node": "Create page1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Create page2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add extendedProperties to Google event4": {
+          "main": [
+            [
+              {
+                "node": "Add GCal ID3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add extendedProperties to Google event5": {
+          "main": [
+            [
+              {
+                "node": "Add GCal ID1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add extendedProperties to Google event6": {
+          "main": [
+            [
+              {
+                "node": "Add GCal ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add extendedProperties to Google event7": {
+          "main": [
+            [
+              {
+                "node": "Add GCal ID2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Creates defaultEndDate with 1h duration": {
+          "main": [
+            [
+              {
+                "node": "GCal_ID exists in Notion?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set the current database and calendar IDs": {
+          "main": [
+            [
+              {
+                "node": "Page edited by a user?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set the current database and calendar IDs1": {
+          "main": [
+            [
+              {
+                "node": "Is it a new event?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set the current database and calendar IDs2": {
+          "main": [
+            [
+              {
+                "node": "Find Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only events that were edited 2s after the last update": {
+          "main": [
+            [
+              {
+                "node": "Does it have a time?2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate timeDifference between Google's updated_at  and our own updated_at fields": {
+          "main": [
+            [
+              {
+                "node": "Only events that were edited 2s after the last update",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 127,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 16
+        },
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.code": {
+          "count": 3
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 4
+        },
+        "n8n-nodes-base.notion": {
+          "count": 16
+        },
+        "n8n-nodes-base.dateTime": {
+          "count": 10
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 29
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 15
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.notionTrigger": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleCalendar": {
+          "count": 9
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 6
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleCalendarTrigger": {
+          "count": 6
+        }
+      }
+    },
+    "user": {
+      "name": "Solomon",
+      "username": "solomon",
+      "bio": "Freelance consultant from Brazil, specializing in automations and data analysis. I work with select clients, addressing their toughest projects.\n\nFor business inquiries, email me at automations.solomon@gmail.com or message me on Telegram for a faster response.\n\n",
+      "verified": true,
+      "links": [
+        "https://t.me/salomaoguilherme"
+      ],
+      "avatar": "https://gravatar.com/avatar/79aa147f090807fe0f618fb47a1de932669e385bb0c84bf3a7f891ae7d174256?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 221,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.dateTime",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Date & Time",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Date & Time",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 317,
+        "icon": "file:googleCalendar.svg",
+        "name": "n8n-nodes-base.googleCalendar",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automation for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecalendar/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Calendar"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTYxLjA1MiAxOC45NDdIMTguOTQ3djQyLjEwNWg0Mi4xMDV6Ii8+PHBhdGggZmlsbD0iI2VhNDMzNSIgZD0iTTYxLjA1MyA4MCA4MCA2MS4wNTNINjEuMDUzeiIvPjxwYXRoIGZpbGw9IiNmYmJjMDQiIGQ9Ik04MCAxOC45NDdINjEuMDUzdjQyLjEwNUg4MHoiLz48cGF0aCBmaWxsPSIjMzRhODUzIiBkPSJNNjEuMDUyIDYxLjA1M0gxOC45NDdWODBoNDIuMTA1eiIvPjxwYXRoIGZpbGw9IiMxODgwMzgiIGQ9Ik0wIDYxLjA1M3YxMi42MzJBNi4zMTQgNi4zMTQgMCAwIDAgNi4zMTYgODBoMTIuNjMyVjYxLjA1M3oiLz48cGF0aCBmaWxsPSIjMTk2N2QyIiBkPSJNODAgMTguOTQ3VjYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDczLjY4NSAwSDYxLjA1M3YxOC45NDd6Ii8+PHBhdGggZmlsbD0iIzQyODVmNCIgZD0iTTYxLjA1MyAwSDYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDAgNi4zMTZ2NTQuNzM3aDE4Ljk0N1YxOC45NDdoNDIuMTA1VjB6TTI3LjU4NCA1MS42MTFjLTEuNTc0LTEuMDYzLTIuNjYzLTIuNjE2LTMuMjU4LTQuNjY4bDMuNjUzLTEuNTA1cS40OTggMS44OTQgMS43MzcgMi45MzdjMS4yMzkgMS4wNDMgMS44MjEgMS4wMzcgMi45ODkgMS4wMzdxMS43OTIgMCAzLjA3OS0xLjA4OWMxLjI4Ny0xLjA4OSAxLjI5LTEuNjUzIDEuMjktMi43NzRhMy40NCAzLjQ0IDAgMCAwLTEuMzU4LTIuODExYy0uOTA1LS43MjctMi4wNDItMS4wODktMy40LTEuMDg5aC0yLjExMXYtMy42MTZIMzIuMXExLjc1MiAwIDIuOTUzLS45NDdjMS4yMDEtLjk0NyAxLjItMS40OTUgMS4yLTIuNTk1cTAtMS40NjctMS4wNzQtMi4zNDJjLTEuMDc0LS44NzUtMS42MjEtLjg3OS0yLjcyMS0uODc5cS0xLjYxLS4wMDItMi41NTguODU4Yy0uOTQ4Ljg2LTEuMTA2IDEuMzAxLTEuMzc5IDIuMTExbC0zLjYxNi0xLjUwNWMuNDc5LTEuMzU4IDEuMzU4LTIuNTU4IDIuNjQ3LTMuNTk1czIuOTM3LTEuNTU4IDQuOTM3LTEuNTU4cTIuMjItLjAwMiAzLjk4OS44NThjMS43NjkuODYgMi4xMDUgMS4zNjggMi43NzQgMi4zNzlzMSAyLjE1MyAxIDMuNDE2cTAgMS45MzItLjkzMiAzLjI3NGMtLjkzMiAxLjM0Mi0xLjM4NCAxLjU3OS0yLjI4OSAyLjA1OHYuMjE2YTYuOTUgNi45NSAwIDAgMSAyLjkzNyAyLjI4OXExLjE0NiAxLjUzOCAxLjE0NyAzLjY4NGMuMDAxIDIuMTQ2LS4zNjMgMi43MTEtMS4wODkgMy44MzJzLTEuNzMyIDIuMDA1LTMuMDA1IDIuNjQ3Yy0xLjI3OS42NDItMi43MTYuOTY4LTQuMzExLjk2OC0xLjg0Ny4wMDUtMy41NTMtLjUyNi01LjEyNi0xLjU4OXptMjIuNDM3LTE4LjEyNi00LjAxIDIuOS0yLjAwNS0zLjA0MiA3LjE5NS01LjE4OWgyLjc1OHYyNC40NzloLTMuOTM3VjMzLjQ4NHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Calendar",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 488,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notionTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.notiontrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Notion Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 539,
+        "icon": "file:googleCalendar.svg",
+        "name": "n8n-nodes-base.googleCalendarTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googlecalendartrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Google Calendar Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTYxLjA1MiAxOC45NDdIMTguOTQ3djQyLjEwNWg0Mi4xMDV6Ii8+PHBhdGggZmlsbD0iI2VhNDMzNSIgZD0iTTYxLjA1MyA4MCA4MCA2MS4wNTNINjEuMDUzeiIvPjxwYXRoIGZpbGw9IiNmYmJjMDQiIGQ9Ik04MCAxOC45NDdINjEuMDUzdjQyLjEwNUg4MHoiLz48cGF0aCBmaWxsPSIjMzRhODUzIiBkPSJNNjEuMDUyIDYxLjA1M0gxOC45NDdWODBoNDIuMTA1eiIvPjxwYXRoIGZpbGw9IiMxODgwMzgiIGQ9Ik0wIDYxLjA1M3YxMi42MzJBNi4zMTQgNi4zMTQgMCAwIDAgNi4zMTYgODBoMTIuNjMyVjYxLjA1M3oiLz48cGF0aCBmaWxsPSIjMTk2N2QyIiBkPSJNODAgMTguOTQ3VjYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDczLjY4NSAwSDYxLjA1M3YxOC45NDd6Ii8+PHBhdGggZmlsbD0iIzQyODVmNCIgZD0iTTYxLjA1MyAwSDYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDAgNi4zMTZ2NTQuNzM3aDE4Ljk0N1YxOC45NDdoNDIuMTA1VjB6TTI3LjU4NCA1MS42MTFjLTEuNTc0LTEuMDYzLTIuNjYzLTIuNjE2LTMuMjU4LTQuNjY4bDMuNjUzLTEuNTA1cS40OTggMS44OTQgMS43MzcgMi45MzdjMS4yMzkgMS4wNDMgMS44MjEgMS4wMzcgMi45ODkgMS4wMzdxMS43OTIgMCAzLjA3OS0xLjA4OWMxLjI4Ny0xLjA4OSAxLjI5LTEuNjUzIDEuMjktMi43NzRhMy40NCAzLjQ0IDAgMCAwLTEuMzU4LTIuODExYy0uOTA1LS43MjctMi4wNDItMS4wODktMy40LTEuMDg5aC0yLjExMXYtMy42MTZIMzIuMXExLjc1MiAwIDIuOTUzLS45NDdjMS4yMDEtLjk0NyAxLjItMS40OTUgMS4yLTIuNTk1cTAtMS40NjctMS4wNzQtMi4zNDJjLTEuMDc0LS44NzUtMS42MjEtLjg3OS0yLjcyMS0uODc5cS0xLjYxLS4wMDItMi41NTguODU4Yy0uOTQ4Ljg2LTEuMTA2IDEuMzAxLTEuMzc5IDIuMTExbC0zLjYxNi0xLjUwNWMuNDc5LTEuMzU4IDEuMzU4LTIuNTU4IDIuNjQ3LTMuNTk1czIuOTM3LTEuNTU4IDQuOTM3LTEuNTU4cTIuMjItLjAwMiAzLjk4OS44NThjMS43NjkuODYgMi4xMDUgMS4zNjggMi43NzQgMi4zNzlzMSAyLjE1MyAxIDMuNDE2cTAgMS45MzItLjkzMiAzLjI3NGMtLjkzMiAxLjM0Mi0xLjM4NCAxLjU3OS0yLjI4OSAyLjA1OHYuMjE2YTYuOTUgNi45NSAwIDAgMSAyLjkzNyAyLjI4OXExLjE0NiAxLjUzOCAxLjE0NyAzLjY4NGMuMDAxIDIuMTQ2LS4zNjMgMi43MTEtMS4wODkgMy44MzJzLTEuNzMyIDIuMDA1LTMuMDA1IDIuNjQ3Yy0xLjI3OS42NDItMi43MTYuOTY4LTQuMzExLjk2OC0xLjg0Ny4wMDUtMy41NTMtLjUyNi01LjEyNi0xLjU4OXptMjIuNDM3LTE4LjEyNi00LjAxIDIuOS0yLjAwNS0zLjA0MiA3LjE5NS01LjE4OWgyLjc1OHYyNC40NzloLTMuOTM3VjMzLjQ4NHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Calendar Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 823,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_1_a21c300e44.png"
+      },
+      {
+        "id": 824,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_5_f7659cc61a.jpg"
+      }
+    ]
+  }
+}

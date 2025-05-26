@@ -1,0 +1,179 @@
+{
+  "workflow": {
+    "id": 1041,
+    "name": "Create, update, and get an object from Bubble",
+    "views": 2298,
+    "recentViews": 0,
+    "totalViews": 2298,
+    "createdAt": "2021-04-15T11:08:00.646Z",
+    "description": "This workflow allows you to create, update, and get an object from Bubble.\n\n![workflow-screenshot](fileId:478)\n\n**Bubble node:** This node will create a new object of the type `Doc` in Bubble. If you want to create an object with a different type, use that type instead.\n\n**Bubble1 node:** This node will update the object that we created using the previous node.\n\n**Bubble2 node:** This node will retrieve the information of the object that we created earlier.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Bubble",
+          "type": "n8n-nodes-base.bubble",
+          "position": [
+            450,
+            280
+          ],
+          "parameters": {
+            "typeName": "Doc",
+            "operation": "create",
+            "properties": {
+              "property": [
+                {
+                  "key": "Name",
+                  "value": "Bubble"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "bubbleApi": "Bubble API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Bubble1",
+          "type": "n8n-nodes-base.bubble",
+          "position": [
+            650,
+            280
+          ],
+          "parameters": {
+            "objectId": "={{$json[\"id\"]}}",
+            "typeName": "={{$node[\"Bubble\"].parameter[\"typeName\"]}}",
+            "operation": "update",
+            "properties": {
+              "property": [
+                {
+                  "key": "Name",
+                  "value": "Bubble node"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "bubbleApi": "Bubble API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Bubble2",
+          "type": "n8n-nodes-base.bubble",
+          "position": [
+            850,
+            280
+          ],
+          "parameters": {
+            "objectId": "={{$node[\"Bubble\"].json[\"id\"]}}",
+            "typeName": "={{$node[\"Bubble\"].parameter[\"typeName\"]}}"
+          },
+          "credentials": {
+            "bubbleApi": "Bubble API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Bubble": {
+          "main": [
+            [
+              {
+                "node": "Bubble1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bubble1": {
+          "main": [
+            [
+              {
+                "node": "Bubble2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.bubble": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 462,
+        "icon": "file:bubble.svg",
+        "name": "n8n-nodes-base.bubble",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bubble/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/bubble/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Bubble"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIzLjc0OTEgMTAuMzg1M0MyMC4xNTQzIDEwLjM4NTMgMTYuNjExMSAxMS45Mjg2IDEzLjkwNjEgMTQuOTYyOFYwSDguNTUzMjJWMjUuMTkwOUM4LjU1MzIyIDI1LjE5MTUgOC41NTMyMiAyNS4xOTIxIDguNTUzMjIgMjUuMTkyOEM4LjU1MzIyIDMzLjM3MDYgMTUuMTgyNiA0MCAyMy4zNjA2IDQwQzMxLjUzODQgNDAgMzguMTY3OSAzMy4zNzA2IDM4LjE2NzkgMjUuMTkyOEMzOC4xNjc5IDE3LjAxNDkgMzEuOTI2OSAxMC4zODUzIDIzLjc0OTEgMTAuMzg1M1pNMjMuMzYwNiAzNC4yOTY4QzE4LjMzMjQgMzQuMjk2OCAxNC4yNTYzIDMwLjIyMDcgMTQuMjU2MyAyNS4xOTI3QzE0LjI1NjMgMjAuMTY0NiAxOC4zMzI0IDE2LjA4ODQgMjMuMzYwNiAxNi4wODg0QzI4LjM4ODYgMTYuMDg4NCAzMi40NjQ3IDIwLjE2NDYgMzIuNDY0NyAyNS4xOTI3QzMyLjQ2NDcgMzAuMjIwOCAyOC4zODg2IDM0LjI5NjggMjMuMzYwNiAzNC4yOTY4WiIgZmlsbD0iIzI2MjYyNiIvPgo8cGF0aCBkPSJNNC42NjE2MSAzMi42NzY3QzIuNjM5MyAzMi42NzY3IDEgMzQuMzE2MSAxIDM2LjMzODNDMSAzOC4zNjA1IDIuNjM5MyAzOS45OTk5IDQuNjYxNjEgMzkuOTk5OUM2LjY4MzkxIDM5Ljk5OTkgOC4zMjMyMiAzOC4zNjA1IDguMzIzMjIgMzYuMzM4M0M4LjMyMzIyIDM0LjMxNjEgNi42ODM5MSAzMi42NzY3IDQuNjYxNjEgMzIuNjc2N1oiIGZpbGw9IiMwMDAwRkYiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Bubble",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 478,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/23e8ff449e6745dfa5cc2abc769febfe.png"
+      }
+    ]
+  }
+}

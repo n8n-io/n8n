@@ -1,0 +1,58 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.line/
+Scraped_At: 2025-05-20T18:48:59.392580
+
+Line node
+#
+Deprecated: End of service
+LINE Notify is discontinuing service as of April 1st 2025 and this node will no longer work after that date. View LINE Notify's
+end of service announement
+for more information.
+Use the Line node to automate work in Line, and integrate Line with other applications. n8n has built-in support for a wide range of Line features, including sending notifications.
+On this page, you'll find a list of operations the Line node supports and links to more resources.
+Credentials
+Refer to
+Line credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Notification
+Sends notifications to users or groups
+Templates and examples
+#
+Customer Support Channel and Ticketing System with Slack and Linear
+by Jimleuk
+View template details
+Line Message API : Push Message & Reply
+by darrell_tw
+View template details
+Send daily weather updates via a notification in Line
+by Harshil Agrawal
+View template details
+Browse Line integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

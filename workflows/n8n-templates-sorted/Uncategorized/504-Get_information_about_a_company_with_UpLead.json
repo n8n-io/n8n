@@ -1,0 +1,203 @@
+{
+  "workflow": {
+    "id": 504,
+    "name": "Get information about a company with UpLead",
+    "views": 296,
+    "recentViews": 0,
+    "totalViews": 296,
+    "createdAt": "2020-07-14T06:14:15.814Z",
+    "description": "![workflow-screenshot](fileId:102)",
+    "workflow": {
+      "id": "129",
+      "name": "Get information about a company with UpLead",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Uplead",
+          "type": "n8n-nodes-base.uplead",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "company": "Apple"
+          },
+          "credentials": {
+            "upleadApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Uplead",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.uplead": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 234,
+        "icon": "file:uplead.png",
+        "name": "n8n-nodes-base.uplead",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uplead/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/uplead/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Uplead"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Uplead",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 102,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/4a6e1ef541014b8b8a4d024a0c8bbbf4.png"
+      }
+    ]
+  }
+}

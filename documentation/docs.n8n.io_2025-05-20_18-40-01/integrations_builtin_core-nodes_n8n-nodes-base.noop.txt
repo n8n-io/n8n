@@ -1,0 +1,25 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/
+Scraped_At: 2025-05-20T18:56:23.010358
+
+No Operation, do nothing
+#
+Use the No Operation, do nothing node when you don't want to perform any operations. The purpose of this node is to make the workflow easier to read and understand where the flow of data stops. This can help others visually get a better understanding of the workflow.
+Templates and examples
+#
+Back Up Your n8n Workflows To Github
+by Jonathan
+View template details
+✨🩷Automated Social Media Content Publishing Factory + System Prompt Composition
+by Joseph LePage
+View template details
+🔍 Perplexity Research to HTML: AI-Powered Content Creation
+by Joseph LePage
+View template details
+Browse No Operation, do nothing integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

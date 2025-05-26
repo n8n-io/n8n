@@ -1,0 +1,407 @@
+{
+  "workflow": {
+    "id": 1408,
+    "name": "Simple file based key value store (GetKey)",
+    "views": 810,
+    "recentViews": 0,
+    "totalViews": 810,
+    "createdAt": "2022-01-24T19:19:00.920Z",
+    "description": "Read a value by key from a local json file.\n\nRelated workflow: [WriteKey](https://n8n.io/workflows/1407)\n\nCreate a subfolder in your n8n homedir: `/home/node/.n8n/local-files`. In docker look at the data path and create a subfolder `local-files`.\nSet the correct access rights `chmod 1000.1000 local-files`.\n\nPut the workflow code in a new workflow named `GetKey`.\n\nCreate another workflow with a `function item`:\n\n```js\nreturn  {\n  file: '/4711.json', // 4711 should be your workflow id\n  key: 'MyKey',\n  default: 'Optional returned value if key is empty / not exists'\n}\n```\n\nPipe the `function item` to an `Execution Workflow` that calls the `GetKey` workflow.\n\nIt would be nice if we could get someday a shiny built-in n8n node that does the job. :)",
+    "workflow": {
+      "id": 11,
+      "name": "Storage: GetKey",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            240,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Config",
+          "type": "n8n-nodes-base.functionItem",
+          "position": [
+            420,
+            280
+          ],
+          "parameters": {
+            "functionCode": "return {\n  file: '/home/node/.n8n/local-files' + item.file,\n  key: item.key,\n  default: item.default\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Read Binary File",
+          "type": "n8n-nodes-base.readBinaryFile",
+          "position": [
+            600,
+            280
+          ],
+          "parameters": {
+            "filePath": "={{$json[\"file\"]}}"
+          },
+          "typeVersion": 1,
+          "continueOnFail": true,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "BinaryToJSON",
+          "type": "n8n-nodes-base.moveBinaryData",
+          "position": [
+            780,
+            280
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "ReturnValue",
+          "type": "n8n-nodes-base.functionItem",
+          "position": [
+            960,
+            280
+          ],
+          "parameters": {
+            "functionCode": "const key = $node[\"Config\"].json[\"key\"]\nconst defaultValue = $node[\"Config\"].json[\"default\"]\n\nlet value\nif (item) {\n  value = item[key] || defaultValue\n} else {\n  value = defaultValue\n}\n\nreturn {\n  [ key ]: value\n}"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Config": {
+          "main": [
+            [
+              {
+                "node": "Read Binary File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "BinaryToJSON": {
+          "main": [
+            [
+              {
+                "node": "ReturnValue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Read Binary File": {
+          "main": [
+            [
+              {
+                "node": "BinaryToJSON",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Config",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.functionItem": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.moveBinaryData": {
+          "count": 1
+        },
+        "n8n-nodes-base.readBinaryFile": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Peter",
+      "username": "rottmann",
+      "bio": null,
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/784768e5875d89a835cba511f5ebe3097a0a8e302e7693f71e68267774c4ed71?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 15,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.functionItem",
+        "codex": {
+          "data": {
+            "alias": [
+              "Javascript",
+              "Code",
+              "Custom Code",
+              "JS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function Item",
+          "color": "#ddbb33"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function Item",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 31,
+        "icon": "fa:file-import",
+        "name": "n8n-nodes-base.readBinaryFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "Text",
+              "Open",
+              "Import"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Read Binary File",
+          "color": "#449922"
+        },
+        "iconData": {
+          "icon": "file-import",
+          "type": "icon"
+        },
+        "displayName": "Read Binary File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 62,
+        "icon": "fa:exchange-alt",
+        "name": "n8n-nodes-base.moveBinaryData",
+        "codex": {
+          "data": {
+            "alias": [
+              "Move Binary Data"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Convert to/from binary data",
+          "color": "#7722CC"
+        },
+        "iconData": {
+          "icon": "exchange-alt",
+          "type": "icon"
+        },
+        "displayName": "Convert to/from binary data",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

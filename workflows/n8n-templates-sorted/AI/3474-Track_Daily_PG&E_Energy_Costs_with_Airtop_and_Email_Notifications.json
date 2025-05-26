@@ -1,0 +1,955 @@
+{
+  "workflow": {
+    "id": 3474,
+    "name": "Track Daily PG&E Energy Costs with Airtop and Email Notifications",
+    "views": 70,
+    "recentViews": 5,
+    "totalViews": 70,
+    "createdAt": "2025-04-08T16:20:15.016Z",
+    "description": "### About The Airtop Automation\n\nAre you tired of being shocked by unexpectedly high energy bills? With this automation using Airtop and n8n, you can take control of your daily energy costs and ensure you’re always informed.\n\n### How to monitor your daily energy consumption\n\nWith this automation, we’ll walk you through setting up an automation that retrieves your PG&E (Pacific Gas and Electric) energy usage data, calculates costs, and emails you the details—all without manual effort.\n\n### What You’ll Need\nTo get started, make sure you have the following:\n\n- A free [Airtop API Key](https://portal.airtop.ai/?utm_campaign=n8n)\n- PG&E Account Credentials - with minor adaptations, this will also work with other providers\n- An Email Address - To receive the energy cost updates\n\nEstimated setup time: 5 minutes\n\n### Understanding the Process\n\nThis automation works by:\n \n1. Logging into your PG&E account using your credentials\n2. Navigating to your energy usage data\n3. Extracting relevant details about energy consumption and costs\n4. Emailing the daily summary directly to your inbox\n\nThe automation is straightforward and ensures you have real-time insights into your energy usage, empowering you to adjust your habits and save money.\n\n### Setting Up Your Automation\nWe’ve created a step-by-step guide to help you set up this workflow. Here’s how:\n\n#### Insert Your Credentials:\n\n- In the tools section, add your PG&E login details as variables\n- In Airtop, add your [Airtop API Key](https://portal.airtop.ai/api-keys)\n- Configure your email address to receive the updates\n\n#### Run the Automation:\n\n- Start the scenario, and watch as the automation retrieves your energy data and sends you a detailed email summary.\n\n### Customization Options\n\nWhile the default setup works seamlessly, you can tweak it to suit your needs:\n\n- Data Storage: Store energy usage data in a database for long-term tracking and analysis\n- Visualization: Plot graphs of your energy usage trends over time for better insights\n- Notifications: Change the automation to only send alerts on high usage instead of a daily email\n\n### Real-World Applications\n\nThis automation isn’t just about monitoring energy usage and taking control. Here are some practical applications:\n\n- Daily Energy Management: Receive updates every morning and adjust your energy consumption based on costs\n- Smart Home Integration: Use the data to automate appliances during off-peak hours\n- Budgeting: Track energy expenses over weeks or months to plan your budget more effectively\n\nHappy automating!\n",
+    "workflow": {
+      "id": "NMGsDLoVZ7DUukGs",
+      "meta": {
+        "instanceId": "28a947b92b197fc2524eaba16e57560338657b2b0b5796300b2f1cedc1d0d355"
+      },
+      "name": "PG&E Daily Cost Tracker",
+      "tags": [
+        {
+          "id": "yJGnIHoS9KZ1HkjS",
+          "name": "template",
+          "createdAt": "2025-04-17T20:22:38.913Z",
+          "updatedAt": "2025-04-17T20:22:38.913Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "814cc9ac-382b-42b3-b5b8-90eda0dc2889",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -2640,
+            100
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 8
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "310bfb08-2086-4f0f-8790-02c2c186bae2",
+          "name": "Type password",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -1540,
+            100
+          ],
+          "parameters": {
+            "text": "={{ $('Variables').item.json.PGE_Password }}",
+            "resource": "interaction",
+            "windowId": "={{ $('Create browser window').item.json.windowId }}",
+            "operation": "type",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}",
+            "pressEnterKey": true,
+            "additionalFields": {
+              "waitForNavigation": "networkidle0"
+            },
+            "elementDescription": "PASSWORD Text Box"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b0de782e-9c54-4a40-b7e8-8e7ab3655986",
+          "name": "Variables",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -2420,
+            100
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "3a765a8e-14d8-4a32-b894-b6f90e5db246",
+                  "name": "PGE_Username",
+                  "type": "string",
+                  "value": ""
+                },
+                {
+                  "id": "81a94ea1-714b-4f9f-b63a-47fee5f51e3a",
+                  "name": "PGE_Password",
+                  "type": "string",
+                  "value": ""
+                },
+                {
+                  "id": "e90a5678-4c62-443c-ab1d-57efd6ca69eb",
+                  "name": "Email",
+                  "type": "string",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "69cca1c7-9a83-43a7-95e7-98ba24f9575b",
+          "name": "Go to \"Energy Costs\"",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -660,
+            100
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "windowId": "={{ $('Create browser window').item.json.data.windowId }}",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}",
+            "additionalFields": {
+              "waitForNavigation": "load"
+            },
+            "elementDescription": "ENERGY COSTS"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "184206ce-4b4d-4bb0-b468-cbb61f45b61b",
+          "name": "Go to \"Electricity and Gas\"",
+          "type": "n8n-nodes-base.airtop",
+          "onError": "continueRegularOutput",
+          "position": [
+            -440,
+            100
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "windowId": "={{ $('Create browser window').item.json.data.windowId }}",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}",
+            "additionalFields": {
+              "waitForNavigation": "networkidle0"
+            },
+            "elementDescription": "COMBINED"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "424b5209-97e7-4eef-a496-ac9f08d84d3d",
+          "name": "Extract Costs",
+          "type": "n8n-nodes-base.airtop",
+          "notes": "Some PG&E accounts have a \"Combined\" view for gas and electricity",
+          "position": [
+            -220,
+            100
+          ],
+          "parameters": {
+            "prompt": "Extract the daily energy costs from the webpage content, including both natural gas and electricity costs. Format the information as a daily update email, listing the costs from the most recent date to the earliest. Ensure the email format is clear and concise, without including a subject line or greeting. Include the date, total combined costs, natural gas costs, and electricity costs for each day. \n\nIf natural gas costs are not provided, ignore them, ignore Total Combined Costs and report only on electricity \n\nFor example, if the webpage content provides the following data:\n\n- Date: 2023-10-01, Total Combined Costs: $15.00, Natural Gas Costs: $5.00, Electricity Costs: $10.00\n- Date: 2023-09-30, Total Combined Costs: $14.50, Natural Gas Costs: $4.50, Electricity Costs: $10.00\n\nThe output should be formatted as an easy to read email:\n\n<!DOCTYPE html>\n<html>\n<body>\n<p>October 1, 2023</p>\n<p>Total Combined Costs: $15.00<br>\nNatural Gas Costs: $5.00<br>\nElectricity Costs: $10.00</p>\n\n<p>September 30, 2023</p>\n<p>Total Combined Costs: $14.50<br>\nNatural Gas Costs: $4.50<br>\nElectricity Costs: $10.00</p>\n</body>\n</html>\n",
+            "resource": "extraction",
+            "windowId": "={{ $('Create browser window').item.json.data.windowId }}",
+            "operation": "query",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}",
+            "additionalFields": {}
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "b0cf1ebc-157d-4ab3-9ed6-267c81293feb",
+          "name": "Go to \"Energy Usage Details\"",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -880,
+            100
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "windowId": "={{ $('Create browser window').item.json.windowId }}",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}",
+            "additionalFields": {
+              "waitForNavigation": "load"
+            },
+            "elementDescription": "Click on the box that says ENERGY USAGE DETAILS See usage & costs over time"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "485f8071-9c54-4f79-9378-d354260b2038",
+          "name": "Wait 5 secs",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            -1100,
+            100
+          ],
+          "webhookId": "371deac7-bd64-4385-8bc5-a14a0db2bcc7",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "87d68490-1064-4180-89d9-534c9308c6c9",
+          "name": "Close modal (if any)",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -1320,
+            100
+          ],
+          "parameters": {
+            "resource": "interaction",
+            "windowId": "={{ $('Create browser window').item.json.windowId }}",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}",
+            "additionalFields": {},
+            "elementDescription": "If there is a modal on the page, click on the button to dismiss the modal"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "80018e55-6557-4641-a07b-926517a72bb0",
+          "name": "Create session",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -2200,
+            100
+          ],
+          "parameters": {
+            "profileName": "cesar-prod",
+            "timeoutMinutes": 5
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "05711cf0-9c20-4f41-854e-dea872eee3d8",
+          "name": "Create browser window",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -1980,
+            100
+          ],
+          "parameters": {
+            "url": "https://m.pge.com/",
+            "resource": "window",
+            "getLiveView": true,
+            "disableResize": true,
+            "additionalFields": {
+              "waitUntil": "load"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d673347d-ef40-4349-a7e7-2ba594400d2c",
+          "name": "Type username",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            -1760,
+            100
+          ],
+          "parameters": {
+            "text": "={{ $('Variables').item.json.PGE_Username }}",
+            "resource": "interaction",
+            "operation": "type",
+            "additionalFields": {},
+            "elementDescription": "USERNAME text box"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b64a04b1-d00b-4d04-b9e3-7d2c86800923",
+          "name": "Send email",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            0,
+            200
+          ],
+          "webhookId": "7586d2f6-00b8-41ee-89d0-f2768b402165",
+          "parameters": {
+            "sendTo": "={{ $('Variables').item.json.Email }}",
+            "message": "={{ $json['data'].modelResponse }}",
+            "options": {
+              "senderName": "Airtop Monitor",
+              "appendAttribution": false
+            },
+            "subject": "Daily energy costs report"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "d402443c-ed67-4df7-b5c8-032f4a2ea941",
+          "name": "End session",
+          "type": "n8n-nodes-base.airtop",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "operation": "terminate",
+            "sessionId": "={{ $('Create session').item.json.sessionId }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "076e7eed-e71f-4ef7-8038-ea3dcc188b9c",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2480,
+            -40
+          ],
+          "parameters": {
+            "color": 5,
+            "height": 340,
+            "content": "## Heads up!\nTo get this workflow running correctly, please enter your PG&E credentials below"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "0d0d4991-e9c1-4f51-be90-bb8337e40bc2",
+      "connections": {
+        "Variables": {
+          "main": [
+            [
+              {
+                "node": "Create session",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait 5 secs": {
+          "main": [
+            [
+              {
+                "node": "Go to \"Energy Usage Details\"",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Costs": {
+          "main": [
+            [
+              {
+                "node": "End session",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Send email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Type password": {
+          "main": [
+            [
+              {
+                "node": "Close modal (if any)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Type username": {
+          "main": [
+            [
+              {
+                "node": "Type password",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create session": {
+          "main": [
+            [
+              {
+                "node": "Create browser window",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Close modal (if any)": {
+          "main": [
+            [
+              {
+                "node": "Wait 5 secs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Go to \"Energy Costs\"": {
+          "main": [
+            [
+              {
+                "node": "Go to \"Electricity and Gas\"",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create browser window": {
+          "main": [
+            [
+              {
+                "node": "Type username",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Go to \"Electricity and Gas\"": {
+          "main": [
+            [
+              {
+                "node": "Extract Costs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Go to \"Energy Usage Details\"": {
+          "main": [
+            [
+              {
+                "node": "Go to \"Energy Costs\"",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 15,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtop": {
+          "count": 10
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Airtop",
+      "username": "cesar-at-airtop",
+      "bio": "Airtop provides an intelligent browser automation API for AI agents, enabling seamless web interaction, including login, navigation, and data extraction from any site, even those with complex authentication - all with  natural language instructions.In simple terms, we allow you to automate anything humans can do online, on any site with just words",
+      "verified": true,
+      "links": [
+        "https://www.airtop.ai/"
+      ],
+      "avatar": "https://gravatar.com/avatar/d5894c2c744b03ab0766a6d1846484ea7cc1a19e57310afad70044183766dbf4?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1282,
+        "icon": "file:airtop.svg",
+        "name": "n8n-nodes-base.airtop",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtop/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtop/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Airtop"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgZmlsbD0ibm9uZSI+PGcgZmlsdGVyPSJ1cmwoI2EpIj48ZyBjbGlwLXBhdGg9InVybCgjYikiPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjE2IiBmaWxsPSIjMTAyNjI2Ii8+PGcgZmlsdGVyPSJ1cmwoI2MpIj48cGF0aCBzdHJva2U9IiM1OEQxRUMiIHN0cm9rZS1vcGFjaXR5PSIuMiIgc3Ryb2tlLXdpZHRoPSIyMS44MjEiIGQ9Im0tMjQuMTcyLTMzLjMyNSA0MS45NDYgNTEuNDE0Ii8+PC9nPjxwYXRoIGZpbGw9InVybCgjZCkiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTEyLjU5OCA5LjI1OGMxLjYwNy0yLjU0NSA1LjMxOC0yLjU0NSA2LjkyNSAwbDIuMzMgMy42OWMuNzA1IDEuMTE1LS4wOTcgMi41Ny0xLjQxNiAyLjU3LTIuMjA3IDAtMy4wODgtLjg0MS0zLjY2LTQuMTgybC0xLjQyMy4wMDVjLS40OTYgMy4zNDYtMS41MDcgNC4xNzctNC4xNyA0LjE3N2wtLjAwNSAxLjQzN2MyLjY5NiAwIDQuMTc1IDEuNDk1IDQuMTc1IDMuNDU0YTIuOTQgMi45NCAwIDAgMS0yLjk0IDIuOTRoLTEuMjg1Yy0zLjIyNSAwLTUuMTg1LTMuNTU1LTMuNDYzLTYuMjgybDQuOTMyLTcuODA5em03LjEyNSAxNC4wOTJhMi45NDUgMi45NDUgMCAwIDEtMi45NDUtMi45NDZjMC0xLjk1NCAxLjMwNS0zLjQ0OSAzLjY1OS0zLjQ0OWgxLjQ0M2MxLjQ3OSAwIDMuMDkzLjkyNCAzLjA5MyAyLjc0NiAwIDIuMjA5LTIuNTExIDMuNjQ5LTMuOTIxIDMuNjQ5aC0xLjMyOXoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48L2c+PGRlZnM+PGZpbHRlciBpZD0iYSIgd2lkdGg9IjMyIiBoZWlnaHQ9IjM1IiB4PSIwIiB5PSItMiIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iQmFja2dyb3VuZEltYWdlRml4IiByZXN1bHQ9InNoYXBlIi8+PGZlQ29sb3JNYXRyaXggaW49IlNvdXJjZUFscGhhIiByZXN1bHQ9ImhhcmRBbHBoYSIgdmFsdWVzPSIwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAxMjcgMCIvPjxmZU9mZnNldCBkeT0iMSIvPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz48ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIGsyPSItMSIgazM9IjEiIG9wZXJhdG9yPSJhcml0aG1ldGljIi8+PGZlQ29sb3JNYXRyaXggdmFsdWVzPSIwIDAgMCAwIDAuMzQ1MDk4IDAgMCAwIDAgMC44MTk2MDggMCAwIDAgMCAwLjkyNTQ5IDAgMCAwIDAuMTYgMCIvPjxmZUJsZW5kIGluMj0ic2hhcGUiIHJlc3VsdD0iZWZmZWN0MV9pbm5lclNoYWRvd184MjBfMTA0NTUiLz48ZmVDb2xvck1hdHJpeCBpbj0iU291cmNlQWxwaGEiIHJlc3VsdD0iaGFyZEFscGhhIiB2YWx1ZXM9IjAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDAgMCAwIDEyNyAwIi8+PGZlT2Zmc2V0IGR5PSItMiIvPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjEiLz48ZmVDb21wb3NpdGUgaW4yPSJoYXJkQWxwaGEiIGsyPSItMSIgazM9IjEiIG9wZXJhdG9yPSJhcml0aG1ldGljIi8+PGZlQ29sb3JNYXRyaXggdmFsdWVzPSIwIDAgMCAwIDAuMDE0ODk4NSAwIDAgMCAwIDAuMDkyNjkwMSAwIDAgMCAwIDAuMDkyNjkwMSAwIDAgMCAwLjQgMCIvPjxmZUJsZW5kIGluMj0iZWZmZWN0MV9pbm5lclNoYWRvd184MjBfMTA0NTUiIHJlc3VsdD0iZWZmZWN0Ml9pbm5lclNoYWRvd184MjBfMTA0NTUiLz48L2ZpbHRlcj48ZmlsdGVyIGlkPSJjIiB3aWR0aD0iNzQuODU0IiBoZWlnaHQ9IjgxLjIwOSIgeD0iLTQwLjYyNyIgeT0iLTQ4LjIyMyIgY29sb3ItaW50ZXJwb2xhdGlvbi1maWx0ZXJzPSJzUkdCIiBmaWx0ZXJVbml0cz0idXNlclNwYWNlT25Vc2UiPjxmZUZsb29kIGZsb29kLW9wYWNpdHk9IjAiIHJlc3VsdD0iQmFja2dyb3VuZEltYWdlRml4Ii8+PGZlQmxlbmQgaW49IlNvdXJjZUdyYXBoaWMiIGluMj0iQmFja2dyb3VuZEltYWdlRml4IiByZXN1bHQ9InNoYXBlIi8+PGZlR2F1c3NpYW5CbHVyIHJlc3VsdD0iZWZmZWN0MV9mb3JlZ3JvdW5kQmx1cl84MjBfMTA0NTUiIHN0ZERldmlhdGlvbj0iNCIvPjwvZmlsdGVyPjxyYWRpYWxHcmFkaWVudCBpZD0iZCIgY3g9IjAiIGN5PSIwIiByPSIxIiBncmFkaWVudFRyYW5zZm9ybT0ibWF0cml4KC0xMS42ODQzNSAxMS43MDQ3NiAtODkuMDUyMTUgLTg4Ljg5Njg2IDE5LjI4IDkuNTU3KSIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIG9mZnNldD0iLjYxMyIgc3RvcC1jb2xvcj0iI2ZmZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2ZmZiIgc3RvcC1vcGFjaXR5PSIuOCIvPjwvcmFkaWFsR3JhZGllbnQ+PGNsaXBQYXRoIGlkPSJiIj48cmVjdCB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIGZpbGw9IiNmZmYiIHJ4PSIxNiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Airtop",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

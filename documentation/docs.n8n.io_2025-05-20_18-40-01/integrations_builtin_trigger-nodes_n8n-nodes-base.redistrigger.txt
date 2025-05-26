@@ -1,0 +1,21 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.redistrigger/
+Scraped_At: 2025-05-20T19:07:34.791653
+
+Redis Trigger node
+#
+Redis
+is an open-source, in-memory data structure store, used as a database, cache and message broker.
+Use the Redis Trigger node to subscribe to a Redis channel. The workflow starts whenever the channel receives a new message.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Redis Trigger integrations
+page.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

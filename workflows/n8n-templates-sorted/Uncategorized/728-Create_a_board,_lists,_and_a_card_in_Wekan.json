@@ -1,0 +1,326 @@
+{
+  "workflow": {
+    "id": 728,
+    "name": "Create a board, lists, and a card in Wekan",
+    "views": 721,
+    "recentViews": 0,
+    "totalViews": 721,
+    "createdAt": "2020-10-19T14:22:35.516Z",
+    "description": "![workflow-screenshot](fileId:281)",
+    "workflow": {
+      "name": "",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            450,
+            450
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Wekan",
+          "type": "n8n-nodes-base.wekan",
+          "position": [
+            650,
+            450
+          ],
+          "parameters": {
+            "owner": "c4nzTEvSwGPBxKTCc",
+            "title": "Documentation",
+            "resource": "board",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "wekanApi": "wekan-trial"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wekan1",
+          "type": "n8n-nodes-base.wekan",
+          "position": [
+            850,
+            450
+          ],
+          "parameters": {
+            "title": "To Do",
+            "boardId": "={{$node[\"Wekan\"].json[\"_id\"]}}",
+            "resource": "list"
+          },
+          "credentials": {
+            "wekanApi": "wekan-trial"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wekan2",
+          "type": "n8n-nodes-base.wekan",
+          "position": [
+            1050,
+            450
+          ],
+          "parameters": {
+            "title": "Done",
+            "boardId": "={{$node[\"Wekan\"].json[\"_id\"]}}",
+            "resource": "list"
+          },
+          "credentials": {
+            "wekanApi": "wekan-trial"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wekan3",
+          "type": "n8n-nodes-base.wekan",
+          "position": [
+            1250,
+            450
+          ],
+          "parameters": {
+            "title": "Document Wekan node",
+            "listId": "={{$node[\"Wekan1\"].json[\"_id\"]}}",
+            "boardId": "={{$node[\"Wekan\"].json[\"_id\"]}}",
+            "authorId": "c4nzTEvSwGPBxKTCc",
+            "swimlaneId": "LDTcBp9fvmjSsSB69",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "wekanApi": "wekan-trial"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Wekan4",
+          "type": "n8n-nodes-base.wekan",
+          "position": [
+            1450,
+            450
+          ],
+          "parameters": {
+            "cardId": "={{$node[\"Wekan3\"].json[\"_id\"]}}",
+            "listId": "={{$node[\"Wekan1\"].json[\"_id\"]}}",
+            "boardId": "={{$node[\"Wekan\"].json[\"_id\"]}}",
+            "operation": "update",
+            "updateFields": {
+              "listId": "={{$node[\"Wekan2\"].json[\"_id\"]}}"
+            }
+          },
+          "credentials": {
+            "wekanApi": "wekan-trial"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Wekan": {
+          "main": [
+            [
+              {
+                "node": "Wekan1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wekan1": {
+          "main": [
+            [
+              {
+                "node": "Wekan2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wekan2": {
+          "main": [
+            [
+              {
+                "node": "Wekan3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wekan3": {
+          "main": [
+            [
+              {
+                "node": "Wekan4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Wekan",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.wekan": {
+          "count": 5
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 381,
+        "icon": "file:wekan.svg",
+        "name": "n8n-nodes-base.wekan",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wekan/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wekan/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Wekan"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM0IDBINkMyLjY4NjI5IDAgMCAyLjY4NjI5IDAgNlYzNEMwIDM3LjMxMzcgMi42ODYyOSA0MCA2IDQwSDM0QzM3LjMxMzcgNDAgNDAgMzcuMzEzNyA0MCAzNFY2QzQwIDIuNjg2MjkgMzcuMzEzNyAwIDM0IDBaIiBmaWxsPSIjMDA2OTg0Ii8+CjxwYXRoIGQ9Ik0yOS4wNjI3IDI0LjE0MDVDMjkuMDYyNyAyNC4xNDA1IDI5LjQ1MzMgMjMuNTkzNyAyOS41MzE1IDIzLjI4MTJMMjkuNjA5NiAyMy4wNDY4TDI5LjE0MDggMjMuMTI0OUMyOS4wNjI3IDIzLjIwMyAyOC43NTAyIDI0LjE0MDUgMjcuNjU2NSAyNS4xNTYyQzI3LjAzMTUgMjUuNzAzIDI2LjMyODMgMjUuODU5MyAyNS43MDMzIDI1Ljc4MTJDMjUuMjM0NiAyNS43ODEyIDI0LjkyMjEgMjUuNDY4NyAyNC42ODc3IDI0LjkyMThDMjQuNTMxNSAyNC4zNzQ5IDI0LjQ1MzMgMjMuNzQ5OSAyNC42MDk2IDIyLjk2ODdDMjQuOTIyMSAyMS40ODQzIDI1LjMxMjcgMjAuNzAzIDI1Ljg1OTYgMjAuNzAzQzI2LjQ4NDYgMjEuMjQ5OSAyNS42MjUyIDIzLjQzNzQgMjQuOTIyMSAyMy45ODQzTDI0LjY4NzcgMjQuMjE4N0gyNS4wMDAyQzI1Ljc4MTUgMjMuOTg0MyAyNi40MDY1IDIzLjc0OTkgMjcuMDMxNSAyMy4zNTkzQzI3LjU3ODMgMjIuOTY4NyAyNy45NjkgMjIuNTc4IDI4LjEyNTIgMjIuMTg3NEMyOC4yMDMzIDIxLjcxODcgMjguMDQ3MSAyMS4zMjggMjcuNjU2NSAyMS4wMTU1QzI3LjI2NTggMjAuNzAzIDI2LjcxOSAyMC41NDY4IDI2LjA5NCAyMC40Njg3QzI1LjQ2OSAyMC40Njg3IDI0Ljg0NCAyMC41NDY4IDI0LjI5NzEgMjAuODU5M0MyNS4wNzgzIDE5LjM3NDkgMjUuOTM3NyAxNy44OTA1IDI2LjQwNjUgMTYuNDA2MkMyNi43OTcxIDE1LjA3OCAyNi43MTkgMTQuMDYyNCAyNi4wMTU4IDEzLjQzNzRDMjUuNzgxNSAxMy4yMDMgMjUuNDY5IDEzLjA0NjggMjUuMDAwMiAxMi45Njg3QzI0LjA2MjcgMTIuNzM0MyAyMy4xMjUyIDEyLjQyMTggMjMuODI4MyAxMy40Mzc0QzIzLjk4NDYgMTMuNTkzNyAyNC4wNjI3IDEzLjgyOCAyNC4wNjI3IDEzLjk4NDNDMjQuNDUzMyAxNi40MDYyIDIzLjUxNTggMTguMzU5MyAyMi42NTY1IDIwLjE1NjJDMjEuNzk3MSAyMS44NzQ5IDIwLjYyNTIgMjQuMzc0OSAxOC45ODQ2IDI1LjMxMjRMMTguOTA2NSAyNS4wNzhDMTguODI4MyAyNC42ODc0IDE4LjkwNjUgMjQuMzc0OSAxOC45ODQ2IDIzLjk4NDNMMTkuNTMxNSAyMS4wMTU1TDIwLjE1NjUgMTguMTI0OUwyMC4zOTA4IDE2Ljk1M0MyMC40NjkgMTYuNjQwNSAyMC4zOTA4IDE2LjQ4NDMgMjAuMzEyNyAxNi4zMjhMMTguOTg0NiAxNS41NDY4QzE4LjM1OTYgMTUuMTU2MiAxOC4zNTk2IDE1LjE1NjIgMTguMTI1MiAxNS43ODEyTDE3LjI2NTggMTguMjAzQzE2LjQ1NDcgMjAuMjY0OSAxNS41MTU0IDIyLjI3NDEgMTQuNDUzMyAyNC4yMTg3QzEzLjk4NDYgMjQuOTk5OSAxMy41OTQgMjUuMzkwNSAxMy4yODE1IDI1LjM5MDVDMTIuOTY5IDI1LjE1NjIgMTMuMTI1MiAyNC42ODc0IDEzLjIwMzMgMjQuNDUzQzEzLjI4MTUgMjMuNTE1NSAxMy41OTQgMjIuNDk5OSAxMy43NTAyIDIxLjcxODdMMTQuNDUzMyAxOS4yMTg3TDE1LjAwMDIgMTcuMTA5M0wxNS40NjkgMTUuNjI0OUMxNS40NjkgMTUuMzkwNSAxNS4zMTI3IDE1LjE1NjIgMTUuMDc4MyAxNC45OTk5TDEzLjkwNjUgMTQuMjk2OEMxMy41MTU4IDE0LjA2MjQgMTMuMzU5NiAxNC4xNDA1IDEyLjk2OSAxNC4yMTg3QzEwLjkwNTEgMTQuOTk3NSA4LjkxNzUgMTUuOTY1MiA3LjAzMTQ2IDE3LjEwOTNDNi4xNzIwOCAxNy43MzQzIDUuNjI1MjEgMTguMjAzIDUuMzkwODMgMTguNjcxOEM1LjA3ODMzIDE5LjI5NjggNS4xNTY0NiAxOS44NDM3IDUuNDY4OTYgMjAuMzkwNUM1LjYyNTIxIDIwLjcwMyA1Ljg1OTU4IDIxLjAxNTUgNi4xNzIwOCAyMS4yNDk5QzcuMzQzOTYgMjIuMDMxMiA2Ljk1MzMzIDIxLjU2MjQgNy4xMDk1OCAyMC42MjQ5QzcuMTA5NTggMjAuMzEyNCA3LjI2NTgzIDE5Ljk5OTkgNy40MjIwOCAxOS42ODc0QzcuODEyNzEgMTkuMDYyNCA4LjQzNzcxIDE4LjI4MTIgOS41MzE0NiAxNy40MjE4QzEwLjYyNTIgMTYuNjQwNSAxMS43OTcxIDE1LjkzNzQgMTMuMDQ3MSAxNS4zOTA1TDEyLjM0NCAxOC4yMDNMMTEuNjQwOCAyMS4xNzE4QzExLjQwNjUgMjIuMjY1NSAxMS4wMTU4IDIzLjI4MTIgMTEuMDE1OCAyNC4zNzQ5QzExLjE3MjEgMjUuMzEyNCAxMS45NTMzIDI2LjAxNTUgMTIuODkwOCAyNi4wMTU1QzEzLjUxNTggMjYuMDE1NSAxNC4wNjI3IDI1LjYyNDkgMTQuNjA5NiAyNC44NDM3QzE1LjcyNyAyMi45MDA0IDE2LjY2ODIgMjAuODYxIDE3LjQyMjEgMTguNzQ5OUwxNi45NTMzIDIxLjI0OTlMMTYuNjQwOCAyMy40Mzc0QzE2LjU2MjcgMjQuMDYyNCAxNi42NDA4IDI0LjY4NzQgMTYuOTUzMyAyNS4xNTYyQzE3LjM0NCAyNS43MDMgMTcuOTY5IDI1LjkzNzQgMTguNTk0IDI2LjAxNTVDMTkuMjE5IDI2LjAxNTUgMjAuMDAwMiAyNS40Njg3IDIxLjA5NCAyNC40NTNMMjEuNzk3MSAyMy41OTM3QzIxLjc5NzEgMjQuMzc0OSAyMi4wMzE1IDI0LjkyMTggMjIuNTc4MyAyNS4zOTA1QzIzLjI4MTUgMjUuODU5MyAyNC4wNjI3IDI2LjE3MTggMjUuMDAwMiAyNi4xNzE4QzI2LjQ4NDYgMjYuMDkzNyAyOC4yODE1IDI1LjMxMjQgMjkuMDYyNyAyNC4xNDA1WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Wekan",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 281,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/33417af7abc94285a0d237613cd91dda.png"
+      }
+    ]
+  }
+}

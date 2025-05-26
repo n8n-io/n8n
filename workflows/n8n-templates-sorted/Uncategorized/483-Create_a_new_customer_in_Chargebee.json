@@ -1,0 +1,211 @@
+{
+  "workflow": {
+    "id": 483,
+    "name": "Create a new customer in Chargebee",
+    "views": 264,
+    "recentViews": 0,
+    "totalViews": 264,
+    "createdAt": "2020-07-11T21:10:35.845Z",
+    "description": "![workflow-screenshot](fileId:82)",
+    "workflow": {
+      "id": "103",
+      "name": "Create a new customer in Chargebee",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Chargebee",
+          "type": "n8n-nodes-base.chargebee",
+          "position": [
+            460,
+            300
+          ],
+          "parameters": {
+            "resource": "customer",
+            "properties": {
+              "last_name": "",
+              "first_name": ""
+            }
+          },
+          "credentials": {
+            "chargebeeApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Chargebee",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.chargebee": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 5,
+        "icon": "file:chargebee.png",
+        "name": "n8n-nodes-base.chargebee",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.chargebee/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/chargebee/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Chargebee"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAAk1BMVEUAAAD9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azXS0qjqAAAAMHRSTlMAAta1CPr3HAyb8mNPLBLq5MmGZ1wi28+soEQX7pZ9dkk/MijDurCMims54b6lb1YyU8hoAAACDklEQVRIx+2V2bKiMBBAmyTs+w6CIi64O/n/rxtKJwIjJPA4Nfc8acOpTnfSAX7493G2QZN6Zeml+GwVS0xiNSXtYeBIm6lKEaJf3C5kjrvz6SioFruVTKcIJEG1D8oBa1wXUy6+w2lVxhFFuU+0j4KOjwdOjUHQnHJ/DVZ4iaXXatTo2OuhPuEWXm9fLOhxPQjldeeuyV/NqGT+su1ucZuRkt5PMRElDmCEbdK2MNcmKnaZi2EUrd7GMEHEXGMPi8mYfFruqjd2NLrE+/P9oF9nyCuW+P4JhcorcBbL4dc2WSxyEcoBe9Vi5yJlEc8RyTp7ldVo0w8rkZyzN3ddExjR4sw7TmZhzSRhEddZ3m2TRar5+3z8hDZ/xlMSnzCPnbDu9NcPhLItzKAZG0hJnHVYYhnDYtSS2RksJ+fcQi0qAbDtKXknU84oWPQJtizvxanpmcCQJ3VtiA1lUlbdzk7rfs/bzwFSVR/bsaDhjHukvvfJsbBXm8S+UboXTwfDQFjXG6S0/dde18oGrN20TI4DOzHaA3drzAJWPqVy2Fa+5qTWDn05AKJJbS+eafsHtUlRUgAHB/dkJT+ddJzI7U+3kopjVgiGUwroF7J/IWAac+7RFeo0D6X3daQCiRBNZs2XVrmDr4e2zQ1aVhrMwwl9+Z1Zzw42ptQPHZiPFJv5IXENWXGvdRhL8MN/y2+uRpQ1fWz5HAAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Chargebee",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 82,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/93efd1871e41491587e0bc9b170933e9.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1142 @@
+{
+  "workflow": {
+    "id": 3277,
+    "name": "Smart Email Auto-Responder Template using AI",
+    "views": 8217,
+    "recentViews": 51,
+    "totalViews": 8217,
+    "createdAt": "2025-03-21T14:03:18.184Z",
+    "description": "# Smart Email Auto-Responder with AI Classification  \n## Automatically Categorize and Reply to Emails using LangChain + Google Gemini + Gmail + SMTP + Brevo\n \nThis n8n workflow is designed to intelligently manage incoming emails and automatically send personalized responses based on the content. It classifies emails using LangChain's Text Classifier, sends HTML responses depending on the category, and updates Gmail and Brevo CRM accordingly.\n\n---\n\n## Key Features  \n\n**Triggers and Classifies Emails**  \n- Listens for new Gmail messages every hour  \n- Uses AI-based classification to identify the type of inquiry For Example:  \n  - Guest Post  \n  - YouTube Review  \n  - Udemy Course Inquiry\n\n**Responds Automatically**  \n- Sends professional HTML replies customized for each type  \n- Uses SMTP to deliver emails from your domain  \n\n**Enhances Workflow with Automation**  \n- Marks processed emails as read  \n- Applies Gmail labels  \n- Adds sender to Brevo contact list  \n\n**Optional AI Chat Integration**  \n- Uses Google Gemini (PaLM 2) to enhance classification or summarization  \n\n---\n\n## Tools & Integrations Required  \n\n1. Gmail account (OAuth2)\n2. LangChain (Text Classifier node)\n3. Google Gemini API account\n4. SMTP credentials (e.g., Gmail SMTP, Brevo, etc.)\n5. Brevo/Sendinblue account and API key\n\n---\n\n## Step-by-Step Node Guide  \n\n### 1. Gmail Trigger  \nPolls Gmail every hour for new emails.  \nFilters out internal addresses (e.g., `@syncbricks.com`).  \nAvoids replying to already-responded emails (`Re:` subject filter).\n\n### 2. LangChain Text Classifier  \nUses AI to categorize the content of the email based on pre-defined categories:  \n- **Guest Post**  \n- **Youtube**  \n- **Udemy Courses**\n\n### 3. Google Gemini (PaLM) Chat Model *(Optional)*  \nProvides additional AI support to enhance classification accuracy.  \nCan be used to summarize or enrich the context if needed.\n\n### 4. Email Send Nodes  \nEach response category has a separate SMTP node with a custom HTML email:\n- **Guest Post Inquiry**  \n- **YouTube Video Inquiry**  \n- **Udemy Course Inquiry**\n\n### 5. Gmail: Mark as Read  \nMarks the email so it isn’t processed again.\n\n### 6. Gmail: Apply Label  \nAdds a label (e.g., `Handled by Bot`) for organization.\n\n### 7. Brevo: Create/Update Contact  \nSaves the sender to your CRM for future communication or marketing.\n\n---\n\n## Email Templates Included\n\n### Guest Post Template  \nIncludes pricing, website list, submission guidelines, and payment instructions.\n\n### YouTube Review Template  \nIncludes package pricing, review samples, video thumbnails, and inquiry instructions.  \n  \n### [Step by Step Tutorial](https://youtu.be/OAu6tOwubgE)\n\n### [GET n8n Now](https://www.udemy.com/course/mastering-n8n-ai-agents-api-automation-webhooks-no-code/?referralCode=0309FD70BE2D72630C09)  \n\n### [N8N COURSE](https://www.udemy.com/course/mastering-n8n-ai-agents-api-automation-webhooks-no-code/?referralCode=0309FD70BE2D72630C09)  \n### [n8n Book](https://lms.syncbricks.com/books/n8n/)  \n \n \n\nMore courses:  \n[http://lms.syncbricks.com](http://lms.syncbricks.com)\n\nYouTube Channel:  \n[https://youtube.com/@syncbricks](https://youtube.com/@syncbricks)\n\n---\n\n## How to Use\n\n1. Import the template into your n8n instance.\n2. Configure your Gmail OAuth2 and SMTP credentials.\n3. Set up your LangChain Text Classifier and Google Gemini API credentials.\n4. Update label ID in the Gmail node and ensure all custom fields like `from.value[0].name` match your use case.\n5. Run the workflow and watch it respond intelligently to new inquiries.\n\n---\n\n## Best Practices\n\n- Always test with mock emails first.\n- Keep the Google Gemini node optional if you want to reduce cost/API calls.\n- Use Gmail filters to auto-label certain types of emails.\n- Monitor your Brevo contacts to track new leads.\n\n---\n\n## Attribution & Support\n\n**Developed by Amjid Ali**  \nThis template took extensive time and effort to build. If you find it useful, please consider supporting my work.\n\n**Buy My Book:**  \n[Mastering n8n on Amazon](https://www.amazon.com/dp/B0F23GYCFW)\n\n**Full Courses & Tutorials:**  \n[http://lms.syncbricks.com](http://lms.syncbricks.com)\n\n**Follow Me Online:**  \nLinkedIn: [https://linkedin.com/in/amjidali](https://linkedin.com/in/amjidali)  \nWebsite: [https://amjidali.com](https://amjidali.com)  \nYouTube: [https://youtube.com/@syncbricks](https://youtube.com/@syncbricks)  \n",
+    "workflow": {
+      "meta": {
+        "instanceId": "dd130a849d7b29e5541b05d2f7f86a4acd4f1ec598c1c9438783f56bc4f0ff80",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "e563eef6-39c4-4859-b23a-db096e7f8717",
+          "name": "Gmail Trigger",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -1300,
+            -60
+          ],
+          "parameters": {
+            "simple": false,
+            "filters": {},
+            "options": {},
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyHour"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "umlWq7xPmamha8HX",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "068c250f-84b0-41e4-b48a-6a5260b7a24a",
+          "name": "Text Classifier",
+          "type": "@n8n/n8n-nodes-langchain.textClassifier",
+          "position": [
+            -660,
+            0
+          ],
+          "parameters": {
+            "options": {},
+            "inputText": "={{ $('Gmail Trigger').item.json.subject }}\n{{ $('Gmail Trigger').item.json.text }}",
+            "categories": {
+              "categories": [
+                {
+                  "category": "Guest Post",
+                  "description": "The inquiry is about the collaboration on guest post inquiry, blog post on syncbricks.com or any other website. "
+                },
+                {
+                  "category": "Youtube",
+                  "description": "The inquiry is about adding review video on our youtube channel"
+                },
+                {
+                  "category": "Udemy Courses",
+                  "description": "Training and Courses related to Various Technology, AI Etc"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "036d86c2-0375-4f44-a14f-4f20d17eb048",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -640,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "othBMxlMTTDAVGQ9",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6ca6adeb-fdf4-4e4c-83f2-e2b28548b33e",
+          "name": "GuestPost Inquiry",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            -80,
+            -180
+          ],
+          "webhookId": "880024c2-f011-4385-b0f9-25ce08c5bd1b",
+          "parameters": {
+            "html": "=<!DOCTYPE html>\n<html>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n\n<p>Hello,</p>\n\n<p>Thank you for reaching out! We’re thrilled to help you gain exposure through guest posting on our diverse platforms. Here’s everything you need to know to get started:</p>\n\n<p><strong>Pricing & Options:</strong></p>\n<ul>\n    <li><strong>Guest Post:</strong> $0 per post. Bulk discounts are available for multiple submissions.</li>\n    <li><strong>Link Insertion:</strong> $0 per link in an existing post.</li>\n</ul>\n<p>Both options come with do-follow backlinks, ensuring long-term SEO benefits for your website.</p>\n\n<p><strong>Why Partner with Us?</strong></p>\n<ul>\n    <li><strong>Reach:</strong> Gain exposure to niche-specific, engaged audiences.</li>\n    <li><strong>Quick Turnaround:</strong> Publication within 3 business days for a seamless experience.</li>\n    <li><strong>Diverse Niches:</strong> Choose from a variety of topics to suit your content needs.</li>\n</ul>\n\n<p><strong>Choose the Right Platform:</strong></p>\n<p>Our websites span various niches, so you can select the one that best matches your content. Explore them here:</p>\n<ul>\n    <li><a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a></li>\n    <li><a href=\"https://s4stechnology.com\" target=\"_blank\">s4stechnology.com</a></li>\n    <li><a href=\"https://shukranoman.com\" target=\"_blank\">shukranoman.com</a></li>\n    <li><a href=\"https://brenttechnologies.com\" target=\"_blank\">brenttechnologies.com</a></li>\n    <li><a href=\"https://mairimanzil.com\" target=\"_blank\">mairimanzil.com</a></li>\n    <li><a href=\"https://techfeed.com.au\" target=\"_blank\">techfeed.com.au</a></li>\n    <li><a href=\"https://tuts.plus\" target=\"_blank\">tuts.plus</a></li>\n    <li><a href=\"https://swifttapper.com\" target=\"_blank\">swifttapper.com</a></li>\n    <li><a href=\"https://amjidali.com\" target=\"_blank\">amjidali.com</a></li>\n    <li><a href=\"https://hamid.com.au\" target=\"_blank\">hamid.com.au</a></li>\n    <li><a href=\"https://cio.guru\" target=\"_blank\">cio.guru</a></li>\n</ul>\n\n<p><strong>Submission Guidelines:</strong></p>\n<ul>\n    <li><strong>Original Content:</strong> Submissions must be high-quality, unpublished, and niche-relevant.</li>\n    <li><strong>Minimum Word Count:</strong> 300 words.</li>\n    <li><strong>Formatting:</strong> Use headings, subheadings, and bullet points for readability.</li>\n    <li><strong>Backlinks:</strong> One do-follow backlink is permitted per post.</li>\n    <li><strong>Images:</strong> Unique and relevant images are encouraged.</li>\n</ul>\n\n<p><strong>How to Submit:</strong></p>\n<p>Reply to this email with your completed guest post and any supporting materials. We’ll review your submission and get back to you within 3 business days.</p>\n\n<p><strong>Payment Information:</strong></p>\n<p>Once your guest post or link insertion request is approved, we’ll provide you with payment details. We accept payments through:</p>\n<ul>\n    <li>PayPal</li>\n    <li>Bank Transfer</li>\n    <li>Other methods (upon request)</li>\n</ul>\n<p>Please let us know your preferred method, and we’ll share the necessary information.</p>\n\n<p><strong>Questions?</strong></p>\n<p>If you need further assistance or guidance, feel free to reach out. We’re here to help!</p>\n\n<p>Best regards, <br>\n<strong>Sophia Mitchell</strong> <br>\nOutreach Manager | <a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a> <br>\nWhatsApp: +1</p>\n\n<p style=\"font-size: 12px; color: #888;\">© 2025 SyncBricks. All rights reserved.</p>\n\n</body>\n</html>\n",
+            "options": {
+              "appendAttribution": false
+            },
+            "subject": "=Re: {{ $('Gmail Trigger').item.json.subject }}",
+            "toEmail": "={{ $json.from.value[0].name }} <{{ $json.from.value[0].address }}>",
+            "fromEmail": "Sophia Mitchell <info@syncbricks.com>"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "AOPfJVssrSFm0US1",
+              "name": "SMTP account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "41f06728-3bac-4fc2-ab20-d16f3fd9a936",
+          "name": "Youtube Video Inquiry",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            -80,
+            0
+          ],
+          "webhookId": "d33a7f20-dca8-4622-b421-b92697fdffd8",
+          "parameters": {
+            "html": "=<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            margin: 0;\n            padding: 0;\n        }\n        .container {\n            width: 100%;\n            max-width: 600px;\n            margin: 0 auto;\n            padding: 20px;\n        }\n        .header {\n            background-color: #f4f4f4;\n            padding: 10px 20px;\n            text-align: center;\n            border-bottom: 1px solid #ddd;\n        }\n        .header h1 {\n            margin: 0;\n            color: #555;\n        }\n        .content {\n            padding: 20px;\n        }\n        .content h2 {\n            color: #555;\n            font-size: 18px;\n        }\n        .content p {\n            margin-bottom: 15px;\n        }\n        .content ul {\n            list-style: disc;\n            padding-left: 20px;\n        }\n        .content ul li {\n            margin-bottom: 10px;\n        }\n        .content a {\n            color: #007BFF;\n            text-decoration: none;\n        }\n        .content a:hover {\n            text-decoration: underline;\n        }\n        .video-thumbnail {\n            text-align: center;\n            margin: 20px 0;\n        }\n        .video-thumbnail img {\n            width: 100%;\n            max-width: 560px;\n            border-radius: 5px;\n            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);\n        }\n        .footer {\n            text-align: center;\n            font-size: 12px;\n            color: #888;\n            margin-top: 20px;\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>YouTube Review Video Inquiry</h1>\n        </div>\n        <div class=\"content\">\n            <p>Hello {{ $json.Name }},</p>\n            <p>Thank you for reaching out to inquire about our YouTube review video services! We are thrilled to collaborate with you and showcase your product or service to our engaged audience on our YouTube channel, **SyncBricks**.</p>\n            <h2>What We Offer:</h2>\n            <ul>\n                <li><strong>Comprehensive Review Video (10 Minutes):</strong> $1  \n                    <ul>\n                        <li>Detailed review and hands-on demonstration.</li>\n                        <li>Professional editing with a focus on your product's highlights.</li>\n                        <li>Includes a do-follow backlink placement on our website.</li>\n                    </ul>\n                </li>\n                <li><strong>Short Follow-Up Video:</strong> $7  \n                    <ul>\n                        <li>Quick review or update video.</li>\n                        <li>Focus on specific features or updates.</li>\n                        <li>Also includes a do-follow backlink placement on our website.</li>\n                    </ul>\n                </li>\n            </ul>\n            <h2>Sample Video:</h2>\n            <p>Here’s an example of our work to help you understand the quality and style of our reviews:</p>\n            <div class=\"video-thumbnail\">\n                <a href=\"https://youtu.be/-5bI45z4Ozo?si=hkGNnTgtH1quOfH2\" target=\"_blank\">\n                    <img src=\"https://img.youtube.com/vi/-5bI45z4Ozo/maxresdefault.jpg\" alt=\"Sample Video Thumbnail\">\n                </a>\n            </div>\n            <p>Watch it here: <a href=\"https://youtu.be/-5bI45z4Ozo?si=hkGNnTgtH1quOfH2\" target=\"_blank\">https://youtu.be/-5bI45z4Ozo</a></p>\n            <h2>Why Choose Us?</h2>\n            <ul>\n                <li>Professional video production and editing to highlight your product's key features.</li>\n                <li>Engaged audience focused on IT and technology-related content.</li>\n                <li>Comprehensive reviews that provide value to both viewers and sponsors.</li>\n            </ul>\n            <h2>How to Proceed:</h2>\n            <p>To book a review video, please reply to this email with the following details:</p>\n            <ul>\n                <li>Your product/service name and a brief description.</li>\n                <li>Any specific features or aspects you want us to highlight.</li>\n                <li>Preferred review type (Comprehensive or Short Follow-Up).</li>\n            </ul>\n            <p>Once we have your details, we will share the payment instructions and the next steps to get started.</p>\n            <h2>Questions?</h2>\n            <p>If you have any questions or need further clarification, feel free to ask. We’re here to assist you!</p>\n            <p>Best regards,<br><strong>Sophia Mitchell</strong><br>Outreach Manager | <a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a><br>WhatsApp: +1 </p>\n        </div>\n        <div class=\"footer\">\n            <p>© 2025 SyncBricks. All rights reserved.</p>\n        </div>\n    </div>\n</body>\n</html>\n",
+            "options": {
+              "appendAttribution": false
+            },
+            "subject": "=Re: {{ $('Gmail Trigger').item.json.subject }}",
+            "toEmail": "={{ $json.from.value[0].name }} <{{ $json.from.value[0].address }}>",
+            "fromEmail": "Sophia Mitchell <info@syncbricks.com>"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "AOPfJVssrSFm0US1",
+              "name": "SMTP account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "e42754e8-a594-4ea8-b9a8-9e47ffdacd72",
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            -80,
+            180
+          ],
+          "webhookId": "3a0ca27f-1ff9-4c59-b17f-0523c58f70d1",
+          "parameters": {
+            "html": "=<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            line-height: 1.6;\n            color: #333;\n            margin: 0;\n            padding: 0;\n        }\n        .container {\n            width: 100%;\n            max-width: 600px;\n            margin: 0 auto;\n            padding: 20px;\n        }\n        .header {\n            background-color: #f4f4f4;\n            padding: 10px 20px;\n            text-align: center;\n            border-bottom: 1px solid #ddd.\n        }\n        .header h1 {\n            margin: 0;\n            color: #555;\n        }\n        .content {\n            padding: 20px;\n        }\n        .content h2 {\n            color: #555;\n            font-size: 18px;\n        }\n        .content p {\n            margin-bottom: 15px;\n        }\n        .content ul {\n            list-style: disc;\n            padding-left: 20px;\n        }\n        .content ul li {\n            margin-bottom: 10px;\n        }\n        .content a {\n            color: #007BFF;\n            text-decoration: none;\n        }\n        .content a:hover {\n            text-decoration: underline;\n        }\n        .footer {\n            text-align: center;\n            font-size: 12px;\n            color: #888;\n            margin-top: 20px.\n        }\n    </style>\n</head>\n<body>\n    <div class=\"container\">\n        <div class=\"header\">\n            <h1>Course Inquiry</h1>\n        </div>\n        <div class=\"content\">\n            <p>Hello,</p>\n            <p>Thank you for your interest in our online courses! At **SyncBricks**, we offer a variety of high-quality courses designed to enhance your skills in IT, automation, network security, and more.</p>\n            <h2>Our Featured Courses:</h2>\n            <ul>\n                <li><strong><a href=\"https://www.udemy.com/course/ai-automation-mastery-build-intelligent-agents-with-lowcode/?referralCode=0062E7C1D64784AB70CA\" target=\"_blank\">AI Automation Mastery: Build Intelligent Agents</a></strong>  \n                    Learn how to leverage low-code platforms for workflow automation and build AI-driven solutions.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/microsoft-power-bi-advanced-course-desktop-dax/?referralCode=1B754977728785DC48C9\" target=\"_blank\">Advanced Power BI: Master Desktop & DAX</a></strong>  \n                    Master data visualization, dashboard creation, and DAX in Power BI.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/proxmox-virtualization-environment-complete-training/?referralCode=8E7EAFD11C2389F89C11\" target=\"_blank\">Proxmox VE: Complete Virtualization Guide</a></strong>  \n                    Dive into Proxmox VE for advanced virtualization techniques and management.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/pfsense-network-security-and-firewall-management/?referralCode=866D4839516374C77ACE\" target=\"_blank\">pfSense Network Security & Firewall Management</a></strong>  \n                    Learn how to secure networks with advanced firewall configurations.\n                </li>\n                <li><strong><a href=\"https://www.udemy.com/course/human-resource-management-with-erpnext-onboarding-to-exit/?referralCode=B3C64C3925EC62F42052\" target=\"_blank\">ERPNext for HR Management: Onboarding to Exit</a></strong>  \n                    Manage HR processes efficiently using ERPNext.\n                </li>\n            </ul>\n            <h2>Free Learning Resources:</h2>\n            <p>Explore a wealth of free material on our YouTube channel, **SyncBricks**, including tutorials, reviews, and how-to videos. Check it out here:</p>\n            <p><a href=\"https://www.youtube.com/channel/UC1ORA3oNGYuQ8yQHrC7MzBg?sub_confirmation=1\" target=\"_blank\">Visit Our YouTube Channel</a></p>\n            <h2>Why Choose Our Courses?</h2>\n            <ul>\n                <li>High-quality, industry-relevant content curated by experts.</li>\n                <li>Practical, hands-on projects to enhance learning.</li>\n                <li>Lifetime access to course materials for continuous learning.</li>\n                <li>Affordable pricing with discounts on certain platforms.</li>\n            </ul>\n            <h2>Browse All Courses</h2>\n            <p>Explore our full catalog on <a href=\"https://lms.syncbricks.com/\" target=\"_blank\">SyncBricks LMS</a> for more learning opportunities.</p>\n            <h2>Have Questions?</h2>\n            <p>If you’re unsure which course is the best fit or need assistance enrolling, let us know! We’re happy to guide you based on your interests and goals.</p>\n            <p>Best regards,<br><strong>Sophia Mitchell</strong><br>Outreach Manager | <a href=\"https://syncbricks.com\" target=\"_blank\">syncbricks.com</a><br>WhatsApp: +1 (810) 214-4375</p>\n        </div>\n        <div class=\"footer\">\n            <p>© 2025 SyncBricks. All rights reserved.</p>\n        </div>\n    </div>\n</body>\n</html>\n",
+            "options": {
+              "appendAttribution": false
+            },
+            "subject": "=Re:  {{ $('Gmail Trigger').item.json.Subject }}",
+            "toEmail": "={{ $json.from.value[0].name }} <{{ $json.from.value[0].address }}>",
+            "fromEmail": "Sophia Mitchell <info@syncbricks.com>"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "AOPfJVssrSFm0US1",
+              "name": "SMTP account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a12e47bb-540b-4d42-b4fa-d27237964022",
+          "name": "Mark as Read",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            360,
+            0
+          ],
+          "webhookId": "066a871a-9801-4814-8ba5-238abe493cbb",
+          "parameters": {
+            "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+            "operation": "markAsRead"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "umlWq7xPmamha8HX",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "06deb7fa-0169-46c3-b673-f35b476ef6a5",
+          "name": "Apply Label",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            660,
+            200
+          ],
+          "webhookId": "066a871a-9801-4814-8ba5-238abe493cbb",
+          "parameters": {
+            "labelIds": [
+              "Label_6332648012153150222"
+            ],
+            "messageId": "={{ $('Gmail Trigger').item.json.id }}",
+            "operation": "addLabels"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "umlWq7xPmamha8HX",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a3a38697-87ff-4954-aafe-c548425a84eb",
+          "name": "Create Contact in Brevo",
+          "type": "n8n-nodes-base.sendInBlue",
+          "position": [
+            640,
+            -140
+          ],
+          "parameters": {
+            "email": "={{ $('Text Classifier').item.json.from.value[0].address }}",
+            "resource": "contact",
+            "operation": "upsert",
+            "requestOptions": {}
+          },
+          "credentials": {
+            "sendInBlueApi": {
+              "id": "tBNcyqgGWcRE4o8a",
+              "name": "Brevo account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "99d8d741-4c7b-4795-958b-18116f9f7f96",
+          "name": "Emails from Existing Contracts",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -1120,
+            -60
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "7cffe101-333d-4ec2-a822-181fe421745b",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.headers.from }}",
+                  "rightValue": "@syncbricks.com"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "538b53ef-05cd-4f08-83d7-5218b8492036",
+          "name": "Reply",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -980,
+            100
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "07a6d5e2-ffc5-41d8-b69a-abd6860879c0",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notStartsWith"
+                  },
+                  "leftValue": "={{ $json.subject }}",
+                  "rightValue": "Re:"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "28f5e0eb-e3ad-4d34-89c6-c1571521f283",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2060,
+            -300
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 715,
+            "height": 716,
+            "content": "## Developed by Amjid Ali\n\nThank you for using this workflow template. It has taken me countless hours of hard work, research, and dedication to develop, and I sincerely hope it adds value to your work.\n\nIf you find this template helpful, I kindly ask you to consider supporting my efforts. Your support will help me continue improving and creating more valuable resources.\n\nBuy N8N Mastery Book : https://www.amazon.com/dp/B0F23GYCFW\n\n\nFor Full Course about ERPNext or Automation using AI follow below link\n\nhttp://lms.syncbricks.com\n\nAdditionally, when sharing this template, I would greatly appreciate it if you include my original information to ensure proper credit is given.\n\nThank you for your generosity and support!\nEmail : amjid@amjidali.com\nhttps://linkedin.com/in/amjidali\nhttps://syncbricks.com\nhttps://youtube.com/@syncbricks"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8c105698-d989-44c3-ad8e-4bdda5c01715",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1320,
+            -300
+          ],
+          "parameters": {
+            "width": 520,
+            "height": 720,
+            "content": "## Get the and Validate  New Email"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cbb2e328-35b3-4ec9-9470-254666e40400",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -780,
+            -300
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 520,
+            "height": 720,
+            "content": "## Classify the Email"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0b5584cb-1002-46f5-9ac0-bcd816998534",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            -300
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 520,
+            "height": 720,
+            "content": "## Email Templates for Services"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "406f5793-6b54-4008-89e5-0b878aef9806",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            -300
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 520,
+            "height": 720,
+            "content": "## mark as read, apply label and add to contact\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Reply": {
+          "main": [
+            [
+              {
+                "node": "Text Classifier",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send Email": {
+          "main": [
+            [
+              {
+                "node": "Mark as Read",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Mark as Read": {
+          "main": [
+            [
+              {
+                "node": "Apply Label",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Create Contact in Brevo",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail Trigger": {
+          "main": [
+            [
+              {
+                "node": "Emails from Existing Contracts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Text Classifier": {
+          "main": [
+            [
+              {
+                "node": "GuestPost Inquiry",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Youtube Video Inquiry",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GuestPost Inquiry": {
+          "main": [
+            [
+              {
+                "node": "Mark as Read",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Youtube Video Inquiry": {
+          "main": [
+            [
+              {
+                "node": "Mark as Read",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Text Classifier",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Emails from Existing Contracts": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Reply",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 2
+        },
+        "n8n-nodes-base.emailSend": {
+          "count": 3
+        },
+        "n8n-nodes-base.sendInBlue": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.gmailTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.textClassifier": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Amjid Ali",
+      "username": "amjid",
+      "bio": "**Amjid Ali** is an automation expert and AI enthusiast specializing in creating intelligent workflows using low-code platforms like **n8n**. With a passion for simplifying complex processes, he designs solutions that enhance productivity and streamline operations. As an active contributor to the **n8n Creator Hub**, Amjid shares innovative use cases, practical templates, and best practices, empowering the community to unlock the full potential of workflow automation.",
+      "verified": true,
+      "links": [
+        "https://amjidali.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/8760ed64a38ed65da42983737659c7e295e4a7f14b59ed5ce1b0b1077435f573?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 11,
+        "icon": "fa:envelope",
+        "name": "n8n-nodes-base.emailSend",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMTP",
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Send Email",
+          "color": "#00bb88"
+        },
+        "iconData": {
+          "icon": "envelope",
+          "type": "icon"
+        },
+        "displayName": "Send Email",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 820,
+        "icon": "file:brevo.svg",
+        "name": "n8n-nodes-base.sendInBlue",
+        "codex": {
+          "data": {
+            "alias": [
+              "sendinblue"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.brevo/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/brevo/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Brevo"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjQiIGN5PSIyNCIgcj0iMjQiIGZpbGw9IiMwQjk5NkUiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMzEuNTA0IDIxLjgxYzEuNDgzLTEuNDU0IDIuMTc5LTMuMTMzIDIuMTc5LTUuMTc1IDAtNC4yMi0zLjEwNi03LjAzNS03Ljc4Ny03LjAzNUgxNC40djMwaDkuMjdDMzAuNzE4IDM5LjYgMzYgMzUuMjg5IDM2IDI5LjU3YzAtMy4xMzItMS42MjItNS45NDUtNC40OTYtNy43Nm0tMTIuOTMyLTguMzA4aDYuODZjMi4zMTcgMCAzLjg0OCAxLjMxNiAzLjg0OCAzLjMxMyAwIDIuMjY5LTEuOTkzIDMuOTk0LTYuMDcyIDUuMzEtMi43ODEuODYxLTQuMDMyIDEuNTg4LTQuNDk2IDIuNDUxbC0uMTQuMDAyem00LjcyNyAyMi4xOTZoLTQuNzI3di00LjYzYzAtMi4wNDIgMS43NjItNC4wMzkgNC4yMTktNC44MSAyLjE3OS0uNzI3IDMuOTg1LTEuNDU0IDUuNTE2LTIuMjI0IDIuMDM5IDEuMTgxIDMuMjkgMy4yMjIgMy4yOSA1LjM1NiAwIDMuNjMtMy41MjMgNi4zMDgtOC4yOTggNi4zMDgiLz48L3N2Zz4="
+        },
+        "displayName": "Brevo",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 824,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmailTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gmailtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Gmail Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1265,
+        "icon": "fa:tags",
+        "name": "@n8n/n8n-nodes-langchain.textClassifier",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.text-classifier/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Text Classifier"
+        },
+        "iconData": {
+          "icon": "tags",
+          "type": "icon"
+        },
+        "displayName": "Text Classifier",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

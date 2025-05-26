@@ -1,0 +1,188 @@
+{
+  "workflow": {
+    "id": 703,
+    "name": "Receive updates when a form is submitted in Wufoo",
+    "views": 276,
+    "recentViews": 0,
+    "totalViews": 276,
+    "createdAt": "2020-10-05T14:23:47.835Z",
+    "description": "![workflow-screenshot](fileId:270)",
+    "workflow": {
+      "id": "78",
+      "name": "Receive updates when a form is submitted in Wufoo",
+      "nodes": [
+        {
+          "name": "Wufoo Trigger",
+          "type": "n8n-nodes-base.wufooTrigger",
+          "position": [
+            1290,
+            140
+          ],
+          "webhookId": "106376c5-b49c-412f-8463-4db23a23c057",
+          "parameters": {
+            "form": "n8n"
+          },
+          "credentials": {
+            "wufooApi": "wufoo"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.wufooTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 375,
+        "icon": "file:wufoo.png",
+        "name": "n8n-nodes-base.wufooTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Form"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.wufootrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wufoo/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Wufoo Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Wufoo Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 270,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6ca729f71b8148b786398c9ad571d81a.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,195 @@
+{
+  "workflow": {
+    "id": 8,
+    "name": "Handle errors from a different workflow",
+    "views": 1179,
+    "recentViews": 0,
+    "totalViews": 1179,
+    "createdAt": "2019-08-31T10:05:49.927Z",
+    "description": "![workflow-screenshot](fileId:10)\n\nWhen set as \"Error Workflow\" on other workflow which does fail will it send an Email with information about which workflow did fail and what went wrong.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Error Trigger",
+          "type": "n8n-nodes-base.errorTrigger",
+          "position": [
+            250,
+            500
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Mailgun",
+          "type": "n8n-nodes-base.mailgun",
+          "position": [
+            450,
+            500
+          ],
+          "parameters": {
+            "text": "=Error: {{$node[\"Error Trigger\"].data[\"execution\"][\"error\"][\"message\"]}}\n\nStack Trace:\n{{$node[\"Error Trigger\"].data[\"execution\"][\"error\"][\"stack\"]}}",
+            "subject": "=Workflow Error:  {{$node[\"Error Trigger\"].data[\"workflow\"][\"name\"]}}",
+            "toEmail": "",
+            "fromEmail": ""
+          },
+          "credentials": {
+            "mailgunApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Error Trigger": {
+          "main": [
+            [
+              {
+                "node": "Mailgun",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.mailgun": {
+          "count": 1
+        },
+        "n8n-nodes-base.errorTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Jan Oberhauser",
+      "username": "jan",
+      "bio": "Founder/CEO of n8n",
+      "verified": true,
+      "links": [
+        "https://twitter.com/JanOberhauser"
+      ],
+      "avatar": "https://gravatar.com/avatar/457e4b99bfbbb2d3fb5b045a6d80165b3bc80dc3ff24306ac18fd1180e257786?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 12,
+        "icon": "fa:bug",
+        "name": "n8n-nodes-base.errorTrigger",
+        "codex": {
+          "data": {
+            "details": "In n8n, when a workflow execution fails, it can start another workflow. This second workflow can be any arbitrary workflow on your n8n instance. Use the Error Trigger node as your Trigger in the Error workflow.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.errortrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Error Trigger",
+          "color": "#0000FF"
+        },
+        "iconData": {
+          "icon": "bug",
+          "type": "icon"
+        },
+        "displayName": "Error Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 23,
+        "icon": "file:mailgun.svg",
+        "name": "n8n-nodes-base.mailgun",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailgun/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mailgun/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Mailgun"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjYzAyMTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTMyLjA2NiAxOS45Yy02LjcgMC0xMi4xMyA1LjQzMy0xMi4xMyAxMi4xczUuNDQzIDEyLjEgMTIuMTMgMTIuMSAxMi4xMy01LjQzMyAxMi4xMy0xMi4xLTUuNDQzLTEyLjEtMTIuMTMtMTIuMU0xMy4xODEgMzJjMC0xMC40MDggOC40Ni0xOC44NTIgMTguODg1LTE4Ljg1MnMxOC44ODQgOC40NTQgMTguODg0IDE4Ljg2YzAgLjcyLS4wNjYgMS4zNzUtLjEzIDIuMDMtLjEzIDEuODMzIDEuMTggMy4yMDcgMy4wMTYgMy4yMDcgMy4wODIgMCAzLjQtMy45OTMgMy40LTUuMzAyIDAtMTMuOTQzLTExLjI4LTI1LjItMjUuMjQ2LTI1LjJTNi43NTQgMTguMDAxIDYuNzU0IDMxLjk0NHMxMS4yNzkgMjUuMiAyNS4yNDYgMjUuMmM3LjQgMCAxNC4wMzMtMy4yMDcgMTguNy04LjI0OGw1LjE4IDQuMzJBMzEuOTMgMzEuOTMgMCAwIDEgMzIgNjMuODg2Yy0xNy43MDUuMDAyLTMyLTE0LjMzNC0zMi0zMS45NDJDMCAxNC4yNyAxNC4zNiAwIDMyIDBjMTcuNzA1IDAgMzIgMTQuMzM2IDMyIDMxLjk0NCAwIDcuMDctMy40IDEyLjgzLTEwLjE2NCAxMi44My0zLjAxNiAwLTQuNzg3LTEuMzc1LTUuODM2LTIuODgtMy4zNDQgNS4zNjgtOS4yNDYgOC45MDItMTYuMDY2IDguOTAyLTEwLjI5NS4wNjUtMTguNzU0LTguMzgtMTguNzU0LTE4Ljc4NnptMTguODg1LTUuNTY0YzMuMDgyIDAgNS41NzQgMi40ODcgNS41NzQgNS40OTggMCAzLjA3Ny0yLjQ5MiA1LjU2NC01LjU3NCA1LjU2NHMtNS41NzQtMi40NzctNS41NzQtNS41NTRjLjA2Ni0zIDIuNDkyLTUuNDk4IDUuNTc0LTUuNDk4eiIvPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Mailgun",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 10,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/51d1baaa0f4542fdb6b9016b876f07c5.png"
+      }
+    ]
+  }
+}

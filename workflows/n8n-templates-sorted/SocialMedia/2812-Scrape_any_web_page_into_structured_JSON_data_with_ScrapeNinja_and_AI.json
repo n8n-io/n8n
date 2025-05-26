@@ -1,0 +1,353 @@
+{
+  "workflow": {
+    "id": 2812,
+    "name": "Scrape any web page into structured JSON data with ScrapeNinja and AI",
+    "views": 13104,
+    "recentViews": 16,
+    "totalViews": 13104,
+    "createdAt": "2025-01-28T07:07:34.371Z",
+    "description": "Disclaimer: This template only works on self-hosted for now, as it uses a community node.\n\n## Use Case\nWeb scrapers often break due to web page layout changes.\nThis workflow attempts to mitigate this problem by auto-generating web scraping data extractor code via LLM.\n\n## How It Works\nThis workflow leverages ScrapeNinja n8n community node to: \n- scrape webpage HTML, \n- feed it into LLM (Google Gemini) and ask to write a JS extractor function code, then it \n- executes the written JS extractor against scraped HTML to extract useful data from webpage (the code is safely executed in a sandbox)\n\n## Installation\nTo install ScrapeNinja n8n node, in your self-hosted instance, go to Settings -&gt; Community nodes, enter \"n8n-nodes-scrapeninja\", and install. \n\nMake sure you are using at least v0.3.0. \n\nSee this in action:\nhttps://www.linkedin.com/feed/update/urn:li:activity:7289659870935490560/\n\n",
+    "workflow": {
+      "id": "ALTwr1xWxmqGdCtZ",
+      "meta": {
+        "instanceId": "5b860a91d7844b5237bb51cc58691ca8c3dc5b576f42d4d6bbedfb8d43d58ece",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "ScrapeNinja: AI generated web scraper",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "9dd743dd-4ee6-4aaf-820d-7e63ea31399c",
+          "name": "ScrapeNinja",
+          "type": "CUSTOM.scrapeNinja",
+          "position": [
+            200,
+            0
+          ],
+          "parameters": {
+            "url": "https://news.ycombinator.com/"
+          },
+          "credentials": {
+            "scrapeNinjaApi": {
+              "id": "u7avPyHEwhTrfQX5",
+              "name": "ScrapeNinja account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fbfe223d-e37f-473d-96c5-a5e89b19e2fc",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            680,
+            280
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-exp-1206"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "hojczN24FieC3tSg",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "75a9b517-f51e-4b84-90d5-d9352f5185cc",
+          "name": "Generate custom web scraper",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "c1e4e096-ae88-45d4-aed0-d7b92b496b5a",
+          "name": "Cleanup HTML",
+          "type": "CUSTOM.scrapeNinja",
+          "position": [
+            420,
+            0
+          ],
+          "parameters": {
+            "html": "={{ $json.body }}",
+            "operation": "cleanup-html"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dccb1015-ce34-4c4c-b556-a31de8639baf",
+          "name": "Generate JS eval code via LLM",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            640,
+            0
+          ],
+          "parameters": {
+            "text": "=write cheerio.js function to news items. your response MUST start with:\n\nfunction extract(html, cheerioInstance) {\n// use cheerio to load html...\n\nreturn [{ url: \"item1\", \"title\": \"xxx\", \"score\": \"5\", comments: 6 }, ... ]\n}\ndo not use new URL() because this wont work in my env.\nhtml:\n{{ $json.html }}",
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "71c03255-9bb8-4ce8-b191-7b163326aa41",
+          "name": "Eval generated code to extract data",
+          "type": "CUSTOM.scrapeNinja",
+          "position": [
+            1000,
+            0
+          ],
+          "parameters": {
+            "html": "={{ $('Cleanup HTML').item.json.html }}",
+            "operation": "extract-custom",
+            "extractionFunction": "={{ $json.text }}"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "2a2dd735-e805-4fda-8a1c-b0c6144e0804",
+      "connections": {
+        "ScrapeNinja": {
+          "main": [
+            [
+              {
+                "node": "Cleanup HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Cleanup HTML": {
+          "main": [
+            [
+              {
+                "node": "Generate JS eval code via LLM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Generate JS eval code via LLM",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate custom web scraper": {
+          "main": [
+            [
+              {
+                "node": "ScrapeNinja",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate JS eval code via LLM": {
+          "main": [
+            [
+              {
+                "node": "Eval generated code to extract data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Eval generated code to extract data": {
+          "main": [
+            []
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "CUSTOM.scrapeNinja": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Anthony",
+      "username": "scrapeninja",
+      "bio": "I am a software engineer and technical lead with over 15 years of experience, and I am passionate about building and scaling SaaS products. ScrapeNinja.net (bootstrapped) has been the most exciting and challenging product I have built so far. ScrapeNinja is primarily aimed at fellow developers and founders of software products, and it tries to alleviate the major pains of reliable, observable and scalable web scraping and feeding data into LLMs. ",
+      "verified": true,
+      "links": [
+        "https://pixeljets.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/edbc5b9e7a0952395b10b4f8af8dfe7b157328e94f8a6776715a89edc27412e0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": []
+  }
+}

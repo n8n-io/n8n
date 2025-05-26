@@ -1,0 +1,120 @@
+{
+  "workflow": {
+    "id": 513,
+    "name": "Receive messages for an ActiveMQ queue",
+    "views": 619,
+    "recentViews": 0,
+    "totalViews": 619,
+    "createdAt": "2020-07-14T12:51:53.437Z",
+    "description": "![workflow-screenshot](fileId:112)",
+    "workflow": {
+      "id": "135",
+      "name": "Receive messages for an ActiveMQ queue via AMQP Trigger",
+      "nodes": [
+        {
+          "name": "AMQP Trigger",
+          "type": "n8n-nodes-base.amqpTrigger",
+          "position": [
+            650,
+            200
+          ],
+          "parameters": {
+            "sink": ""
+          },
+          "credentials": {
+            "amqp": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.amqpTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 64,
+        "icon": "file:amqp.svg",
+        "name": "n8n-nodes-base.amqpTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.amqptrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/amqp/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "AMQP Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMi44ODEzNSAyNy42MjcxSDI3LjYyNzFWMi44ODEzNUgzNy4xMTg2VjM3LjExODZIMi44ODEzNVYyNy42MjcxWiIgZmlsbD0iYmxhY2siLz4KPHBhdGggZD0iTTIuODgxMzUgMi44ODEzNVYxMi4zNzI5SDEyLjM3MjlWMi44ODEzNUgyLjg4MTM1WiIgZmlsbD0iYmxhY2siLz4KPHBhdGggZD0iTTI0Ljc0NTggMi44ODEzNUgxNS4yNTQyVjE1LjI1NDJIMi44ODEzNVYyNC43NDU4SDI0Ljc0NThWMi44ODEzNVoiIGZpbGw9IiMwMDI1ODUiLz4KPHBhdGggZD0iTTM3LjExODYgMi44ODEzNUgyNy42MjcxVjI3LjYyNzFMMzcuMTE4NiAzNy4xMTg2VjIuODgxMzVaIiBmaWxsPSIjQ0FDQ0NFIi8+CjxwYXRoIGQ9Ik0xMi4zNzI5IDIuODgxMzVIMi44ODEzNUwxMi4zNzI5IDEyLjM3MjlWMi44ODEzNVoiIGZpbGw9IiNDQUNDQ0UiLz4KPHBhdGggZD0iTTI0Ljc0NTkgMjQuNzQ1OFYyLjg4MTM1SDE1LjI1NDRWMTUuMjU0MkwyNC43NDU5IDI0Ljc0NThaIiBmaWxsPSIjQTJCMEQ5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "AMQP Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 112,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/42b5f740a5154ffb88f6d59d6e62392f.png"
+      }
+    ]
+  }
+}

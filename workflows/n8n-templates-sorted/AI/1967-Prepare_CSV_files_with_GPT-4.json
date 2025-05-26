@@ -1,0 +1,801 @@
+{
+  "workflow": {
+    "id": 1967,
+    "name": "Prepare CSV files with GPT-4",
+    "views": 6111,
+    "recentViews": 0,
+    "totalViews": 6111,
+    "createdAt": "2023-10-30T13:32:37.834Z",
+    "description": "This workflow generates CSV files containing a list of 10 random users with specific characteristics using OpenAI's GPT-4 model. It then splits this data into batches, converts it to CSV format, and saves it to disk for further use.\n\n1. The execution of the workflow begins from here when triggered manually.\n2. \"OpenAI\" Node. This uses the OpenAI API to generate random user data. The input to the OpenAI API is a fixed string, which asks for a list of 10 random users with some specific attributes. The attributes include a name and surname starting with the same letter, a subscription status, and a subscription date (if they are subscribed). There is also a short example of the JSON object structure. This technique is called one-shot prompting.\n3. \"Split In Batches\" Node. This node is used to handle the OpenAI responses one by one.\n4. \"Parse JSON\" Node. This node converts the content of the message received from the OpenAI node (which is in string format) into a JSON object.\n5. \"Make JSON Table\" Node. This node is used to convert the JSON data into a tabular format, which is easier to handle for further data processing.\n6. \"Convert to CSV\" Node. This node converts the table format data received from the \"Make JSON Table\" node into CSV format and assigns a file name.\n7. \"Save to Disk\" Node. This node is used to save the CSV generated in the previous node to disk in the \".n8n\" directory.\n\nThe workflow is designed in a circular manner. So, after saving the file to disk, it goes back to the \"Split In Batches\" node to process the OpenAI output, until all batches are processed.",
+    "workflow": {
+      "id": "6FSx5OMVxp8Ldg8A",
+      "meta": {
+        "instanceId": "fb924c73af8f703905bc09c9ee8076f48c17b596ed05b18c0ff86915ef8a7c4a"
+      },
+      "name": "Prepare CSV files with GPT-4",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "5b43e57d-1fe1-4ea6-bf3d-661f7e5fc4b0",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            960,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "291466e8-1592-4080-a675-5e9f486d0d05",
+          "name": "OpenAI",
+          "type": "n8n-nodes-base.openAi",
+          "position": [
+            1160,
+            240
+          ],
+          "parameters": {
+            "model": "gpt-4",
+            "prompt": {
+              "messages": [
+                {
+                  "content": "=please create a list of 10 random users. Return back ONLY a JSON array. Character names of famous fiction characters. Make Names and Surnames start with the same letter. Name and Surname can be from different characters. If subscribed is false then make date_subscribed empty. If date_subscribed is not empty then make it random and no later then 2023-10-01. Make JSON in a single line, avoid line breaks. Here's an example: [{\"user_name\": \"Jack Jones\", \"user_email\":\"jackjo@yahoo.com\",\"subscribed\": true, \"date_subscribed\":\"2023-10-01\" },{\"user_name\": \"Martin Moor\", \"user_email\":\"mmoor@gmail.com\",\"subscribed\": false, \"date_subscribed\":\"\" }]"
+                }
+              ]
+            },
+            "options": {
+              "n": 3,
+              "maxTokens": 2500,
+              "temperature": 1
+            },
+            "resource": "chat"
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "63",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "edd5bed7-a8a1-4298-b026-3b0061c5064a",
+          "name": "Split In Batches",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1340,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 1
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f0e414e6-741a-42db-86eb-ba95e220f9ef",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            80
+          ],
+          "parameters": {
+            "width": 600,
+            "height": 126,
+            "content": "## This is a helper workflow to create 3 CSV files\n### Feel free to adapt as needed\n### Some mock data from GPT is pinned for convenience"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f1c2891f-5110-423c-9fb4-37e0a0d0f750",
+          "name": "Parse JSON",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1520,
+            240
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "content",
+                  "type": "arrayValue",
+                  "arrayValue": "={{JSON.parse($json.message.content)}}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "ce59d3e1-3916-48ad-a811-fa19ad66284a",
+          "name": "Make JSON Table",
+          "type": "n8n-nodes-base.itemLists",
+          "position": [
+            1700,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "content"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "8b1fda14-6593-4cc2-ab74-483b7aa4d84a",
+          "name": "Convert to CSV",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            1880,
+            240
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "=funny_names_{{ $('Split In Batches').item.json.index+1 }}.{{ $parameter[\"fileFormat\"] }}",
+              "headerRow": true
+            },
+            "operation": "toFile",
+            "fileFormat": "csv"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d2a621e0-88df-4642-91ab-772f062c8682",
+          "name": "Save to Disk",
+          "type": "n8n-nodes-base.writeBinaryFile",
+          "position": [
+            2420,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "fileName": "=./.n8n/{{ $binary.data.fileName }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "20f60bb0-0527-44c4-85d5-a95c20670893",
+          "name": "Strip UTF BOM bytes",
+          "type": "n8n-nodes-base.moveBinaryData",
+          "position": [
+            2060,
+            240
+          ],
+          "parameters": {
+            "options": {
+              "encoding": "utf8",
+              "stripBOM": true,
+              "jsonParse": false,
+              "keepSource": false
+            },
+            "setAllData": false
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bda91493-df5d-4b8c-b739-abca6045faf9",
+          "name": "Create valid binary",
+          "type": "n8n-nodes-base.moveBinaryData",
+          "position": [
+            2240,
+            240
+          ],
+          "parameters": {
+            "mode": "jsonToBinary",
+            "options": {
+              "addBOM": false,
+              "encoding": "utf8",
+              "fileName": "=funny_names_{{ $('Split In Batches').item.json.index+1 }}.{{ $('Convert to CSV').first().binary.data.fileExtension }}",
+              "mimeType": "text/csv",
+              "keepSource": false,
+              "useRawData": true
+            },
+            "convertAllData": false
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e1b54e0d-56a5-43e7-82b4-aaead2875a9d",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2007,
+            140
+          ],
+          "parameters": {
+            "width": 394,
+            "height": 254,
+            "content": "### These 2 nodes fix an issue with BOM bytes in the beginning of the file.\nWithout them reading the CSV file back becomes tricky"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "OpenAI": [
+          {
+            "json": {
+              "index": 0,
+              "message": {
+                "role": "assistant",
+                "content": "[{\"user_name\": \"Harry Holmes\", \"user_email\": \"harryholmes@gmail.com\", \"subscribed\": true, \"date_subscribed\": \"2022-08-15\"}, {\"user_name\": \"Frodo Fawkes\", \"user_email\": \"frodo.fawks01@gmail.com\", \"subscribed\": false, \"date_subscribed\": \"\"}, {\"user_name\": \"Luke Longbottom\", \"user_email\": \"lukeLongbottom@gmail.com\", \"subscribed\": true, \"date_subscribed\": \"2023-09-25\"}, {\"user_name\": \"Perry Potter\", \"user_email\": \"perry_potter@yahoo.com\", \"subscribed\": false, \"date_subscribed\": \"\"}, {\"user_name\": \"James Joyce\", \"user_email\": \"jjoyce@gmail.com\", \"subscribed\": true, \"date_subscribed\": \"2023-06-12\"}, {\"user_name\": \"Bilbo Baggins\", \"user_email\": \"bilbobaggins@gmail.com\", \"subscribed\": true, \"date_subscribed\": \"2023-03-12\"}, {\"user_name\": \"Tom Tompkins\", \"user_email\": \"tompkins.tom@outlook.com\", \"subscribed\": false, \"date_subscribed\": \"\"}, {\"user_name\": \"Ronald Reagan\", \"user_email\": \"ronald.reagan@gmail.com\", \"subscribed\": true, \"date_subscribed\": \"2023-01-05\"}, {\"user_name\": \"Mary Morstan\", \"user_email\": \"maryMorstan@gmail.com\", \"subscribed\": false, \"date_subscribed\": \"\"}, {\"user_name\": \"Arthur Arthur\", \"user_email\": \"arthur.arthur@aol.com\", \"subscribed\": true, \"date_subscribed\": \"2023-04-17\"}]"
+              },
+              "finish_reason": "stop"
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          },
+          {
+            "json": {
+              "index": 1,
+              "message": {
+                "role": "assistant",
+                "content": "[{\"user_name\": \"Harry Holmes\", \"user_email\":\"hholmes@email.com\", \"subscribed\": true, \"date_subscribed\":\"2021-12-15\"}, {\"user_name\": \"James Jasper\", \"user_email\":\"jjasper@yahoo.com\", \"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Frodo Fenton\", \"user_email\":\"frodonot@gmail.com\", \"subscribed\": true, \"date_subscribed\":\"2022-07-09\"}, {\"user_name\": \"Katniss Kennedy\", \"user_email\":\"kennedy@hotmail.com\", \"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Bilbo Brandy\", \"user_email\":\"bbrandy@gmail.net\",\"subscribed\": true, \"date_subscribed\":\"2022-02-20\"}, {\"user_name\": \"Percy Pepper\", \"user_email\":\"percy@gmail.com\", \"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Samwise Sprint\", \"user_email\":\"ssprint@outlook.com\", \"subscribed\": true, \"date_subscribed\":\"2021-06-01\"}, {\"user_name\": \"Gandalf Gatsby\", \"user_email\":\"gandalfg@gmail.com\", \"subscribed\": true, \"date_subscribed\":\"2023-01-22\"}, {\"user_name\": \"Dumbledore Dane\", \"user_email\":\"ddane@gmail.com\",\"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Tommy Torrance\", \"user_email\":\"ttorrance@hotmail.com\", \"subscribed\": true, \"date_subscribed\":\"2023-08-15\"}]"
+              },
+              "finish_reason": "stop"
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          },
+          {
+            "json": {
+              "index": 2,
+              "message": {
+                "role": "assistant",
+                "content": "[{\"user_name\": \"Harry Holmes\", \"user_email\":\"harryholmes@hotmail.com\", \"subscribed\": true, \"date_subscribed\":\"2023-01-09\"}, {\"user_name\": \"Sam Spade\", \"user_email\":\"samspade@gmail.com\", \"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Tom Sawyer\", \"user_email\":\"tomsawyer@yahoo.com\", \"subscribed\": true, \"date_subscribed\":\"2022-12-12\"}, {\"user_name\": \"Frodo Fawkes\", \"user_email\":\"frodofawkes@gmail.com\", \"subscribed\": true, \"date_subscribed\":\"2023-09-30\"}, {\"user_name\": \"Bruce Bond\", \"user_email\":\"brucebond@gmail.com\", \"subscribed\": true, \"date_subscribed\":\"2023-08-15\"}, {\"user_name\": \"Peter Pan\", \"user_email\":\"peterpan@gmail.com\", \"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Hermione Holmes\", \"user_email\":\"hermioneholmes@yahoo.com\", \"subscribed\": true, \"date_subscribed\":\"2023-02-21\"}, {\"user_name\": \"Walter White\", \"user_email\":\"walterwhite@hotmail.com\", \"subscribed\": false, \"date_subscribed\":\"\"}, {\"user_name\": \"Tony Twist\", \"user_email\":\"tonytwist@gmail.com\", \"subscribed\": true, \"date_subscribed\":\"2023-04-27\"}, {\"user_name\": \"Ron Ranger\", \"user_email\":\"ronranger@yahoo.com\", \"subscribed\": true, \"date_subscribed\":\"2023-07-13\"}]"
+              },
+              "finish_reason": "stop"
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "91f77342-1d0f-4033-b09a-3e3c8791107e",
+      "connections": {
+        "OpenAI": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse JSON": {
+          "main": [
+            [
+              {
+                "node": "Make JSON Table",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Save to Disk": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert to CSV": {
+          "main": [
+            [
+              {
+                "node": "Strip UTF BOM bytes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Make JSON Table": {
+          "main": [
+            [
+              {
+                "node": "Convert to CSV",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split In Batches": {
+          "main": [
+            [
+              {
+                "node": "Parse JSON",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create valid binary": {
+          "main": [
+            [
+              {
+                "node": "Save to Disk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Strip UTF BOM bytes": {
+          "main": [
+            [
+              {
+                "node": "Create valid binary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "OpenAI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": null,
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 41,
+        "icon": "fa:table",
+        "name": "n8n-nodes-base.spreadsheetFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "_Excel",
+              "Excel",
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "xls",
+              "xlsx",
+              "ods"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Spreadsheet File",
+          "color": "#2244FF"
+        },
+        "iconData": {
+          "icon": "table",
+          "type": "icon"
+        },
+        "displayName": "Spreadsheet File",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 516,
+        "icon": "file:itemLists.svg",
+        "name": "n8n-nodes-base.itemLists",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Dedupe",
+              "Deduplicate",
+              "Duplicates",
+              "Limit",
+              "Remove",
+              "Slice",
+              "Sort",
+              "Split",
+              "Unique",
+              "JSON",
+              "Transform",
+              "Array",
+              "List",
+              "Object",
+              "Item",
+              "Map",
+              "Format",
+              "Nested",
+              "Iterate",
+              "Summarise",
+              "Summarize",
+              "Group",
+              "Pivot",
+              "Sum",
+              "Count",
+              "Min",
+              "Max"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.itemlists/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Item Lists"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgdmlld0JveD0iMCAwIDIxMCAyMTAiPjxwYXRoIGQ9Ik0xOC44IDE4LjhDOC40IDE4LjggMCAyNy4xIDAgMzcuNXM4LjQgMTguOCAxOC44IDE4LjggMTguOC04LjQgMTguOC0xOC44LTguNS0xOC43LTE4LjgtMTguN20wIDYyLjRDOC40IDgxLjIgMCA4OS42IDAgMTAwczguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjgtMTguOC0xOC44bTAgNjIuNkM4LjQgMTQzLjggMCAxNTIuMSAwIDE2Mi41czguNCAxOC44IDE4LjggMTguOCAxOC44LTguNCAxOC44LTE4LjgtOC41LTE4LjctMTguOC0xOC43bTE3NSA2LjJoLTEyNWMtMy41IDAtNi4yIDIuOC02LjIgNi4ydjEyLjVjMCAzLjUgMi44IDYuMiA2LjIgNi4yaDEyNWMzLjUgMCA2LjItMi44IDYuMi02LjJ2LTEyLjVjMC0zLjQtMi44LTYuMi02LjItNi4ybTAtMTI1aC0xMjVjLTMuNSAwLTYuMiAyLjgtNi4yIDYuMnYxMi41YzAgMy41IDIuOCA2LjIgNi4yIDYuMmgxMjVjMy41IDAgNi4yLTIuOCA2LjItNi4yVjMxLjJjMC0zLjQtMi44LTYuMi02LjItNi4ybTAgNjIuNWgtMTI1Yy0zLjUgMC02LjIgMi44LTYuMiA2LjJ2MTIuNWMwIDMuNSAyLjggNi4yIDYuMiA2LjJoMTI1YzMuNSAwIDYuMi0yLjggNi4yLTYuMlY5My44YzAtMy41LTIuOC02LjMtNi4yLTYuMyIgc3R5bGU9ImZpbGw6I2ZmNmQ1YSIvPjwvc3ZnPg=="
+        },
+        "displayName": "Item Lists",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 840,
+        "icon": "file:openAi.svg",
+        "name": "n8n-nodes-base.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "ChatGPT",
+              "DallE"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/openai/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjYwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZD0iTTIzOS4xODQgMTA2LjIwM2E2NC43MiA2NC43MiAwIDAgMC01LjU3Ni01My4xMDNDMjE5LjQ1MiAyOC40NTkgMTkxIDE1Ljc4NCAxNjMuMjEzIDIxLjc0QTY1LjU4NiA2NS41ODYgMCAwIDAgNTIuMDk2IDQ1LjIyYTY0LjcyIDY0LjcyIDAgMCAwLTQzLjIzIDMxLjM2Yy0xNC4zMSAyNC42MDItMTEuMDYxIDU1LjYzNCA4LjAzMyA3Ni43NGE2NC42NyA2NC42NyAwIDAgMCA1LjUyNSA1My4xMDJjMTQuMTc0IDI0LjY1IDQyLjY0NCAzNy4zMjQgNzAuNDQ2IDMxLjM2YTY0LjcyIDY0LjcyIDAgMCAwIDQ4Ljc1NCAyMS43NDRjMjguNDgxLjAyNSA1My43MTQtMTguMzYxIDYyLjQxNC00NS40ODFhNjQuNzcgNjQuNzcgMCAwIDAgNDMuMjI5LTMxLjM2YzE0LjEzNy0yNC41NTggMTAuODc1LTU1LjQyMy04LjA4My03Ni40ODNtLTk3LjU2IDEzNi4zMzhhNDguNCA0OC40IDAgMCAxLTMxLjEwNS0xMS4yNTVsMS41MzUtLjg3IDUxLjY3LTI5LjgyNWE4LjYgOC42IDAgMCAwIDQuMjQ3LTcuMzY3di03Mi44NWwyMS44NDUgMTIuNjM2Yy4yMTguMTExLjM3LjMyLjQwOS41NjN2NjAuMzY3Yy0uMDU2IDI2LjgxOC0yMS43ODMgNDguNTQ1LTQ4LjYwMSA0OC42MDFNMzcuMTU4IDE5Ny45M2E0OC4zNSA0OC4zNSAwIDAgMS01Ljc4MS0zMi41ODlsMS41MzQuOTIxIDUxLjcyMiAyOS44MjZhOC4zNCA4LjM0IDAgMCAwIDguNDQxIDBsNjMuMTgxLTM2LjQyNXYyNS4yMjFhLjg3Ljg3IDAgMCAxLS4zNTguNjY1bC01Mi4zMzUgMzAuMTg0Yy0yMy4yNTcgMTMuMzk4LTUyLjk3IDUuNDMxLTY2LjQwNC0xNy44MDNNMjMuNTQ5IDg1LjM4YTQ4LjUgNDguNSAwIDAgMSAyNS41OC0yMS4zMzN2NjEuMzlhOC4yOSA4LjI5IDAgMCAwIDQuMTk1IDcuMzE2bDYyLjg3NCAzNi4yNzItMjEuODQ1IDEyLjYzNmEuODIuODIgMCAwIDEtLjc2NyAwTDQxLjM1MyAxNTEuNTNjLTIzLjIxMS0xMy40NTQtMzEuMTcxLTQzLjE0NC0xNy44MDQtNjYuNDA1em0xNzkuNDY2IDQxLjY5NS02My4wOC0zNi42M0wxNjEuNzMgNzcuODZhLjgyLjgyIDAgMCAxIC43NjggMGw1Mi4yMzMgMzAuMTg0YTQ4LjYgNDguNiAwIDAgMS03LjMxNiA4Ny42MzV2LTYxLjM5MWE4LjU0IDguNTQgMCAwIDAtNC40LTcuMjEzbTIxLjc0Mi0zMi42OS0xLjUzNS0uOTIyLTUxLjYxOS0zMC4wODFhOC4zOSA4LjM5IDAgMCAwLTguNDkyIDBMOTkuOTggOTkuODA4Vjc0LjU4N2EuNzIuNzIgMCAwIDEgLjMwNy0uNjY1bDUyLjIzMy0zMC4xMzNhNDguNjUyIDQ4LjY1MiAwIDAgMSA3Mi4yMzYgNTAuMzkxek04OC4wNjEgMTM5LjA5N2wtMjEuODQ1LTEyLjU4NWEuODcuODcgMCAwIDEtLjQxLS42MTRWNjUuNjg1YTQ4LjY1MiA0OC42NTIgMCAwIDEgNzkuNzU3LTM3LjM0NmwtMS41MzUuODctNTEuNjcgMjkuODI1YTguNiA4LjYgMCAwIDAtNC4yNDYgNy4zNjd6bTExLjg2OC0yNS41OEwxMjguMDY3IDk3LjNsMjguMTg4IDE2LjIxOHYzMi40MzRsLTI4LjA4NiAxNi4yMTgtMjguMTg4LTE2LjIxOHoiLz48L3N2Zz4="
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

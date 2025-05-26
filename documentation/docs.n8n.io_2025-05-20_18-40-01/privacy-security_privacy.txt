@@ -1,0 +1,188 @@
+URL: https://docs.n8n.io/privacy-security/privacy/
+Scraped_At: 2025-05-20T19:09:44.458437
+
+Privacy
+#
+This page describes n8n's data privacy practices.
+GDPR
+#
+Data processing agreement
+#
+For Cloud versions of n8n, n8n is considered both a Controller and a Processor as defined by the GDPR. As a Processor, n8n implements policies and practices that secure the personal data you send to the platform, and includes a
+Data Processing Agreement
+as part of the company's standard
+Terms of Service
+.
+The n8n Data Processing Agreement includes the
+Standard Contractual Clauses (SCCs)
+. These clarify how n8n handles your data, and they update n8n's GDPR policies to cover the latest standards set by the European Commission.
+You can find a list of n8n sub-processors
+here
+.
+Self-hosted n8n
+For self-hosted versions, n8n is neither a Controller nor a Processor, as we don't manage your data
+Submitting a GDPR deletion request
+#
+Email privacy@n8n.io to request data deletion.
+Sub-processors
+#
+This is a list of sub-processors authorized to process customer data for n8n's service. n8n audits each sub-processor's security controls and applicable regulations for the protection of personal data.
+Sub-processor name
+Contact details
+Geographic location of processing
+Microsoft Azure
+Microsoft Azure
+1 Microsoft Way
+Redmond
+WA 98052
+USA
+Contact information: https://privacy.microsoft.com/en-GB/privacystatement#mainhowtocontactusmodule
+Germany (West Central Region)
+Hetzner Online
+Hetzner Online GmbH
+Industriestr. 25
+91710 Gunzenhausen
+Germany
+data-protection@hetzner.com
+Germany
+Subscribe
+here
+to receive updates when n8n adds or changes a sub-processor.
+GDPR for self-hosted users
+#
+If you self-host n8n, you are responsible for deleting user data. If you need to delete data on behalf of one of your users, you can delete the respective execution. n8n recommends configuring n8n to prune execution data automatically every few days to avoid effortful GDPR request handling as much as possible. Configure this using the
+EXECUTIONS_DATA_MAX_AGE
+environment variable. Refer to
+Environment variables
+for more information.
+Data collection
+#
+n8n collects selected usage and performance data to help diagnose problems and improve the platform. Read about how n8n stores and processes this information in the
+privacy policy
+.
+The data gathered is different in self-hosted n8n and n8n Cloud.
+Data collection in self-hosted n8n
+#
+n8n takes care to keep self-hosted data anonymous and avoids collecting sensitive data.
+What n8n collects
+#
+Error codes and messages of failed executions (excluding any payload data, and not for custom nodes)
+Error reports for app crashes and API issues
+The graph of a workflow (types of nodes used and how they're connected)
+From node parameters:
+The 'resource' and 'operation' that a node is set to (if applicable)
+For HTTP request nodes, the domain, path, and method (with personal data anonymized)
+Data around workflow executions:
+Status
+The user ID of the user who ran the execution
+The first time a workflow loads data from an external source
+The first successful production (non-manual) workflow execution
+The domain of webhook calls, if specified (excluding subdomain).
+Details on how the UI is used (for example, navigation, nodes panel searches)
+Diagnostic information:
+n8n version
+Selected settings:
+DB_TYPE
+N8N_VERSION_NOTIFICATIONS_ENABLED
+N8N_DISABLE_PRODUCTION_MAIN_PROCESS
+Execution variables
+OS, RAM, and CPUs
+Anonymous instance ID
+IP address
+What n8n doesn't collect
+#
+n8n doesn't collect private or sensitive information, such as:
+Personally identifiable information (except IP address)
+Credential information
+Node parameters (except 'resource' and 'operation')
+Execution data
+Sensitive settings (for example, endpoints, ports, DB connections, username/password)
+Error payloads
+How collection works
+#
+Most data is sent to n8n as events that generate it occur. Workflow execution counts and an instance pulse are sent periodically (every 6 hours).
+Opting out of telemetry
+#
+Telemetry collection is enabled by default. To disable it you can configure the following environment variables.
+To opt out of telemetry events:
+1
+export
+N8N_DIAGNOSTICS_ENABLED
+=
+false
+To opt out of checking for new versions of n8n:
+1
+export
+N8N_VERSION_NOTIFICATIONS_ENABLED
+=
+false
+See
+configuration
+for more info on how to set environment variables.
+Data collection in n8n Cloud
+#
+n8n Cloud collects everything listed in
+Data collection in self-hosted n8n
+.
+Additionally, in n8n Cloud, n8n uses
+PostHog
+to track events and visualise usage, including using session recordings. Session recordings comprise the data seen by a user on screen, with the exception of credential values. n8n's product team uses this data to improve the product. All recordings are deleted after 21 days.
+AI in n8n
+#
+To provide enhanced assistance, n8n integrates AI-powered features that leverage Large Language Models (LLMs).
+How n8n uses AI
+#
+To assist and improve user experience, n8n may send specific context data to LLMs. This context data is strictly limited to information about the current workflow. n8n does not send any values from credential fields or actual output data to AI services. The data will not be incorporated, used, or retained to train the models of the AI services. Any data will be deleted after 30 days.
+When n8n shares data
+#
+Data is only sent to AI services if workspaces have opted in to use the assistant. The Assistant is enabled by default for n8n Cloud users. When a workspace opts in to use the assistant, node-specific data is transmitted only during direct interactions and active sessions with the AI assistant, ensuring no unnecessary data sharing occurs.
+What n8n shares
+#
+General Workflow Information
+: This includes details about which nodes are present in your workflow, the number of items currently in the workflow, and whether the workflow is active.
+Input & Output Schemas of Nodes
+: This includes the schema of all nodes with incoming data and the output schema of a node in question. We do not send the actual data value of the schema.
+Node Configuration
+: This includes the operations, options, and settings chosen in the referenced node.
+Code and Expressions
+: This includes any code or expressions in the node in question to help with debugging potential issues and optimizations.
+What n8n doesn't share
+#
+Credentials
+: Any values of the credential fields of your nodes.
+Output Data
+: The actual data processed by your workflows.
+Sensitive Information
+: Any personally identifiable information or other sensitive data that could compromise your privacy or security that you have not explicitly mentioned in node parameters or your code of a
+Code Node
+.
+Documentation telemetry
+#
+n8n's documentation (this website) uses cookies to recognize your repeated visits and preferences, as well as to measure the effectiveness of n8n's documentation and whether users find what they're searching for. With your consent, you're helping n8n to make our documentation better.
+Change cookie settings
+Retention and deletion of personal identifiable data
+#
+PID (personal identifiable data) is data that's personal to you and would identify you as an individual.
+n8n Cloud
+#
+PID retention
+#
+n8n only retains data for as long as necessary to provide the core service.
+For n8n Cloud, n8n stores your workflow code, credentials, and other data indefinitely, until you choose to delete it or close your account. The platform stores execution data according to the retention rules on your account.
+n8n deletes most internal application logs and logs tied to subprocessors within 90 days. The company retains a subset of logs for longer periods where required for security investigations.
+PID deletion
+#
+If you choose to delete your n8n account, n8n deletes all customer data and event data associated with your account. n8n deletes customer data in backups within 90 days.
+Self-hosted
+#
+Self-hosted users should have their own PID policy and data deletion processes. Refer to
+What you can do
+for more information.
+Payment processor
+#
+n8n uses Paddle.com to process payments. When you sign up for a paid plan, Paddle transmits and stores the details of your payment method according to their security policy. n8n stores no information about your payment method.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

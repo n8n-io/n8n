@@ -1,0 +1,34 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.workabletrigger/
+Scraped_At: 2025-05-20T19:08:09.045488
+
+Workable Trigger node
+#
+Use the Workable Trigger node to respond to events in the
+Workable
+recruiting platform and integrate Workable with other applications. n8n has built-in support for a wide range of Workable events, including candidate created and moved.
+On this page, you'll find a list of events the Workable Trigger node can respond to and links to more resources.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Workable Trigger integrations
+page.
+Events
+#
+Candidate Created
+Candidate Moved
+Related resources
+#
+View
+example workflows and related content
+on n8n's website.
+Refer to
+Workable's API documentation
+for details about using the service.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

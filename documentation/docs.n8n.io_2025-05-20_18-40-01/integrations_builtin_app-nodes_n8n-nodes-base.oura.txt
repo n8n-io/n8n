@@ -1,0 +1,29 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.oura/
+Scraped_At: 2025-05-20T18:50:29.614167
+
+Oura node
+#
+Use the Oura node to automate work in Oura, and integrate Oura with other applications. n8n has built-in support for a wide range of Oura features, including getting profiles, and summaries.
+On this page, you'll find a list of operations the Oura node supports and links to more resources.
+Credentials
+Refer to
+Oura credentials
+for guidance on setting up authentication.
+Operations
+#
+Profile
+Get the user's personal information.
+Summary
+Get the user's activity summary.
+Get the user's readiness summary.
+Get the user's sleep summary
+Templates and examples
+#
+Browse Oura integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

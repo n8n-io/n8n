@@ -1,0 +1,1895 @@
+{
+  "workflow": {
+    "id": 3119,
+    "name": "Create a REST API for PDF Digital Signatures with Webhooks",
+    "views": 3493,
+    "recentViews": 15,
+    "totalViews": 3493,
+    "createdAt": "2025-03-10T08:43:05.527Z",
+    "description": "## Overview\nAn automation workflow that creates a complete REST API for digitally signing PDF documents using n8n webhooks. This service demonstrates how to implement secure document signing functionality through standardized API endpoints with file upload and download capabilities.\n\n## Use Case\nThis workflow is designed for developers and automation specialists who need to implement digital document signing. It's particularly useful for:\n- Integrating PDF signing capabilities into existing document workflows\n- API-based automation of signature processes\n- Creating proof-of-concept implementations for document verification systems\n- Learning n8n's webhook capabilities and file handling techniques\n- Testing PDF signing in development environments before production implementation\n\n## What This Workflow Does\n\n### API-Based Document Management\n- Exposes RESTful webhook endpoints for all document operations\n- Handles multipart/form-data uploads for PDF documents\n- Processes JSON payloads for signing configuration\n- Provides download functionality for completed documents\n\n### Digital Certificate Handling\n- Uploads existing PFX/PKCS#12 digital certificates\n- Generates new certificates with customizable attributes\n- Securely manages certificate storage and access\n- Associates certificates with signing operations\n\n### Cryptographic PDF Signing\n- Applies digital signatures using industry-standard cryptographic methods\n- Embeds signature information within PDF document structure\n- Validates document integrity through cryptographic verification\n- Preserves original document while adding signature elements\n\n### Webhook Integration System\n- Routes different API methods to appropriate handlers\n- Validates request payloads and file content\n- Manages authentication through webhook paths\n- Returns structured responses for integration with other systems\n\n## Technical Architecture\n\n### Components\n1. **API Gateway**: n8n webhook nodes that receive external requests\n2. **Request Router**: Switch nodes that direct operations based on method parameters\n3. **Document Processor**: Function nodes for PDF manipulation and verification\n4. **Certificate Manager**: Specialized nodes for cryptographic key operations\n5. **Storage Interface**: File operation nodes for document persistence\n6. **Response Formatter**: Nodes that structure API responses\n\n### Integration Flow\n```\nClient Request → Webhook Endpoint → Method Router → \nProcessing Engine → Digital Signing → Storage → \nResponse Generation → Client Response\n```\n\n## Setup Instructions\n\n### Prerequisites\n- n8n installation (minimum version 0.214.0)\n- Node.js 14 or higher\n- Required environment variable:\n  ```\n  NODE_FUNCTION_ALLOW_EXTERNAL: \"node-forge,@signpdf/signpdf,@signpdf/signer-p12,@signpdf/placeholder-plain\"\n  ```\n\n### Configuration Steps\n1. **Import Workflow**\n   - Import the workflow JSON into your n8n instance\n   - Activate the workflow to enable the webhooks\n\n2. **Configure Storage**\n   - Set the storage path variables in the workflow\n   - Ensure proper permissions on the storage directories\n\n3. **Test API Endpoints**\n   - Use the included test scripts to verify functionality\n   - Test PDF upload, certificate generation, and signing\n\n4. **Integration**\n   - Document the webhook URLs for integration with other systems\n   - Configure error handling according to your requirements\n\n### Testing Methods\nTest the workflow functionality using various HTTP requests and JSON data:\n- Upload PDF documents to the document processing endpoint\n- Upload or generate digital certificates\n- Execute PDF signing operations\n- Download signed documents from the download endpoint\n\n## Webhook Endpoints\n\nThe workflow exposes two primary webhook endpoints that form a complete API for PDF digital signing operations:\n\n### 1. Document Processing Endpoint (`/webhook/docu-digi-sign`)\n\nThis endpoint handles all document and certificate operations:\n\n**Method: Upload PDF**\n- HTTP: `POST`\n- Content-Type: multipart/form-data\n- Parameters: method, uploadType, fileName, fileData\n\n**Method: Upload Certificate**\n- HTTP: `POST`\n- Content-Type: multipart/form-data\n- Parameters: method, uploadType, fileName, fileData\n\n**Method: Generate Certificate**\n- HTTP: `POST`\n- Content-Type: application/json\n- Parameters: method, subjectCN, issuerCN, serialNumber, validFrom, validTo, password\n\n**Method: Sign PDF**\n- HTTP: `POST`\n- Content-Type: application/json\n- Parameters: method, inputPdf, pfxFile, pfxPassword\n\n### 2. Document Download Endpoint (`/webhook/docu-download`)\n\nThis endpoint handles the retrieval of processed documents:\n\n**Method: Download Signed PDF**\n- HTTP: `GET`\n- Content-Type: application/json\n- Parameters: method, fileType, fileName\n\n## Key Workflow Sections\nThe workflow is organized into logical sections with clear responsibilities:\n- **Request Processing**: Parses incoming webhook data\n- **Method Routing**: Directs requests to appropriate handlers\n- **Document Management**: Handles file operations and storage\n- **Cryptographic Operations**: Manages signing and certificate functions\n- **Response Formatting**: Structures and returns results\n",
+    "workflow": {
+      "id": "V1vbO2m79cFNH59h",
+      "meta": {
+        "instanceId": "255b605d49a6677a536746e05401de51bb4c62e65036d9acdb9908f6567f0361"
+      },
+      "name": "Basic PDF Digital Sign Service",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "a3aa7495-e5a8-4b7f-882a-e642fae414b8",
+          "name": "Validate Key Gen Params",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -220,
+            220
+          ],
+          "parameters": {
+            "jsCode": "// Check required parameters for key generation\nconst requiredParams = [\n  'subjectCN', 'issuerCN', 'serialNumber', \n  'validFrom', 'validTo', 'password'\n];\n\nlet missingParams = [];\nconst requestBody = $input.item.json.body || {}; // Access the body object\n\nfor (const param of requiredParams) {\n  if (!requestBody[param]) {\n    missingParams.push(param);\n  }\n}\n\nif (missingParams.length > 0) {\n  return {\n    json: {\n      success: false,\n      message: `Missing required parameters: ${missingParams.join(', ')}`\n    }\n  };\n}\n\n// Set default output directory if not provided\nconst outputDir = $input.item.json.keyPath || '/tmp';\nconst timestamp = new Date().getTime();\nconst outputPfx = `${outputDir}certificate_${timestamp}.pfx`;\nconst outputPrivateKey = `${outputDir}private_${timestamp}.key`;\nconst outputCertPem = `${outputDir}certificate_${timestamp}.pem`;\n\nreturn {\n  json: {\n    ...requestBody,\n    success: true,\n    outputDir,\n    outputPfx,\n    outputPrivateKey,\n    outputCertPem\n  }\n};\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6a463b95-04e4-421d-b6e0-46fb98c85e20",
+          "name": "Validate PDF Sign Params",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -220,
+            380
+          ],
+          "parameters": {
+            "jsCode": "// Check required parameters for PDF signing\nconst requiredParams = ['inputPdf', 'pfxFile', 'pfxPassword'];\n\n// Access the body object from input\nconst requestBody = $input.item.json.body || {}; \n\nlet missingParams = [];\nfor (const param of requiredParams) {\n  if (!requestBody[param]) {\n    missingParams.push(param);\n  }\n}\n\nif (missingParams.length > 0) {\n  return {\n    json: {\n      success: false,\n      message: `Missing required parameters: ${missingParams.join(', ')}`\n    }\n  };\n}\n\n// Set default output directory if not provided\nconst pdfDir = $input.item.json.pdfPath || '/tmp';\nconst keyDir = $input.item.json.keyPath || '/tmp';\nconst outputDir = $input.item.json.pdfPath || '/tmp';\n\nconst timestamp = new Date().getTime();\nconst inputPdfPath = `${pdfDir}${requestBody.inputPdf}`;\nconst pfxFilePath = `${keyDir}${requestBody.pfxFile}`;\nconst outputPdfPath = `${pdfDir}signed_${timestamp}.pdf`;\n\nreturn {\n  json: {\n    ...requestBody,\n    success: true,\n    outputDir,\n    inputPdfPath,\n    pfxFilePath,\n    outputPdfPath\n  }\n};"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cec07784-a42b-4443-ad8e-1bd7686558c3",
+          "name": "Validate PDF Upload",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            80,
+            -440
+          ],
+          "parameters": {
+            "jsCode": "// Check required parameters for PDF upload\nconst requiredParams = ['fileData'];\n\nlet missingParams = [];\nfor (const param of requiredParams) {\n  if (!$input.item.json[param]) {\n    missingParams.push(param);\n  }\n}\n\nif (missingParams.length > 0) {\n  return {\n    json: {\n      success: false,\n      message: `Missing required parameters: ${missingParams.join(', ')}`\n    }\n  };\n}\n\n// Set default output directory if not provided\nconst outputDir = $input.item.json.outputDir || '/tmp';\nconst timestamp = new Date().getTime();\nconst outputPath = $input.item.json.fileName \n  ? `${outputDir}/${$input.item.json.fileName}` \n  : `${outputDir}/uploaded_pdf_${timestamp}.pdf`;\n\nreturn {\n  json: {\n    ...$input.item.json,\n    success: true,\n    outputDir,\n    outputPath\n  }\n};"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1b9304fd-f31d-45c7-8344-01c779e86f0d",
+          "name": "Validate Key Upload",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            80,
+            -140
+          ],
+          "parameters": {
+            "jsCode": "// Check required parameters for key upload\nconst requiredParams = ['fileData'];\n\nlet missingParams = [];\nfor (const param of requiredParams) {\n  if (!$input.item.json[param]) {\n    missingParams.push(param);\n  }\n}\n\nif (missingParams.length > 0) {\n  return {\n    json: {\n      success: false,\n      message: `Missing required parameters: ${missingParams.join(', ')}`\n    }\n  };\n}\n\n// Set default output directory if not provided\nconst outputDir = $input.item.json.outputDir || '/tmp';\nconst timestamp = new Date().getTime();\nconst outputPath = $input.item.json.fileName \n  ? `${outputDir}/${$input.item.json.fileName}` \n  : `${outputDir}/uploaded_key_${timestamp}.pfx`;\n\nreturn {\n  json: {\n    ...$input.item.json,\n    success: true,\n    outputDir,\n    outputPath\n  }\n};"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "efd59edb-6952-4165-ab21-745e03db74eb",
+          "name": "Generate Keys",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            20,
+            220
+          ],
+          "parameters": {
+            "jsCode": "console.log(\"!!!!!!!!!\" + process.env.NODE_PATH);\n\n// Key Generation Code\nconst forge = require('node-forge');\nconst fs = require('fs');\n\n// Get parameters from input\nconst subjectCN = $input.item.json.subjectCN;\nconst issuerCN = $input.item.json.issuerCN;\nconst serialNumber = $input.item.json.serialNumber;\nconst validFrom = $input.item.json.validFrom;\nconst validTo = $input.item.json.validTo;\nconst pfxPassword = $input.item.json.password;\nconst outputPfx = $input.item.json.outputPfx;\nconst outputPrivateKey = $input.item.json.outputPrivateKey;\nconst outputCertPem = $input.item.json.outputCertPem;\n\ntry {\n  // Generate a key pair\n  const keys = forge.pki.rsa.generateKeyPair(2048);\n  const privateKey = keys.privateKey;\n  const publicKey = keys.publicKey;\n\n  // Create a certificate\n  const cert = forge.pki.createCertificate();\n  cert.publicKey = publicKey;\n  cert.serialNumber = serialNumber;\n\n  // Parse date strings (format: YYYYMMDDHHMMSS)\n  const parseDate = (dateStr) => {\n    const year = parseInt(dateStr.substring(0, 4));\n    const month = parseInt(dateStr.substring(4, 6)) - 1; // JS months are 0-based\n    const day = parseInt(dateStr.substring(6, 8));\n    const hour = parseInt(dateStr.substring(8, 10));\n    const minute = parseInt(dateStr.substring(10, 12));\n    const second = parseInt(dateStr.substring(12, 14));\n    \n    return new Date(year, month, day, hour, minute, second);\n  };\n\n  cert.validity.notBefore = parseDate(validFrom);\n  cert.validity.notAfter = parseDate(validTo);\n\n  const attrs = [{\n    name: 'commonName',\n    value: subjectCN\n  }, {\n    name: 'countryName',\n    value: 'US'\n  }, {\n    shortName: 'ST',\n    value: 'State'\n  }, {\n    name: 'localityName',\n    value: 'City'\n  }, {\n    name: 'organizationName',\n    value: 'Organization'\n  }, {\n    shortName: 'OU',\n    value: 'Test'\n  }];\n\n  cert.setSubject(attrs);\n  cert.setIssuer(attrs); // Self-signed, so issuer = subject\n\n  // Sign the certificate with the private key\n  cert.sign(privateKey, forge.md.sha256.create());\n\n  // Convert to PEM format\n  const pemCert = forge.pki.certificateToPem(cert);\n  const pemPrivateKey = forge.pki.privateKeyToPem(privateKey);\n\n  // Create a PKCS#12 (PFX) file\n  const p12Asn1 = forge.pkcs12.toPkcs12Asn1(\n    privateKey, \n    [cert], \n    pfxPassword,\n    { generateLocalKeyId: true, friendlyName: subjectCN }\n  );\n\n  const p12Der = forge.asn1.toDer(p12Asn1).getBytes();\n  const p12b64 = forge.util.encode64(p12Der);\n\n  // Save files\n  fs.writeFileSync(outputPrivateKey, pemPrivateKey);\n  fs.writeFileSync(outputCertPem, pemCert);\n  fs.writeFileSync(outputPfx, forge.util.decode64(p12b64), { encoding: 'binary' });\n\n  return {\n    json: {\n      success: true,\n      message: \"Certificate and keys generated successfully\",\n      fileName: outputPfx.split('/').pop(),\n      filePaths: {\n        pfx: outputPfx,\n        privateKey: outputPrivateKey,\n        certificate: outputCertPem\n      },\n      fileNames: {\n        pfx: outputPfx.split('/').pop(),\n        privateKey: outputPrivateKey.split('/').pop(),\n        certificate: outputCertPem.split('/').pop()\n      }\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      success: false,\n      message: `Error generating keys: ${error.message}`,\n      error: error.stack\n    }\n  };\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6834b314-dd66-429f-9264-6eba74c5984e",
+          "name": "Sign PDF",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            20,
+            380
+          ],
+          "parameters": {
+            "jsCode": "// PDF Signing Code\nconst fs = require('fs');\nconst forge = require('node-forge');\nconst { SignPdf } = require('@signpdf/signpdf');\nconst { P12Signer } = require('@signpdf/signer-p12');\nconst { plainAddPlaceholder } = require('@signpdf/placeholder-plain');\n\n// Get parameters from input\n// const inputPdfBase64 = $input.item.json.inputPdf;\n// const pfxFileBase64 = $input.item.json.pfxFile;\nconst pfxPassword = $input.item.json.pfxPassword;\nconst inputPdfPath = $input.item.json.inputPdfPath;\nconst pfxFilePath = $input.item.json.pfxFilePath;\nconst outputPdfPath = $input.item.json.outputPdfPath;\n\ntry {\n    // Read the PDF\n    const pdfBuffer = fs.readFileSync(inputPdfPath);\n\n    // Add a signature placeholder\n    const pdfWithPlaceholder = plainAddPlaceholder({\n      pdfBuffer,\n      reason: 'Digital Signature',\n      contactInfo: 'info@example.com',\n      location: 'New York, USA',\n      signatureLength: 8192 // Ensure enough space for signature\n    });\n    \n    // Read the P12 file\n    const p12Buffer = fs.readFileSync(pfxFilePath);\n\n    // Create a signer instance\n    const signer = new P12Signer(p12Buffer, {\n      passphrase: pfxPassword\n    });\n    \n    // Create SignPdf instance and sign the PDF\n    const signPdfInstance = new SignPdf();\n    const signedPdf = await signPdfInstance.sign(pdfWithPlaceholder, signer);\n    \n    // Write the signed PDF to file\n    fs.writeFileSync(outputPdfPath, signedPdf);\n    console.log(`PDF successfully signed: ${outputPdfPath}`);\n\n  return {\n    json: {\n      success: true,\n      message: \"PDF successfully signed\",\n      filePath: outputPdfPath,\n      fileName: outputPdfPath.split('/').pop()\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      success: false,\n      message: `Error signing PDF: ${error.message}`,\n      error: error.stack\n    }\n  };\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "80e56344-b037-4c4f-8f18-b419e9c7516b",
+          "name": "Prepare Success Response",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1380,
+            40
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "serverFileName",
+                  "value": "={{ $json.fileName }}"
+                }
+              ],
+              "boolean": [
+                {
+                  "name": "success",
+                  "value": true
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e32d1e3e-6877-4c1f-b46a-0c3c67fba609",
+          "name": "Switch Operation",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            -520,
+            200
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "upload",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.method }}",
+                        "rightValue": "upload"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "genKey",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "4ac6de12-4cb9-454e-a2b8-ebc879e430ba",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.method }}",
+                        "rightValue": "genKey"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "signPdf",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "d8fca3d7-e1da-486e-b6bb-01a676d888cb",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.method }}",
+                        "rightValue": "signPdf"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "download",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "6ae9a589-9208-48b0-873b-2b3c4db22718",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.method }}",
+                        "rightValue": "download"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "f28cb401-f180-4877-9440-aeb0c9f07791",
+          "name": "Switch Upload Type",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            -100,
+            -300
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "pdfDoc",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.uploadType }}",
+                        "rightValue": "pdfDoc"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "signKey",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "4790b1de-5541-4a46-a46a-708085c4c0a1",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.body.uploadType }}",
+                        "rightValue": "signKey"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "5aa1d5f3-66d4-4440-a953-6e453d00b757",
+          "name": "Prepare input params",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -280,
+            -300
+          ],
+          "parameters": {
+            "options": {
+              "stripBinary": true
+            },
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b2323096-8db7-4c5a-8f52-8902f0e18785",
+                  "name": "fileData",
+                  "type": "object",
+                  "value": "={{ $('API POST Endpoint').item.binary }}"
+                },
+                {
+                  "id": "7d2593ba-8582-42cb-8312-6c11be5fbcbf",
+                  "name": "uniqueFileName",
+                  "type": "string",
+                  "value": "={{ 'file_' + $now.toMillis() + '.' + $('API POST Endpoint').item.binary.fileData.mimeType.split('/')[1].replace(/\\n/g, '').trim() }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ae983277-f9cf-43b3-86ef-1135919f976c",
+          "name": "set file path",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -700,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7378e581-86ac-43bc-b7c4-7faeef848cd8",
+                  "name": "pdfPath",
+                  "type": "string",
+                  "value": "/data/files/"
+                },
+                {
+                  "id": "f6592b74-6238-4bb7-9b8b-bbde240f2260",
+                  "name": "keyPath",
+                  "type": "string",
+                  "value": "/data/files/"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2667149c-8d3b-4772-be8c-a01c1a8efa6f",
+          "name": "Convert PDF to File",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            260,
+            -440
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "={{ $json.body.fileName }}",
+              "mimeType": "={{ $json.fileData.fileData.mimeType }}"
+            },
+            "operation": "toBinary",
+            "sourceProperty": "fileData.fileData.data"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "6559070f-e071-4e3a-ad3b-87911032358f",
+          "name": "Write PDF File to Disk",
+          "type": "n8n-nodes-base.readWriteFile",
+          "position": [
+            440,
+            -440
+          ],
+          "parameters": {
+            "options": {
+              "append": false
+            },
+            "fileName": "={{ $('set file path').item.json.pdfPath }}{{ $('Prepare input params').item.json.uniqueFileName }}",
+            "operation": "write"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0f6dfb44-8d83-4539-bec8-4aa4066c42bb",
+          "name": "Read PDF File from Disk",
+          "type": "n8n-nodes-base.readWriteFile",
+          "position": [
+            620,
+            -440
+          ],
+          "parameters": {
+            "options": {},
+            "fileSelector": "={{ $json.fileName }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "59e18825-dd53-4b09-aefc-0c567ada7f1a",
+          "name": "Convert PFX to File",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            260,
+            -140
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "={{ $json.body.fileName }}",
+              "mimeType": "={{ $json.fileData.fileData.mimeType }}"
+            },
+            "operation": "toBinary",
+            "sourceProperty": "fileData.fileData.data"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d079d173-5c68-4b57-9efd-29a3ec89b6c0",
+          "name": "Write PFX File to Disk",
+          "type": "n8n-nodes-base.readWriteFile",
+          "position": [
+            440,
+            -140
+          ],
+          "parameters": {
+            "options": {
+              "append": false
+            },
+            "fileName": "={{ $('set file path').item.json.pdfPath }}{{ $('Prepare input params').item.json.uniqueFileName }}",
+            "operation": "write"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a2517543-fa29-4097-8f69-0c8cea6f9e07",
+          "name": "Read PFX File from Disk",
+          "type": "n8n-nodes-base.readWriteFile",
+          "position": [
+            620,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "fileSelector": "={{ $json.fileName }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2ec5c8cd-c9f5-4008-988b-ab724b9d8a0f",
+          "name": "Check PDF file is OK",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            800,
+            -380
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8afd6a42-b651-4905-8339-92607d4b59cc",
+                  "name": "success",
+                  "type": "boolean",
+                  "value": "={{ $json.fileName  ===  $('Prepare input params').item.json.uniqueFileName }}"
+                },
+                {
+                  "id": "d0125043-e398-47b2-9f9f-156b33c92cc4",
+                  "name": "fileName",
+                  "type": "string",
+                  "value": "={{ $json.fileName }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2de3d4d5-6654-4019-b05a-2d1dc48c016f",
+          "name": "Check PFX file is OK",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            800,
+            -220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8afd6a42-b651-4905-8339-92607d4b59cc",
+                  "name": "success",
+                  "type": "boolean",
+                  "value": "={{ $json.fileName  ===  $('Prepare input params').item.json.uniqueFileName }}"
+                },
+                {
+                  "id": "9af39faf-abf6-4d74-9001-444179abdaeb",
+                  "name": "fileName",
+                  "type": "string",
+                  "value": "={{ $json.fileName }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5a2405a6-daef-4e57-8ab8-62dc9600cd26",
+          "name": "check success",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1180,
+            180
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "dded9782-4619-4dc7-b264-f5e029099750",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.success }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "e7c2412e-eba2-4092-808f-808a27c2a64f",
+          "name": "set downlowd file info",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -220,
+            740
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f7affa96-85bc-4879-8ca3-aaabd985f67b",
+                  "name": "fullFileName",
+                  "type": "string",
+                  "value": "={{ $json.body.fileName.endsWith('.pdf') ? $json.pdfPath + $json.body.fileName : $json.keyPath + $json.body.fileName }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5710c64c-5edf-4de8-bb0a-dd9379c6ba1e",
+          "name": "Read download file from Disk",
+          "type": "n8n-nodes-base.readWriteFile",
+          "position": [
+            0,
+            740
+          ],
+          "parameters": {
+            "options": {},
+            "fileSelector": "={{ $json.fullFileName }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c6c8aea2-a770-4e32-94b5-c4b9f18ea3fe",
+          "name": "API POST Endpoint",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -900,
+            220
+          ],
+          "webhookId": "0c12b17f-77a7-46b2-99a0-432b29b58dfb",
+          "parameters": {
+            "path": "docu-digi-sign",
+            "options": {
+              "binaryData": false
+            },
+            "httpMethod": "POST",
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c7387236-4d72-4123-b181-31059c7fb973",
+          "name": "API GET Endpoint",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -900,
+            560
+          ],
+          "webhookId": "71854b24-a2b8-4cae-bb5d-3959f1573974",
+          "parameters": {
+            "path": "docu-download",
+            "options": {},
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c87290be-95fd-4edf-8993-b0710714919b",
+          "name": "POST Success Response",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1540,
+            120
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "501c7371-99a5-4d2f-bd54-ed8a9e8a67a9",
+          "name": "POST Error Response",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1540,
+            280
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3905360c-581c-4588-a509-7329e73a7ed6",
+          "name": "GET Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            240,
+            740
+          ],
+          "parameters": {
+            "options": {
+              "responseHeaders": {
+                "entries": [
+                  {
+                    "name": "comment-dispositions",
+                    "value": "=attachment; filename={{ $json.fileName }}"
+                  }
+                ]
+              }
+            },
+            "respondWith": "binary"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "088c46b6-0d52-4059-877c-bb38408b4c22",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -320,
+            100
+          ],
+          "parameters": {
+            "width": 740,
+            "height": 440,
+            "content": "# Cryptographic Operations\n## Generate Certificate and  Sign PDF"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6be21f42-4d11-4dc3-9d01-afed8afcde02",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -320,
+            600
+          ],
+          "parameters": {
+            "width": 740,
+            "height": 320,
+            "content": "# Document Management\n## Download document\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8972ffd2-ae7e-4999-ba31-242d23734498",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -320,
+            -560
+          ],
+          "parameters": {
+            "width": 1380,
+            "height": 620,
+            "content": "# Document Management\n## Upload Certificate and Upload PDF\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "262cfa68-f9bd-4145-9101-1bf3a3d2ea4a",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1100,
+            -80
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 740,
+            "height": 840,
+            "content": "# Request Processing and Method Routing"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3d3620d6-4937-483d-a2e2-0a1089415a44",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1120,
+            -100
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 680,
+            "height": 560,
+            "content": "# Response Checking and Formatting"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "6ee0f9e6-8c82-46e1-a263-5fedb2e71ad5",
+      "connections": {
+        "Sign PDF": {
+          "main": [
+            [
+              {
+                "node": "check success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate Keys": {
+          "main": [
+            [
+              {
+                "node": "check success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check success": {
+          "main": [
+            [
+              {
+                "node": "Prepare Success Response",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "POST Error Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set file path": {
+          "main": [
+            [
+              {
+                "node": "Switch Operation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "API GET Endpoint": {
+          "main": [
+            [
+              {
+                "node": "set file path",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch Operation": {
+          "main": [
+            [
+              {
+                "node": "Prepare input params",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Validate Key Gen Params",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Validate PDF Sign Params",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "set downlowd file info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "API POST Endpoint": {
+          "main": [
+            [
+              {
+                "node": "set file path",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Switch Upload Type": {
+          "main": [
+            [
+              {
+                "node": "Validate PDF Upload",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Validate Key Upload",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert PDF to File": {
+          "main": [
+            [
+              {
+                "node": "Write PDF File to Disk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert PFX to File": {
+          "main": [
+            [
+              {
+                "node": "Write PFX File to Disk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validate Key Upload": {
+          "main": [
+            [
+              {
+                "node": "Convert PFX to File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validate PDF Upload": {
+          "main": [
+            [
+              {
+                "node": "Convert PDF to File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check PDF file is OK": {
+          "main": [
+            [
+              {
+                "node": "check success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check PFX file is OK": {
+          "main": [
+            [
+              {
+                "node": "check success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare input params": {
+          "main": [
+            [
+              {
+                "node": "Switch Upload Type",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET Respond to Webhook": {
+          "main": [
+            []
+          ]
+        },
+        "Write PDF File to Disk": {
+          "main": [
+            [
+              {
+                "node": "Read PDF File from Disk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Write PFX File to Disk": {
+          "main": [
+            [
+              {
+                "node": "Read PFX File from Disk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set downlowd file info": {
+          "main": [
+            [
+              {
+                "node": "Read download file from Disk",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Read PDF File from Disk": {
+          "main": [
+            [
+              {
+                "node": "Check PDF file is OK",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Read PFX File from Disk": {
+          "main": [
+            [
+              {
+                "node": "Check PFX file is OK",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validate Key Gen Params": {
+          "main": [
+            [
+              {
+                "node": "Generate Keys",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare Success Response": {
+          "main": [
+            [
+              {
+                "node": "POST Success Response",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Validate PDF Sign Params": {
+          "main": [
+            [
+              {
+                "node": "Sign PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Read download file from Disk": {
+          "main": [
+            [
+              {
+                "node": "GET Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 32,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 6
+        },
+        "n8n-nodes-base.code": {
+          "count": 6
+        },
+        "n8n-nodes-base.switch": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.convertToFile": {
+          "count": 2
+        },
+        "n8n-nodes-base.readWriteFile": {
+          "count": 5
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Ferenc Erb",
+      "username": "fefehun",
+      "bio": "With 30+ years in IT and 20+ years in leadership, I specialize in no-code automation with n8n, optimizing workflows and integrating systems efficiently. As an Agile Coach and Project Manager, I’ve led teams, managed R&D, and driven IT transformations. Skilled in n8n, Java, Node.js, and cloud solutions, I help businesses streamline operations. Let’s connect if you need an n8n expert for automation!",
+      "verified": true,
+      "links": [
+        "www.it-coach.hu"
+      ],
+      "avatar": "https://gravatar.com/avatar/89eb1e65e00f5f62ee56498ca48f434eb1abddc9a863699ac96d7a3089eb5ab8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1233,
+        "icon": "file:readWriteFile.svg",
+        "name": "n8n-nodes-base.readWriteFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "Binary",
+              "File",
+              "Text",
+              "Open",
+              "Import",
+              "Save",
+              "Export",
+              "Disk",
+              "Transfer"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.readwritefile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Read/Write Files from Disk"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTQxXzE1NDcpIj4KPHBhdGggZD0iTTAgMTJDMCA1LjM3MjU4IDUuMzcyNTggMCAxMiAwSDE1OVYxNTRDMTU5IDE2MC42MjcgMTY0LjM3MyAxNjYgMTcxIDE2NkgzMjVWMjQySDIyOC41NjJDMjEwLjg5NSAyNDIgMTk0LjY1NiAyNTEuNzA1IDE4Ni4yODggMjY3LjI2NEwxMjkuMjAzIDM3My40MDdDMTI1LjEzMSAzODAuOTc4IDEyMyAzODkuNDQgMTIzIDM5OC4wMzdWNDM0SDEyQzUuMzcyNTcgNDM0IDAgNDI4LjYyNyAwIDQyMlYxMloiIGZpbGw9IiM0NEFBNDQiLz4KPHBhdGggZD0iTTMyNSAxMzRWMTI3LjQwMUMzMjUgMTI0LjIyMyAzMjMuNzQgMTIxLjE3NSAzMjEuNDk1IDExOC45MjVMMjA2LjM2OSAzLjUyNDgxQzIwNC4xMTggMS4yNjgyIDIwMS4wNjEgMCAxOTcuODczIDBIMTkxVjEzNEgzMjVaIiBmaWxsPSIjNDRBQTQ0Ii8+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjI4LjU2MyAyNzRDMjIyLjY3NCAyNzQgMjE3LjI2MSAyNzcuMjM1IDIxNC40NzIgMjgyLjQyMUwxNzIuMjExIDM2MUg0OTIuNjRMNDQ0LjY3IDI4MS43MTdDNDQxLjc3MiAyNzYuOTI3IDQzNi41OCAyNzQgNDMwLjk4MSAyNzRIMjI4LjU2M1oiIGZpbGw9IiM0NEFBNDQiLz4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xNTUgNDA5QzE1NSA0MDAuMTYzIDE2Mi4xNjMgMzkzIDE3MSAzOTNINDk2QzUwNC44MzcgMzkzIDUxMiA0MDAuMTYzIDUxMiA0MDlWNDk2QzUxMiA1MDQuODM3IDUwNC44MzcgNTEyIDQ5NiA1MTJIMTcxQzE2Mi4xNjMgNTEyIDE1NSA1MDQuODM3IDE1NSA0OTZWNDA5Wk0zOTcgNDUzQzM5NyA0NjYuMjU1IDM4Ni4yNTUgNDc3IDM3MyA0NzdDMzU5Ljc0NSA0NzcgMzQ5IDQ2Ni4yNTUgMzQ5IDQ1M0MzNDkgNDM5Ljc0NSAzNTkuNzQ1IDQyOSAzNzMgNDI5QzM4Ni4yNTUgNDI5IDM5NyA0MzkuNzQ1IDM5NyA0NTNaTTQ0NSA0NzdDNDU4LjI1NSA0NzcgNDY5IDQ2Ni4yNTUgNDY5IDQ1M0M0NjkgNDM5Ljc0NSA0NTguMjU1IDQyOSA0NDUgNDI5QzQzMS43NDUgNDI5IDQyMSA0MzkuNzQ1IDQyMSA0NTNDNDIxIDQ2Ni4yNTUgNDMxLjc0NSA0NzcgNDQ1IDQ3N1oiIGZpbGw9IiM0NEFBNDQiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTQxXzE1NDciPgo8cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0id2hpdGUiLz4KPC9jbGlwUGF0aD4KPC9kZWZzPgo8L3N2Zz4K"
+        },
+        "displayName": "Read/Write Files from Disk",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1234,
+        "icon": "file:convertToFile.svg",
+        "name": "n8n-nodes-base.convertToFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "encode",
+              "encoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "RTF",
+              "64",
+              "Base64"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Convert to File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjc2MTkgMkMxMy4yNDM3IDIgMTIuODIzNiAyLjQyMDA5IDEyLjgyMzYgMi45MzgzMVYxNS4yNTI2QzEzLjMxOTkgMTUuNDY0MyAxMy43ODUxIDE1Ljc3MiAxNC4xOTEgMTYuMTc1N0wyMS4yMjgzIDIzLjE3MzlDMjIuMDU0OCAyMy45OTU4IDIyLjUxOTUgMjUuMTEzMiAyMi41MTk1IDI2LjI3ODhDMjIuNTE5NSAyNy40NDQzIDIyLjA1NDggMjguNTYxOCAyMS4yMjgzIDI5LjM4MzdMMTQuMTkxIDM2LjM4MTlDMTMuNzg1IDM2Ljc4NTYgMTMuMzE5OSAzNy4wOTMyIDEyLjgyMzYgMzcuMzA1VjM3LjM1MjdDMTIuODIzNiAzNy44NzA5IDEzLjI0MzcgMzguMjkxIDEzLjc2MTkgMzguMjkxSDM5LjA2MTdDMzkuNTc5OSAzOC4yOTEgNDAgMzcuODcwOSA0MCAzNy4zNTI3TDQwIDE1Ljc5NEgyNy4xNDQzQzI2LjYyNjEgMTUuNzk0IDI2LjIwNiAxNS4zNzM5IDI2LjIwNiAxNC44NTU3VjJIMTMuNzYxOVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTI4Ljg2NDUgMkMyOC43NzgxIDIgMjguNzA4MSAyLjA3MDAyIDI4LjcwODEgMi4xNTYzOVYxMi44MjI3QzI4LjcwODEgMTMuMDgxOCAyOC45MTgyIDEzLjI5MTkgMjkuMTc3MyAxMy4yOTE5SDM5Ljg0MzZDMzkuOTMgMTMuMjkxOSA0MCAxMy4yMjE5IDQwIDEzLjEzNTVMNDAgMTIuNjI2M0M0MCAxMi4zNzc4IDM5LjkwMTQgMTIuMTM5NSAzOS43MjYgMTEuOTYzNkwzMC4wNjEgMi4yNzU2MUMyOS44ODUgMi4wOTkxNiAyOS42NDYgMiAyOS4zOTY3IDJIMjguODY0NVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTkuNzcyNjggMzQuNjAwM0M5LjA0MTg2IDMzLjg2NTQgOS4wNDUxNyAzMi42NzcyIDkuNzgwMDcgMzEuOTQ2NEwxMy42MzE1IDI4LjExNjNMMC45MzgzMTEgMjguMTE2M0MwLjQyMDA5NiAyOC4xMTYzIC0yLjI2NTE5ZS0wOCAyNy42OTYyIDAgMjcuMTc4TDguMjAyOTdlLTA4IDI1LjMwMTRDMS4wNDY4MmUtMDcgMjQuNzgzMiAwLjQyMDA5NSAyNC4zNjMxIDAuOTM4MzExIDI0LjM2MzFIMTMuNTUyOUw5Ljc4MDA3IDIwLjYxMTJDOS4wNDUxNyAxOS44ODA0IDkuMDQxODYgMTguNjkyMiA5Ljc3MjY4IDE3Ljk1NzNDMTAuNTAzNSAxNy4yMjI0IDExLjY5MTcgMTcuMjE5MSAxMi40MjY2IDE3Ljk0OTlMMTkuNDYzOSAyNC45NDgxQzE5LjgxODEgMjUuMzAwNCAyMC4wMTczIDI1Ljc3OTMgMjAuMDE3MyAyNi4yNzg4QzIwLjAxNzMgMjYuNzc4MyAxOS44MTgxIDI3LjI1NzIgMTkuNDYzOSAyNy42MDk1TDEyLjQyNjYgMzQuNjA3N0MxMS42OTE3IDM1LjMzODUgMTAuNTAzNSAzNS4zMzUyIDkuNzcyNjggMzQuNjAwM1oiIGZpbGw9IiMzQTQyRTkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Convert to File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

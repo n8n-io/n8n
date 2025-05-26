@@ -1,0 +1,181 @@
+{
+  "workflow": {
+    "id": 949,
+    "name": "Create a customer and send the invoice automatically",
+    "views": 2508,
+    "recentViews": 0,
+    "totalViews": 2508,
+    "createdAt": "2021-02-19T12:01:49.424Z",
+    "description": "This workflows allows you to create a customer and an invoice and send the invoice to the customer.\n\n![workflow-screenshot](fileId:421)\n\n**QuickBooks node:** This node will create a new customer in QuickBooks.\n\n**QuickBooks1 node:** This node will create an invoice for the customer that we created in the previous node.\n\n**QuickBooks2 node:** This node will send the invoice that we created in the previous node.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "QuickBooks2",
+          "type": "n8n-nodes-base.quickbooks",
+          "position": [
+            870,
+            300
+          ],
+          "parameters": {
+            "email": "",
+            "resource": "invoice",
+            "invoiceId": "={{$json[\"Id\"]}}",
+            "operation": "send"
+          },
+          "credentials": {
+            "quickBooksOAuth2Api": "QuickBooks OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "QuickBooks1",
+          "type": "n8n-nodes-base.quickbooks",
+          "position": [
+            670,
+            300
+          ],
+          "parameters": {
+            "Line": [
+              {
+                "Amount": 100,
+                "itemId": "1",
+                "DetailType": "SalesItemLineDetail",
+                "Description": "Consulting service"
+              }
+            ],
+            "resource": "invoice",
+            "operation": "create",
+            "CustomerRef": "={{$json[\"Id\"]}}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "quickBooksOAuth2Api": "QuickBooks OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "QuickBooks",
+          "type": "n8n-nodes-base.quickbooks",
+          "position": [
+            470,
+            300
+          ],
+          "parameters": {
+            "operation": "create",
+            "displayName": "Jack Ryan",
+            "additionalFields": {
+              "PrimaryEmailAddr": "jack@ryan.com"
+            }
+          },
+          "credentials": {
+            "quickBooksOAuth2Api": "QuickBooks OAuth Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "QuickBooks": {
+          "main": [
+            [
+              {
+                "node": "QuickBooks1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "QuickBooks1": {
+          "main": [
+            [
+              {
+                "node": "QuickBooks2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.quickbooks": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 455,
+        "icon": "file:quickbooks.svg",
+        "name": "n8n-nodes-base.quickbooks",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbooks/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/quickbooks/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "QuickBooks Online"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAwIDI1MDAiPjxjaXJjbGUgY3g9IjEyNTAiIGN5PSIxMjUwIiByPSIxMjUwIiBmaWxsPSIjMmNhMDFjIi8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMwMS4zIDEyNDkuNmMuMSAyODIuNiAyMjggNTEyLjQgNTEwLjYgNTE0LjloNzIuM3YtMTg4LjloLTcyLjNjLTE3NS4yIDQ3LjgtMzU1LjktNTUuNS00MDMuNi0yMzAuNy0uNC0xLjQtLjctMi44LTEuMS00LjItNDkuMS0xNzcuNSA1My43LTM2MS40IDIzMC42LTQxMi41aDM2LjFhMzIyIDMyMiAwIDAgMSAxMzcuNSAwSDk4N3YxMDAyLjljLS45IDEwNi4xIDg0LjQgMTkyLjkgMTkwLjUgMTkzLjlWNzI5LjZIODEzYy0yODQuNiAxLjUtNTE0IDIzMy40LTUxMi41IDUxOHYuMXptMTM4Ny41LTUxOS44aC03Mi4zdjE5OC45aDcyLjNjMTc0LjgtNDcuNyAzNTUuMSA1NS4zIDQwMi44IDIzMCAuNCAxLjMuNyAyLjcgMS4xIDQgNDguOCAxNzYuOS01My43IDM2MC4xLTIyOS45IDQxMS4xaC0zNi4xYTMyMiAzMjIgMCAwIDEtMTM3LjUgMGgtMTc1LjZWNTcxYy45LTEwNi4xLTg0LjQtMTkyLjktMTkwLjUtMTkzLjl2MTM5Ny40aDM2NC41YzI4Ny4xLTQuNSA1MTYuMi0yNDAuOCA1MTEuOC01MjcuOS00LjQtMjgwLjgtMjMwLjktNTA3LjQtNTExLjgtNTExLjh6Ii8+PC9zdmc+"
+        },
+        "displayName": "QuickBooks Online",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": [
+      {
+        "id": 421,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/420bee47068a4dde9615977ddbb294eb.png"
+      }
+    ]
+  }
+}

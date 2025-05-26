@@ -1,0 +1,96 @@
+URL: https://docs.n8n.io/api/authentication/
+Scraped_At: 2025-05-20T18:40:34.472307
+
+API authentication
+#
+n8n uses API keys to authenticate API calls.
+Feature availability
+The n8n API isn't available during the free trial. Please upgrade to access this feature.
+API Scopes
+#
+Users of
+enterprise instances
+can limit which resources and actions a key can access with scopes. API key scopes allow you specify the exact level of access a key needs for its intended purpose.
+Non-enterprise API keys have full access to all the account's resources and capabilities.
+Create an API key
+#
+Log in to n8n.
+Go to
+Settings
+>
+n8n API
+.
+Select
+Create an API key
+.
+Choose a
+Label
+and set an
+Expiration
+time for the key.
+If on an enterprise plan, choose the
+Scopes
+to give the key.
+Copy
+My API Key
+and use this key to authenticate your calls.
+Call the API using your key
+#
+Send the API key in your API call as a header named
+X-N8N-API-KEY
+.
+For example, say you want to get all active workflows. Your curl request will look like this:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+# For a self-hosted n8n instance
+curl
+-X
+'GET'
+\
+'<N8N_HOST>:<N8N_PORT>/<N8N_PATH>/api/v<version-number>/workflows?active=true'
+\
+-H
+'accept: application/json'
+\
+-H
+'X-N8N-API-KEY: <your-api-key>'
+# For n8n Cloud
+curl
+-X
+'GET'
+\
+'<your-cloud-instance>/api/v<version-number>/workflows?active=true'
+\
+-H
+'accept: application/json'
+\
+-H
+'X-N8N-API-KEY: <your-api-key>'
+Delete an API key
+#
+Log in to n8n.
+Go to
+Settings
+>
+n8n API
+.
+Select
+Delete
+next to the key you want to delete.
+Confirm the delete by selecting
+Delete Forever
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

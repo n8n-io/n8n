@@ -1,0 +1,118 @@
+{
+  "workflow": {
+    "id": 538,
+    "name": "Receive updates for Eventbrite events",
+    "views": 354,
+    "recentViews": 0,
+    "totalViews": 354,
+    "createdAt": "2020-07-20T08:29:36.689Z",
+    "description": "Companion workflow for Eventbrite Trigger node docs\n\n![workflow-screenshot](fileId:136)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Eventbrite Trigger",
+          "type": "n8n-nodes-base.eventbriteTrigger",
+          "position": [
+            880,
+            400
+          ],
+          "webhookId": "90ebf00a-536b-4553-b879-2e2c3e35bd60",
+          "parameters": {
+            "event": "114095913950",
+            "actions": [
+              "order.placed",
+              "order.updated",
+              "order.refunded"
+            ],
+            "organization": "461207981776"
+          },
+          "credentials": {
+            "eventbriteApi": "eventbrite api"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.eventbriteTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 117,
+        "icon": "file:eventbrite.png",
+        "name": "n8n-nodes-base.eventbriteTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.eventbritetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/eventbrite/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Eventbrite Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABGlBMVEUAAADwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTfwVTf////wUzXwTi/vTCzwUDHvSyvwUjP95uL//f3wVzr6xbv+9fL2k4DvSSn/+vn+7er96ub6wbb4qJn2l4T0gmzya1H+9/b3nIrzeGDzc1nzbVPyZEnxXD/xWj381c77zcX7ysH5t6r1jnr0fGXyaE394Nv83NX5vK/4rqH3pZT3oJDxXUD+8O31iHP0fmfxYUV4TGGrAAAALXRSTlMA6wn6GNHCnpkc3L2qoI2HcGlfR0AjFeXisnZaLx/z8u7Ht6aTg005NQ9RTgdlSfndAAACr0lEQVRIx+2WZ1fiQBSGKYKgUhTEXta67u4kk5lgQkLvvdlX/f9/Qw9zE8DMRPyszxc4JM+5d95peH745oST8bNIJLR7sen7orm5HtxCgDdwvv8FNXnqR/ME9xZUD9YQh1/JRdyNY8Qn9u9TN4SEBMPuqm+2ZVklRJXRlJVNV3lnaipUbTUaY+39c2ovubjRqaoN724zklRN648thdix+cRZIQBrj2nJJnPXolb3yyJ3yQtl6egGPEsvYav3hEBeAxfXrqWPFBDYK1dc9xKWlVmTOOgEOt91K6yUsxKPosKeb/t4Iz5iTWt2VPn+fbFgj/66jpl9IY5aeZAY/2sdhVKqlm/hh64qCwM/mTxR2zn2arpiyix6VAB7xEp7U055hRUuQd0KnahEobiZhsygb87u9jMZytRMpGKKUaM2uM1eQwYd1veGU56LK6eZ5LXx2EuDNxdZTCCrrczkvf7LQ5d9m2XIZiskkEkly4pIHHLPGOIWyE0mO0jrxXobIXd5XHV42fTAqGsKxSwucdvyU26+0+6gPEZUYSIQFU0V7tliXi+W24RiImOFzMrrTpkd8rRo7eBGGzqVsWGMNWVa/dIpByGxKot7QGEXqWbpfdx53RjBGjnkHGRx2Bi6xOhVTIUQbHburfE/MXmHdz35YaatvKuF52bz5T4vAQZFE7g3zyp7Rh9mFuTMYunBjjxO8eQ/1hGmc1fJK5y/Z7bAK61qBad7U8Fw4QrO/X0/2Lj40e0/YeEkA+f2fVHvzrVsEIIYqwtcVZiU7yDmTL/UUWTE2A6L5asAAmRM26OhURqWW9hW0eFv138xzAZfeQeryOYo4XElFURCtqCuGF9U5J4ceD4nEeCp3rhnIXzrAYcag7KL6InT7RlzdW/J8yVSyXgsFIksR3f/hj0/fGveABo4E82rLSxPAAAAAElFTkSuQmCC"
+        },
+        "displayName": "Eventbrite Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 136,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/edc458f1597b4fffaeedb85c1e175adb.png"
+      }
+    ]
+  }
+}

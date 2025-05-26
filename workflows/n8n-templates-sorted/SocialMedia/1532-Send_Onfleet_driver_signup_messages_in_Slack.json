@@ -1,0 +1,240 @@
+{
+  "workflow": {
+    "id": 1532,
+    "name": "Send Onfleet driver signup messages in Slack",
+    "views": 269,
+    "recentViews": 0,
+    "totalViews": 269,
+    "createdAt": "2022-03-16T23:55:44.280Z",
+    "description": "**Summary**\n\nOnfleet is a last-mile delivery software that provides end-to-end route planning, dispatch, communication, and analytics to handle the heavy lifting while you can focus on your customers.\n\nThis workflow template listens to Onfleet **driver sign-up events** and automatically **notifies you on Slack**.\n\n**Configurations**\n\n- Update the Onfleet node with your own Onfleet credentials, to register for an **Onfleet API key**, please visit https://onfleet.com/signup to get started\n- Update the Slack node with your own Slack credentials\n- Update the Slack channel to something that exists in your Slack workspace, the default is set to `#new-driver-signup` in this example which may not apply to your workspace\n- Update the Slack message to something customized, ideally with driver information such as phone number and name\n",
+    "workflow": {
+      "id": 14,
+      "name": "Onfleet Driver signup message in Slack",
+      "nodes": [
+        {
+          "name": "Onfleet Trigger",
+          "type": "n8n-nodes-base.onfleetTrigger",
+          "position": [
+            460,
+            300
+          ],
+          "webhookId": "a005e163-13a2-4ea2-a127-6e00e30a82f4",
+          "parameters": {
+            "triggerOn": "workerCreated",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "onfleetApi": {
+              "id": "2",
+              "name": "Onfleet API Key"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Slack",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            680,
+            300
+          ],
+          "parameters": {
+            "text": "A new driver has signed up!",
+            "channel": "#new-driver-signup",
+            "attachments": [],
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "7",
+              "name": "Slack account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Onfleet Trigger": {
+          "main": [
+            [
+              {
+                "node": "Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.slack": {
+          "count": 1
+        },
+        "n8n-nodes-base.onfleetTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "James Li",
+      "username": "ilsemaj",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f2676b8a1c6bf7a2b2c9c4df054571d29662ea0dab6f11e7a423c01af7259574?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 556,
+        "icon": "file:Onfleet.svg",
+        "name": "n8n-nodes-base.onfleetTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.onfleettrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/onfleet/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Onfleet Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSIjQUE4MUYzIiBkPSJNMCAwaDYwdjYwSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMyLjU1IDMyLjA2NmMuNDgyLjQ1NCAxLjIwNyAxLjA2NiAyLjE0NSAxLjgxMS45MzguNzIxIDIuMTY5IDEuNTQ1IDMuNjQzIDIuMTg4Ljc1LjI5IDEuNTUzLjUzMyAyLjQxMi41NTcuNDI3IDAgLjg2IDAgMS4yNjEtLjEzMy4yMTMtLjAyNC40MDItLjEzMy41OTEtLjIxMi4xODktLjExLjM3OC0uMTg4LjU2LS4zMjEuMzQ4LS4yNDMuNjk1LS41MzQuOTYzLS45MDMuMjY4LS4zNy41MTItLjc3LjcyNS0xLjIyNC4zNzgtLjkwMy42MTUtMS45Mi42Ny0yLjk4MWE4LjcgOC43IDAgMCAwLS40MjYtMy4yYy0uMzQ4LTEuMDExLS45MDgtMS45NDUtMS43MTItMi41MzItLjc3NC0uNTU4LTEuNzY3LS43Ny0yLjgzOS0uNjEyLS41MzYuMTA5LTEuMDk2LjI0Mi0xLjYzMi40NzgtLjI2OS4xMS0uNTM3LjI0My0uODI5LjM3Ni0uMjY4LjE1OC0uNTM2LjI5LS44MDQuNDU0LTEuMDcyLjY0My0yLjExNCAxLjQzNi0zLjEwNyAyLjI5LS40ODEuNDU1LS45OTMuODgtMS40NDQgMS4zNTgtLjI0My4yNDItLjQ4LjQ1NS0uNjk0LjcyMWwtLjcyNS43NDVhNDAgNDAgMCAwIDEtMy4wODMgMi45MzNjLTEuMDk2LjkzMy0yLjI0NyAxLjc4OC0zLjUzMyAyLjUzMy0xLjI2LjcyMS0yLjY4IDEuMzMzLTQuMjU4IDEuNTQ1YTYuNyA2LjcgMCAwIDEtMi40MzctLjEwOSA1LjcgNS43IDAgMCAxLTIuMjIzLTEuMDY2IDYuNCA2LjQgMCAwIDEtMS41My0xLjc1OCA4IDggMCAwIDEtLjg1OC0yIDEwLjcgMTAuNyAwIDAgMS0uMzQ4LTIuMDIzIDkuNyA5LjcgMCAwIDEgLjAyNS0xLjk3IDkuOSA5LjkgMCAwIDEgMS4wNi0zLjYzNSA3IDcgMCAwIDEgMS4wNzItMS41MiA1LjMgNS4zIDAgMCAxIDEuNDItMS4xNDZjLjUzNS0uMjkgMS4wOTYtLjUwOSAxLjY2Mi0uNTg4LjU2LS4xMDMgMS4xMjEtLjA3MiAxLjY1Ny0uMDI0IDEuMDQyLjEzMyAxLjk1Ni41MSAyLjczLjkwMyAxLjU1My44NTQgMi42OCAxLjgzNiAzLjU2MyAyLjY5Ljg2Ljg1NSAxLjQ3NSAxLjYgMS45MDEgMi4xMDNsLjYxNS43Ny0uNzI1LS42NjdjLS40OC0uNDU1LTEuMjA2LTEuMDY3LTIuMTQ0LTEuNzg4LS45MzgtLjcyLTIuMTY5LTEuNTQ1LTMuNjQzLTIuMTg3LS43NS0uMjktMS41NTMtLjUzMy0yLjQxMi0uNTU3LS44MjktLjAyNS0xLjY4OC4xNTctMi4zODIuNjY2LS4zNDcuMjQyLS42OTUuNTMzLS45NjMuOTAzcy0uNTM2Ljc3LS43MjUgMS4yMjRhNy45IDcuOSAwIDAgMC0uNjcgMy4wMTEgOC43IDguNyAwIDAgMCAuNDI3IDMuMmMuMzQ3IDEuMDExLjkwNyAxLjk0NSAxLjcxMSAyLjUwMi43NzQuNTU3IDEuNzY3Ljc3IDIuODQuNTg4LjEzMyAwIC4yNjctLjA1NS40MDEtLjA3OXMuMjY4LS4wNTUuNDAyLS4xMDlsLjQwMi0uMTMzLjQwMy0uMTU4Yy4xMzQtLjA1NC4yNjgtLjEwOS40MDItLjE4OGwuNDAyLS4xODhjLjI2OC0uMTU3LjUzNi0uMjkuODA0LS40NTQgMS4wNzItLjY0MiAyLjExNC0xLjQzNiAzLjEwNy0yLjI5Ljk5My0uODc5IDEuOS0xLjc1OCAyLjg5My0yLjhsLjcyNS0uNzQ1Yy4yNDQtLjI2Ny41MTItLjUxLjc1LS43NDVhMjUgMjUgMCAwIDEgMS41NzctMS40MzZjMS4wOTctLjkzNCAyLjI0OC0xLjc4OCAzLjUzNC0yLjUzMyAxLjI2LS43MjEgMi42OC0xLjMzMyA0LjI1OC0xLjU0NWE2LjggNi44IDAgMCAxIDIuNDM2LjEzMyA1LjYgNS42IDAgMCAxIDIuMiAxLjA5Yy42NDUuNTEgMS4xMjcgMS4xMjIgMS41MjkgMS43NThhOCA4IDAgMCAxIC44NTkgMmMuMTg4LjY2Ni4yOTIgMS4zNTcuMzQ3IDIuMDIzYTkuNyA5LjcgMCAwIDEtLjAyNSAxLjk3Yy0uMTM0IDEuMjc4LS40OCAyLjUzMi0xLjA0MSAzLjYyM2E3IDcgMCAwIDEtMS4wNzIgMS41MiA1IDUgMCAwIDEtMS40NDQgMS4xNDYgNSA1IDAgMCAxLS44MjkuMzc2Yy0uMjkyLjA3OC0uNTYuMTg3LS44NTkuMjEyLS41Ni4xMDktMS4xMjcuMDc5LTEuNjYzLjAyNC0xLjA0MS0uMTU4LTEuOTU1LS41MzMtMi43MjktLjkzMy0xLjU1My0uODU1LTIuNjgtMS44NjYtMy41NjQtMi43MTUtLjg1OS0uODU0LTEuNDc0LTEuNi0xLjktMi4xMDJsLS42MTUtLjc3Yy4wNzktLjAxMi44MDQuNjU1LjgwNC42NTUiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Onfleet Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

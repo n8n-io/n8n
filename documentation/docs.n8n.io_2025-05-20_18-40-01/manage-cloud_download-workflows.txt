@@ -1,0 +1,36 @@
+URL: https://docs.n8n.io/manage-cloud/download-workflows/
+Scraped_At: 2025-05-20T19:09:35.553498
+
+Download workflows
+#
+n8n Cloud instance owners can download workflows from the most recent backup.
+You can do this with the
+Cloud admin dashboard
+.
+How to download workflows
+#
+Log in to n8n
+.
+Select
+Admin Dashboard
+to open the dashboard.
+In the
+Manage
+section, select the
+Export
+tab.
+Select
+Download Workflows
+.
+Accessing workflows after your free trial
+#
+You have
+90 days
+to download your workflows after your free trial ends. After that, all workflows will be
+permanently deleted
+and are unrecoverable.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

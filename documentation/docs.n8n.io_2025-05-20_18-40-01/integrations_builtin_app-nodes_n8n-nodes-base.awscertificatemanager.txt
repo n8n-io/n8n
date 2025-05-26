@@ -1,0 +1,59 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awscertificatemanager/
+Scraped_At: 2025-05-20T18:45:44.457653
+
+AWS Certificate Manager node
+#
+Use the AWS Certificate Manager node to automate work in AWS Certificate Manager, and integrate AWS Certificate Manager with other applications. n8n has built-in support for a wide range of AWS Certificate Manager features, including creating, deleting, getting, and renewing SSL certificates.
+On this page, you'll find a list of operations the AWS Certificate Manager node supports and links to more resources.
+Credentials
+Refer to
+AWS Certificate Manager credentials
+for guidance on setting up authentication.
+Operations
+#
+Certificate
+Delete
+Get
+Get Many
+Get Metadata
+Renew
+Templates and examples
+#
+Transcribe audio files from Cloud Storage
+by Lorena
+View template details
+Extract and store text from chat images using AWS S3
+by Lorena
+View template details
+Sync data between Google Drive and AWS S3
+by Lorena
+View template details
+Browse AWS Certificate Manager integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+AWS Certificate Manager's documentation
+for more information on this service.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

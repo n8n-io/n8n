@@ -1,0 +1,39 @@
+URL: https://docs.n8n.io/integrations/creating-nodes/build/node-development-environment/
+Scraped_At: 2025-05-20T19:08:29.830894
+
+Set up your development environment
+#
+This document lists the essential dependencies for developing a node, as well as guidance on setting up your editor.
+Requirements
+#
+To build and test a node, you need:
+Node.js and npm. Minimum version Node 18.17.0. You can find instructions on how to install both using nvm (Node Version Manager) for Linux, Mac, and WSL (Windows Subsystem for Linux)
+here
+. For Windows users, refer to Microsoft's guide to
+Install NodeJS on Windows
+.
+A local instance of n8n. You can install n8n with
+npm install n8n -g
+, then follow the steps in
+Run your node locally
+to test your node.
+You should also have
+git
+installed. This allows you to clone and use the
+n8n-node-starter
+.
+Editor setup
+#
+n8n recommends using
+VS Code
+as your editor.
+Install these extensions:
+ESLint
+EditorConfig
+Prettier
+By using VS Code and these extensions, you get access to the n8n node linter's warnings as you code.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

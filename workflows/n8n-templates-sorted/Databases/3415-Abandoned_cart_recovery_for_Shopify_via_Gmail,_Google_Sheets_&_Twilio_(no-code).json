@@ -1,0 +1,2903 @@
+{
+  "workflow": {
+    "id": 3415,
+    "name": "Abandoned cart recovery for Shopify via Gmail, Google Sheets & Twilio (no-code)",
+    "views": 400,
+    "recentViews": 5,
+    "totalViews": 400,
+    "createdAt": "2025-04-03T10:30:12.179Z",
+    "description": "## Who is this for?\n\nThis template is ideal for solo store owners, eCommerce marketers, automation beginners, or anyone using **Shopify** and **Gmail** who wants to recover lost revenue without coding.\n\n## What problem does this solve?\n\nCustomers often leave items in their cart without completing the purchase. Manually chasing those sales is inefficient and inconsistent. This workflow automates the recovery process by sending emails (and optionally SMS) based on Shopify checkout activity.\n\n## What this workflow does:\n\n- ✅ Detects when a Shopify checkout is created but not completed,\n- ⏳ Waits 1 hour, then checks if the cart was abandoned,\n- 🧾 Pulls cart contents and applies a fallback discount,\n- 📧 Sends a recovery email via Gmail,\n- 🕓 After 24 hours, you can optionally send an SMS or WhatsApp reminder via Twilio,\n- 📊 Logs each interaction to Google Sheets for tracking.\n\n## Setup:\n\n1. Create Shopify, Gmail, Google Sheets, and Twilio credentials in your n8n instance,\n2. Import the JSON workflow file\n3. Replace the Shopify trigger with your store's webhook (set to “Checkout Create”),\n4. Set your wait time (default: 1 hour),\n5. Link your Gmail account and customize the email message,\n6. (Optional) Link Twilio to add a multi-channel reminder,\n7. Update the Google Sheets node with your own Sheet ID and headers.\n\n## 🗒 Color-coded workflow notes:\n\nTo make customization easier, this template includes **a visual sticky note system** inside the n8n canvas.\n\nYou’ll find:\n\n- 🟩 **Green Notes** → Main Steps  \n  Clear, essential stages of the automation (e.g. wait, check cart status, send email),\n\n- 🟦 **Blue Notes** → Personalization Tips  \n  Small tweaks you can make to match your tone, store brand, or logic (e.g. email copy, discount logic),\n\n- 🟨 **Yellow Notes** → Optional / Advanced  \n  Features that you can explore setting up:  \n  Twilio SMS, Airtable logging, human approval steps, etc.\n\n👉 Look around each key node for quick tips, setup instructions, and TO-DO items.\n\nThis system helps you understand and modify the workflow at a glance — whether you're a beginner or scaling a pro setup.\n\n## How to customize this workflow?\n\n- 🎯 Swap Shopify for WooCommerce or Stripe by replacing the trigger and cart-check logic,\n- 💬 Localize and personalize each email message or add multilingual support via AI,\n- 📈 Upgrade logging from Google Sheets to Airtable for CRM-style features,\n- 🤝 Add manual approval steps for high-value discounts,\n- 💡 Want a one-time unique code per user? Let us build that logic for you → [velebit@innovatio.design](mailto:velebit@innovatio.design)\n\n## Final notes\n\n*This template was designed by Velebit from Innovatio. External links in the workflow (e.g. support or upgrade options) are optional and purely informative, while only leading to the official company webiste with no affiliate or similar links included in the template itself.*\n\n*A separate license applies to the paid version on Gumroad, which includes additional modules and commercial use rights.*",
+    "workflow": {
+      "id": "DW3ksS9uXl0bZqpA",
+      "meta": {
+        "instanceId": "24539f9a60f2589a40df65a44a58187a87f093d6d32a1d8c6b277455f0a7c574"
+      },
+      "name": "Abandoned Cart Recovery Email Automation Workflow",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "dbcb5a20-ffab-448c-a3ac-1d7b1266a161",
+          "name": "Fetch Cart",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1480,
+            -140
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "41ac1023-1875-4036-8f5a-61002acecc83",
+          "name": "Send Email (Gmail)",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            2360,
+            -140
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "18129749-d33a-47ea-b7fd-7ab1034b0a6c",
+          "name": "Wait 24 Hours",
+          "type": "n8n-nodes-base.wait",
+          "disabled": true,
+          "position": [
+            2900,
+            460
+          ],
+          "webhookId": "88efe41a-61e6-446a-8dd4-2d6ecbc9f4e4",
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d8ed04f0-2860-4ba6-9b60-b04dc2ff047e",
+          "name": "Send SMS (Twilio)",
+          "type": "n8n-nodes-base.twilio",
+          "disabled": true,
+          "position": [
+            2700,
+            460
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "75a6bdf0-a76d-4e69-b0f1-43fb9858e13c",
+          "name": "Log to Google Sheet",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            2840,
+            -140
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "0843ecb9-1ee5-4d7b-8218-31fab02cd2cf",
+          "name": "Shopify Trigger",
+          "type": "n8n-nodes-base.shopifyTrigger",
+          "position": [
+            -460,
+            -140
+          ],
+          "webhookId": "ba10bbdd-dc67-4eae-919c-8eff9e197b00",
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "a05b26e8-81c5-434c-b66c-073601f4110d",
+          "name": "GET Checkout Status",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            860,
+            -140
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5ea4e065-2a7a-4104-a2b0-c773f47c9d74",
+          "name": "Completed Checkout?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1080,
+            -140
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "a2650e46-464b-4781-93a5-03a3e5464bf7",
+          "name": "Mark as \"Recovered Naturally\"",
+          "type": "n8n-nodes-base.googleSheets",
+          "disabled": true,
+          "position": [
+            800,
+            840
+          ],
+          "parameters": {},
+          "typeVersion": 4.5
+        },
+        {
+          "id": "84ae9b4f-0dfc-4082-92f2-2e38bf176424",
+          "name": "Extract Key Values",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            140,
+            -140
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "f5f92cb4-2877-407c-b70d-18b764f18ea2",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -840,
+            -580
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "187a22d7-9eed-4120-ad7e-07260789478b",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            -660
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "88e3aa40-3a4a-459e-8602-9c1d20cbbc04",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1640,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "97a284e8-dd3f-438b-a1fc-5ec69662c9e1",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -840,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "848abc27-e2e4-4b64-a8d4-8ecd27b9bcff",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "disabled": true,
+          "position": [
+            -640,
+            500
+          ],
+          "webhookId": "e0e91b87-88af-4815-92a9-49db03c9a6bb",
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "f84d8c8a-66d4-4fdc-a5e8-c8b3b877dd09",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7330df7b-49af-4d8e-8150-e5a746d5fc01",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -820,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3de41525-1e55-4841-8376-32d73c21f031",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            80,
+            -400
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "23ce859c-ada9-4146-853d-e91747fffc75",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -520,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "61a233e5-9c8d-46c0-b3e5-f6e36d5efcc8",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            80,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "090bb1ac-8169-46fa-8b38-7fad10b9d328",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            360,
+            -740
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "814a3f7b-3e5b-4cfa-8c2a-04150e8e9649",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "24dc49f2-2253-4787-ba16-a2c6d1df500f",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            -400
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "94e7faa2-6496-4a17-834a-ce8345ebdfdd",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            760,
+            -1000
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f62ce466-2417-483b-8118-0e30c585ee80",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            760,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7ceb6745-5581-4ccb-9c01-89e3d661aebb",
+          "name": "Sticky Note15",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "52b21512-635e-4655-814b-9f11e91941cd",
+          "name": "Sticky Note16",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            780,
+            -640
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c0191d35-5107-47fe-b573-d660392d3139",
+          "name": "Sticky Note17",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1040,
+            -520
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "10fae9e4-833b-42d1-991d-7faf8546fc37",
+          "name": "Sticky Note18",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -520,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6bc23e15-de2b-4b15-8fcb-4e0b04c297c1",
+          "name": "Sticky Note19",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            760,
+            420
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb906b46-aa88-4373-8106-4c33fba5f0e8",
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "disabled": true,
+          "position": [
+            1120,
+            840
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9b237c7c-567c-404b-8d03-738061457925",
+          "name": "Sticky Note20",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1340,
+            -1120
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9a3f776b-6e1f-4313-8e88-8f0fe62870f1",
+          "name": "Sticky Note21",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa1ba6f9-8a00-472f-a731-5711bb27f3ca",
+          "name": "Sticky Note22",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1360,
+            -640
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "068a63c5-ab3e-405d-b61a-29e46a791c0b",
+          "name": "Sticky Note23",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1340,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "36dcbbda-2c4a-4e1d-a5a5-c1509a154e71",
+          "name": "Sticky Note24",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1780,
+            -1260
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fde98405-859a-4022-8a79-e2f550833ff8",
+          "name": "Sticky Note25",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1860,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "22cfecf9-1988-4016-8b07-3fec67082457",
+          "name": "Sticky Note26",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1800,
+            -760
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9b721f12-ca57-44df-a84b-a9500bb546a2",
+          "name": "Sticky Note27",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1780,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa06a2f6-9209-4608-b5be-66e77164ed97",
+          "name": "Sticky Note28",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1780,
+            600
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "50bceea4-ca69-4c5f-8500-3057c1814b27",
+          "name": "Sticky Note29",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1780,
+            1180
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c7b6737c-d7a6-47cb-8e32-0c46465e1717",
+          "name": "Apply Global Discount Code",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1920,
+            -140
+          ],
+          "parameters": {},
+          "notesInFlow": false,
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9f42e402-4850-4a34-bbb0-585f26f6a8cc",
+          "name": "Sticky Note30",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2220,
+            -1380
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fbc42590-c833-436a-8f48-8846cef0cbe8",
+          "name": "Sticky Note31",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2300,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c2859ff4-4867-472a-a790-6a5f10776550",
+          "name": "Sticky Note32",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2240,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a01cbb1a-f02e-4c95-998f-96c3e28b2cee",
+          "name": "Sticky Note33",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2220,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d9d57bb6-4a96-4bd2-a1f0-3afd87b2cb2c",
+          "name": "Sticky Note34",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2220,
+            640
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3dbc18de-6e44-4805-be96-f3a40b13a854",
+          "name": "Sticky Note35",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2660,
+            -1600
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0305e2f6-3212-4172-8731-7e43df65962a",
+          "name": "Sticky Note36",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2740,
+            -200
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "971196b7-d84a-41cb-997d-a339d2a7f123",
+          "name": "Sticky Note37",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2680,
+            -1180
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "20dc36d2-74cb-484e-9a2e-829888ab4dfe",
+          "name": "Sticky Note38",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3140,
+            -560
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f36e17cf-ff68-4d3b-800b-a1faff1b7f12",
+          "name": "Sticky Note39",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2660,
+            20
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1c779e0d-a8d1-4e18-864e-8a8cc4a169d7",
+          "name": "Sticky Note40",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2660,
+            640
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6515c0ff-09aa-4d35-a999-be06198cf02d",
+          "name": "Wait some hours",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            480,
+            -140
+          ],
+          "webhookId": "8d36d0c3-ea44-47a7-a1c1-e3f128dcc82e",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "aa2b3690-c86f-473b-a908-3f81e660db7a",
+          "name": "Wait some days",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            3220,
+            -160
+          ],
+          "webhookId": "8d36d0c3-ea44-47a7-a1c1-e3f128dcc82e",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "70381b8c-0553-4104-ba61-fc18d3f86900",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "disabled": true,
+          "position": [
+            2840,
+            1080
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "53ef93d0-4a1d-4b07-8f88-3487b2a391db",
+          "name": "GET Checkout Status1",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true,
+          "position": [
+            3040,
+            1180
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "03231319-5aa5-48e9-aaa8-fb210ad17c21",
+          "name": "Ready to take this to the next level? We at Innovatio are cheering for you!!! Best of luck and great successes to you all <3 Velebit from Innovatio",
+          "type": "n8n-nodes-base.noOp",
+          "disabled": true,
+          "position": [
+            3540,
+            -160
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "007fe0ad-d301-49c4-8039-4909baff7ff6",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3720,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c743633f-ad54-4dc0-81c6-3e3049ab2e66",
+          "name": "Sticky Note41",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -260,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Fetch Cart": [
+          {
+            "json": {
+              "checkout": {
+                "id": 1234567890,
+                "note": null,
+                "email": "jane.doe@example.com",
+                "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "currency": "USD",
+                "customer": {
+                  "id": 1092837465,
+                  "note": null,
+                  "email": "jane.doe@example.com",
+                  "phone": "+14155552671",
+                  "state": "enabled",
+                  "last_name": "Doe",
+                  "created_at": "2025-01-15T10:00:00Z",
+                  "first_name": "Jane",
+                  "updated_at": "2025-04-01T12:00:00Z",
+                  "total_spent": "200.00",
+                  "orders_count": 5,
+                  "last_order_id": 123456,
+                  "verified_email": true,
+                  "default_address": {
+                    "id": 54321,
+                    "zip": "M4B1B3",
+                    "city": "Toronto",
+                    "name": "Jane Doe",
+                    "phone": "+14155552671",
+                    "company": null,
+                    "country": "Canada",
+                    "default": true,
+                    "address1": "123 Maple Street",
+                    "address2": null,
+                    "province": "Ontario",
+                    "last_name": "Doe",
+                    "first_name": "Jane",
+                    "customer_id": 1092837465,
+                    "country_code": "CA",
+                    "country_name": "Canada",
+                    "province_code": "ON"
+                  },
+                  "accepts_marketing": false
+                },
+                "order_id": null,
+                "tax_lines": [
+                  {
+                    "rate": 0.13,
+                    "price": "6.00",
+                    "title": "HST"
+                  }
+                ],
+                "total_tax": "6.00",
+                "cart_token": "15ec3c4e98ab1231cba93a84d6b08ea6",
+                "created_at": "2025-04-02T14:23:45Z",
+                "line_items": [
+                  {
+                    "id": 987654321,
+                    "sku": "LANTERN-001",
+                    "grams": 500,
+                    "price": "45.00",
+                    "title": "Glow-in-the-Dark Lantern",
+                    "vendor": "Lantern Co.",
+                    "taxable": true,
+                    "quantity": 1,
+                    "gift_card": false,
+                    "product_id": 5432109876,
+                    "properties": {},
+                    "variant_id": 1112131415,
+                    "variant_title": "Default Title",
+                    "applied_discount": null,
+                    "requires_shipping": true,
+                    "fulfillment_service": "manual"
+                  },
+                  {
+                    "id": 987654322,
+                    "sku": "MUG-002",
+                    "grams": 300,
+                    "price": "44.00",
+                    "title": "Cozy Campfire Mug",
+                    "vendor": "Mug Makers",
+                    "taxable": true,
+                    "quantity": 1,
+                    "gift_card": false,
+                    "product_id": 5432109877,
+                    "properties": {},
+                    "variant_id": 1617181920,
+                    "variant_title": "Default Title",
+                    "applied_discount": null,
+                    "requires_shipping": true,
+                    "fulfillment_service": "manual"
+                  }
+                ],
+                "updated_at": "2025-04-02T14:30:00Z",
+                "total_price": "95.00",
+                "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "completed_at": null,
+                "discount_codes": [],
+                "shipping_lines": [
+                  {
+                    "id": 1234567,
+                    "code": null,
+                    "phone": null,
+                    "price": "6.00",
+                    "title": "Standard Shipping",
+                    "source": "shopify",
+                    "discounted_price": "6.00",
+                    "delivery_category": null,
+                    "carrier_identifier": null,
+                    "requested_fulfillment_service_id": null
+                  }
+                ],
+                "subtotal_price": "89.00",
+                "taxes_included": false,
+                "billing_address": {
+                  "zip": "M4B1B3",
+                  "city": "Toronto",
+                  "name": "Jane Doe",
+                  "phone": "+14155552671",
+                  "country": "Canada",
+                  "address1": "123 Maple Street",
+                  "address2": null,
+                  "province": "Ontario",
+                  "last_name": "Doe",
+                  "first_name": "Jane",
+                  "country_code": "CA",
+                  "country_name": "Canada",
+                  "province_code": "ON"
+                },
+                "note_attributes": [],
+                "order_status_url": null,
+                "shipping_address": {
+                  "zip": "M4B1B3",
+                  "city": "Toronto",
+                  "name": "Jane Doe",
+                  "phone": "+14155552671",
+                  "country": "Canada",
+                  "address1": "123 Maple Street",
+                  "address2": null,
+                  "province": "Ontario",
+                  "last_name": "Doe",
+                  "first_name": "Jane",
+                  "country_code": "CA",
+                  "country_name": "Canada",
+                  "province_code": "ON"
+                },
+                "payment_gateway_names": [
+                  "visa",
+                  "paypal"
+                ]
+              }
+            }
+          }
+        ],
+        "Shopify Trigger": [
+          {
+            "json": {
+              "id": 389472938472,
+              "note": null,
+              "email": "jane.doe@example.com",
+              "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+              "currency": "USD",
+              "customer": {
+                "id": 1092837465,
+                "email": "jane.doe@example.com",
+                "phone": "+14155552671",
+                "last_name": "Doe",
+                "first_name": "Jane"
+              },
+              "tax_lines": [
+                {
+                  "rate": 0.13,
+                  "price": "5.85",
+                  "title": "HST"
+                }
+              ],
+              "total_tax": "5.85",
+              "cart_token": "15ec3c4e98ab1231cba93a84d6b08ea6",
+              "created_at": "2025-04-02T10:23:45-04:00",
+              "line_items": [
+                {
+                  "id": 928374928,
+                  "sku": "LANTERN-001",
+                  "price": "45.00",
+                  "title": "Glow-in-the-Dark Lantern",
+                  "vendor": "Lantern Co.",
+                  "quantity": 1,
+                  "variant_id": 123456789,
+                  "variant_title": "Default Title"
+                }
+              ],
+              "updated_at": "2025-04-02T10:23:45-04:00",
+              "total_price": "50.85",
+              "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+              "completed_at": null,
+              "shipping_lines": [
+                {
+                  "code": "Standard",
+                  "price": "5.00",
+                  "title": "Standard Shipping"
+                }
+              ],
+              "subtotal_price": "45.00",
+              "billing_address": {
+                "zip": "M5V2T6",
+                "city": "Toronto",
+                "country": "Canada",
+                "address1": "456 Oak Avenue",
+                "province": "Ontario",
+                "last_name": "Doe",
+                "first_name": "Jane"
+              },
+              "total_discounts": "0.00",
+              "shipping_address": {
+                "zip": "M4B1B3",
+                "city": "Toronto",
+                "country": "Canada",
+                "address1": "123 Maple Street",
+                "province": "Ontario",
+                "last_name": "Doe",
+                "first_name": "Jane"
+              },
+              "presentment_currency": "USD"
+            }
+          }
+        ],
+        "Wait some hours": [
+          {
+            "json": {
+              "email": "jane.doe@example.com",
+              "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+              "customer": {
+                "phone": "+14155552671",
+                "first_name": "Jane"
+              },
+              "line_items": [
+                {
+                  "id": 928374928,
+                  "sku": "LANTERN-001",
+                  "price": "45.00",
+                  "title": "Glow-in-the-Dark Lantern",
+                  "quantity": 1,
+                  "variant_id": 123456789
+                }
+              ],
+              "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+              "subtotal_price": "45.00"
+            }
+          }
+        ],
+        "Extract Key Values": [
+          {
+            "json": {
+              "email": "jane.doe@example.com",
+              "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+              "customer": {
+                "phone": "+14155552671",
+                "first_name": "Jane"
+              },
+              "line_items": [
+                {
+                  "id": 928374928,
+                  "sku": "LANTERN-001",
+                  "price": "45.00",
+                  "title": "Glow-in-the-Dark Lantern",
+                  "quantity": 1,
+                  "variant_id": 123456789
+                }
+              ],
+              "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+              "subtotal_price": "45.00"
+            }
+          }
+        ],
+        "Send Email (Gmail)": [
+          {
+            "json": {
+              "id": "17f02fc12cd7f8b1",
+              "labelIds": [
+                "SENT"
+              ],
+              "threadId": "17f02fc12cd7f8b1",
+              "discount_url": "https://389472938472.myshopify.com/discount/ABANDONED10",
+              "discount_code": "ABANDONED10",
+              "raw_cart_data": {
+                "email": "jane.doe@example.com",
+                "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "customer": {
+                  "phone": "+14155552671",
+                  "first_name": "Jane"
+                },
+                "line_items": [
+                  {
+                    "id": 928374928,
+                    "sku": "LANTERN-001",
+                    "price": "45.00",
+                    "title": "Glow-in-the-Dark Lantern",
+                    "quantity": 1
+                  },
+                  {
+                    "id": 928374929,
+                    "sku": "MUG-002",
+                    "price": "44.00",
+                    "title": "Cozy Campfire Mug",
+                    "quantity": 1
+                  }
+                ],
+                "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "completed_at": null,
+                "subtotal_price": "89.00"
+              },
+              "discount_value": "10%",
+              "discount_description": "Use code ABANDONED10 for 10% off your entire order!"
+            }
+          }
+        ],
+        "GET Checkout Status": [
+          {
+            "json": {
+              "checkout": {
+                "id": 901236587,
+                "note": null,
+                "email": "jane.doe@example.com",
+                "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "currency": "USD",
+                "customer": {
+                  "id": 654321987,
+                  "email": "jane.doe@example.com",
+                  "phone": "+14155552671",
+                  "last_name": "Doe",
+                  "created_at": "2025-03-15T10:15:20-00:00",
+                  "first_name": "Jane",
+                  "updated_at": "2025-04-01T08:30:25-00:00",
+                  "total_spent": "450.00",
+                  "orders_count": 5,
+                  "verified_email": true
+                },
+                "tax_lines": [
+                  {
+                    "rate": 0.13,
+                    "price": "6.00",
+                    "title": "HST"
+                  }
+                ],
+                "total_tax": "6.00",
+                "cart_token": "15ec3c4e98ab1231cba93a84d6b08ea6",
+                "created_at": "2025-04-02T14:23:45-00:00",
+                "line_items": [
+                  {
+                    "id": 123456789,
+                    "sku": "LANTERN-001",
+                    "grams": 500,
+                    "price": "45.00",
+                    "title": "Glow-in-the-Dark Lantern",
+                    "vendor": "Lantern Co.",
+                    "taxable": true,
+                    "quantity": 1,
+                    "gift_card": false,
+                    "tax_lines": [
+                      {
+                        "rate": 0.05,
+                        "price": "2.25",
+                        "title": "State Tax"
+                      }
+                    ],
+                    "product_id": 111222333,
+                    "variant_id": 987654321,
+                    "variant_title": "Default Title",
+                    "total_discount": "0.00",
+                    "origin_location": {
+                      "id": 4455667788,
+                      "zip": "90001",
+                      "city": "Los Angeles",
+                      "name": "Main Warehouse",
+                      "address1": "123 Warehouse Lane",
+                      "address2": "",
+                      "country_code": "US",
+                      "province_code": "CA"
+                    },
+                    "requires_shipping": true,
+                    "fulfillment_status": null,
+                    "fulfillment_service": "manual"
+                  },
+                  {
+                    "id": 987654321,
+                    "sku": "MUG-002",
+                    "grams": 300,
+                    "price": "44.00",
+                    "title": "Cozy Campfire Mug",
+                    "vendor": "Mug Makers",
+                    "taxable": true,
+                    "quantity": 1,
+                    "gift_card": false,
+                    "tax_lines": [
+                      {
+                        "rate": 0.05,
+                        "price": "2.20",
+                        "title": "County Tax"
+                      }
+                    ],
+                    "product_id": 444555666,
+                    "variant_id": 123456789,
+                    "variant_title": "Default Title",
+                    "total_discount": "0.00",
+                    "origin_location": {
+                      "id": 4455667789,
+                      "zip": "94103",
+                      "city": "San Francisco",
+                      "name": "Secondary Warehouse",
+                      "address1": "456 Storage Drive",
+                      "address2": "Suite 200",
+                      "country_code": "US",
+                      "province_code": "CA"
+                    },
+                    "requires_shipping": true,
+                    "fulfillment_status": null,
+                    "fulfillment_service": "manual"
+                  }
+                ],
+                "updated_at": "2025-04-02T14:25:30-00:00",
+                "total_price": "95.00",
+                "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "completed_at": null,
+                "discount_codes": [
+                  {
+                    "code": "SUMMER20",
+                    "type": "percentage",
+                    "amount": "20.00"
+                  }
+                ],
+                "shipping_lines": [
+                  {
+                    "code": "Standard",
+                    "price": "5.00",
+                    "title": "Standard Shipping"
+                  }
+                ],
+                "subtotal_price": "89.00",
+                "taxes_included": false,
+                "billing_address": {
+                  "zip": "M5V2T6",
+                  "city": "Toronto",
+                  "phone": "+14155552671",
+                  "country": "Canada",
+                  "address1": "456 Oak Avenue",
+                  "address2": "",
+                  "province": "Ontario",
+                  "last_name": "Doe",
+                  "first_name": "Jane"
+                },
+                "note_attributes": [],
+                "total_discounts": "0.00",
+                "shipping_address": {
+                  "zip": "M4B1B3",
+                  "city": "Toronto",
+                  "phone": "+14155552671",
+                  "country": "Canada",
+                  "address1": "123 Maple Street",
+                  "address2": "Apt 4B",
+                  "province": "Ontario",
+                  "last_name": "Doe",
+                  "first_name": "Jane"
+                },
+                "presentment_currency": "USD"
+              }
+            }
+          }
+        ],
+        "Log to Google Sheet": [
+          {
+            "json": {
+              "Email": "jane.doe@example.com",
+              "Status": "EMAIL_SENT",
+              "Timestamp": "2025-04-02T14:00:23.143+00:00",
+              "Cart Value": "89.00",
+              "First Name": "Jane",
+              "Discount Code": "ABANDONED10"
+            }
+          }
+        ],
+        "GET Checkout Status1": [
+          {
+            "json": {
+              "checkout": {
+                "email": "jane.doe@example.com",
+                "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "customer": {
+                  "phone": "+14155552671",
+                  "first_name": "Jane"
+                },
+                "line_items": [
+                  {
+                    "id": 928374928,
+                    "sku": "LANTERN-001",
+                    "price": "45.00",
+                    "title": "Glow-in-the-Dark Lantern",
+                    "quantity": 1
+                  }
+                ],
+                "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "completed_at": null,
+                "subtotal_price": "45.00"
+              }
+            }
+          }
+        ],
+        "Apply Global Discount Code": [
+          {
+            "json": {
+              "discount_url": "https://389472938472.myshopify.com/discount/ABANDONED10",
+              "discount_code": "ABANDONED10",
+              "raw_cart_data": {
+                "email": "jane.doe@example.com",
+                "token": "8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "customer": {
+                  "phone": "+14155552671",
+                  "first_name": "Jane"
+                },
+                "line_items": [
+                  {
+                    "id": 928374928,
+                    "sku": "LANTERN-001",
+                    "price": "45.00",
+                    "title": "Glow-in-the-Dark Lantern",
+                    "quantity": 1
+                  },
+                  {
+                    "id": 928374929,
+                    "sku": "MUG-002",
+                    "price": "44.00",
+                    "title": "Cozy Campfire Mug",
+                    "quantity": 1
+                  }
+                ],
+                "checkout_url": "https://example.myshopify.com/1234567890/checkouts/8a1d3ec4f63a4b4db7f29bc1d86dddbb",
+                "completed_at": null,
+                "subtotal_price": "89.00"
+              },
+              "discount_value": "10%",
+              "discount_description": "Use code ABANDONED10 for 10% off your entire order!"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "4e663998-3ff1-4920-8686-05b60dad1e93",
+      "connections": {
+        "Fetch Cart": {
+          "main": [
+            [
+              {
+                "node": "Apply Global Discount Code",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait some days": {
+          "main": [
+            [
+              {
+                "node": "Send SMS (Twilio)",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Ready to take this to the next level? We at Innovatio are cheering for you!!! Best of luck and great successes to you all <3 Velebit from Innovatio",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [],
+            [
+              {
+                "node": "GET Checkout Status1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Shopify Trigger": {
+          "main": [
+            [
+              {
+                "node": "Extract Key Values",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait some hours": {
+          "main": [
+            [
+              {
+                "node": "GET Checkout Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send SMS (Twilio)": {
+          "main": [
+            [
+              {
+                "node": "Wait 24 Hours",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Key Values": {
+          "main": [
+            [
+              {
+                "node": "Wait some hours",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send Email (Gmail)": {
+          "main": [
+            [
+              {
+                "node": "Log to Google Sheet",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Completed Checkout?": {
+          "main": [
+            [
+              {
+                "node": "Mark as \"Recovered Naturally\"",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Fetch Cart",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET Checkout Status": {
+          "main": [
+            [
+              {
+                "node": "Completed Checkout?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Log to Google Sheet": {
+          "main": [
+            [
+              {
+                "node": "Wait some days",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET Checkout Status1": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Apply Global Discount Code": {
+          "main": [
+            [
+              {
+                "node": "Send Email (Gmail)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Mark as \"Recovered Naturally\"": {
+          "main": [
+            []
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 60,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 3
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.twilio": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 42
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 2
+        },
+        "n8n-nodes-base.shopifyTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Velebit from Innovatio",
+      "username": "innovatio",
+      "bio": "I design modular (no-code, low-code, AI) automation workflows for creators, marketers, and lean SaaS teams.  \nFounder of [Innovatio](https://innovatio.design) — empowering humans with AI-powered systems that save time, boost revenue, and scale with heart.\n\n🚀 Want custom automation? Let's talk → velebit@innovatio.design",
+      "verified": true,
+      "links": [
+        "https://innovatio.design/"
+      ],
+      "avatar": "https://gravatar.com/avatar/6278fbac6a13365966261d4fa900b7b75ade5437ec61e3022d4549b8466d4685?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 45,
+        "icon": "file:twilio.svg",
+        "name": "n8n-nodes-base.twilio",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMS",
+              "Phone",
+              "Voice"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twilio/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/twilio/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Twilio"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjUgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsPSIjZTMxZTI2IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTMxLjk1MyAwQzE0LjMzNyAwIDAgMTQuMzM3IDAgMzEuOTUzczE0LjMzNyAzMS45NTMgMzEuOTUzIDMxLjk1M0M0OS42NjMgNjQgNjQgNDkuNjYzIDY0IDMxLjk1M1M0OS42NjMgMCAzMS45NTMgMG0wIDU1LjU2N2MtMTIuOTMxIDAtMjMuNTItMTAuNTg5LTIzLjUyLTIzLjYxNCAwLTEyLjkzMSAxMC41ODktMjMuNTIgMjMuNTItMjMuNTIgMTMuMDI1IDAgMjMuNjE0IDEwLjU4OSAyMy42MTQgMjMuNTIgMCAxMy4wMjUtMTAuNTg5IDIzLjYxNC0yMy42MTQgMjMuNjE0Ii8+PHVzZSB4bGluazpocmVmPSIjYiIvPjx1c2UgeGxpbms6aHJlZj0iI2IiIHk9IjE1LjkzIi8+PHBhdGggZD0iTTE3LjMzNSAzOS45MThhNi42NCA2LjY0IDAgMCAxIDYuNjUzLTYuNjUzIDYuNjUzIDYuNjUzIDAgMSAxIDAgMTMuMzA2IDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1M20wLTE1LjkzYTYuNjQgNi42NCAwIDAgMSA2LjY1My02LjY1MyA2LjY0IDYuNjQgMCAwIDEgNi42NTMgNi42NTMgNi42NCA2LjY0IDAgMCAxLTYuNjUzIDYuNjUzIDYuNjQgNi42NCAwIDAgMS02LjY1My02LjY1MyIvPjwvZz48L3N5bWJvbD48ZGVmcz48cGF0aCBpZD0iYiIgZD0iTTMzLjI2NSAyMy45ODhhNi42NCA2LjY0IDAgMSAxIDEzLjMwNiAwIDYuNjQgNi42NCAwIDEgMS0xMy4zMDYgMCIvPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Twilio",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 107,
+        "icon": "file:shopify.svg",
+        "name": "n8n-nodes-base.shopifyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.shopifytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/shopify/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Shopify Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNTggNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzk1YmY0NyIgZD0iTTQ5LjI1NSAxMi40ODRhLjYzLjYzIDAgMCAwLS41NjQtLjUyN2MtLjIyNS0uMDM3LTUuMTctLjM3Ni01LjE3LS4zNzZsLTMuNzctMy43N2MtLjM0LS4zNzYtMS4wOTItLjI2Ni0xLjM3Ni0uMTg4LS4wMzcgMC0uNzUyLjIyNS0xLjkyMi42MDUtMS4xMzctMy4zLTMuMTUtNi4zMDYtNi42OTYtNi4zMDZoLS4zMDNDMjguNDM4LjYwNSAyNy4xOTQgMCAyNi4xNDQgMGMtOC4yNTYuMDM3LTEyLjIgMTAuMzMzLTEzLjQzNCAxNS41OTRsLTUuNzcgMS43N2MtMS43Ny41NjQtMS44MzUuNjA1LTIuMDczIDIuMjkzTDAgNTcuMTc1IDM2LjQ2OCA2NGwxOS43NjMtNC4yNmMwLS4wMzctNi45NC00Ni44OTctNi45NzYtNDcuMjU1ek0zNC40MzEgOC44NmMtLjkxNy4zMDMtMS45NjMuNjA1LTMuMS45NDV2LS42OGExNSAxNSAwIDAgMC0uNzUyLTQuOTk5YzEuODQ4LjI4NCAzLjEgMi4zNTcgMy44NDMgNC43MzN6bS02LjA2OC00LjI5OGMuNjAzIDEuNzc4Ljg4MyAzLjY1LjgyNiA1LjUyN3YuMzRsLTYuMzc1IDEuOTYzYzEuMjQ4LTQuNjYgMy41NS02Ljk2MiA1LjU1LTcuODN6bS0yLjQ1LTIuMjkzYTEuOTQgMS45NCAwIDAgMSAxLjA1NS4zMzljLTIuNjYgMS4yMzgtNS40NzIgNC4zNjYtNi42NzggMTAuNjI3bC01LjA0NSAxLjU0NkMxNi42NjggMTAuMDMgMTkuOTg4IDIuMjYgMjUuOTEgMi4yNnoiLz48cGF0aCBmaWxsPSIjNWU4ZTNlIiBkPSJNNDguNjkxIDExLjk1N2MtLjIyNS0uMDM3LTUuMTctLjM3Ni01LjE3LS4zNzZsLTMuNzctMy43N2EuNzUuNzUgMCAwIDAtLjUyNy0uMjI1TDM2LjQ3MiA2NGwxOS43NjMtNC4yNi02Ljk4LTQ3LjIxOGEuNjguNjggMCAwIDAtLjU2NC0uNTY0eiIvPjxwYXRoIGQ9Im0yOS43NTggMjIuOS0yLjQ1NCA3LjI0MmExMS40IDExLjQgMCAwIDAtNC43NTItMS4xMzNjLTMuODQ4IDAtNC4wMzYgMi40MTItNC4wMzYgMy4wMTggMCAzLjI5OCA4LjYzNiA0LjU2NCA4LjYzNiAxMi4zMzMgMCA2LjEtMy44ODUgMTAuMDMtOS4xIDEwLjAzLTYuMjYgMC05LjQ2Ny0zLjg4NS05LjQ2Ny0zLjg4NWwxLjY2NS01LjU1czMuMjggMi44MyA2LjA3MyAyLjgzYTIuNDcgMi40NyAwIDAgMCAyLjU2NC0yLjQ5YzAtNC4zNC03LjEtNC41MjctNy4xLTExLjYxOCAwLTUuOTYyIDQuMjk4LTExLjc3IDEyLjkzNC0xMS43NyAzLjM5NC4wNSA1LjAxOCAxIDUuMDE4IDF6Ii8+PC9nPjwvc3ltYm9sPjwvc3ZnPg=="
+        },
+        "displayName": "Shopify Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": []
+  }
+}

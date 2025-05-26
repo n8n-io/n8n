@@ -1,0 +1,30 @@
+URL: https://docs.n8n.io/code/builtin/overview/
+Scraped_At: 2025-05-20T18:41:05.964591
+
+Built-in methods and variables
+#
+n8n provides built-in methods and variables for working with data and accessing n8n data. This section provides a reference of available methods and variables for use in
+expressions
+, with a short description.
+Availability in the expressions editor and the Code node
+Some methods and variables aren't available in the Code node. These aren't in the documentation.
+All data transformation functions are only available in the expressions editor.
+The
+Cookbook
+contains examples for some common tasks, including some
+Code node only
+functions.
+Current node input
+Output of other nodes
+Date and time
+JMESPath
+HTTP node
+LangChain Code node
+n8n metadata
+Convenience methods
+Data transformation functions
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

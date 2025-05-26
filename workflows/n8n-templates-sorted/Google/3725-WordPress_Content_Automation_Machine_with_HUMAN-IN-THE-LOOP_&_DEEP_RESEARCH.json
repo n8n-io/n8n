@@ -1,0 +1,5251 @@
+{
+  "workflow": {
+    "id": 3725,
+    "name": "WordPress Content Automation Machine with HUMAN-IN-THE-LOOP & DEEP RESEARCH",
+    "views": 66,
+    "recentViews": 330,
+    "totalViews": 66,
+    "createdAt": "2025-04-26T20:41:50.017Z",
+    "description": "## **HUMAN-IN-THE-LOOP Content Automation Pro with Deep Research & Airtable for Power Users \\- Collaborative AI for WordPress Blog Automation**\n\n**The BEST n8n Content Automation workflow** in the market is getting even better, now enabling you to have full control over the entire process. It’s time to unlock the power of true **collaborative creation with GenAI\\!**\n\n**Want to leverage AI automation but don't want to give up full control over the whole content creation process?** Get the best of both worlds \\- get **“Human-in-the-Loop”** with this supreme n8n workflow template\\!\n\nThis template blends the **power of AI** with the crucial oversight of **human expertise and intervention**, all managed through a central, streamlined Airtable interface. Say goodbye to generic content and hello to high-quality, deeply researched articles published directly to your WordPress site with full control. \n\nCheck out [my Youtube channel](https://www.youtube.com/@nminhduc/) for a full walkthrough.\n\n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_0.jpeg](fileId:1187)\n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_13.jpeg](fileId:1182)\n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_2.jpeg](fileId:1184)![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_3.jpeg](fileId:1181)\n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_4.jpeg](fileId:1186)\n\n### **What problem is this workflow solving? / Use cases**\n\nFully automated content generation tools often lack the nuance, accuracy, and strategic control necessary for truly impactful content. This workflow solves that critical gap by integrating powerful AI capabilities into a structured, human-supervised content creation process managed via a simple interface. It automates the most repetitive and time-consuming tasks – like research gathering, chapter ideations, domain copywriting – while strategically embedding essential human review points at critical junctures.\n\nInstead of simply providing a topic and receiving a finished article of uncertain quality, you actively guide the process step-by-step within an interface. You review, refine, and approve AI suggestions for chapters and content before finalizing and publishing. This approach makes it perfect for creating high-quality, deeply researched, and brand-aligned blog posts for WordPress more efficiently, without ever sacrificing essential editorial control.\n\n### **Who is this for?**\n\nThis workflow template is meticulously designed for individuals and teams deeply involved in content creation who seek a powerful blend of AI-driven efficiency and essential human-controlled quality assurance:\n\n* **Content Creators & Bloggers:** Who want to leverage AI for drafting and research but maintain full editorial control.  \n* **Marketing Teams:** Looking to scale content production efficiently while ensuring brand voice and quality consistency.  \n* **SEO Specialists:** Needing to produce well-researched, structured, and SEO-optimized content regularly.  \n* **Agencies:** Managing content creation for multiple clients with a structured, repeatable process.  \n* **Anyone who prefers a \"human-in-the-loop\" approach** over fully automated \"black box\" content generators.\n\n### **How this workflow works**\n\nThis template automates significant portions of the WordPress content creation process, utilizing Airtable as the central hub for management and user interaction, while leveraging AI for research and copywriting. The system is composed of four interconnected n8n flows, each handling a distinct stage of the content lifecycle. In addition, there is a sub-workflow dedicated to the research tool (Perplexity).\n\n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_12.jpeg](fileId:1185)\n\n#### **Content Creation Process in Airtable**\n\nThe entire journey from idea to published post is managed within your Airtable base, offering transparency and control. Progress through each tab sequentially to complete the content creation process and produce a high-quality article that fulfills your requirements.\n\n1. **Configure Settings (“Settings” Table):** Define global parameters (website details, target audience, writing style, category IDs, about us, CTA etc.) in the “Settings” table. These serve as default inputs for the AI.  \n2. **Create Topics (“Create Topics“ Table):** Add a record to the “Create Topics” table for each new blog post idea. Mark the topic as ready by setting its 'Status' field to “To Do” **and** ticking the 'Execute Flow' checkbox to initiate the first flow.  \n3. **Generate Chapters (“Generate Chapters“ Table):** The first flow calls to the sub-workflow to do online research and generates potential chapter outlines based on your topic and settings, saving them to the “Generate Chapters” table.  \n4. **Select Chapters to Write (“Select Chapters“ Table):** Review the suggested chapters in the “Select Chapters“ Table. Select the chapters you want to proceed with by setting their 'Status' to “To Do” **and** ticking the 'Execute Flow' checkbox.   \n5. **Generate Content for selected Chapters (“Generate Content“ Table):** The second flow calls to the sub-workflow to research each selected chapter and generates draft content, saving it to the “Generate Content” table, where you have the opportunity to review and modify if necessary.  \n6. **Select Chapter Content (“Select Content“ Table):** Review and edit the AI-generated text directly in Airtable. Approve the content for each chapter. Once all necessary content is approved, trigger the third flow for the final assembly by setting the status to “To Do” **and** ticking the 'Execute Flow' checkbox.  \n7. **Finalize Post (“Finalize Post“ Table):** The third flow aggregates the approved content, generates the title, SEO metadata, tags, chapter images and featured image, placing all compiled information in the “Finalize Post” table for your final review. When the final article is ready to be published on your website, mark the status as \"To Do\" and check the \"Ready to Publish\" box to activate the fourth and final flow.  \n8. **Publish & Backup Post (“Backup Post“ Table):** the fourth flow publishes the post to the website and creates a backup record in the “Backup Post” table, archiving key details including the live URL of the published article.\n\n#### \n\n#### **n8n Workflow Functions (JSON Files)**\n\nThe automation is handled by four separate n8n flows, each triggered by specific changes in Airtable:\n\n1. **Flow 1** (Topic Initiation & Chapter Generation):  \n   * **Trigger:** Monitors the “Create Topics” table; activates when a record's 'Status' is \"To Do\" AND 'Execute Flow' checkbox is ticked.  \n   * **Action:** Fetches settings from Settings. Performs initial research (e.g., via Perplexity). Uses AI to generate chapter outlines. Saves suggestions as new records in the “Generate Chapters” table.  \n2. **Flow 2** (Content Generation & Internal Linking):  \n   * **Trigger:** Monitors the “Select Chapters” table; activates when a record's 'Status' is \"To Do\" AND 'Execute Flow'  checkbox is ticked.  \n   * **Action:** Fetches chapter details and settings. Gathers internal links (e.g., by parsing sitemap). Performs online/ deep research per chapter. Uses AI to write draft content, incorporating research and links. Saves drafts into corresponding records in the “Generate Content” table.  \n3. **Flow 3** (Post Assembly & Image Generation):  \n   * **Trigger:** Monitors the “Select Content” table; activates when all content for a topic is approved and final assembly is triggered when a record's 'Status' is \"To Do\" AND 'Execute Flow' checkbox is ticked.  \n   * **Action:** Fetches all content from the “Generate Content” table. Aggregates text. Uses AI for title, SEO metadata, tags, and image prompts. Generates chapter images and a featured cover image (e.g., via AI image model DALL-E). Converts content to HTML. Saves compiled data and image info into the “Finalize Post” table.  \n4. **Flow 4** (WordPress Publishing & Backup):  \n   * **Trigger:** Monitors the “Finalize Post” table; activates when a record is marked Status' is \"To Do\" AND ‘Post to Website’ checkbox is ticked.  \n   * **Action:** Fetches finalized data. Uploads images to WordPress. Creates WordPress post (status set to “published” by default) with content, metadata, tags, and image. Creates a record in the “Backup Post” table, with a link to the post on the website.\n\nThis modular approach ensures each stage is handled distinctly, orchestrated via updates on Airtable interface.\n\n### **Unique Features**\n\n* **Human-in-the-Loop Design:** Guarantees quality and relevance through mandatory user review and approval stages within Airtable for chapters, content, and the final post.  \n* **Collaborative AI Partnership:** Leverages AI as a powerful assistant for research, structuring, and drafting, significantly boosting productivity while relying on human expertise for refinement and final judgment.  \n* **Airtable as Interface & Control Center:** Utilizes Airtable as an intuitive interface and central database to manage the entire content lifecycle, offering clear progress tracking and facilitating team collaboration.  \n* **Deep Research Integration:** Incorporates external research tools (like Perplexity) to ensure content is based on fresh, up-to-date information, crucial for accuracy and authority.  \n* **Modular n8n Structure:** Simplifies complexity by dividing the process into four manageable, interconnected flows plus one sub-flows, making the system easier to understand, troubleshoot, and customize.  \n* **Rate-limit Aware:** Includes built-in Wait nodes and logic designed to mitigate API rate limit issues from AI and research tools, enhancing workflow reliability during intensive use.  \n* **Multiple-Image Generation:** Generates and adds images for each chapter, as well as a featured image for the article.  \n* **Direct WordPress Integration:** Streamlines publication by automatically sending finalized, formatted content, metadata, tags, and the featured image directly to your WordPress site.  \n* **Internal Linking:** Embeds internal website links strategically within each chapter and throughout the article, boosting SEO and enhancing user navigation.  \n* **Integrated Backup:** Provides data security by automatically archiving key post details in Airtable and optionally saving text and image files to Google Drive.\n\n### **Future Features**\n\n* **“Deeper Research”:** Plans for multi-level research capabilities to enable the creation of even more comprehensive reports or e-book length content.  \n* **Content Sample:** Provide content samples for the AI to learn from and mimic in terms of writing style and guidelines.  \n* **Category-Specific Styling:** Aiming to allow users to define styles per category for the AI to learn and imitate, ensuring greater brand consistency.  \n* **Advanced Link Insertion:** Developing more sophisticated strategies for inserting relevant internal and external links, including automatic source citation and dynamic internal link density adjustments.\n\n#### **Requirements**\n\n1. **Airtable Account:** [create a Airtable account](https://airtable.com/invite/r/2iOynfoh) for free.  \n2. **WordPress Website:** Requires an Application Password with permissions to create posts and upload media. Must have the REST API enabled.  \n3. **OpenAI API Key:** Or a key from another compatible AI provider for text and image generation (DALL-E is the default for images).  \n4. **Perplexity API Key:** Or an API key for your chosen online research tool.  \n5. **Google Drive:** for the optional backup feature to Google Drive.\n\n### **Setup Step-by-Step**\n\n1. **Import n8n Workflows:** Download the .json workflow files and import them into your n8n instance. There is one main/ “month” workflow and one sub/ “child” workflow. Name the workflows to your needs.  \n2. **Get Airtable Base:** Duplicate the companion Airtable Base template.   \n3. **Configure Credentials:** Add new credentials in n8n for Airtable, WordPress (use Application Password), OpenAI API, PerplexityAI API, and Google (for Drive backup).  \n4. **Connect Workflow Nodes:** Open each workflow in n8n and assign the correct credential to every node that requires authentication (Airtable, WordPress, AI, HTTP Request, Google nodes).  \n5. **Link the main workflow to the sub-workflow:** Access the Research Tool nodes and establish a connection between the main workflow to sub-workflow.  \n6. **Configure Airtable Nodes:** Update **all** Airtable nodes across **all** workflows. **Verify** that all 'Table' and 'Field' names in the nodes **exactly match** your duplicated base.  \n7. **Populate Airtable Settings:** Fill in your specific details in the Settings table of your Airtable base (Website URL, Audience, Style, Category IDs, CTA, etc.).  \n8. **Test Connections:** Run manual executions on key nodes within each flow to ensure connections and basic configurations are correct before activating.  \n9. **Activate Workflow:** Toggle the \"Active\" switch ON for the main/ “mother” workflow in your n8n list. No need to activate the sub/ “child” workflow.  \n10. **Start Creating:** Go to the Create Topics table in Airtable, add a new topic, go through the process and get amazed by AI magic\\!\n\n### **Airtable Database Explanation**\n\nAirtable is the central hub, acting as the database, user interface, and trigger mechanism for this workflow.\n\n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_1.jpeg](fileId:1183)\n\n* **Structure:** The base uses linked tables to manage the process:  \n  * Settings: Global configurations.  \n  * Create Topics: Initiates new content pieces.  \n  * Generate Chapters: Stores AI-generated chapter outlines for review.  \n  * Select Chapters: Facilitates user selection of chapters to write.  \n  * Generate Content: Stores AI-generated draft content for selected chapters.  \n  * Select Content: Manages user approval of drafted content before final assembly.  \n  * Finalize Post: Holds the compiled post (text, metadata, image info) for final review and publish trigger.  \n  * Backup Post: Archives data (including live URL) of successfully published posts.  \n* **Workflow Interaction:**  \n  * User updates trigger fields in Airtable (e.g., sets Status='To Do' & Execute Flow=true).  \n  * n8n Airtable Trigger nodes detect these specific changes.  \n  * The corresponding n8n flow runs, fetching data from Airtable.  \n  * AI and other tools process data and generate outputs.  \n  * Results are written back to the appropriate Airtable tables/fields.  \n  * User reviews results in Airtable and triggers the next stage via status AND checkbox updates.  \n* **Setup:** Using the **exact** duplicated Airtable base template is mandatory, as n8n workflows expect specific table and field names.\n\n### **Tips for Pros**\n\n* **AI Prompts:** Modify prompts in the AI nodes to refine tone, style, format, or incorporate specific instructions.  \n* **AI Models:** the workflow is optimized for OpenAI's GPT-4o model due to its consistent performance. While you can replace the AI models in the nodes with alternatives (if you have the credentials for them), keep in mind that the workflow may not function.   \n* **AI Research Model:** PerplexityAI is the tool of choice for research. The \"sonar\" model is the default for research in this workflow due to its speed and cost-effectiveness. However, you are welcome to explore Perplexity's other models, such as the \"sonar-deep-research\" model, which is specifically designed for in-depth research.  \n* **AI Image Model:** The default AI model for image generation is OpenAI’s Dall-E. However, the outputs of this model are not impressive. While OpenAI's 4o multimodal is expected to be available via API soon, better/ superior image quality can be achieved in the meantime by using alternative AI image models (such as FLUX.1).  \n* **Airtable Base:** Add or modify fields/tables to match your specific tracking needs, but remember to update corresponding n8n nodes accordingly.  \n* **3rd-party Integrations:** Replace research tools, image generators, or modify the final step to publish to a different CMS or add post-publication steps like social sharing.  \n* **Error Handling:** For production reliability, incorporate an “Error Handling” workflow in n8n for this automation to catch failures and send notifications\n\n### **Important Considerations**\n\n* **API Rate Limits:** AI and research tools have usage limits. High volume processing might cause errors. The included **Wait** nodes help, but may need adjustment based on your API plans.    \n* **Testing Costs:** API calls to AI models aren't free. To ensure the workflow runs correctly, start testing with OpenAI's GPT-4o. Once you've confirmed functionality, explore using other AI models which may be cheaper to keep costs down. Be aware that the workflow may not be as reliable with models other than GPT-4o. Keep an eye on your API provider's billing dashboard to monitor usage and costs.\n* **Sequential Processing:** The workflow processes one topic fully at a time to ensure stability and manage API limits. For fully automated, parallel processing from a list, consider the alternative template: [**“\\[n8n\\] Content Automation Pro – with DEEP RESEARCH – WordPress Blog Automation”**](https://n8n.io/workflows/3041-wordpress-auto-blogging-pro-with-deep-research-content-automation-machine/). \n![Human_in_the_loop_content_automation_pro_with_deep_research_airtable_11.jpeg](fileId:1188)",
+    "workflow": {
+      "id": "hSHINLzsabSvHWh7",
+      "meta": {
+        "instanceId": "b3df22d2875c82e3ba1883c50049ed9cee0bcabf99d2b486961d2245a09e3964",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Main Flow - Human-in-the-Loop Content Automation Pro - with Deep Research",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "455e1a1c-f537-4bf4-9484-92db45b5a092",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            7520,
+            2440
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a6c8d7e0-8de2-4c9e-aaa5-17b665e3eedb",
+          "name": "Check inputs",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            9980,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "a0abee68-8fb8-4074-a692-2de7098dd5cf",
+          "name": "Structured Output Parser4",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            10900,
+            2700
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "6ede6a02-1ac7-4745-a5e4-e089762fea83",
+          "name": "Initial Research",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            10600,
+            2480
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "5f7949f0-73e6-45f4-8fa6-c25d28374cc0",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            10300,
+            2420
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "44e48a21-cc1d-4c8c-b7f5-86b423da97c2",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11460,
+            2420
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "12334eca-ecd9-47a4-8bda-07c135b50b1a",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            10480,
+            2700
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "b0753464-8df0-46cd-9832-db17db9ae184",
+          "name": "Limit To First Item",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            8300,
+            2520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "abff0b94-6233-4722-a846-949c6cd22c90",
+          "name": "Check Status & Confirmation",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            8520,
+            2520
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ac4fc0cb-9121-4699-8b20-9b9ed78d6de6",
+          "name": "Airtable Chapters",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            12200,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "be46a3f1-12b8-47bd-9beb-9427fe4546c2",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            10300,
+            780
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cfe5d36e-3732-4acc-9f1f-e92d0aed6659",
+          "name": "Wait To Delete Content Process",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11580,
+            1500
+          ],
+          "webhookId": "2d1907ed-9841-4e84-be09-4b7cc5970756",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "a5beea8c-dacc-43cb-9841-6c1cf96eb94c",
+          "name": "Split Content Process IDs",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            10700,
+            1480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "39e26239-5d30-4b1a-b0de-ff8bdc3f37b9",
+          "name": "Split Content IDs",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            10700,
+            1180
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1c0988c3-0850-4684-a022-cef63f695466",
+          "name": "Split Chapter Process IDs",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            10700,
+            1780
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "33b92cb9-bb78-47fe-b868-53e550018a2c",
+          "name": "Loop Over Chapters Process",
+          "type": "n8n-nodes-base.splitInBatches",
+          "onError": "continueRegularOutput",
+          "position": [
+            11000,
+            1780
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "606f99ac-5286-4324-8a7a-2696f5d7a8d0",
+          "name": "Loop Over Chapters",
+          "type": "n8n-nodes-base.splitInBatches",
+          "onError": "continueRegularOutput",
+          "position": [
+            11000,
+            2060
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "fae4a69a-a69a-4251-a490-98be65f861f8",
+          "name": "Split Chapter IDs",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            10700,
+            2060
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "bdff0147-0637-4d68-aed1-27413113fda6",
+          "name": "Wait To Delete Chapters Process",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11580,
+            1800
+          ],
+          "webhookId": "08a14a9d-ac9f-4068-aaa5-f0815e855530",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "0fe50864-e856-4f9f-b5a9-7135e616d6a2",
+          "name": "Wait To Delete Chapter",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11580,
+            2080
+          ],
+          "webhookId": "e75f5382-97db-468c-8373-435d49180449",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "33b4df01-436f-4ff4-baab-ecbc2bc5a37e",
+          "name": "Wait To Update New Topic",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            9000,
+            2500
+          ],
+          "webhookId": "fb551267-6aa8-451d-8f75-71c080637235",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "fa83696c-a810-4628-8bda-3486be62c352",
+          "name": "Settings",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            9720,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "3bee273f-e52d-46f4-971c-dc8a47209532",
+          "name": "Create New Topic",
+          "type": "n8n-nodes-base.airtableTrigger",
+          "position": [
+            7300,
+            2520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1ef35097-9e75-4941-b5d9-a5b8e15a839e",
+          "name": "Confirm Topic",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8760,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "07dfe362-1b86-4808-bec5-978ab3799813",
+          "name": "Airtable Get Topic",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            7640,
+            2520
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "0b87aaf2-3d61-4e1c-a332-94e85693ace8",
+          "name": "Split Out All Records",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            7860,
+            2520
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "f9c69079-0002-4454-95f6-c472888560c4",
+          "name": "Filter Status",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            8080,
+            2520
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "e99bfe3a-3671-4472-9a1a-53676693831f",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            11900,
+            2480
+          ],
+          "parameters": {},
+          "typeVersion": 3,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "47d4c505-8bf7-42db-8546-f89215a0a5b1",
+          "name": "Split Out Chapters",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            11580,
+            2480
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9c176983-ee56-44ff-949e-5c5525cf9ff5",
+          "name": "Loop Over Content",
+          "type": "n8n-nodes-base.splitInBatches",
+          "onError": "continueRegularOutput",
+          "position": [
+            11000,
+            1180
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "ea206e57-dd4f-466e-8cab-887a0b1690e6",
+          "name": "Loop Over Content Process",
+          "type": "n8n-nodes-base.splitInBatches",
+          "onError": "continueRegularOutput",
+          "position": [
+            11000,
+            1480
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "e3d866ad-003c-4004-bb92-25e7cca47fa6",
+          "name": "Wait To Save Chapters",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            12500,
+            2500
+          ],
+          "webhookId": "11c1daa0-41ed-420c-933d-f54d6a11f784",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "2e21af8f-6cb5-4480-9687-03c63d97dbca",
+          "name": "Airtable Settings",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            9460,
+            2500
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "cc52ac55-5654-45ec-82c8-30763ba8f08a",
+          "name": "Airtable Select Content - Delete Record",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11280,
+            1500
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "9cee17da-4fe6-4b0e-8d01-cc8b8a3f2a57",
+          "name": "Airtable Generate Content",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10400,
+            1180
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a853d464-e964-4f1d-9c66-16f1a00de2e8",
+          "name": "Airtable Select Content",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10400,
+            1480
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "f9b0a196-13b3-470c-958c-a88354709374",
+          "name": "Airtable Generate Content - Delete Record",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11280,
+            1200
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "201e8bb4-7ef9-4fab-aea5-a16888d59023",
+          "name": "Wait To Delete Generate Content",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11580,
+            1200
+          ],
+          "webhookId": "2596b36c-6ef5-418c-84cc-27e4058d6a99",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "6fcc6ff8-b99f-49dd-9c43-2a1fae1fb6cf",
+          "name": "Airtable Select Chapters",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10400,
+            1780
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "a557c377-8065-4820-b8d4-bbd5d4c43087",
+          "name": "Airtable Select Chapters - Delete Record",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11280,
+            1800
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "53524709-6805-47a2-8379-aac04e0070b8",
+          "name": "Airtable Generate Chapters",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10400,
+            2060
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "0bbedf30-86ea-4fc6-afe2-dbbfbf647403",
+          "name": "Airtable Generate Chapters - Delete Record",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11280,
+            2080
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "925e42e6-084e-4c3f-aafe-9f70801f3b9d",
+          "name": "Airtable Select Chapters - Create Record",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11580,
+            2720
+          ],
+          "parameters": {},
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 2.1,
+          "waitBetweenTries": 3000
+        },
+        {
+          "id": "547c2dcc-2b7c-4e59-b23f-1c49ec2b3d4f",
+          "name": "Wait To Create Record",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11900,
+            2720
+          ],
+          "webhookId": "a4d4ddc2-961f-4516-8883-66b239a9cd35",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "4565620c-01b4-425a-8948-32a0d62a5d67",
+          "name": "Wait For AI APIs",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11120,
+            2480
+          ],
+          "webhookId": "043f2291-6d89-4e14-91a9-5221bcfec30b",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d6920faf-298f-4ed8-9123-44a5bf81a393",
+          "name": "Airtable Finalize Post",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10400,
+            860
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "b588d98b-2198-4045-8855-dba125c99259",
+          "name": "Split Post IDs",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            10700,
+            860
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "181446c1-b0cd-42e3-9558-f711d6f824e4",
+          "name": "Loop Over Records",
+          "type": "n8n-nodes-base.splitInBatches",
+          "onError": "continueRegularOutput",
+          "position": [
+            11000,
+            860
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "778c3bd2-df09-4f03-8009-9406f6f63f36",
+          "name": "Airtable Finalize Post - Delete Record",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11280,
+            880
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "326f1ed5-d49a-4a4c-9ae8-dd648558ff90",
+          "name": "Wait To Delete Post",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            11580,
+            880
+          ],
+          "webhookId": "d87f9bff-ce1b-4d80-89fa-a9d60bcfa59f",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "81b2d1c5-73f4-48e5-871b-fde62f964105",
+          "name": "Research Tool",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            10700,
+            2720
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "dada291c-01d9-4f75-a059-8da510f71192",
+          "name": "Airtable Create Topic - Update Status",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            12200,
+            2720
+          ],
+          "parameters": {},
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 2.1,
+          "waitBetweenTries": 3000
+        },
+        {
+          "id": "3b6dd700-f260-4093-b181-b91e71c2a680",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11100,
+            3140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0729b1e7-7861-4b2d-abf0-beaf99ad4a52",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            13060,
+            3660
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "284d159f-483e-4ac8-8cbb-06df1f17163c",
+          "name": "OpenAI Chat Model4",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            12760,
+            3660
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a57a39b9-ea1c-42df-9978-8877d2fe7128",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            11240,
+            3420
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "22225d76-3ee4-42cc-b87a-319eff4ff0d6",
+          "name": "Wait To Update Status",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            8300,
+            3220
+          ],
+          "webhookId": "9c03d746-1ee7-4352-ab0d-18a35cfeeefd",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b8518cd0-3625-4e16-87b1-2ab59d68188d",
+          "name": "Researcher",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            12100,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "06cbe250-9cf8-4962-af5a-bd4d02e28b75",
+          "name": "Copywriter",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            12820,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 1.5
+        },
+        {
+          "id": "c8c9ee25-242c-4d76-ae7b-6f121363c6ee",
+          "name": "Wait To Update Data",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            12100,
+            3240
+          ],
+          "webhookId": "09f20db1-6de2-4889-be86-982528e4e4fe",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "90c231cb-dfd5-4aa5-8cd0-48d91703f6a5",
+          "name": "If Status And Confirmation",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            7840,
+            3240
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "d0904d95-0989-48c7-ac96-4a6488440ede",
+          "name": "Limit To First In Progress Topic",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            8740,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d4a44a69-69e4-4743-90ce-316fabed328d",
+          "name": "Airtable Select Chapters Update",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            12380,
+            3240
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "d49afaa9-ca38-4e35-ad98-8931de99e7d2",
+          "name": "Wait To Save Content",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            13620,
+            3440
+          ],
+          "webhookId": "eba55c09-c5a5-470c-8cfe-db4bc41095dc",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "fc91e627-3258-4881-935e-743f7d355e75",
+          "name": "Parse Chapters",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            10720,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "14afd2ff-3cce-4abc-9345-562c916438f6",
+          "name": "Select Chapters Trigger",
+          "type": "n8n-nodes-base.airtableTrigger",
+          "position": [
+            7300,
+            3240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "27754dd7-e4e7-4a9d-8f5b-8eb406cc396c",
+          "name": "Limit Inbound Links",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            10060,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "df3d03be-dfc7-410f-986a-180e0ebc251f",
+          "name": "Get Post Sitemap",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            9400,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "15068ce9-4095-426f-ac42-d11ee755adef",
+          "name": "Get XML File",
+          "type": "n8n-nodes-base.xml",
+          "position": [
+            9620,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "a9507dbe-fef7-46fa-82ff-1ee8ff099e53",
+          "name": "Split Out Links",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            9840,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "83dcdf56-f367-47cf-b747-b7ed960589fc",
+          "name": "Aggregate internal links",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            10280,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "433b5a89-e777-4eb1-9118-7a703a2fd259",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            7520,
+            3140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "696aee48-ad44-44cd-b302-ef2da51eb2c2",
+          "name": "Research Tool1",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            12340,
+            3660
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "64930afe-56b8-45a8-aec3-3e86f434aab2",
+          "name": "OpenAI Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            12040,
+            3660
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "99807dac-13b1-4612-ab0c-294af3cd2827",
+          "name": "Airtable Chapters1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10500,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "76568c37-9765-4aed-820b-2c39f41527d7",
+          "name": "Loop Over Chapters1",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            11540,
+            3420
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "8c13a81b-133b-48f8-933f-72c4012ede8f",
+          "name": "Limit To First Item1",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            7620,
+            3240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "fdfddc27-97e5-4133-98d2-e3738a880822",
+          "name": "Settings1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            9180,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "165b72a3-1391-4bdc-81b0-698c5af47519",
+          "name": "Airtable Settings1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8960,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "4330ab09-0b4e-4dc9-adce-81f94227a516",
+          "name": "Airtable Get Topic1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8520,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "2232ef4e-e692-4b17-b1d9-f98714a3c08f",
+          "name": "Airtable Select Chapters1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8080,
+            3220
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "5fcec9f9-44c5-4b5a-8869-7dcd5d023ccd",
+          "name": "Airtable Select Content1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            11820,
+            3240
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 2.1
+        },
+        {
+          "id": "882d3eb5-91b9-4aea-b389-03151cf9ac70",
+          "name": "Airtable Generate Content1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            13320,
+            3440
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "18494df4-bd91-4520-8c9c-392aee93a8ae",
+          "name": "Wait To Update Airtable",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            8080,
+            4760
+          ],
+          "webhookId": "9c03d746-1ee7-4352-ab0d-18a35cfeeefd",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "de2b599e-751b-4b56-a554-732173be3a1f",
+          "name": "Merge3",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            12480,
+            4300
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "1c38f8cd-d9d2-4398-8e89-8e5055edf023",
+          "name": "New Chapters",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            8740,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "a4cbaf91-0ca0-46d7-b1d0-c4fcd506fe78",
+          "name": "Blog Planner",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            9260,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 1.5
+        },
+        {
+          "id": "ea719033-79a3-4525-98c6-815d704c493f",
+          "name": "Sticky Note15",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            7520,
+            4700
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b154dc74-79c9-480c-84a3-ae9b11470ba1",
+          "name": "Sticky Note17",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11820,
+            4120
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b8fe3a14-69b1-45bb-904a-90074428e3cb",
+          "name": "Sticky Note18",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            10680,
+            4700
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "72f8d1ae-a9b4-4b52-8554-e8078edfcfd2",
+          "name": "Get Planner Output",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            10340,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a0312ccf-070d-437f-becb-590499fe89cb",
+          "name": "Check Status And Confirmation",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            7640,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "55938dad-d84c-4c82-a241-3305a77d1081",
+          "name": "Airtable Select Content Trigger",
+          "type": "n8n-nodes-base.airtableTrigger",
+          "position": [
+            7300,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5aa6d2b5-1bdc-4258-b89d-7c2d42820188",
+          "name": "Airtable Generated Content",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8520,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "231141bf-1843-40ef-bde6-7766478a11b1",
+          "name": "Upload featured image to Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            12240,
+            4420
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "8139a9ae-b396-44d5-b45b-9abfb09c77bc",
+          "name": "Resize featured image",
+          "type": "n8n-nodes-base.editImage",
+          "position": [
+            12240,
+            4200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6e0fc113-604a-42f1-9e5b-92ad2e770bd6",
+          "name": "Wait To Upload Image",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            12500,
+            4980
+          ],
+          "webhookId": "2ab902ad-ab78-497b-aaf5-231221400ff5",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "aac9e84c-10db-4bef-a504-65e1c6ff7834",
+          "name": "Airtable Select Content - Update Status",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            14400,
+            5420
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 2.1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "8f50ab94-c25c-42af-b46b-fc92d86151d0",
+          "name": "Generate featured image",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            11980,
+            4300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "dcb7d81d-bb0b-4add-a9fb-34b72c4b8aee",
+          "name": "Wait To Save Post",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            14180,
+            5420
+          ],
+          "webhookId": "11fa16c1-89f2-4758-88f3-ba292b127634",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "721b5ba3-a99c-45d2-ac01-ad77586228ad",
+          "name": "Update Feature Image Meta Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            12060,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "82af4130-9c17-4513-8887-3a1d73be5d4c",
+          "name": "Check Empty Output",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            9660,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "708b6446-25e8-42ca-9fa6-b2d0811173f2",
+          "name": "Create Drive Folder",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            10120,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "1ea1d480-9567-433a-a59a-68cb59638a8d",
+          "name": "Split Out chapters",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            10820,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "0af88190-3b41-4e8b-ad35-e5e445571a33",
+          "name": "Generate Chapter Image",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            11360,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "72b5930f-f514-4cf0-9862-5f4086c6f5ee",
+          "name": "Resize Chapter Image",
+          "type": "n8n-nodes-base.editImage",
+          "position": [
+            11600,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "b9662fac-1e12-4a29-bbeb-fbc95a47e127",
+          "name": "Upload Chapter Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            11840,
+            4780
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "4c2d50a7-08cf-4196-b23a-bc1d520238c6",
+          "name": "Upload Chapter Image To Drive",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            11600,
+            5000
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "6472294a-77e4-4a2b-9bff-c1b335e09f56",
+          "name": "Merge Chapter Image Data",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            12280,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "95edc81a-4e44-492c-9473-a261c094950c",
+          "name": "Combine Into Article",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            11840,
+            5440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d1f3bcf8-054a-4c2e-8232-175ddb0ce412",
+          "name": "Final Article In Markdown",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            12060,
+            5440
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0b327ecd-4e0e-42be-9e9e-803fd124d00c",
+          "name": "Markdown To HTML",
+          "type": "n8n-nodes-base.markdown",
+          "position": [
+            12280,
+            5440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "a235fb8f-fef4-4bb8-965c-1ebf6716e3d3",
+          "name": "FInal Article In HTML",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            12500,
+            5440
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "71b3d9c7-1eba-4a23-a791-2d7ffcc9521d",
+          "name": "Merge Article And Feature Image",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            13000,
+            5420
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "efdbe0cb-e0df-45de-a74b-927139fb840f",
+          "name": "Upload Featured Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            13240,
+            5420
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "85a085a4-75cf-469a-a737-fff3e176a3a4",
+          "name": "Update Featured Image Meta Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            13480,
+            5420
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "06b3c103-a9ac-46b0-8dde-94247eecaed7",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            9500,
+            4960
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "f5d7caa6-6da8-4244-8caf-e40c3c9953cc",
+          "name": "OpenAI Chat Model5",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            9200,
+            4960
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "2fd61556-45a9-42b1-b388-79d113cda39d",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            11720,
+            5360
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4d9f304b-48b1-4f7b-b537-0d517ad2c6c5",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            9100,
+            4700
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ad351add-aa9a-4fd0-9198-6436a46a369a",
+          "name": "Settings2",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            7860,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "0fc598e1-5b62-470e-8609-66cf06ffc3b1",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            12860,
+            5360
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8944fade-2f37-4065-a7a4-a4f6607287a7",
+          "name": "Airtable Get Topic2",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8300,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "d90bfbb4-6a2c-4d90-8b83-f167957c3792",
+          "name": "Airtable Select Content2",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            7860,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "97cf180b-1c22-46bb-bd2f-aae8c23e583f",
+          "name": "Airtable Settings2",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            7640,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "01c07802-470b-4acb-bf7a-9e225133d885",
+          "name": "Limit To First In Progress Topic1",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            8520,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "daf9892d-2114-4ab7-8719-76e411e5af00",
+          "name": "Airtable Select Chapters2",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8080,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "753f6f4a-96fa-4d5d-ad52-fb38a47d1ecb",
+          "name": "Limit To First Item2",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            8300,
+            4980
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "b25f8622-ffcf-4332-8165-2f010b6a0c5c",
+          "name": "Loop Over Chapters2",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            11100,
+            4760
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "91305b74-22c7-4bea-b145-1726f7860226",
+          "name": "Airtable Finalize Post1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            13960,
+            5420
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 2.1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "801375a9-8f7f-44e9-9dde-3f12bbb3151d",
+          "name": "Set featured image for post",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            9440,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 4.1
+        },
+        {
+          "id": "89005fa5-5bb0-4121-add0-187ffe3cfaea",
+          "name": "Set excerpt",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            9660,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "c7fda31c-4499-4c68-8531-34b432d3aca0",
+          "name": "Post on Wordpress",
+          "type": "n8n-nodes-base.wordpress",
+          "position": [
+            9220,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ece38055-5a4a-4b75-9bea-fed0826e0d92",
+          "name": "Sticky Note16",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            7520,
+            6140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "53bbc529-5d87-4d23-bf1b-653cb3062dde",
+          "name": "Split Out Records",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            8300,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e96a1f69-4535-43aa-8ff7-44ed2d3bc96b",
+          "name": "Filter Post Status And Confirmation",
+          "type": "n8n-nodes-base.filter",
+          "onError": "continueRegularOutput",
+          "position": [
+            8520,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 2.2
+        },
+        {
+          "id": "03e3889c-85dc-4c43-a96c-56155c4ab4cc",
+          "name": "Airtable Finalize Post - Update Status",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10580,
+            6240
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 2.1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "4ae53324-786c-4b67-a708-fe0205a46f1a",
+          "name": "Airtable Backup Post",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            10140,
+            6240
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 2.1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "67e2de64-d122-49bf-a4ca-21f33082d2c7",
+          "name": "Wait To Backup Post",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            10360,
+            6240
+          ],
+          "webhookId": "f367bdc4-e2e5-4ebc-827c-1327b7bf623b",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "8a09bb0c-84b6-4f0b-88d2-c0705ad97e98",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            9100,
+            6140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "80086bcd-047d-42cc-9c89-10328686fb7c",
+          "name": "Airtable Finalize Post2",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            8080,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "f54a3339-032d-4b1a-bd01-3842c5449f99",
+          "name": "Limit To First Item3",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            8740,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "3e6c6ffd-c6aa-464d-a140-ce2573d14e7e",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            10020,
+            6140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dc121b34-bf29-4f37-b494-bf12c58c8c23",
+          "name": "Settings3",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            7860,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "b59beea4-f9b6-42c9-84c9-bd4b115df6ef",
+          "name": "Airtable Settings3",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            7640,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 2.1
+        },
+        {
+          "id": "eea666a6-17c5-41a3-bac7-d4533606d126",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "disabled": true,
+          "position": [
+            7680,
+            6900
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "555d0c5f-a579-4816-bf71-1bc9c22cb985",
+          "name": "PerplexityAI API",
+          "type": "n8n-nodes-base.httpRequest",
+          "disabled": true,
+          "position": [
+            8260,
+            6900
+          ],
+          "parameters": {},
+          "typeVersion": 4.2
+        },
+        {
+          "id": "55d8b9a7-a04e-49f5-8c9d-516415a6852e",
+          "name": "Get Research Content",
+          "type": "n8n-nodes-base.set",
+          "disabled": true,
+          "position": [
+            8540,
+            6900
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "e266d256-54a0-4f1b-8e96-aa69bef7903f",
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "disabled": true,
+          "position": [
+            8020,
+            6900
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b911af75-c27f-4431-9f22-f058031bbfc8",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "disabled": true,
+          "position": [
+            7520,
+            6720
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa754e76-dc70-44be-9da2-24b17516f9ca",
+          "name": "Sticky Note19",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            13840,
+            5360
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7c000985-8ad9-45d8-b10b-ae486625ed69",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            5480,
+            2460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1eca8938-696f-41fc-97b6-e0baf45fab1b",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9358e2ec-8f6b-4687-a74b-ca460d3021b7",
+          "name": "Sticky Note27",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            6560,
+            2440
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a583fb2a-12d1-4224-b0f3-8c5970054f16",
+          "name": "Sticky Note28",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            6560,
+            3140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "619162e8-df31-47f9-8bdb-b2a6e38a1f71",
+          "name": "Sticky Note29",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            6560,
+            4700
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2a466e9a-55f7-4e34-8b30-3a5fecdcbe75",
+          "name": "Sticky Note30",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            6560,
+            6140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a476b0ed-755f-4a9a-b3fa-b011355d9f73",
+          "name": "Sticky Note31",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            6580,
+            6720
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "85c23847-7286-48f4-96f1-8466dddfa6dd",
+          "name": "Airtable Finalize Post Trigger",
+          "type": "n8n-nodes-base.airtableTrigger",
+          "position": [
+            7280,
+            6240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {
+        "Execute Workflow Trigger": [
+          {
+            "json": {
+              "query": "Grok 3"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "errorWorkflow": "7XxwbKvr4yHpGpKg",
+        "executionOrder": "v1"
+      },
+      "versionId": "413d44e1-e5fc-4c60-b620-fb815a019e7d",
+      "connections": {
+        "Merge3": {
+          "main": [
+            [
+              {
+                "node": "Merge Article And Feature Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Settings": {
+          "main": [
+            [
+              {
+                "node": "Check inputs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Settings1": {
+          "main": [
+            [
+              {
+                "node": "Get Post Sitemap",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Settings2": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Chapters2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Settings3": {
+          "main": [
+            [
+              {
+                "node": "Airtable Finalize Post2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Copywriter": {
+          "main": [
+            [
+              {
+                "node": "Airtable Generate Content1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Researcher": {
+          "main": [
+            [
+              {
+                "node": "Copywriter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields": {
+          "main": [
+            [
+              {
+                "node": "PerplexityAI API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set excerpt": {
+          "main": [
+            [
+              {
+                "node": "Airtable Backup Post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Blog Planner": {
+          "main": [
+            [
+              {
+                "node": "Check Empty Output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check inputs": {
+          "main": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get XML File": {
+          "main": [
+            [
+              {
+                "node": "Split Out Links",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New Chapters": {
+          "main": [
+            [
+              {
+                "node": "Blog Planner",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Confirm Topic": {
+          "main": [
+            [
+              {
+                "node": "Wait To Update New Topic",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Status": {
+          "main": [
+            [
+              {
+                "node": "Limit To First Item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Research Tool": {
+          "ai_tool": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse Chapters": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Research Tool1": {
+          "ai_tool": [
+            [
+              {
+                "node": "Researcher",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Post IDs": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Airtable Chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Links": {
+          "main": [
+            [
+              {
+                "node": "Limit Inbound Links",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create New Topic": {
+          "main": [
+            [
+              {
+                "node": "Airtable Get Topic",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Post Sitemap": {
+          "main": [
+            [
+              {
+                "node": "Get XML File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Initial Research": {
+          "main": [
+            [
+              {
+                "node": "Wait For AI APIs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Markdown To HTML": {
+          "main": [
+            [
+              {
+                "node": "FInal Article In HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "PerplexityAI API": {
+          "main": [
+            [
+              {
+                "node": "Get Research Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait For AI APIs": {
+          "main": [
+            [
+              {
+                "node": "Split Out Chapters",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable Select Chapters - Create Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Chapters": {
+          "main": [
+            [
+              {
+                "node": "Wait To Save Chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Settings": {
+          "main": [
+            [
+              {
+                "node": "Settings",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Content": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Airtable Generate Content - Delete Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Records": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Airtable Finalize Post - Delete Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Post on Wordpress": {
+          "main": [
+            [
+              {
+                "node": "Set featured image for post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Chapter IDs": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Content IDs": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Records": {
+          "main": [
+            [
+              {
+                "node": "Filter Post Status And Confirmation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Save Post": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Content - Update Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Chapters1": {
+          "main": [
+            [
+              {
+                "node": "Parse Chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Get Topic": {
+          "main": [
+            [
+              {
+                "node": "Split Out All Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Settings1": {
+          "main": [
+            [
+              {
+                "node": "Settings1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Settings2": {
+          "main": [
+            [
+              {
+                "node": "Settings2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Settings3": {
+          "main": [
+            [
+              {
+                "node": "Settings3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Empty Output": {
+          "main": [
+            [
+              {
+                "node": "Create Drive Folder",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Blog Planner",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Planner Output": {
+          "main": [
+            [
+              {
+                "node": "Split Out chapters",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Generate featured image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Chapters": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Airtable Generate Chapters - Delete Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Researcher",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model4": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Copywriter",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model5": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Blog Planner",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Chapters": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out chapters": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Get Topic1": {
+          "main": [
+            [
+              {
+                "node": "Limit To First In Progress Topic",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Get Topic2": {
+          "main": [
+            [
+              {
+                "node": "Limit To First In Progress Topic1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Drive Folder": {
+          "main": [
+            [
+              {
+                "node": "Get Planner Output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit Inbound Links": {
+          "main": [
+            [
+              {
+                "node": "Aggregate internal links",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit To First Item": {
+          "main": [
+            [
+              {
+                "node": "Check Status & Confirmation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Chapters1": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Content1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Researcher",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Chapters2": {
+          "main": [
+            [
+              {
+                "node": "Combine Into Article",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Generate Chapter Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Backup Post": {
+          "main": [
+            [
+              {
+                "node": "Airtable Finalize Post - Update Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Delete Post": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Update Data": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Chapters Update",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Backup Post": {
+          "main": [
+            [
+              {
+                "node": "Wait To Backup Post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine Into Article": {
+          "main": [
+            [
+              {
+                "node": "Final Article In Markdown",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit To First Item1": {
+          "main": [
+            [
+              {
+                "node": "If Status And Confirmation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit To First Item2": {
+          "main": [
+            [
+              {
+                "node": "Airtable Generated Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit To First Item3": {
+          "main": [
+            [
+              {
+                "node": "Post on Wordpress",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Resize Chapter Image": {
+          "main": [
+            [
+              {
+                "node": "Upload Chapter Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload Chapter Image": {
+          "main": [
+            [
+              {
+                "node": "Update Feature Image Meta Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Save Content": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Upload Image": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "FInal Article In HTML": {
+          "main": [
+            [
+              {
+                "node": "Merge Article And Feature Image",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Resize featured image": {
+          "main": [
+            [
+              {
+                "node": "Merge3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out All Records": {
+          "main": [
+            [
+              {
+                "node": "Filter Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload Featured Image": {
+          "main": [
+            [
+              {
+                "node": "Update Featured Image Meta Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Create Record": {
+          "main": [
+            [
+              {
+                "node": "Airtable Create Topic - Update Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Save Chapters": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Update Status": {
+          "main": [
+            [
+              {
+                "node": "Airtable Get Topic1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Finalize Post": {
+          "main": [
+            [
+              {
+                "node": "Split Post IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate Chapter Image": {
+          "main": [
+            [
+              {
+                "node": "Resize Chapter Image",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Upload Chapter Image To Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Delete Chapter": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Finalize Post1": {
+          "main": [
+            [
+              {
+                "node": "Wait To Save Post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Finalize Post2": {
+          "main": [
+            [
+              {
+                "node": "Split Out Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Content": {
+          "main": [
+            [
+              {
+                "node": "Split Content Process IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate featured image": {
+          "main": [
+            [
+              {
+                "node": "Resize featured image",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Upload featured image to Drive",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Select Chapters Trigger": {
+          "main": [
+            [
+              {
+                "node": "Limit To First Item1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Update Airtable": {
+          "main": [
+            [
+              {
+                "node": "Airtable Get Topic2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate internal links": {
+          "main": [
+            [
+              {
+                "node": "Airtable Chapters1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Chapters": {
+          "main": [
+            [
+              {
+                "node": "Split Chapter Process IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Content1": {
+          "main": [
+            [
+              {
+                "node": "Wait To Update Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Content2": {
+          "main": [
+            [
+              {
+                "node": "Wait To Update Airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Chapter Image Data": {
+          "main": [
+            [
+              {
+                "node": "Wait To Upload Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Copywriter",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Update New Topic": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Content",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable Generate Content",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable Select Chapters",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable Generate Chapters",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable Settings",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Airtable Finalize Post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Generate Content": {
+          "main": [
+            [
+              {
+                "node": "Split Content IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Chapters1": {
+          "main": [
+            [
+              {
+                "node": "Wait To Update Status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Chapters2": {
+          "main": [
+            [
+              {
+                "node": "Limit To First Item2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final Article In Markdown": {
+          "main": [
+            [
+              {
+                "node": "Markdown To HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Content Process": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Airtable Select Content - Delete Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Chapter Process IDs": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters Process",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Content Process IDs": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Content Process",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Blog Planner",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser4": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Initial Research",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Generate Chapters": {
+          "main": [
+            [
+              {
+                "node": "Split Chapter IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Generate Content1": {
+          "main": [
+            [
+              {
+                "node": "Wait To Save Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Generated Content": {
+          "main": [
+            [
+              {
+                "node": "New Chapters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If Status And Confirmation": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Chapters1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Chapters Process": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Airtable Select Chapters - Delete Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Status & Confirmation": {
+          "main": [
+            [
+              {
+                "node": "Confirm Topic",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set featured image for post": {
+          "main": [
+            [
+              {
+                "node": "Set excerpt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Status And Confirmation": {
+          "main": [
+            [
+              {
+                "node": "Airtable Select Content2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload Chapter Image To Drive": {
+          "main": [
+            [
+              {
+                "node": "Merge Chapter Image Data",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Airtable Finalize Post Trigger": {
+          "main": [
+            [
+              {
+                "node": "Airtable Settings3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Feature Image Meta Data": {
+          "main": [
+            [
+              {
+                "node": "Merge Chapter Image Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Upload featured image to Drive": {
+          "main": [
+            [
+              {
+                "node": "Merge3",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Wait To Delete Content Process": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Content Process",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Content Trigger": {
+          "main": [
+            [
+              {
+                "node": "Check Status And Confirmation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Article And Feature Image": {
+          "main": [
+            [
+              {
+                "node": "Upload Featured Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Featured Image Meta Data": {
+          "main": [
+            [
+              {
+                "node": "Airtable Finalize Post1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Delete Chapters Process": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Chapters Process",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait To Delete Generate Content": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit To First In Progress Topic": {
+          "main": [
+            [
+              {
+                "node": "Airtable Settings1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit To First In Progress Topic1": {
+          "main": [
+            [
+              {
+                "node": "Airtable Settings2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Post Status And Confirmation": {
+          "main": [
+            [
+              {
+                "node": "Limit To First Item3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Finalize Post - Delete Record": {
+          "main": [
+            [
+              {
+                "node": "Wait To Delete Post",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Content - Delete Record": {
+          "main": [
+            [
+              {
+                "node": "Wait To Delete Content Process",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Chapters - Create Record": {
+          "main": [
+            [
+              {
+                "node": "Wait To Create Record",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Select Chapters - Delete Record": {
+          "main": [
+            [
+              {
+                "node": "Wait To Delete Chapters Process",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Generate Content - Delete Record": {
+          "main": [
+            [
+              {
+                "node": "Wait To Delete Generate Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable Generate Chapters - Delete Record": {
+          "main": [
+            [
+              {
+                "node": "Wait To Delete Chapter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 51,
+    "workflowInfo": {
+      "nodeCount": 159,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 5
+        },
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.xml": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 7
+        },
+        "n8n-nodes-base.wait": {
+          "count": 16
+        },
+        "n8n-nodes-base.limit": {
+          "count": 7
+        },
+        "n8n-nodes-base.merge": {
+          "count": 3
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 34
+        },
+        "n8n-nodes-base.markdown": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 11
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.editImage": {
+          "count": 2
+        },
+        "n8n-nodes-base.wordpress": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 24
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 3
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 8
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 8
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 2
+        },
+        "n8n-nodes-base.airtableTrigger": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.openAi": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Daniel Ng",
+      "username": "danielng",
+      "bio": "A Growth Hacker, Digital Marketer & AI Automation Builder with 10+ years of experience in Digital Marketing & Workflow Automation. Based in Helsinki, Finland. For questions about my templates and customization, contact me at: daniel@aiautomationpro.org",
+      "verified": true,
+      "links": [
+        "https://aiautomationpro.org/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7e5e8e658b30fd9740edb159e9120a88edf324d14e7115e2229cf6876f2253a3?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 9,
+        "icon": "fa:image",
+        "name": "n8n-nodes-base.editImage",
+        "codex": {
+          "data": {
+            "details": "The Edit Image node allows you to manipulate and edit images. Use this node when you want to:\n\n- Blur an image\n- Add a border to an image\n- Create a new image\n- Crop an image\n- Composite an image on top of another\n- Draw on an image\n- Get information about the image\n- Rotate an image\n- Change the size of an image\n- Shear an image along the X or Y axis\n- Add text to the image",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.editimage/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Edit Image",
+          "color": "#553399"
+        },
+        "iconData": {
+          "icon": "image",
+          "type": "icon"
+        },
+        "displayName": "Edit Image",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 48,
+        "icon": "fa:file-code",
+        "name": "n8n-nodes-base.xml",
+        "codex": {
+          "data": {
+            "alias": [
+              "Parse"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.xml/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "XML",
+          "color": "#333377"
+        },
+        "iconData": {
+          "icon": "file-code",
+          "type": "icon"
+        },
+        "displayName": "XML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 118,
+        "icon": "file:wordpress.svg",
+        "name": "n8n-nodes-base.wordpress",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wordpress/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/wordpress/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Wordpress"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjI1MDAiIHZpZXdCb3g9IjguMzk5IDguNCA1MS4yIDUxLjIiPjxwYXRoIGZpbGw9IiMyMTc1OUIiIGQ9Ik0zNCA1OS42QzE5LjgxMyA1OS42IDguMjkzIDQ4LjI5MyA4LjQgMzRTMTkuMjggOC40IDM0IDguNCA1OS42IDE5LjkyIDU5LjYgMzQgNDguMTg3IDU5LjYgMzQgNTkuNm03LjU3My0zLjk0Ny03LjI1My0xOS41Mi02LjgyNyAxOS45NDdjNS4wMTQgMS4xNzQgOC40MjcgMS40OTMgMTQuMDgtLjQyN20tMTcuNzA2LTEuMDY2LTEwLjg4LTI5Ljc2Yy0xLjQ5NCAzLjItMS44MTMgNS44NjctMi4wMjcgOS4xNzMuMTA3IDguNzQ2IDUuMDEzIDE2Ljc0NiAxMi45MDcgMjAuNTg3TTU2LjkzNCAzNGMuMTA2LTUuNjUzLTIuNDUzLTEwLjEzMy0yLjY2Ny0xMC43NzMuMjE0IDQuMzc0LS40MjcgNi42MTMtMS4xNzMgOS4wNjdsLTcuNDY3IDIxLjQ0QzU1LjAxNCA0OC4wOCA1Ni44MjYgMzkuNjUzIDU3LjA0IDM0em0tMjMuNjgtLjk2LTMuNjI3LTkuOTItMi42NjctLjIxM2MtMS4wNjYtLjc0Ny0uNDI3LTEuOTIuMzItMS45MiA0LjguMzIgNy40NjYuMzIgMTIuMjY3IDAgMS4xNzQgMCAxLjQ5MyAxLjcwNy4xMDYgMS45MmwtMi41Ni4yMTMgOC4zMTkgMjQuNTMzIDMuOTQ2LTEzLjQ0Yy4yMTQtNS44NjYtMS4zODctNi41MDYtMy41Mi0xMC43NzMtMS43MDctMy4zMDcuMTA3LTYuNTA3IDMuNDE0LTYuNjEzLTIuNjY4LTIuNTYtOC4xMDctNS43Ni0xNS4yNTQtNS44NjdzLTE0LjcyIDMuNTItMTkuMiAxMC4zNDdsNy44OTQtLjIxM2MuOTYuNDI3LjUzMyAxLjgxMyAwIDEuOTJsLTIuNzczLjIxMyA4LjMyIDI0Ljk2eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Wordpress",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 408,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtableTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.airtabletrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Airtable Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 564,
+        "icon": "file:markdown.svg",
+        "name": "n8n-nodes-base.markdown",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.markdown/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Markdown"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM3LjExNjQgMzIuNjE4N0gyLjg4MzU3QzIuNTA0OSAzMi42MTg3IDIuMTI5OTMgMzIuNTQ0MSAxLjc4MDA4IDMyLjM5OTJDMS40MzAyMyAzMi4yNTQzIDEuMTEyMzQgMzIuMDQxOSAwLjg0NDU3OSAzMS43NzQxQzAuNTc2ODE1IDMxLjUwNjQgMC4zNjQ0MTIgMzEuMTg4NSAwLjIxOTQ5OSAzMC44Mzg2QzAuMDc0NTg1OCAzMC40ODg4IDAgMzAuMTEzOCAwIDI5LjczNTFWMTAuODgzNkMwIDEwLjExODggMC4zMDM4MDQgOS4zODUzNSAwLjg0NDU3OSA4Ljg0NDU4QzEuMzg1MzUgOC4zMDM4IDIuMTE4OCA4IDIuODgzNTcgOEgzNy4xMTY0QzM3LjQ5NTEgOCAzNy44NzAxIDguMDc0NTkgMzguMjE5OSA4LjIxOTVDMzguNTY5OCA4LjM2NDQxIDM4Ljg4NzcgOC41NzY4MSAzOS4xNTU0IDguODQ0NThDMzkuNDIzMiA5LjExMjM0IDM5LjYzNTYgOS40MzAyMyAzOS43ODA1IDkuNzgwMDhDMzkuOTI1NCAxMC4xMjk5IDQwIDEwLjUwNDkgNDAgMTAuODgzNlYyOS43MzE4QzQwLjAwMDIgMzAuMTEwNiAzOS45MjU4IDMwLjQ4NTggMzkuNzgxIDMwLjgzNThDMzkuNjM2MiAzMS4xODU5IDM5LjQyMzggMzEuNTAzOSAzOS4xNTYgMzEuNzcxOUMzOC44ODgyIDMyLjAzOTggMzguNTcwMyAzMi4yNTI0IDM4LjIyMDMgMzIuMzk3NEMzNy44NzAzIDMyLjU0MjQgMzcuNDk1MiAzMi42MTg3IDM3LjExNjQgMzIuNjE4N1pNOS42MTQxMyAyNi44NDgyVjE5LjM0NzZMMTMuNDYxMSAyNC4xNTYzTDE3LjMwNjQgMTkuMzQ3NlYyNi44NDgySDIxLjE1MzRWMTMuNzcyMUgxNy4zMDY0TDEzLjQ2MTEgMTguNTgwOUw5LjYxNDEzIDEzLjc3MjFINS43NjcxNVYyNi44NTE2TDkuNjE0MTMgMjYuODQ4MlpNMzUuMzg2MyAyMC4zMDk0SDMxLjUzOTNWMTMuNzcwNUgyNy42OTRWMjAuMzA5NEgyMy44NDdMMjkuNjE1OCAyNy4wNDE2TDM1LjM4NjMgMjAuMzA5NFoiIGZpbGw9IiMzODM4MzkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Markdown",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1237,
+        "icon": "file:limit.svg",
+        "name": "n8n-nodes-base.limit",
+        "codex": {
+          "data": {
+            "alias": [
+              "Limit",
+              "Remove",
+              "Slice",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Limit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjMkZCNjdDIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcGF0aD0idXJsKCNhKSIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNNTEyIDQ1OGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDEyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoNjhjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMTUyLTIyMmMtNi42MjcgMC0xMi01LjM3My0xMi0xMlYzMGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDI0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MTk0YzAgNi42MjctNS4zNzMgMTItMTIgMTJ6Ii8+PHBhdGggZD0iTTE0OS41NzcgMTQ2Ljk4MmM5LjM5OC05LjM0NiAyNC41OTQtOS4zMDQgMzMuOTQxLjA5NUwyNTYgMjE5Ljk2NGw3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMCAzNTBjMC02LjYyNyA1LjM3My0xMiAxMi0xMmg0ODhjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDEyYy02LjYyNyAwLTEyLTUuMzczLTEyLTEyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Limit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1250,
+        "icon": "file:openAi.svg",
+        "name": "@n8n/n8n-nodes-langchain.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "ChatGPT",
+              "DallE",
+              "whisper",
+              "audio",
+              "transcribe",
+              "tts",
+              "assistant"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg1IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NiAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MSA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": [
+      {
+        "id": 1181,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_3_076bef730a.jpeg"
+      },
+      {
+        "id": 1182,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_13_ec61bd1f68.jpeg"
+      },
+      {
+        "id": 1183,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_1_b005254116.jpeg"
+      },
+      {
+        "id": 1184,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_2_d9ba72a603.jpeg"
+      },
+      {
+        "id": 1185,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_12_ff9372b8de.jpeg"
+      },
+      {
+        "id": 1186,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_4_5dc793f101.jpeg"
+      },
+      {
+        "id": 1187,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_0_aa96e3dc77.jpeg"
+      },
+      {
+        "id": 1188,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/Human_in_the_loop_content_automation_pro_with_deep_research_airtable_11_488ad09b9e.jpeg"
+      }
+    ]
+  }
+}

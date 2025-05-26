@@ -1,0 +1,20 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.coppertrigger/
+Scraped_At: 2025-05-20T19:05:52.605013
+
+Copper Trigger node
+#
+Copper
+is a CRM that focuses on strong integration with Google Workspace. It's mainly targeted towards small and medium-sized businesses.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Copper Trigger integrations
+page.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,41 @@
+URL: https://docs.n8n.io/user-management/account-types/
+Scraped_At: 2025-05-20T19:10:17.361716
+
+Account types
+#
+There are three account types: owner, admin, and member. The account type affects the user permissions and access.
+Feature availability
+To use admin accounts, you need a pro or enterprise plan.
+Account types and role types
+Account types and role types are different things. Role types are part of
+RBAC
+.
+Every account has one type. The account can have different
+role types
+for different
+projects
+.
+Create a member-level account for the owner
+n8n recommends that owners create a member-level account for themselves. Owners can see and edit all workflows, credentials, and projects. However, there is no way to see who created a particular workflow, so there is a risk of overriding other people's work if you build and edit workflows as an owner.
+Permission
+Owner
+Admin
+Member
+Manage own email and password
+Manage own workflows
+View, create, and use tags
+Delete tags
+View and share all workflows
+View, edit, and share all credentials
+Set up and use
+Source control
+Create
+projects
+View all projects
+Add and remove users
+Access the Cloud dashboard
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

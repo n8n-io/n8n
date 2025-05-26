@@ -1,0 +1,555 @@
+{
+  "workflow": {
+    "id": 966,
+    "name": "Send weather alerts to your mobile phone with OpenWeatherMap and SIGNL4",
+    "views": 1078,
+    "recentViews": 0,
+    "totalViews": 1078,
+    "createdAt": "2021-03-03T11:23:31.782Z",
+    "description": "Get weather alerts on your mobile phone via push, SMS or voice call.\n\nThis flow gets weather information every morning and sends out an alert to your [SIGNL4](https://www.signl4.com) on-call team.\n\nFor example you can send out weather alerts in case of freezing temperatures, snow, rain, hail storms, hot weather, etc. The flow also supports automatic alert resolution. So, for example if the temperature goes up again the alert is closed automatically in the app.\n\nUser cases:\n- Dispatch snow removal teams\n- Inform car dealers to protect the cars outside in case of hail storms\n- Set sails if there are high winds\n- And much more ...\n\n![signl4n8n.gif](fileId:812)\n\nCan be adapted easily to other weather warnings, like rain, hail storm, etc.\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "4e19bc4d542ebb7cc77dcbf34c0c6dca5062ae1e34fd327b055beb054230d539"
+      },
+      "nodes": [
+        {
+          "id": "beebd9ac-4021-4e45-9971-4205c37e3742",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -500,
+            40
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "61e48c99-fdd3-4db7-8e2e-67cb2c2dfd97",
+          "name": "SIGNL4",
+          "type": "n8n-nodes-base.signl4",
+          "position": [
+            60,
+            -140
+          ],
+          "parameters": {
+            "message": "=Weather alert ❄️ Temperature: {{ $json.main.temp }} °C",
+            "additionalFields": {
+              "title": "Weather Alert from n8n",
+              "externalId": "weather-alert",
+              "locationFieldsUi": {
+                "locationFieldsValues": {
+                  "latitude": "={{ $json.coord.lat }}",
+                  "longitude": "={{ $json.coord.lon }}"
+                }
+              }
+            }
+          },
+          "credentials": {
+            "signl4Api": {
+              "id": "EAiJUjPUA6kiAnG9",
+              "name": "SIGNL4 Webhook account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "739a31e4-d353-4c95-bb84-b36f6a5560cf",
+          "name": "OpenWeatherMap",
+          "type": "n8n-nodes-base.openWeatherMap",
+          "position": [
+            -320,
+            -140
+          ],
+          "parameters": {
+            "cityName": "Berlin"
+          },
+          "credentials": {
+            "openWeatherMapApi": {
+              "id": "oH1seTNeKu1d87wm",
+              "name": "OpenWeatherMap account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "95aab17d-c0eb-439c-81ff-7452794a514a",
+          "name": "If",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -160,
+            -140
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "b95ba4e6-0749-4dd0-9830-14a6b0b5edcf",
+                  "operator": {
+                    "type": "number",
+                    "operation": "lt"
+                  },
+                  "leftValue": "={{ $json.main.temp }}",
+                  "rightValue": 25
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ef813bf0-cd46-474e-9208-2efbd402782f",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -500,
+            -140
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 6,
+                  "triggerAtMinute": 15
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "If": {
+          "main": [
+            [
+              {
+                "node": "SIGNL4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenWeatherMap": {
+          "main": [
+            [
+              {
+                "node": "If",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "OpenWeatherMap",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "OpenWeatherMap",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.signl4": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.openWeatherMap": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Ron",
+      "username": "rons4",
+      "bio": "Co-founder at Derdack, Exploration at SIGNL4. Passionate about technology, SaaS, IoT, mobile, alerting, learning and more.",
+      "verified": true,
+      "links": [
+        "https://www.signl4.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/1af910dd96a18543fb15bf2097e28a14a72401781ec1ac4ffce7a07ad11dac7f?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 27,
+        "icon": "file:openWeatherMap.svg",
+        "name": "n8n-nodes-base.openWeatherMap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.openweathermap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/openWeatherMap/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "OpenWeatherMap"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2LjA2OTUgMjIuODgzM0MzNS43NjM3IDIyLjg3MDggMzUuNDU2MiAyMi44NzUgMzUuMTQ4MSAyMi44NzkxQzM0Ljk5MzggMjIuODgxMiAzNC44Mzk1IDIyLjg4MzMgMzQuNjg1MSAyMi44ODMzQzMzLjc0OTYgMjIuODgzMyAzMy4yNzk0IDIyLjg4MzMgMzMuMDQ4MSAyMi42NDgyQzMyLjgxNDMgMjIuNDEwNiAzMi44MjQ3IDIxLjkzMjkgMzIuODQ1NSAyMC45NzIzQzMyLjkyNTkgMTguNzYyMSAzMi41Mjc4IDE2LjU2MDcgMzEuNjc4NSAxNC41MTg3QzMwLjgyOTMgMTIuNDc2NyAyOS41NDg4IDEwLjY0MjIgMjcuOTI0OCA5LjE0MDg5VjkuMTIyMDhMMjcuNTg2MyA4LjgyMTEyQzI1Ljg5NDggNy4zMzc0MSAyMy44OTg1IDYuMjQyNTIgMjEuNzM4MSA1LjYxMzU5QzE5LjU3NzcgNC45ODQ2NiAxNy4zMDU3IDQuODM2OTcgMTUuMDgyMSA1LjE4MDkxQzEyLjg1ODUgNS41MjQ4NiAxMC43MzczIDYuMzUyMDcgOC44Njc5MiA3LjYwNDMzQzYuOTk4NSA4Ljg1NjU1IDUuNDI2MzQgMTAuNTAzNCA0LjI2MjExIDEyLjQyODhMNC4yMzU3OCAxMi40NzAyQzQuMjA5NDUgMTIuNTE1NCA0LjE4MjcgMTIuNTYwNSA0LjE1NTk1IDEyLjYwNTdDNC4xMDI0NSAxMi42OTU5IDQuMDQ4OTMgMTIuNzg2MiAzLjk5ODc4IDEyLjg3NjVDMi41MDA1NiAxNS41MjYxIDEuODI2MDcgMTguNTYyMSAyLjA2MTM3IDIxLjU5NjdDMi4wNjY4IDIxLjY4NzYgMi4wODI1IDIxLjc4NjQgMi4wOTg2IDIxLjg4NzZDMi4xNzE3NiAyMi4zNDc2IDIuMjUzMDMgMjIuODU4NiAxLjQxNDMxIDIyLjkxNzJDMC41MzAyNTEgMjIuOTc3NCAtMC4xMzE4NTUgMjMuNDE3NSAwLjAyMjM4NTUgMjQuNDIyQzAuMTc2NjI2IDI1LjQyNjQgMC45NDc4MjggMjUuNTUwNiAxLjgwOTMyIDI1LjU1MDZDMi42OTk3OCAyNS41MzMgMy41OTE5MiAyNS41Mzg5IDQuNDgzNSAyNS41NDQ3QzQuOTI4OTQgMjUuNTQ3NiA1LjM3NDY4IDI1LjU1MDYgNS44MTk1NyAyNS41NTA2QzYuNjc3MjkgMjUuNTUwNiA3LjI5NDI2IDI1Ljg5NjcgNy4zMjQzNSAyNi44MDMzQzcuMzUwNjggMjcuNjIzNCA2LjgyNzc3IDI4LjA3ODYgNi4wMTg5NSAyOC4wODk5QzUuMDE0NTEgMjguMDg5OSA0LjM1OTkzIDI4LjU1MjYgNC40Mzg5MyAyOS41NjQ2QzQuNTE3OTMgMzAuNTc2NSA1LjM0NTU2IDMwLjY5MzIgNi4xOTk1MiAzMC42NzA2QzguNTk1ODkgMzAuNjUxOCAxMC45OTIzIDMwLjY0OCAxMy4zOTI0IDMwLjY3MDZDMTQuMjc2NSAzMC42NzA2IDE0LjkzMSAzMS4wNDY4IDE0Ljg3ODQgMzIuMDczOEMxNC44Mjk1IDMzLjAxMDUgMTQuMjIzOCAzMy4zMDc3IDEzLjM3MzYgMzMuMzA0SDguOTQ1NzVDOC4wMDkwMyAzMy4zMDQgNy4wOTExMSAzMy4zNTI5IDcuMDg3MzUgMzQuNTgzQzcuMDgzNTkgMzUuODEzMiA4LjAxMjc5IDM1Ljg1NDYgOC45NDU3NSAzNS44NTA4SDMwLjM4NTJDMzEuMjY1NSAzNS44NTA4IDMxLjk5NTMgMzUuNjg5IDMyLjAyMTYgMzQuNjM5NUMzMi4wNTE3IDMzLjUxMDkgMzEuMjY5MiAzMy4yODUxIDMwLjM1MTMgMzMuMzA3N0gyMi42MDU0QzIxLjczNjQgMzMuMzA3NyAyMS4xNjA4IDMyLjkzMTUgMjEuMTM0NSAzMi4wMjg3QzIxLjEwODIgMzEuMTI1OCAyMS43MDYzIDMwLjczNDUgMjIuNTQ5IDMwLjY3NDNDMjIuNzMyMiAzMC42NTkzIDIyLjkxNzEgMzAuNjY0MyAyMy4xMDE1IDMwLjY2OTNDMjMuMTkzNCAzMC42NzE4IDIzLjI4NTIgMzAuNjc0MyAyMy4zNzY2IDMwLjY3NDNDMjQuMjE5MyAzMC42NzQzIDI1LjAwNTYgMzAuNTgwMyAyNS4wNzMzIDI5LjUxNTdDMjUuMTQ4NSAyOC4zODcxIDI0LjM5NjEgMjguMTIgMjMuNDYzMiAyOC4xMTYyQzIyLjYxMyAyOC4wNzExIDIyLjEyMDEgMjcuNTc0NSAyMi4xMjAxIDI2LjgyMjFDMjIuMTIwMSAyNS45NjgxIDIyLjY4MDcgMjUuNTA1NCAyMy41Nzk4IDI1LjUzMTdIMzYuMDMxOUMzNi45Mzg1IDI1LjUzMTcgMzcuNTg5MyAyNS4yNDU4IDM3LjYxOTQgMjQuMjMzOUMzNy42NDk1IDIzLjIyMTkgMzYuOTM0NyAyMi45MjA5IDM2LjA2OTUgMjIuODgzM1oiIGZpbGw9IiNFQjZENEEiLz4KPHBhdGggZD0iTTM4LjgxMDUgMjguMTA3MlYyOC4xMDk2QzM5LjQ3NDMgMjguMTUwMyA0MCAyOC43MDE1IDQwIDI5LjM3NTVDNDAgMzAuMDQ5NSAzOS40NzQzIDMwLjYwMDcgMzguODEwNSAzMC42NDE1VjMwLjY0MzlIMzUuNDAzNFYzMC42MzczQzM0Ljc2NDEgMzAuNTcyMSAzNC4yNjUzIDMwLjAzMjEgMzQuMjY1MyAyOS4zNzU1QzM0LjI2NTMgMjguNzE5IDM0Ljc2NDEgMjguMTc5IDM1LjQwMzQgMjguMTEzOFYyOC4xMDcySDM4LjgxMDVaIiBmaWxsPSIjRUI2RDRBIi8+CjxwYXRoIGQ9Ik0zMS4zMzc4IDI4LjEwOTZWMjguMTA3MkgyNy45MzA3VjI4LjExMzhDMjcuMjkxMSAyOC4xNzg3IDI2Ljc5MiAyOC43MTg4IDI2Ljc5MiAyOS4zNzU1QzI2Ljc5MiAzMC4wMzIyIDI3LjI5MTEgMzAuNTcyNCAyNy45MzA3IDMwLjYzNzNWMzAuNjQzOUgzMS4zMzc4VjMwLjY0MTRDMzIuMDAxMyAzMC42MDA1IDMyLjUyNjggMzAuMDQ5NCAzMi41MjY4IDI5LjM3NTVDMzIuNTI2OCAyOC43MDE3IDMyLjAwMTMgMjguMTUwNiAzMS4zMzc4IDI4LjEwOTZaIiBmaWxsPSIjRUI2RDRBIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenWeatherMap",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 334,
+        "icon": "file:signl4.png",
+        "name": "n8n-nodes-base.signl4",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.signl4/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/signl4/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "SIGNL4"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "SIGNL4",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 812,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/signl4_n8n_9e680d5f9b.gif"
+      }
+    ]
+  }
+}

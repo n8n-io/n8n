@@ -1,0 +1,151 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.postgres/common-issues/
+Scraped_At: 2025-05-20T18:50:46.852056
+
+Postgres node common issues
+#
+Here are some common errors and issues with the
+Postgres node
+and steps to resolve or troubleshoot them.
+Dynamically populate SQL
+IN
+groups with parameters
+#
+In Postgres, you can use the SQL
+IN
+comparison construct
+to make comparisons between groups of values:
+1
+SELECT
+color
+,
+shirt_size
+FROM
+shirts
+WHERE
+shirt_size
+IN
+(
+'small'
+,
+'medium'
+,
+'large'
+);
+While you can use n8n
+expressions
+in your query to dynamically populate the values in an
+IN
+group, combining this with
+query parameters
+provides extra protection by automatically sanitizing input.
+To construct an
+IN
+group query with query parameters:
+Set the
+Operation
+to
+Execute Query
+.
+In
+Options
+, select
+Query Parameters
+.
+Use an expression to select an array from the input data. For example,
+{{ $json.input_shirt_sizes }}
+.
+In the
+Query
+parameter, write your query with the
+IN
+construct with an empty set of parentheses. For example:
+1
+SELECT
+color
+,
+shirt_size
+FROM
+shirts
+WHERE
+shirt_size
+IN
+();
+Inside of the
+IN
+parentheses, use an expression to dynamically create index-based placeholders (like
+$1
+,
+$2
+, and
+$3
+) for the number of items in your query parameter array. You can do this by increasing each array index by one since the placeholder variables are 1 indexed:
+1
+SELECT
+color
+,
+shirt_size
+FROM
+shirts
+WHERE
+shirt_size
+IN
+(
+{{
+$
+json
+.
+input_shirt_sizes
+.
+map
+((
+i
+,
+pos
+)
+=>
+"$"
++
+(
+pos
++
+1
+)).
+join
+(
+', '
+)
+}}
+);
+With this technique, n8n automatically creates the correct number of
+prepared statement placeholders
+for the
+IN
+values according to the number of items in your array.
+Working with timestamps and time zones
+#
+To avoid complications with how n8n and Postgres interpret timestamp and time zone data, follow these general tips:
+Use UTC when storing and passing dates
+: Using UTC helps avoid confusion over timezone conversions when converting dates between different representations and systems.
+Set the execution timezone
+: Set the global timezone in n8n using either
+environment variables
+(for self-hosted) or in the
+settings
+(for n8n Cloud). You can set a workflow-specific timezone in the
+workflow settings
+.
+Use ISO 8601 format
+: The
+ISO 8601 format
+encodes the day of the month, month, year, hour, minutes, and seconds in a standardized string. n8n passes dates between nodes as strings and uses
+Luxon
+to parse dates. If you need to cast to ISO 8601 explicitly, you can use the
+Date & Time node
+and a custom format set to the string
+yyyy-MM-dd'T'HH:mm:ss
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

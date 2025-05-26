@@ -1,0 +1,624 @@
+{
+  "workflow": {
+    "id": 365,
+    "name": "Render custom text over images",
+    "views": 1332,
+    "recentViews": 0,
+    "totalViews": 1332,
+    "createdAt": "2020-05-12T12:27:08.632Z",
+    "description": "This workflow gets triggered every Friday at 6 PM with the help of a Cron node. It pulls in data about a random cocktail via the HTTP Request Node and sends the data to a Bannerbear node to create an image based on a template. The image is then finally shared on a specified Rocket.Chat channel.",
+    "workflow": {
+      "id": "46",
+      "name": "Cocktail Recipe Sharing",
+      "nodes": [
+        {
+          "name": "Bannerbear",
+          "type": "n8n-nodes-base.bannerbear",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "templateId": "",
+            "modificationsUi": {
+              "modificationsValues": [
+                {
+                  "name": "cocktail-image",
+                  "imageUrl": "={{$node[\"HTTP Request\"].json[\"drinks\"][0][\"strDrinkThumb\"]}}"
+                },
+                {
+                  "name": "title",
+                  "text": "={{$node[\"HTTP Request\"].json[\"drinks\"][0][\"strDrink\"]}}"
+                },
+                {
+                  "name": "recipe",
+                  "text": "={{$node[\"HTTP Request\"].json[\"drinks\"][0][\"strInstructions\"]}}"
+                }
+              ]
+            },
+            "additionalFields": {
+              "waitForImage": true
+            }
+          },
+          "credentials": {
+            "bannerbearApi": "Bannerbear"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "HTTP Request",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "url": "https://www.thecocktaildb.com/api/json/v1/1/random.php",
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Cron",
+          "type": "n8n-nodes-base.cron",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {
+            "triggerTimes": {
+              "item": [
+                {
+                  "hour": 18,
+                  "mode": "everyWeek",
+                  "weekday": "5"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Rocketchat",
+          "type": "n8n-nodes-base.rocketchat",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "channel": "",
+            "options": {},
+            "attachments": [
+              {
+                "imageUrl": "={{$node[\"Bannerbear\"].json[\"image_url\"]}}"
+              }
+            ]
+          },
+          "credentials": {
+            "rocketchatApi": "Rocket"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Cron": {
+          "main": [
+            [
+              {
+                "node": "HTTP Request",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bannerbear": {
+          "main": [
+            [
+              {
+                "node": "Rocketchat",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HTTP Request": {
+          "main": [
+            [
+              {
+                "node": "Bannerbear",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.cron": {
+          "count": 1
+        },
+        "n8n-nodes-base.bannerbear": {
+          "count": 1
+        },
+        "n8n-nodes-base.rocketchat": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 7,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.cron",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "details": "The Cron node uses Cron under the hood - a time-based job scheduler in Unix-like computer operating systems. Use this node when you want to trigger workflows periodically, especially in more complex scenarios like \"every Tuesday at 9 am\" or \"Weekdays\".",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Cron",
+          "color": "#29a568"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Cron",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 67,
+        "icon": "file:rocketchat.svg",
+        "name": "n8n-nodes-base.rocketchat",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rocketchat/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/rocketchat/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "RocketChat"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjIxMzkiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIiB2aWV3Qm94PSIwIDAgMjU2IDIxOSI+PHBhdGggZmlsbD0iI0MxMjcyRCIgZD0iTTI1NS45NSAxMDkuMzA3YzAtMTIuODUzLTMuODQ0LTI1LjE3My0xMS40My0zNi42My02LjgxLTEwLjI4My0xNi4zNTEtMTkuMzg1LTI4LjM1NS0yNy4wNTctMjMuMTgtMTQuODA2LTUzLjY0Ny0yMi45NjMtODUuNzgyLTIyLjk2My0xMC43MzQgMC0yMS4zMTUuOTA3LTMxLjU3NyAyLjcwNS02LjM2Ni01Ljk2LTEzLjgyLTExLjMyMi0yMS43MDctMTUuNTZDMzQuOTY0LTEwLjYyLjAyMiA5LjMyMi4wMjIgOS4zMjJzMzIuNDg3IDI2LjY4OCAyNy4yMDQgNTAuMDhDMTIuNjkzIDczLjgyMSA0LjgxNCA5MS4yMDcgNC44MTQgMTA5LjMwN2wuMDAzLjE3My0uMDAzLjE3NGMwIDE4LjEgNy44NzYgMzUuNDg2IDIyLjQxMiA0OS45MDJDMzIuNTA5IDE4Mi45NS4wMjIgMjA5LjYzOS4wMjIgMjA5LjYzOXMzNC45NDIgMTkuOTM5IDc3LjA3Ny0uNDhjNy44ODYtNC4yMzggMTUuMzM4LTkuNjAzIDIxLjcwNy0xNS41NiAxMC4yNjQgMS43OTYgMjAuODQzIDIuNzAyIDMxLjU3NyAyLjcwMiAzMi4xMzcgMCA2Mi42MDEtOC4xNTEgODUuNzgyLTIyLjk1OCAxMi4wMDQtNy42NzEgMjEuNTQ1LTE2Ljc3IDI4LjM1Ni0yNy4wNTggNy41ODUtMTEuNDU1IDExLjQzLTIzLjc4MSAxMS40My0zNi42MjggMC0uMDYtLjAwMy0uMTE1LS4wMDMtLjE3NHoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTMwLjM4MyA0MC44MjhjNTkuNTA1IDAgMTA3Ljc0NiAzMC44MTQgMTA3Ljc0NiA2OC44MjQgMCAzOC4wMDctNDguMjQxIDY4LjgyMy0xMDcuNzQ2IDY4LjgyMy0xMy4yNSAwLTI1Ljk0LTEuNTMyLTM3LjY2Mi00LjMyNS0xMS45MTUgMTQuMzMyLTM4LjEyNSAzNC4yNi02My41ODcgMjcuODIgOC4yODItOC44OTUgMjAuNTUyLTIzLjkyNiAxNy45MjYtNDguNjg2LTE1LjI2Mi0xMS44NzMtMjQuNDIyLTI3LjA3LTI0LjQyMi00My42MzItLjAwMy0zOC4wMTMgNDguMjM4LTY4LjgyNCAxMDcuNzQ1LTY4LjgyNCIvPjxwYXRoIGZpbGw9IiNDMTI3MkQiIGQ9Ik0xMzAuMzgzIDEyNi4xOGM3LjkwNiAwIDE0LjMxNC02LjQwOCAxNC4zMTQtMTQuMzE0cy02LjQwOC0xNC4zMTMtMTQuMzE0LTE0LjMxMy0xNC4zMTMgNi40MDgtMTQuMzEzIDE0LjMxMyA2LjQwOCAxNC4zMTQgMTQuMzEzIDE0LjMxNG00OS43NjQgMGM3LjkwNSAwIDE0LjMxNC02LjQwOCAxNC4zMTQtMTQuMzE0cy02LjQwOS0xNC4zMTMtMTQuMzE0LTE0LjMxMy0xNC4zMTMgNi40MDgtMTQuMzEzIDE0LjMxMyA2LjQwOCAxNC4zMTQgMTQuMzEzIDE0LjMxNG0tOTkuNTMtLjAwM2M3LjkwNCAwIDE0LjMxMS02LjQwNyAxNC4zMTEtMTQuMzFzLTYuNDA3LTE0LjMxMi0xNC4zMS0xNC4zMTJjLTcuOTA1IDAtMTQuMzEyIDYuNDA4LTE0LjMxMiAxNC4zMTEgMCA3LjkwNCA2LjQwNyAxNC4zMTEgMTQuMzExIDE0LjMxMSIvPjxwYXRoIGZpbGw9IiNDQ0MiIGQ9Ik0xMzAuMzgzIDE2OS40MmMtMTMuMjUgMC0yNS45NC0xLjMzLTM3LjY2Mi0zLjc1LTEwLjUyIDEwLjk2OS0zMi4xODggMjUuNzE0LTU0LjY0MyAyNS4xNzItMi45NTkgNC40ODQtNi4xNzUgOC4xNS04Ljk0NCAxMS4xMjYgMjUuNDYyIDYuNDQgNTEuNjcyLTEzLjQ4NiA2My41ODctMjcuODIgMTEuNzIzIDIuNzk1IDI0LjQxNCA0LjMyNSAzNy42NjIgNC4zMjUgNTkuMDI3IDAgMTA2Ljk2Mi0zMC4zMjYgMTA3LjcyNi02Ny45MTUtLjc2NCAzMi41ODItNDguNjk5IDU4Ljg2MS0xMDcuNzI2IDU4Ljg2MXoiLz48L3N2Zz4="
+        },
+        "displayName": "RocketChat",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 311,
+        "icon": "file:bannerbear.png",
+        "name": "n8n-nodes-base.bannerbear",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bannerbear/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/bannerbear/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Bannerbear"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAMAAAC5zwKfAAAArlBMVEX/1wD91QAAAAD/3QD/2wD/2gDmwQD2zwDpxADGpgDzzADwywArIwCtkQCqjwDfvADduQDBogCylQCTewC2mQBKPQAzKQANCQD40QDQrgAeFwD60wDtyAC7nQCagQBWRwA7MAAkHAATDgACAQCfhgCKcwBOQQD/3wDVswDKqgBqWABFOQDivgDXtQBkUwBBNQCnjACNdgCFbwB6ZgBzXwAaFAB/agBeTgADAgCCbQCn+cgBAAAD70lEQVRYw+1YZ1fjQAy0ZiWn2DHpnTRSSEg5Qr3//8duLds47wovG/hwHzI8wLHwRFqNZtl4V1xxxf8LUnwjHRsL/i5KYi7WoqhWZKZvSc/4CygWvvl6kuRxDRatB1jU2KMv1xsBmG8L5WoDQMR0WVpZaWQqwKRqWIRNDx1UTBYhh2TZY6GErwS0hoYUq+1shpJJImL/6Nz8pLRvFGJGYh/oF81HulXM4HMckfLjfn1e/cRFAJFlsV8b4F75FLSqARsN8AhAIHQW4Q3aGMWEpgn8MHQaewSacYgXCDXZszDHuChEMuxgPPBOCSWY4n1oY7xtIRI6s8cyHEhaVk8TzGPmFhhxHOwGcr5sxKOkI69/JEFv0FLJE3IRov3mBlBl+i1i1kBDG+0ocW32T6Hcv7LAHiheMDBkfqSSibnEQi9U69p6R5AUDtgk7mBkUA6CArHhmLPQwkF17wRNpGaI2LupH98mYXjYL5q+MOl4l4wzoTxhUhar8mec4Fhk7f6TOLfEV71xD+hP+7OOxaw/fdG+y2uiHBfo1O3YK4SYArhD+iPEG+lqNJ1rfsa469k8+zjB3TumgUgQ4vkCEc6NbfUDOnfI8aJmw0dXKZKpxSLUjobIGO1FGPdXozWXmtWmHqzWyBuMMcVdzveU5P+OBZOTqlvxE/psx9KkCNGySkpWuOWgbfVY3BpK9DPBdDoDZlY0bwFTNpY3Dimq622ZEvLyI4B3WMy76T3T0zd0yLCBZVYSCVfnY9ztf/jsZbeGfTScFnGTO5dHxCsf7WDFRF7uYRuHBCVo67aX37CEZY9OS7DvIOTSk8xPkk0zJhS9TBe57tIVu+a5+YsnlBHqi3Qj0P3LYU5myWgR37d2nBHyerlNb1ddZsUWpF6ol3PMVwNjTaIsA/OKZqZOoO5AGOkgpMa9LBoZ2efZVNvYGcp0EzkQVvCQEnrdJR5GT7D4OWrjmTI3mjkRNhEOhVLrHsOiGcFiE2R3ty4ea+vMRUHcXVdufcM3zUqPhHIdlMwFOtSq9UihRwv74hIdqlHno0oxkl8ne6Kusou/HqxuPt0hFk72tf5Ut7rXr13sy+u29F/Nf5qH9e6uDbs47CeTQGbk4K8K3Zxw8/dnaNVDmr9LijtgEjD9LeTjRUfQCbruy+CP0yLRyg+TA5UrpKGHMktxSid6QGuI5wxLYxlR6RqhD4gpz229DQ27M0oFwPI2YJMcHo0M620AFXHmy4b4fgkgXNzu/GHRv2++dgAs741HFx/mu/UDFP0+FId6N+vHhUkWSscJUkyOpcLF6eVtlXK1VI+ieqlalrhDX//IRtgoWL7pwxv6gHfFFVf8p/gFQ+05RiEQxa0AAAAASUVORK5CYII="
+        },
+        "displayName": "Bannerbear",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

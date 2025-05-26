@@ -1,0 +1,111 @@
+{
+  "workflow": {
+    "id": 486,
+    "name": "Receive updates for events in Chargebee",
+    "views": 302,
+    "recentViews": 0,
+    "totalViews": 302,
+    "createdAt": "2020-07-12T07:58:00.683Z",
+    "description": "![workflow-screenshot](fileId:85)",
+    "workflow": {
+      "id": "108",
+      "name": "Receive updates for events in Chargebee",
+      "nodes": [
+        {
+          "name": "Chargebee Trigger",
+          "type": "n8n-nodes-base.chargebeeTrigger",
+          "position": [
+            700,
+            250
+          ],
+          "parameters": {
+            "events": [
+              "*"
+            ]
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.chargebeeTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 6,
+        "icon": "file:chargebee.png",
+        "name": "n8n-nodes-base.chargebeeTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.chargebeetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/chargebee/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Chargebee Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAAk1BMVEUAAAD9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azX9azXS0qjqAAAAMHRSTlMAAta1CPr3HAyb8mNPLBLq5MmGZ1wi28+soEQX7pZ9dkk/MijDurCMims54b6lb1YyU8hoAAACDklEQVRIx+2V2bKiMBBAmyTs+w6CIi64O/n/rxtKJwIjJPA4Nfc8acOpTnfSAX7493G2QZN6Zeml+GwVS0xiNSXtYeBIm6lKEaJf3C5kjrvz6SioFruVTKcIJEG1D8oBa1wXUy6+w2lVxhFFuU+0j4KOjwdOjUHQnHJ/DVZ4iaXXatTo2OuhPuEWXm9fLOhxPQjldeeuyV/NqGT+su1ucZuRkt5PMRElDmCEbdK2MNcmKnaZi2EUrd7GMEHEXGMPi8mYfFruqjd2NLrE+/P9oF9nyCuW+P4JhcorcBbL4dc2WSxyEcoBe9Vi5yJlEc8RyTp7ldVo0w8rkZyzN3ddExjR4sw7TmZhzSRhEddZ3m2TRar5+3z8hDZ/xlMSnzCPnbDu9NcPhLItzKAZG0hJnHVYYhnDYtSS2RksJ+fcQi0qAbDtKXknU84oWPQJtizvxanpmcCQJ3VtiA1lUlbdzk7rfs/bzwFSVR/bsaDhjHukvvfJsbBXm8S+UboXTwfDQFjXG6S0/dde18oGrN20TI4DOzHaA3drzAJWPqVy2Fa+5qTWDn05AKJJbS+eafsHtUlRUgAHB/dkJT+ddJzI7U+3kopjVgiGUwroF7J/IWAac+7RFeo0D6X3daQCiRBNZs2XVrmDr4e2zQ1aVhrMwwl9+Z1Zzw42ptQPHZiPFJv5IXENWXGvdRhL8MN/y2+uRpQ1fWz5HAAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Chargebee Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": [
+      {
+        "id": 85,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/363c5dea6a0940e5b237a83ac5fc3d85.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,37 @@
+URL: https://docs.n8n.io/workflows/executions/debug/
+Scraped_At: 2025-05-20T19:10:52.942683
+
+Debug and re-run past executions
+#
+Feature availability
+Available on n8n Cloud and registered Community plans.
+You can load data from a previous execution into your current workflow. This is useful for debugging data from failed production executions: you can see a failed execution, make changes to your workflow to fix it, then re-run it with the previous execution data.
+Load data
+#
+To load data from a previous execution:
+In your workflow, select the
+Executions
+tab to view the
+Executions
+list.
+Select the execution you want to debug. n8n displays options depending on whether the workflow was successful or failed:
+For failed executions: select
+Debug in editor
+.
+For successful executions: select
+Copy to editor
+.
+n8n copies the execution data into your current workflow, and
+pins the data
+in the first node in the workflow.
+Check which executions you save
+The executions available on the
+Executions
+list depends on your
+Workflow settings
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,1225 @@
+{
+  "workflow": {
+    "id": 1891,
+    "name": "Lonescale Hiring Signal - Send leads to lemlist and Hubspot",
+    "views": 737,
+    "recentViews": 0,
+    "totalViews": 737,
+    "createdAt": "2023-02-09T12:59:15.155Z",
+    "description": "Job offers are a goldmine of information.\n\nUse them to boost your outreach results. \n\nThey'll give you: \n- more context to personalize your messaging\n- a steady flow of new leads\n- the right timing to contact your lead",
+    "workflow": {
+      "meta": {
+        "instanceId": "f0a68da631efd4ed052a324b63ff90f7a844426af0398a68338f44245d1dd9e5"
+      },
+      "nodes": [
+        {
+          "id": "d2b5460a-b943-4803-85cb-6c6b5126d651",
+          "name": "Lemlist - Add lead to campaign",
+          "type": "n8n-nodes-base.lemlist",
+          "position": [
+            1220,
+            180
+          ],
+          "parameters": {
+            "email": "={{ $json[\"properties\"][\"email\"][\"value\"] }}",
+            "resource": "lead",
+            "campaignId": "Hiring Signal Lonescale",
+            "additionalFields": {
+              "lastName": "={{ $json[\"properties\"][\"lastname\"][\"value\"] }}",
+              "firstName": "={{ $json[\"properties\"][\"firstname\"][\"value\"] }}",
+              "companyName": "={{ $json[\"properties\"][\"company\"][\"value\"] }}",
+              "linkedinUrl": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_linkedin_url\"] }}"
+            }
+          },
+          "credentials": {
+            "lemlistApi": {
+              "id": "32",
+              "name": "lemlist.net"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bc457c64-890b-4c82-999e-be61fad831df",
+          "name": "HubSpot - Follow up task",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            980,
+            480
+          ],
+          "parameters": {
+            "type": "task",
+            "metadata": {
+              "body": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_name\"] }} is hiring a {{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"job_offers\"][0][\"job_name\"] }}\n\nlink:{{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"job_offers\"][0][\"job_link\"] }}\ncontext: {{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"job_offers\"][0][\"context_keywords\"] }} "
+            },
+            "resource": "engagement",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "associations": {
+                "companyIds": "={{ $node[\"HubSpot Update Account\"].json[\"companyId\"] || $node[\"HubSpot Create Account\"].json[\"companyId\"] }}",
+                "contactIds": "={{ $json[\"vid\"] }}"
+              }
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3c28635f-85e0-402a-ae9c-167bea409f58",
+          "name": "Attempted to contact?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            740,
+            500
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $node[\"HubSpot - Search company\"].json[\"properties\"][\"hs_lead_status\"][\"value\"] }}",
+                  "value2": "ATTEMPTED_TO_CONTACT"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5aaab2a3-5e46-4045-a98d-2c2ff972fe5d",
+          "name": "Lonescale - New  Job Intent",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -840,
+            320
+          ],
+          "webhookId": "fe426a62-eee5-4fed-bc74-45d4ac09b338",
+          "parameters": {
+            "path": "fe426a62-eee5-4fed-bc74-45d4ac09b338-lonescale",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a6cc9db4-dfc2-4347-bd06-70e52ccd72e1",
+          "name": "Dropcontact",
+          "type": "n8n-nodes-base.dropcontact",
+          "position": [
+            -620,
+            320
+          ],
+          "parameters": {
+            "options": {},
+            "additionalFields": {
+              "company": "={{ $json[\"body\"][\"people_company_name\"] }}",
+              "website": "={{ $json[\"body\"][\"people_company_domain\"] }}",
+              "last_name": "={{ $json[\"body\"][\"people_last_name\"] }}",
+              "first_name": "={{ $json[\"body\"][\"people_first_name\"] }}"
+            }
+          },
+          "credentials": {
+            "dropcontactApi": {
+              "id": "1",
+              "name": "Dropcontact account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "3081104a-4725-4ea5-89ab-558a51f688de",
+          "name": "HubSpot - Search company",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            -400,
+            320
+          ],
+          "parameters": {
+            "limit": 1,
+            "domain": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_company_domain\"] }}",
+            "options": {
+              "properties": [
+                "hs_lead_status",
+                "numberofemployees",
+                "description",
+                "linkedin_company_page"
+              ]
+            },
+            "resource": "company",
+            "operation": "searchByDomain",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1,
+          "continueOnFail": true,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "15dacc3f-934d-46ba-b42a-263ff81773a4",
+          "name": "New Company?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            740,
+            320
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $node[\"HubSpot - Search company\"].json[\"companyId\"] }}",
+                  "operation": "isEmpty"
+                },
+                {
+                  "value1": "={{ $node[\"HubSpot - Search company\"].json[\"properties\"][\"hs_lead_status\"][\"value\"] }}",
+                  "value2": "NEW"
+                },
+                {
+                  "value1": "={{ $node[\"HubSpot - Search company\"].json[\"properties\"][\"hs_lead_status\"][\"value\"] }}",
+                  "value2": "OPEN"
+                }
+              ]
+            },
+            "combineOperation": "any"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e731c904-6ff2-4644-9502-4729514b6610",
+          "name": "Is Customer?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            740,
+            860
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $node[\"HubSpot - Search company\"].json[\"properties\"][\"hs_lead_status\"][\"value\"] }}",
+                  "value2": "CUSTOMER"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dd2974c7-34f2-4994-b4ac-abc882e6f7e8",
+          "name": "Slack - Notify CS team on Slack1",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            980,
+            840
+          ],
+          "parameters": {
+            "text": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_name\"] }} Sales Team is hiring a {{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_buying_signals_title\"] }}\n\nMight be the right team to upsell our product. 🚀",
+            "channel": "Customer Success - Customer News",
+            "attachments": [],
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "slackOAuth2Api": {
+              "id": "5",
+              "name": "Slack account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fb38287c-9ff1-48d0-96d8-959764b417c7",
+          "name": "HubSpot Update Account",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            40,
+            180
+          ],
+          "parameters": {
+            "resource": "company",
+            "companyId": "={{ $json[\"companyId\"] }}",
+            "operation": "update",
+            "updateFields": {
+              "description": "={{ $json[\"properties\"][\"description\"][\"value\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_description\"] }}",
+              "numberOfEmployees": "={{ $json[\"properties\"][\"numberofemployees\"][\"value\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_staff_count\"] }}",
+              "linkedInCompanyPage": "={{ $json[\"properties\"][\"linkedin_company_page\"][\"value\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_linkedin_url\"] }} "
+            },
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "67ea9aa3-1910-4fac-a414-97982f3ac8a0",
+          "name": "HubSpot",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            280,
+            320
+          ],
+          "parameters": {
+            "resource": "contact",
+            "operation": "search",
+            "returnAll": true,
+            "authentication": "oAuth2",
+            "filterGroupsUi": {
+              "filterGroupsValues": [
+                {
+                  "filtersUi": {
+                    "filterValues": [
+                      {
+                        "value": "={{ $node[\"Dropcontact\"].json[\"email\"][0][\"email\"] }}",
+                        "propertyName": "email"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "additionalFields": {
+              "properties": [
+                "firstname",
+                "lastname",
+                "email",
+                "jobtitle",
+                "lemlistlinkedinurl",
+                "company"
+              ]
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "b31f171c-7ee7-40d0-a567-72e73e30f2c1",
+          "name": "HubSpot Create Account",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            40,
+            460
+          ],
+          "parameters": {
+            "name": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_name\"] }}",
+            "resource": "company",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "websiteUrl": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_domain\"] }}",
+              "description": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_description\"] }}",
+              "yearFounded": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_founded_year\"] }}",
+              "linkedInCompanyPage": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_linkedin_url\"] }}"
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9d863162-e424-4ae6-86e8-59a02aee1a9a",
+          "name": "Is Account in Hubspot",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -200,
+            320
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json[\"companyId\"] }}",
+                  "operation": "isNotEmpty"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8b4ac583-59f1-42fa-b6c3-4337bb7f0b0f",
+          "name": "HubSpot - Create/Update Contact",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            460,
+            320
+          ],
+          "parameters": {
+            "email": "={{ $node[\"Dropcontact\"].json[\"email\"][0][\"email\"] }}",
+            "resource": "contact",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "jobTitle": "={{ $json[\"properties\"][\"jobtitle\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_current_position\"] }}",
+              "lastName": "={{ $json[\"properties\"][\"lastname\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_last_name\"] }} ",
+              "firstName": "={{ $json[\"properties\"][\"firstname\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_first_name\"] }}",
+              "companyName": "={{ $json[\"properties\"][\"company\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_company_name\"] }} ",
+              "customPropertiesUi": {
+                "customPropertiesValues": [
+                  {
+                    "value": "={{ $json[\"properties\"][\"lemlistlinkedinurl\"] || $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_linkedin_url\"] }}",
+                    "property": "linkedin_url"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1,
+          "continueOnFail": true,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "4c5a2ebe-1032-4a73-8983-b9470ded9228",
+          "name": "Slack - Notify sales team on Slack",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            980,
+            660
+          ],
+          "parameters": {
+            "text": "={{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"company_name\"] }} Sales Team is hiring a {{ $node[\"Lonescale - New  Job Intent\"].json[\"body\"][\"people_buying_signals_title\"] }}\n\nHubspot Record URL:  https://app-eu1.hubspot.com/contacts/{{ $node[\"HubSpot - Search company\"].json[\"portalId\"] }}/company/{{ $node[\"HubSpot - Search company\"].json[\"companyId\"] }} ",
+            "channel": "Customer Success - Customer News",
+            "attachments": [],
+            "otherOptions": {},
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "slackOAuth2Api": {
+              "id": "5",
+              "name": "Slack account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3956aa9-5c76-481c-9005-01f7feef6281",
+          "name": "Open Deal?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            740,
+            680
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $node[\"HubSpot - Search company\"].json[\"properties\"][\"hs_lead_status\"][\"value\"] }}",
+                  "value2": "OPEN_DEAL"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a5a84d04-19d0-4adb-b811-0b796289e38c",
+          "name": "email found",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            980,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1158d8e0-75a7-4c58-b98b-d61c40c76c74",
+          "name": "HubSpot - Linkedin Outreach",
+          "type": "n8n-nodes-base.hubspot",
+          "position": [
+            1220,
+            360
+          ],
+          "parameters": {
+            "type": "task",
+            "metadata": {
+              "body": "=",
+              "subject": "Hiring Signal - New lead to contact"
+            },
+            "resource": "engagement",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "associations": {
+                "companyIds": "={{ $node[\"HubSpot Update Account\"].json[\"companyId\"] || $node[\"HubSpot Create Account\"].json[\"companyId\"] }}",
+                "contactIds": "={{ $json[\"vid\"] }}"
+              }
+            }
+          },
+          "credentials": {
+            "hubspotOAuth2Api": {
+              "id": "68",
+              "name": "HubSpot - Sales & CS"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "HubSpot": {
+          "main": [
+            [
+              {
+                "node": "HubSpot - Create/Update Contact",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Open Deal?": {
+          "main": [
+            [
+              {
+                "node": "Slack - Notify sales team on Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Dropcontact": {
+          "main": [
+            [
+              {
+                "node": "HubSpot - Search company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "email found": {
+          "main": [
+            [
+              {
+                "node": "Lemlist - Add lead to campaign",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "HubSpot - Linkedin Outreach",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is Customer?": {
+          "main": [
+            [
+              {
+                "node": "Slack - Notify CS team on Slack1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "New Company?": {
+          "main": [
+            [
+              {
+                "node": "email found",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Attempted to contact?": {
+          "main": [
+            [
+              {
+                "node": "HubSpot - Follow up task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is Account in Hubspot": {
+          "main": [
+            [
+              {
+                "node": "HubSpot Update Account",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "HubSpot Create Account",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HubSpot Create Account": {
+          "main": [
+            [
+              {
+                "node": "HubSpot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HubSpot Update Account": {
+          "main": [
+            [
+              {
+                "node": "HubSpot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HubSpot - Search company": {
+          "main": [
+            [
+              {
+                "node": "Is Account in Hubspot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Lonescale - New  Job Intent": {
+          "main": [
+            [
+              {
+                "node": "Dropcontact",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HubSpot - Create/Update Contact": {
+          "main": [
+            [
+              {
+                "node": "New Company?",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Is Customer?",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Attempted to contact?",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Open Deal?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 1,
+    "workflowInfo": {
+      "nodeCount": 18,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 6
+        },
+        "n8n-nodes-base.slack": {
+          "count": 2
+        },
+        "n8n-nodes-base.hubspot": {
+          "count": 7
+        },
+        "n8n-nodes-base.lemlist": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.dropcontact": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Lucas Perret",
+      "username": "lempire",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/b0a32f127a6ad690cd4ee808cb4d1b59d3b5e53410181d54f91d10c0027ebb43?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 76,
+        "icon": "file:hubspot.svg",
+        "name": "n8n-nodes-base.hubspot",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.hubspot/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/hubspot/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HubSpot"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjIuODgzIDY5Ljg4MyI+PHVzZSB4bGluazpocmVmPSIjYSIgeD0iMi40NDIiIHk9IjIuNDQyIi8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxwYXRoIGZpbGw9IiNmODc2MWYiIGZpbGwtcnVsZT0ibm9uemVybyIgc3Ryb2tlPSJub25lIiBkPSJNNTUuNTA0IDMwLjQwMWExNi4yNiAxNi4yNiAwIDAgMC01LjkwNC01Ljg2NGMtMS44NjUtMS4wODQtMy43OTQtMS43NzMtNS45NzItMi4wN3YtNy43OThhNS43MSA1LjcxIDAgMCAwIDMuNTI1LTUuMzU3IDUuODYgNS44NiAwIDAgMC01Ljg1OS01Ljg4OSA1LjkxIDUuOTEgMCAwIDAtNS45MDggNS44ODljMCAyLjM5MyAxLjI3IDQuNDM0IDMuNDUyIDUuMzU3djcuNzU0YTE3IDE3IDAgMCAwLTUuMTk1IDEuNjMxTDEyLjc2OSA4LjI0N2MuMTQ2LS41NTIuMjczLTEuMTIzLjI3My0xLjcyNEE2LjUyIDYuNTIgMCAwIDAgNi41MTkgMCA2LjUyIDYuNTIgMCAwIDAgMCA2LjUyNGE2LjUyMyA2LjUyMyAwIDAgMCA2LjUyNCA2LjUyNCA2LjQ3IDYuNDcgMCAwIDAgMy4zNS0uOTUybDEuMzY3IDEuMDM1IDE4LjcyNiAxMy41MDFjLS45OTEuOTA4LTEuOTE0IDEuOTQzLTIuNjUxIDMuMTA1LTEuNDk0IDIuMzY4LTIuNDA3IDQuOTcxLTIuNDA3IDcuODEzdi41ODZhMTYuNCAxNi40IDAgMCAwIDEuMDI1IDUuNjQ1QzI2LjUgNDUuMzI0IDI3LjMzIDQ2LjczIDI4LjM2MSA0OGwtNi4yMjEgNi4yMzVhNS4wMSA1LjAxIDAgMCAwLTUuMjk4IDEuMTYyYy0uOTQ3Ljk0Mi0xLjQ4IDIuMjI3LTEuNDc1IDMuNTY1cy41MjcgMi42MTIgMS40NzkgMy41NjQgMi4yMjcgMS40OCAzLjU2NSAxLjQ4YTUgNSAwIDAgMCAzLjU2NS0xLjQ4IDUuMDUgNS4wNSAwIDAgMCAxLjQ3NS0zLjU2NCA1IDUgMCAwIDAtLjIzNC0xLjUxNGw2LjQyNi02LjQyNmExNiAxNiAwIDAgMCAyLjg1NiAxLjU2MyAxNi43IDE2LjcgMCAwIDAgNi42ODUgMS40MDZoLjQzOWExNS43NiAxNS43NiAwIDAgMCA3LjYyNy0xLjkyOSAxNS43NyAxNS43NyAwIDAgMCA1Ljk3Ny01LjYzYzEuNDk5LTIuMzkzIDIuMzE5LTUuMDQ0IDIuMzE5LTcuOTU5di0uMTQ2YzAtMi44NjYtLjY2NC01LjUwOC0yLjA1MS03Ljkzem0tNy44NDcgMTMuNDg3Yy0xLjc0MyAxLjkzOC0zLjc1IDMuMTM1LTYuMDE2IDMuMTM1aC0uNDNjLTEuMjk0IDAtMi41NjQtLjM1Ni0zLjc5OS0xLjAxMWE4LjggOC44IDAgMCAxLTMuMzMtMy4wMzJjLS44OTgtMS4yNy0xLjM4Ny0yLjY1Ni0xLjM4Ny00LjEyNnYtLjQzOWMwLTEuNDQ1LjI3OC0yLjgxNy45NzctNC4xMTEuNzQ3LTEuNDY1IDEuNzU4LTIuNTE1IDMuMTAxLTMuMzg5YTcuNiA3LjYgMCAwIDEgNC4yOTctMS4yOTRoLjE0N2MxLjQxNiAwIDIuNzY5LjI3OCA0LjAzOC45MjhhOC41NiA4LjU2IDAgMCAxIDMuMTc0IDIuODg2IDkuMiA5LjIgMCAwIDEgMS40MjEgNC4wNTNsLjAzNC45MTNjMCAxLjk4Ny0uNzYyIDMuODI4LTIuMjggNS40OTh6Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "HubSpot",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 463,
+        "icon": "file:lemlist.svg",
+        "name": "n8n-nodes-base.lemlist",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.lemlist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/lemlist/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Lemlist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjEyMjc1IDBIMzIuODc3MkMzNi44MTEgMCA0MCAzLjE4ODk2IDQwIDcuMTIyNzRWMzIuODc3MkM0MCAzNi44MTA5IDM2LjgxMSAzOS45OTk5IDMyLjg3NzIgMzkuOTk5OUg3LjEyMjc1QzMuMTg4OTYgMzkuOTk5OSAwIDM2LjgxMDkgMCAzMi44NzcyVjcuMTIyNzRDMCAzLjE4ODk2IDMuMTg4OTYgMCA3LjEyMjc1IDBaTTI4LjIzNTYgMTAuNzE0NEgxOC45MDczQzE4LjMyNzMgMTAuNzE0NCAxNy44NTczIDExLjE4NDQgMTcuODU3MyAxMS43NjQzVjEzLjIzNThDMTcuODU3MyAxMy44MTU3IDE4LjMyNzMgMTQuMjg1OCAxOC45MDczIDE0LjI4NThIMjguMjM1NkMyOC44MTU1IDE0LjI4NTggMjkuMjg1NiAxMy44MTU3IDI5LjI4NTYgMTMuMjM1OFYxMS43NjQzQzI5LjI4NTYgMTEuMTg0NCAyOC44MTU1IDEwLjcxNDQgMjguMjM1NiAxMC43MTQ0Wk0xOC45MDczIDE4LjIxNTFIMjYuNTY5M0MyNy4xNDkxIDE4LjIxNTEgMjcuNjE5MSAxOC42ODUxIDI3LjYxOTEgMTkuMjY0OVYyMC43MzY2QzI3LjYxOTEgMjEuMzE2NSAyNy4xNDkxIDIxLjc4NjUgMjYuNTY5MyAyMS43ODY1SDE4LjkwNzNDMTguMzI3MyAyMS43ODY1IDE3Ljg1NzMgMjEuMzE2NSAxNy44NTczIDIwLjczNjZWMTkuMjY0OUMxNy44NTczIDE4LjY4NTEgMTguMzI3MyAxOC4yMTUxIDE4LjkwNzMgMTguMjE1MVpNMjkuMjg1NiAyOC4yMzU3VjI2Ljc2NEMyOS4yODU2IDI2LjE4NDUgMjguODE1MiAyNS43MTQxIDI4LjIzNTYgMjUuNzE0MUgxNy4wMTU2QzE1LjUwNzIgMjUuNzE0MSAxNC4yODU4IDI0LjQ5MjggMTQuMjg1OCAyMi45ODQzVjExLjc2NDNDMTQuMjg1OCAxMS4xODQ3IDEzLjgxNTQgMTAuNzE0NCAxMy4yMzU5IDEwLjcxNDRIMTEuNzY0M0MxMS4xODQ3IDEwLjcxNDQgMTAuNzE0NCAxMS4xODQ3IDEwLjcxNDQgMTEuNzY0M1YyNS4xNzMyQzEwLjg1NTUgMjcuMzgwNSAxMi42MTk0IDI5LjE0NDQgMTQuODI2NyAyOS4yODU1SDI4LjIzNTZDMjguODE1MiAyOS4yODU1IDI5LjI4NTYgMjguODE1MSAyOS4yODU2IDI4LjIzNTdaIiBmaWxsPSIjMzE2QkZGIi8+CjxwYXRoIGQ9Ik0xOC45MDY5IDEwLjcxNDFIMjguMjM1M0MyOC44MTUxIDEwLjcxNDEgMjkuMjg1MyAxMS4xODQyIDI5LjI4NTMgMTEuNzY0VjEzLjIzNTZDMjkuMjg1MyAxMy44MTU1IDI4LjgxNTEgMTQuMjg1NiAyOC4yMzUzIDE0LjI4NTZIMTguOTA2OUMxOC4zMjY5IDE0LjI4NTYgMTcuODU2OSAxMy44MTU1IDE3Ljg1NjkgMTMuMjM1NlYxMS43NjRDMTcuODU2OSAxMS4xODQyIDE4LjMyNjkgMTAuNzE0MSAxOC45MDY5IDEwLjcxNDFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTguOTA2OSAxOC4yMTUxSDI2LjU2ODlDMjcuMTQ4OCAxOC4yMTUxIDI3LjYxODggMTguNjg1MSAyNy42MTg4IDE5LjI2NDlWMjAuNzM2NkMyNy42MTg4IDIxLjMxNjUgMjcuMTQ4OCAyMS43ODY1IDI2LjU2ODkgMjEuNzg2NUgxOC45MDY5QzE4LjMyNjkgMjEuNzg2NSAxNy44NTY5IDIxLjMxNjUgMTcuODU2OSAyMC43MzY2VjE5LjI2NDlDMTcuODU2OSAxOC42ODUxIDE4LjMyNjkgMTguMjE1MSAxOC45MDY5IDE4LjIxNTFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjkuMjg1NiAyNi43NjM4VjI4LjIzNTRDMjkuMjg1NiAyOC44MTQ5IDI4LjgxNTIgMjkuMjg1MyAyOC4yMzU2IDI5LjI4NTNIMTQuODI2N0MxMi42MTk0IDI5LjE0NDIgMTAuODU1NSAyNy4zODAzIDEwLjcxNDQgMjUuMTczVjExLjc2NEMxMC43MTQ0IDExLjE4NDUgMTEuMTg0NyAxMC43MTQxIDExLjc2NDMgMTAuNzE0MUgxMy4yMzU5QzEzLjgxNTQgMTAuNzE0MSAxNC4yODU4IDExLjE4NDUgMTQuMjg1OCAxMS43NjRWMjIuOTg0MUMxNC4yODU4IDI0LjQ5MjUgMTUuNTA3MiAyNS43MTM5IDE3LjAxNTYgMjUuNzEzOUgyOC4yMzU2QzI4LjgxNTIgMjUuNzEzOSAyOS4yODU2IDI2LjE4NDMgMjkuMjg1NiAyNi43NjM4WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Lemlist",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 534,
+        "icon": "file:dropcontact.svg",
+        "name": "n8n-nodes-base.dropcontact",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropcontact/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/dropcontact/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Dropcontact"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCA1MCA1MCI+PHBhdGggZmlsbD0iIzBBQkE5RiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMjkuNTcgMTYuMjE5YTEwLjggMTAuOCAwIDAgMC00LjctMS4wNjRjLTYuMDA5IDAtMTAuODggNC44NzItMTAuODggMTAuODgxczQuODcxIDEwLjg4MSAxMC44OCAxMC44ODFjNC4wOTIgMCA3LjY1Ni0yLjI1OCA5LjUxNC01LjU5NmwtMi42MjMtMS40NTdhNy44OCA3Ljg4IDAgMSAxLTMuNDg4LTEwLjkzOXptNS4yMDgtMTQuMjM1djI1Ljc2MmgtMy4xMDlWLjlDMjkuNTQ2LjMxMyAyNy4zMDkgMCAyNSAwIDExLjE5MyAwIDAgMTEuMTkzIDAgMjVzMTEuMTkzIDI1IDI1IDI1IDI1LTExLjE5MyAyNS0yNWMwLTEwLjMzNy02LjI3NC0xOS4yMS0xNS4yMjItMjMuMDE2IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "Dropcontact",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

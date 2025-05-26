@@ -1,0 +1,815 @@
+{
+  "workflow": {
+    "id": 2149,
+    "name": "Automatically create daily list of todos in Todoist",
+    "views": 1586,
+    "recentViews": 0,
+    "totalViews": 1586,
+    "createdAt": "2024-02-28T19:31:42.228Z",
+    "description": "## Use case\nAutomatically create todo items in Todoist every morning. \n\nThis workflow has two flows\n1. At 5am, delete any uncompleted tasks every morning\n2. At 5:10 am, copy all template tasks into Inbox\n\nIn each template task, set the due dates and days to add the task. You can do that like this `days:mon,tues; due:8pm` which will add the task every Monday and Tuesday and make it due at 8pm.\n\n\n## How to setup\n1. Add Todoist creds\n2. Create a `template` list to copy from in Todoist. Add days and due times on each task as necessary.\n3. Set the projects to copy from and to write to in each **Todoist** node\n\n",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "d49ee203-5bd1-45c0-859d-f1b248bfdf71",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            280,
+            40
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 424.4907862645661,
+            "height": 154.7766688696994,
+            "content": "### 👨‍🎤 Setup\n1. Add Todoist creds\n2. Create a `template` list to copy from in Todoist. Add days and due times on each task as necessary.\n3. Set the projects to copy from and to write to in each **Todoist** node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e69dd4e2-7ff6-4613-a1c9-ac1f3da37955",
+          "name": "Get all tasks from template project",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            860,
+            420
+          ],
+          "parameters": {
+            "filters": {
+              "projectId": "2299363018"
+            },
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "1",
+              "name": "Todoist account"
+            }
+          },
+          "executeOnce": true,
+          "retryOnFail": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "fa907d45-3822-4549-9f84-8385bb4183cc",
+          "name": "Parse task details",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1080,
+            420
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "const item = {};\n\nitem.description = $input.item.json.description;\nitem.content = $input.item.json.content;\n\nconst parts = item.description.split(';').map((v) => v.trim());\nparts.forEach((v) => {\n  const tag = v.split(':');\n  if (tag && tag.length === 2) {\n    item[tag[0]] = tag[1].trim();\n  }\n});\n\nif (item.due) {\n  item.due = parseTimeString(item.due);\n}\n\nreturn item;\n\nfunction parseTimeString(timeString) {\n    const regex = /^(\\d{1,2})(\\.)?(\\d{2})?([ap]m)$/i;\n    const match = timeString.match(regex);\n    \n    if (!match) {\n        throw new Error(\"Invalid time format\");\n    }\n\n    let hours = parseInt(match[1], 10);\n    let minutes = match[3] ? parseInt(match[3], 10) : 0;\n    const period = match[4].toLowerCase();\n\n    if (hours === 12) {\n        hours = period === 'am' ? 0 : 12;\n    } else {\n        hours = period === 'pm' ? hours + 12 : hours;\n    }\n\n    // Check if minutes are valid\n    if (minutes < 0 || minutes >= 60) {\n        throw new Error(\"Invalid minutes\");\n    }\n\n    const now = DateTime.now().set({ hour: hours, minute: minutes, second: 0, millisecond: 0 });\n    return now.toUTC();\n}\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4989bac6-0741-4cdc-bc9c-e7800f9b3019",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1140,
+            600
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 351.4230769230764,
+            "height": 222.50000000000006,
+            "content": "### 👆 This adds due dates to tasks from description.. \n### For example in the description of a task\n`days:mon,tues; due:8am`\n### So that it will create a task every Monday and Tuesday that's due at 8am ⏰"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "accc330b-1b67-4181-8735-94b0debc8d70",
+          "name": "Keep tasks that match today",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1300,
+            420
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.days }}",
+                  "value2": "={{ ['sun', 'mon', 'tues', 'wed', 'thurs', 'fri', 'sat', 'sun'][new Date().getDay()] }}",
+                  "operation": "contains"
+                },
+                {
+                  "value1": "={{ $json.days }}",
+                  "value2": "={{ ['sun', 'mon', 'tues', 'wed', 'thurs', 'fri', 'sat', 'sun'][new Date().getDay()] }}",
+                  "operation": "contains"
+                }
+              ]
+            },
+            "combineConditions": "OR"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dbe1fc24-1833-493b-b444-de21a4b3c3c5",
+          "name": "Every day at 5:10am",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            620,
+            420
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 5,
+                  "triggerAtMinute": 10
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b4737822-89aa-4ca0-bd9b-c5f9a16360c0",
+          "name": "Every day at 5am",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            400,
+            220
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 5,
+                  "triggerAtMinute": 10
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "2a9adc4b-552b-47a9-a32c-54d8d4bfb669",
+          "name": "Get all tasks from Inbox",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            620,
+            220
+          ],
+          "parameters": {
+            "filters": {
+              "projectId": "938017196"
+            },
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "1",
+              "name": "Todoist account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "d4794543-3002-4663-8979-360eb437fb4e",
+          "name": "If list not empty",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            840,
+            220
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json[\"id\"] }}",
+                  "operation": "isNotEmpty"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "297fcbcb-efe3-4965-b836-34e78a3b452d",
+          "name": "if it has daily label",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1080,
+            220
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ ($json[\"labels\"] || []).includes('daily') }}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0365a865-f03b-4afc-a535-4e3892fc3add",
+          "name": "Delete task",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            1280,
+            220
+          ],
+          "parameters": {
+            "taskId": "={{ $json[\"id\"] }}",
+            "operation": "delete"
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "1",
+              "name": "Todoist account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "b14a8ecc-ee07-4a33-ab4b-122c98694c60",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1740,
+            440
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 256.14371825927645,
+            "height": 100,
+            "content": "### 👈🏽 Every new task has `daily` label that gets deleted in the other flow"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d951f461-685e-4507-b010-bce2be0e3709",
+          "name": "Create new task in Inbox",
+          "type": "n8n-nodes-base.todoist",
+          "position": [
+            1520,
+            420
+          ],
+          "parameters": {
+            "labels": [
+              "daily"
+            ],
+            "content": "={{ $json.content }}",
+            "options": {
+              "description": "={{ $json.description }}",
+              "dueDateTime": "={{ $json.due }}"
+            },
+            "project": {
+              "__rl": true,
+              "mode": "list",
+              "value": "938017196",
+              "cachedResultName": "Inbox"
+            }
+          },
+          "credentials": {
+            "todoistApi": {
+              "id": "1",
+              "name": "Todoist account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2,
+          "alwaysOutputData": false
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Every day at 5am": {
+          "main": [
+            [
+              {
+                "node": "Get all tasks from Inbox",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If list not empty": {
+          "main": [
+            [
+              {
+                "node": "if it has daily label",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse task details": {
+          "main": [
+            [
+              {
+                "node": "Keep tasks that match today",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Every day at 5:10am": {
+          "main": [
+            [
+              {
+                "node": "Get all tasks from template project",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "if it has daily label": {
+          "main": [
+            [
+              {
+                "node": "Delete task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all tasks from Inbox": {
+          "main": [
+            [
+              {
+                "node": "If list not empty",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Keep tasks that match today": {
+          "main": [
+            [
+              {
+                "node": "Create new task in Inbox",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all tasks from template project": {
+          "main": [
+            [
+              {
+                "node": "Parse task details",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 13,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.todoist": {
+          "count": 4
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Mutasem",
+      "username": "mutasem",
+      "bio": "Team lead @ n8n",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/mutasemdmour/"
+      ],
+      "avatar": "https://gravatar.com/avatar/16d9c92db78317b6af7d0935bee34a47c522cb81d35c234ff76ea580ff1f6c29?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 68,
+        "icon": "file:todoist.svg",
+        "name": "n8n-nodes-base.todoist",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.todoist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/todoist/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Todoist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iI0U0NDMzMiIgZD0iTTUyLjUgMGgtNDVBNy41MiA3LjUyIDAgMCAwIDAgNy41djQ1QzAgNTYuNjI1IDMuMzc0IDYwIDcuNSA2MGg0NWM0LjEyNiAwIDcuNS0zLjM3NSA3LjUtNy41di00NUM2MCAzLjM3NSA1Ni42MjYgMCA1Mi41IDAiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJNMTIuMTIxIDI5LjU4MmMxLS42NzMgMjIuNDY5LTE1LjA1NSAyMi45Ni0xNS4zODguNDktLjMyOS41MTgtMS4zNDEtLjAzNi0xLjcwNy0uNTUtLjM2NS0xLjU5My0xLjA1Ni0xLjk4LTEuMzIxYTEuNTkgMS41OSAwIDAgMC0xLjc3MS4wMjVBMjYzOTEgMjYzOTEgMCAwIDEgMTIuMDYyIDI0LjA2Yy0uNzM3LjQ4Ni0xLjY0Mi40OTQtMi4zNzMgMEwwIDE3LjUwN3Y1LjU3YzIuMzU2IDEuNjAxIDguMjIyIDUuNTc2IDkuNjQyIDYuNTEyLjg0OC41NTUgMS42Ni41NDMgMi40ODEtLjAwNyIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xMi4xMjEgMzkuMTI4YzEtLjY3MyAyMi40NjktMTUuMDU1IDIyLjk2LTE1LjM4OS40OS0uMzI5LjUxOC0xLjM0LS4wMzYtMS43MDdhMjM0IDIzNCAwIDAgMS0xLjk4LTEuMzIgMS41OSAxLjU5IDAgMCAwLTEuNzcxLjAyNGMtLjI3NS4xODUtMTguNjIgMTIuNDY3LTE5LjIzMiAxMi44Ny0uNzM3LjQ4Ni0xLjY0Mi40OTQtMi4zNzMgMEwwIDI3LjA1MnY1LjU3YzIuMzU2IDEuNjAyIDguMjIyIDUuNTc2IDkuNjQyIDYuNTEyLjg0OC41NTYgMS42Ni41NDMgMi40ODEtLjAwNiIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xMi4xMjEgNDguNjc0YzEtLjY3MyAyMi40NjktMTUuMDU2IDIyLjk2LTE1LjM5LjQ5LS4zMjguNTE4LTEuMzQtLjAzNi0xLjcwNy0uNTUtLjM2My0xLjU5My0xLjA1NS0xLjk4LTEuMzJhMS41OSAxLjU5IDAgMCAwLTEuNzcxLjAyNGMtLjI3NS4xODUtMTguNjIgMTIuNDY3LTE5LjIzMiAxMi44Ny0uNzM3LjQ4Ni0xLjY0Mi40OTUtMi4zNzMgMEwwIDM2LjU5OHY1LjU3MWMyLjM1NiAxLjYwMSA4LjIyMiA1LjU3NiA5LjY0MiA2LjUxMi44NDguNTU1IDEuNjYuNTQzIDIuNDgxLS4wMDYiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Todoist",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

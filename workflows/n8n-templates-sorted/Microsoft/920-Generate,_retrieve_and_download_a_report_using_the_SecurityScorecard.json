@@ -1,0 +1,259 @@
+{
+  "workflow": {
+    "id": 920,
+    "name": "Generate, retrieve and download a report using the SecurityScorecard",
+    "views": 1113,
+    "recentViews": 0,
+    "totalViews": 1113,
+    "createdAt": "2021-02-04T05:12:26.181Z",
+    "description": "This workflow allows you to generate, retrieve and download a report using the SecurityScorecard node.\n\n![workflow-screenshot](fileId:400)\n\n**SecurityScorecard node:** This node generates a full scorecard report. Based on your use-case, you can generate other type of report.\n\n**SecurityScorecard1 node:** This node fetches the latest report from SecurirtScoredcard. Toggle ***Return All*** to `true` to return all the reports.\n\n**SecurityScorecard2 node:** This node downloads the report that got fetched from the previous node. \n\nBased on your use-case, you can either store this report in Dropbox, Google Drive etc. or email it using the Gmail node, Send Email node or the Microsoft Outlook node.\n\nYou can replace the Strat node with the Cron node to trigger the workflow on a regurlar interval.\n",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "SecurityScorecard",
+          "type": "n8n-nodes-base.securityScorecard",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "report": "full-scorecard-json",
+            "resource": "report",
+            "operation": "generate",
+            "scorecardIdentifier": "n8n.io"
+          },
+          "credentials": {
+            "securityScorecardApi": "SecurityScorecard Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SecurityScorecard1",
+          "type": "n8n-nodes-base.securityScorecard",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "limit": 1,
+            "resource": "report"
+          },
+          "credentials": {
+            "securityScorecardApi": "SecurityScorecard Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SecurityScorecard2",
+          "type": "n8n-nodes-base.securityScorecard",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "url": "={{$json[\"download_url\"]}}",
+            "resource": "report",
+            "operation": "download"
+          },
+          "credentials": {
+            "securityScorecardApi": "SecurityScorecard Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "SecurityScorecard": {
+          "main": [
+            [
+              {
+                "node": "SecurityScorecard1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SecurityScorecard1": {
+          "main": [
+            [
+              {
+                "node": "SecurityScorecard2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "SecurityScorecard",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.securityScorecard": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 443,
+        "icon": "file:securityScorecard.svg",
+        "name": "n8n-nodes-base.securityScorecard",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.securityscorecard/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/securityScorecard/"
+                }
+              ]
+            },
+            "categories": [
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "SecurityScorecard"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTUiIGhlaWdodD0iMTk1Ij48cGF0aCBmaWxsPSJub25lIiBkPSJNLTEtMWgxOTd2MTk3SC0xeiIvPjxnIGZpbGw9Im5vbmUiIGNsYXNzPSJtYXJrIj48cGF0aCBmaWxsPSIjNGU4NzhjIiBzdHJva2U9IiM2MTlFNzMiIGQ9Ik0xNDAuNiAxMjYuOTE4djM2bDMxLjMtMTguMS0uMS0zNi4xLTMxLjItMTh6bS03NC44IDQzLjEgMzEuMiAxOCAzMS4yLTE4di0zNS45em0xMDYtNzUuN3YtMzUuOWwtMzEuMi0xOC0zMS4xIDE3Ljl6bS0xMDYtMTAuN3YzNmwzMS4yIDE4IDMxLjItMTcuOXYtMzYuMWwtMzEuMi0xOHptLTQzLjcgMjUuMnYzNmwzMS4yIDE4IDMxLjItMTh6bTMxLjItNjguNC0zMS4yIDE4djM2bDMxLjIgMTh6bTQzLjcgMTAuOCAzMS4yLTE4LTMxLjItMTgtMzEuMiAxOHYzNnoiIGNsYXNzPSJzdDAiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "SecurityScorecard",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": [
+      {
+        "id": 400,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/d00eb7fcb5c941b9864aed1b4afbad1f.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+URL: https://docs.n8n.io/workflows/tags/
+Scraped_At: 2025-05-20T19:11:02.223739
+
+Tags
+#
+Workflow tags allow you to label your workflows. You can then filter workflows by tag.
+Tags are global. This means when you create a tag, it's available to all users on your n8n instance.
+Add a tag to a workflow
+#
+To add a tag to your workflow:
+In your workflow, select
++ Add tag
+.
+Select an existing tag, or enter a new tag name.
+Once you select a tag and click away from the tag modal, n8n displays the tag next to the workflow name.
+You can add more than one tag.
+Filter by tag
+#
+When browsing the workflows on your instance, you can filter by tag.
+On the
+Workflows
+page, select
+Filters
+.
+Select
+Tags
+.
+Select the tag or tags you want to filter by. n8n lists the workflows with that tag.
+Manage tags
+#
+You can edit existing tags. Instance owners can delete tags.
+Select
+Manage tags
+. This is available from
+Filters
+>
+Tags
+on the
+Workflows
+page, or in the
++ Add tag
+modal in your workflow.
+Hover over the tag you want to change.
+Select
+Edit
+to rename it, or
+Delete
+to delete it.
+Global tags
+Tags are global. If you edit or delete a tag, this affects all users of your n8n instance.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

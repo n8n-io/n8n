@@ -1,0 +1,283 @@
+{
+  "workflow": {
+    "id": 826,
+    "name": "Create and update a channel, and send a message on Twist",
+    "views": 274,
+    "recentViews": 0,
+    "totalViews": 274,
+    "createdAt": "2020-12-14T13:14:21.206Z",
+    "description": "![workflow-screenshot](fileId:339)",
+    "workflow": {
+      "id": "173",
+      "name": "Create and update a channel, and send a message on Twist",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            470,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Twist",
+          "type": "n8n-nodes-base.twist",
+          "position": [
+            670,
+            260
+          ],
+          "parameters": {
+            "name": "n8n-docs",
+            "resource": "channel",
+            "workspaceId": 150329,
+            "additionalFields": {
+              "user_ids": [
+                475370
+              ]
+            }
+          },
+          "credentials": {
+            "twistOAuth2Api": "Twist OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Twist1",
+          "type": "n8n-nodes-base.twist",
+          "position": [
+            870,
+            260
+          ],
+          "parameters": {
+            "resource": "channel",
+            "channelId": "={{$node[\"Twist\"].json[\"id\"]}}",
+            "operation": "update",
+            "updateFields": {
+              "description": "Discussion for documentation"
+            }
+          },
+          "credentials": {
+            "twistOAuth2Api": "Twist OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Twist2",
+          "type": "n8n-nodes-base.twist",
+          "position": [
+            1070,
+            260
+          ],
+          "parameters": {
+            "content": "=Hey [Harshil](twist-mention://475370)!\nYou have been added to the {{$node[\"Twist\"].json[\"name\"]}} channel.\nClick on the button below to quickly navigate to the documentation website.",
+            "workspaceId": 150329,
+            "conversationId": 989141,
+            "additionalFields": {
+              "actionsUi": {
+                "actionValues": [
+                  {
+                    "url": "https://docs.n8n.io",
+                    "type": "action",
+                    "action": "open_url",
+                    "button_text": "Documentation site"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "twistOAuth2Api": "Twist OAuth Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Twist": {
+          "main": [
+            [
+              {
+                "node": "Twist1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Twist1": {
+          "main": [
+            [
+              {
+                "node": "Twist2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Twist",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.twist": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 423,
+        "icon": "file:twist.png",
+        "name": "n8n-nodes-base.twist",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/twist/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Twist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABm1BMVEUAAABHZdctcOwtcOw3U6IucvAucvAuc/EvdPMyePsubOkwdPUWN3MHBxEuce4tb+otb+srbuofNnQuce4AACAwdfYvdPIucOsvcvMtcOsucOsybuwucescOnUYOHQnYs0AAADg5/sxdvcqad0uc/QucOwqYs4ub+svc/Mtb+wpad4xdPIqaNwvc/Evc/Mub+stb+otbestbuszcegzZt8RNXJdk/oIZevr6+8BRO////8fPHTZ3eEtcOv////9/v8ucOs1cuz8/f8xces4dOsycuz6+/4rb+tYi+/4+f4JYerK1vieufQcZ+sCXurv8v0vdPQ6dOsjbOsga+sbaus/d+zx8/0pbusmbevl6/zi6PvCzfakvfWouvSLpfFjlfBdju9VhO1Kg+0tcO0zdOwabOsEYuoMXuoEWena4fnT3PnN2PjCz/jI0/eRq/GEoPA9fe0LZuoJZOry9f25x/WvwfWWtPSIr/SApvJomfBQiu5gie42euwOausVaesVYurz9v1yp/KbsPF2lu9XkO9wku5AfOxGeewAU+n86hMfAAAAPXRSTlMAA/v9Bfzu/f32ZvpPB/735JMQ/Aj+6ruvkItrWEI/PQj+/sSza0Lqv7+/vb28uraIW1QtKA7++sSzbFFD8rdfNgAAAydJREFUSMftllVz20AUhc1Oww4zJ23KzCtphZGZ7ZrjmMLMVG5/dgV21yNZdmb81GnO6EU7+825d3fv7tXd6j+W3jTVMzYy2N0FuroHR8Z6Okz6m5J63bjtgcXcYu0EAHRaW8yWR7YJcbixTLqF2RlgMAIkowH035/UmRr79s23eQ1AKYO3rbVP3wDVtc+ZkWm1u7F3qF2nr8uO3kGuKvc7rSKtyb6wCKw2PfCyDj1q6QX11DvQqmn8AcWsGXm7vjbb8e5NxMcQgKhHD3WYaib8fjp+lN6hXEECUpq0ubWm8UeSJXGMjx38CPx2R7RgY9tkrcDfshgrf+HNVIgDkjgV7H1Yw3j89VJFmcxSiGAgwwVcLldAhiimknX/hMraZIPQJ350KBT65YsW3CV37nzrMH6wC4UAaLu9so4rwyp46p60TQwkrvaKpcvst2R81cNiGLZW9AEKulNb+Yr14w4l3GMRjzSxc/olsbEWC/M4jgukZz3xPQ+jIOPAwlTZ2mh5pYSfWYVxuLshLDiOkyQpoOH4tsseoH2Fs2mWxD4xlbjNz5XwcIswTNsdEizg/PrXi1KBoiFXTHkwYRTBLU+V8KJZhN0OKVjHcfqnyxWFDOWKnMQwOYO/sPWJEr67IjmLcLLo5mgoTKXowvY0RmKCqp07u5WwAZRhnF2O+qR50H+dJAVMCYMuJQwk2C3BQWEawQQvnDEJlWEPKhiDlrOw0OdBCoCoO7WPk2VUzNoZBMi5Zs57myy/v+wnAJVbF4mySOzztp0CmjkvWqU6yGayOQ4AijuWI5blOdwJMgCg1VbvsyhIS7XM+J3IFw8HL6HMoX1WnTAkqhomV+2VCkUnTH22ERxwymHjgrDEFYoZnW1FVamcSWw1ybPkKS0NaleVyaYMWxC7uVva4vmsnLF2PevHZwyKsPmNdISCgbOjnHw81DcJ0qwXzWD8CYxP79EiBSOadxiyXmhDS0aAk7Xla5qTfxrfnnrdvBkgmsvnqYb3NpKpb85QRRNEvRdD7d1+47eq+Vey+fe5+c6gcU9iRj1Jk91Q832YdgdoVXWATfSet/qX9QcIL4QizcntjQAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Twist",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 339,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/e8c048d996644bc9bc92d2e57bfe7140.png"
+      }
+    ]
+  }
+}

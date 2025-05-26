@@ -1,0 +1,21 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssetrigger/
+Scraped_At: 2025-05-20T18:56:45.583723
+
+SSE Trigger node
+#
+Server-Sent Events (SSE) is a server push technology enabling a client to receive automatic updates from a server using HTTP connection. The SSE Trigger node is used to receive server-sent events.
+Node parameters
+#
+The SSE Trigger node has one parameter, the
+URL
+. Enter the URL from which to receive the server-sent events (SSE).
+Templates and examples
+#
+Browse SSE Trigger integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

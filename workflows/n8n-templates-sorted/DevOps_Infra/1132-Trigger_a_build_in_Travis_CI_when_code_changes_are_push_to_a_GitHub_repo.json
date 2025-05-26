@@ -1,0 +1,524 @@
+{
+  "workflow": {
+    "id": 1132,
+    "name": "Trigger a build in Travis CI when code changes are push to a GitHub repo",
+    "views": 1262,
+    "recentViews": 0,
+    "totalViews": 1262,
+    "createdAt": "2021-06-18T08:23:44.117Z",
+    "description": "This workflow allows you to trigger a build in Travis CI when code changes are pushed to a GitHub repo or a pull request gets opened.\n\n![workflow-screenshot](fileId:514)\n\n**GitHub Trigger node:** This node will trigger the workflow when changes are pushed or when a pull request is created, updated, or deleted.\n\n**IF node:** This node checks for the action type. We want to trigger a build when code changes are pushed or when a pull request is opened. We don't want to build the project when a PR is closed or updated.\n\n**TravisCI node:** This node will trigger the build in Travis CI. If you're using CircleCI in your pipeline, replace the node with the CircleCI node.\n\n**NoOp node:** Adding this node is optional.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Github Trigger",
+          "type": "n8n-nodes-base.githubTrigger",
+          "position": [
+            450,
+            300
+          ],
+          "webhookId": "01518289-14b1-4a45-9d33-39be08f7a544",
+          "parameters": {
+            "owner": "n8n-io",
+            "events": [
+              "push",
+              "pull_request"
+            ],
+            "repository": "n8n",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "githubOAuth2Api": "GitHub Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "IF",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{$json[\"headers\"][\"x-github-event\"]}}",
+                  "value2": "push"
+                },
+                {
+                  "value1": "={{$json[\"body\"][\"action\"]}}",
+                  "value2": "opened"
+                }
+              ]
+            },
+            "combineOperation": "any"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "TravisCI",
+          "type": "n8n-nodes-base.travisCi",
+          "position": [
+            850,
+            200
+          ],
+          "parameters": {
+            "slug": "={{$json[\"body\"][\"repository\"][\"full_name\"]}}",
+            "branch": "=",
+            "operation": "trigger",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "travisCiApi": "Travis API"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "NoOp",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            850,
+            400
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "IF": {
+          "main": [
+            [
+              {
+                "node": "TravisCI",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "NoOp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Github Trigger": {
+          "main": [
+            [
+              {
+                "node": "IF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.travisCi": {
+          "count": 1
+        },
+        "n8n-nodes-base.githubTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 17,
+        "icon": "file:github.svg",
+        "name": "n8n-nodes-base.githubTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.githubtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/github/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Github Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yMC4wMTY1IDBDOC45NDc5MSAwIDAgOS4wMTM4OCAwIDIwLjE2NTNDMCAyOS4wNzkyIDUuNzMzMjQgMzYuNjI0NiAxMy42ODY4IDM5LjI5NTJDMTQuNjgxMiAzOS40OTYgMTUuMDQ1NCAzOC44NjEzIDE1LjA0NTQgMzguMzI3NEMxNS4wNDU0IDM3Ljg1OTkgMTUuMDEyNiAzNi4yNTc1IDE1LjAxMjYgMzQuNTg3OUM5LjQ0NDUgMzUuNzkgOC4yODQ5OCAzMi4xODQxIDguMjg0OTggMzIuMTg0MUM3LjM5MDE1IDI5Ljg0NyA2LjA2NDI5IDI5LjI0NjMgNi4wNjQyOSAyOS4yNDYzQzQuMjQxODUgMjguMDExIDYuMTk3MDQgMjguMDExIDYuMTk3MDQgMjguMDExQzguMjE4NjEgMjguMTQ0NiA5LjI3OTM4IDMwLjA4MSA5LjI3OTM4IDMwLjA4MUMxMS4wNjg2IDMzLjE1MjIgMTMuOTUxOCAzMi4yODQ0IDE1LjExMTggMzEuNzUwMkMxNS4yNzczIDMwLjQ0ODEgMTUuODA3OSAyOS41NDY3IDE2LjM3MTMgMjkuMDQ2QzExLjkzMDMgMjguNTc4NSA3LjI1NzgxIDI2Ljg0MjUgNy4yNTc4MSAxOS4wOTY3QzcuMjU3ODEgMTYuODkzMiA4LjA1MjY3IDE1LjA5MDUgOS4zMTIxNiAxMy42ODg0QzkuMTEzNDQgMTMuMTg3NyA4LjQxNzMyIDExLjExNzQgOS41MTEyOCA4LjM0NjQ0QzkuNTExMjggOC4zNDY0NCAxMS4yMDE0IDcuODEyMTcgMTUuMDEyMiAxMC40MTY0QzE2LjY0MzggOS45NzQ5NSAxOC4zMjYzIDkuNzUwNCAyMC4wMTY1IDkuNzQ4NTFDMjEuNzA2NyA5Ljc0ODUxIDIzLjQyOTUgOS45ODI0NiAyNS4wMjA1IDEwLjQxNjRDMjguODMxNyA3LjgxMjE3IDMwLjUyMTggOC4zNDY0NCAzMC41MjE4IDguMzQ2NDRDMzEuNjE1OCAxMS4xMTc0IDMwLjkxOTIgMTMuMTg3NyAzMC43MjA1IDEzLjY4ODRDMzIuMDEzMiAxNS4wOTA1IDMyLjc3NTMgMTYuODkzMiAzMi43NzUzIDE5LjA5NjdDMzIuNzc1MyAyNi44NDI1IDI4LjEwMjggMjguNTQ0OSAyMy42Mjg3IDI5LjA0NkMyNC4zNTggMjkuNjgwMiAyNC45ODczIDMwLjg4MiAyNC45ODczIDMyLjc4NTFDMjQuOTg3MyAzNS40ODkzIDI0Ljk1NDUgMzcuNjU5NiAyNC45NTQ1IDM4LjMyN0MyNC45NTQ1IDM4Ljg2MTMgMjUuMzE5MiAzOS40OTYgMjYuMzEzMiAzOS4yOTU2QzM0LjI2NjcgMzYuNjI0MiAzOS45OTk5IDI5LjA3OTIgMzkuOTk5OSAyMC4xNjUzQzQwLjAzMjcgOS4wMTM4OCAzMS4wNTIgMCAyMC4wMTY1IDBaIiBmaWxsPSIjMjQyOTJGIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Github Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 353,
+        "icon": "file:travisci.png",
+        "name": "n8n-nodes-base.travisCi",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.travisci/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/travisCi/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "TravisCI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "TravisCI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 514,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/560965f28f05480e934ef5c9f3a06276.png"
+      }
+    ]
+  }
+}

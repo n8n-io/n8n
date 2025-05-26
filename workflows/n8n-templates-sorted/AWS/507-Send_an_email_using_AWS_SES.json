@@ -1,0 +1,222 @@
+{
+  "workflow": {
+    "id": 507,
+    "name": "Send an email using AWS SES",
+    "views": 1191,
+    "recentViews": 0,
+    "totalViews": 1191,
+    "createdAt": "2020-07-14T08:08:36.152Z",
+    "description": "Companion workflow for AWS SES node docs\n\n![workflow-screenshot](fileId:105)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "AWS SES",
+          "type": "n8n-nodes-base.awsSes",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "body": "This is a sample message body in an email\n",
+            "subject": "n8n Rocks",
+            "fromEmail": "n8n@n8n.io",
+            "toAddresses": [
+              "user@example.com",
+              "user2@example.com"
+            ],
+            "additionalFields": {}
+          },
+          "credentials": {
+            "aws": "aws"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "AWS SES",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.awsSes": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 263,
+        "icon": "file:ses.svg",
+        "name": "n8n-nodes-base.awsSes",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsses/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "AWS SES"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNzQuMzc1IDg1Ij48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIyLjE4OCIgeT0iMi41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzg3NjkyOSIgZD0iTTE2LjU1OCAxMi43NSAwIDM4LjU5MWwxNi41NTggMjUuODQxIDEzLjIyNy0zLjMyNC42NTQtNDQuODY5eiIvPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Im0zNS4wNDkgNTkuNzg2LTE4LjQ5MSA0LjY0NVYxMi43NWwxOC40OTEgNC42NDV6Ii8+PGcgZmlsbD0iIzg3NjkyOSI+PHBhdGggZD0iTTMyLjg0OSAyMS42MTQgMzUuMDUgODAgNzAgNjIuODY3bC0uMDEtNDMuNjE1LTguOTE0IDEuNDQ4LTI4LjIyOC45MTN6Ii8+PHBhdGggZD0ibTQ2LjE4NCAzMy4xNDkgMTAuOTA2LS42MzIgMTAuNzc4LTE5LjE2NEw0MC42MTIgMCAzMC40MzkgNC4zNjR6Ii8+PC9nPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Im00MC42MTIgMCAyNy4yNTYgMTMuMzUzTDU3LjA5IDMyLjUxN3oiLz48cGF0aCBmaWxsPSIjODc2OTI5IiBkPSJNMzUuMDQ5IDUuNTM5IDU3LjA5IDQ0Ljc0MmwzLjc4OCAyMi41OTVMMzUuMDQ5IDgwbC0xMC40Ni01LjEzMVY5LjY0eiIvPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Ik02OS45OTEgMTkuMjUxIDcwIDYyLjg2NyAzNS4wNSA4MFY1LjUzOWwyMi4wNDEgMzkuMjAzTDY5Ljk5IDE5LjI1MXoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "AWS SES",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 105,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/b308fc4d4f4f469b9eb43d8f15d96cea.png"
+      }
+    ]
+  }
+}

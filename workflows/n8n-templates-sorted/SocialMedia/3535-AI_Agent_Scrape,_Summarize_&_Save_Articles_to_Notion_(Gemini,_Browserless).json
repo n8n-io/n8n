@@ -1,0 +1,664 @@
+{
+  "workflow": {
+    "id": 3535,
+    "name": "AI Agent: Scrape, Summarize & Save Articles to Notion (Gemini, Browserless)",
+    "views": 2809,
+    "recentViews": 109,
+    "totalViews": 2809,
+    "createdAt": "2025-04-13T08:42:11.141Z",
+    "description": "This n8n workflow automates the process of saving web articles or links shared in a chat conversation directly into a Notion database, using Google's Gemini AI and Browserless for web scraping.\n\n## Who is this AI automation template for?\n\nIt's useful for anyone wanting to reduce manual copy-pasting and organize web findings seamlessly within Notion. A smarter web clipping tool!\n\n## What this AI automation workflow does\n\n1.  Starts when a message is received\n2.  Uses a Google Gemini AI Agent node to understand the context and manage the subsequent steps. It identifies if a message contains a request to save an article/link.\n3.  If a URL is detected, it utilizes a tool configured with the Browserless API (via the HTTP Request node) to scrape the content of the web page.\n4.  Creates a new page in a specified Notion database, populating it with thea summary scraped content, in a specific format, never leaving out any important details. It also saves the original URL, smart tags, publication date, and other metadata extracted by the AI.\n5.  Posts a confirmation message (e.g., to a Discord channel) indicating whether the article was saved successfully or if an error occurred.\n\n## Setup\n\n1.  **Import Workflow:** Import this template into your n8n instance.\n2.  **Configure Credentials & Notion Database:**\n    * **Notion Database:**\n        * Create or designate a Notion database (like the example \"Knowledge Database\") where articles will be saved.\n         * Ensure this database has the following properties (fields):\n            * `Name` (Type: Text) - *This will store the article title.*\n            * `URL` (Type: URL) - *This will store the original article link.*\n            * `Description` (Type: Text) - *This can store the AI-generated summary.*\n            * `Tags` (Type: Multi-select) - *Optional, for categorization.*\n            * `Publication Date` (Type: Date) - *Optional, \nstore the date the article was published.\n        * Ensure the n8n integration has access to this specific database.\n\t* If you require a different format to the Notion Database, not that you will have to update the Notion tool configuration in this n8n workflow accordingly.\n    * **Notion Credential:** Obtain your Notion API key and add it as a Notion credential in n8n. Select this credential in the `save_to_notion` tool node.\n    * **Configure `save_to_notion` Tool:** In the `save_to_notion` tool node within the workflow, set the 'Database ID' field to the ID of the Notion database you prepared above. Map the workflow data (URL, AI summary, etc.) to the corresponding database properties (`URL`, `Description`, etc.).  In the blocks section of the notion tool, you can define a custom format for the research page, allowing the AI to fill in the exact details you want extracted from any web page!\n    * **Google Gemini AI:** Obtain your API key from [Google AI Studio](https://aistudio.google.com/app/apikey) or Google Cloud Console (if using Vertex AI) and add it as a credential. Select this credential in the \"Tools Agent\" node.\n    * **Discord (or other notification service):** If using Discord notifications, create a Webhook URL ([instructions](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)) or set up a Bot Token. Add the credential in n8n and select it in the `discord_notification` tool node. Configure the target Channel ID.\n    * **Browserless/HTTP Request:**\n        * **Cloud:** Obtain your API key from [Browserless](https://www.browserless.io/) and configure the `website_scraper` HTTP Request tool node with the correct API endpoint and authentication header.\n        * **Self-Hosted:** Ensure your Browserless Docker container is running and accessible by n8n. Configure the `website_scraper` HTTP Request tool node with your self-hosted Browserless instance URL.\n6.  **Activate Workflow:** Save test and activate the workflow.\n\n## How to customize this workflow to your needs\n\n* **Change AI Model:** Experiment with different AI models supported by n8n (like OpenAI GPT models or Anthropic Claude) in the Agent node if Gemini 2.5 Pro doesn't fit your needs or budget, keeping in mind potential differences in context window size and processing capabilities for large content.\n* **Modify Notion Saving:** Adjust the `save_to_notion` tool node to map different data fields (e.g., change the summary style by modifying the AI prompt, add specific tags, or alter the page content structure) to your Notion database properties.\n* **Adjust Scraping:** Modify the prompt/instructions for the `website_scraper` tool or change the parameters sent to the Browserless API if you need different data extracted from the web pages. You could also swap Browserless for another scraping service/API accessible via the HTTP Request node.\n",
+    "workflow": {
+      "id": "4sKJLlAF2vqpkk2I",
+      "meta": {
+        "instanceId": "69133932b9ba8e1ef14816d0b63297bb44feb97c19f759b5d153ff6b0c59e18d"
+      },
+      "name": "Research AI Agent: Scrape and Summarize Articles and save to Notion (Gemini, Browserless)",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "bbfff416-7270-4f1c-8024-b91b1c5acd1b",
+          "name": "Gemini 2.5 PRO",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -840,
+            20
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0
+            },
+            "modelName": "models/gemini-2.5-pro-exp-03-25"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "jLOqyTR4yTT1nYKi",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e1a4b171-0850-4d90-bf49-5c39888922af",
+          "name": "website_scraper",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            -220,
+            -100
+          ],
+          "parameters": {
+            "url": "http://browserless:3000/content",
+            "method": "POST",
+            "jsonBody": "={\n  \"url\": \"{url}\",\n  \"gotoOptions\": {\n    \"waitUntil\": \"networkidle0\"\n  }\n} ",
+            "sendBody": true,
+            "specifyBody": "json",
+            "toolDescription": "website_scraper: Scrape a website given it's URL",
+            "placeholderDefinitions": {
+              "values": [
+                {
+                  "name": "url",
+                  "type": "string",
+                  "description": "the URL of the website to scrape"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "fd94022a-bf8d-47e6-b561-d622da350737",
+          "name": "save_to_notion",
+          "type": "n8n-nodes-base.notionTool",
+          "position": [
+            -620,
+            -100
+          ],
+          "parameters": {
+            "title": "={{ $fromAI('Title', `The original title of the article!`, 'string') }}",
+            "blockUi": {
+              "blockValues": [
+                {
+                  "type": "heading_1",
+                  "textContent": "={{ $fromAI('Title', `The original title of the article!`, 'string') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Quick Summary (TL;DR)"
+                },
+                {
+                  "textContent": "={{ $fromAI('Summary', `1-3 sentence summary capturing the absolute essence of this article`, 'string') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "={{ $fromAI('objective_title', `short title for the Problem Addressed / Objective section`, 'string') }}"
+                },
+                {
+                  "textContent": "={{ $fromAI('objective_text', `description of the core problem, question, or goal the article tackles. Keep it focused.`, 'string') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "={{ $fromAI('concepts_title', `title for the Key Concepts / Solution Overview section`, 'string') }}"
+                },
+                {
+                  "textContent": "={{ $fromAI('concepts_text', `Explain the main ideas, theories, or the high-level approach of the solution presented.`, 'string') }}"
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Technologies & Libraries"
+                },
+                {
+                  "text": {
+                    "text": [
+                      {
+                        "text": "={{ $fromAI('technologies_list', `A bulleted list of Technologies, Libraries, Techniques and Patterns Mentioned in the article along with a short description for each`, 'string') }}",
+                        "annotationUi": {}
+                      }
+                    ]
+                  },
+                  "richText": true
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Core Code Snippets"
+                },
+                {
+                  "textContent": "={{ $fromAI('important_code_snippet_description', `1-2 sentences of context explaining what this snippet does or why it's important.`, 'string') }}"
+                },
+                {
+                  "text": {
+                    "text": [
+                      {
+                        "text": "={{ $fromAI('important_code_snippet', `The actual code snippet. The AI must ensure this block doesn't exceed 2000 chars. If a crucial snippet is longer, the AI should either prioritize a key part of it or potentially link to the source if available. Specify the language (e.g., python, javascript) for syntax highlighting.`, 'string') }}",
+                        "annotationUi": {
+                          "code": true
+                        }
+                      }
+                    ]
+                  },
+                  "richText": true
+                },
+                {
+                  "type": "heading_2",
+                  "textContent": "Key Takeaways & Conclusion"
+                },
+                {
+                  "textContent": "={{ $fromAI('conclusions', `A bulleted item list that summarizes the main conclusions, results, or actionable insights from the article.`, 'string') }}"
+                }
+              ]
+            },
+            "options": {
+              "icon": "={{ $fromAI('Icon', `Pick an emoji that would be good as an icon for this article. Remember, this should be a single emoji`, 'string') }}"
+            },
+            "resource": "databasePage",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1c385086-bf58-80a1-a60f-dbc96d64413f",
+              "cachedResultUrl": "https://www.notion.so/1c385086bf5880a1a60fdbc96d64413f",
+              "cachedResultName": "Knowledge Database"
+            },
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Description|rich_text",
+                  "textContent": "={{ $fromAI('Description', `Short description of what the article is about`, 'string') }}"
+                },
+                {
+                  "key": "URL|url",
+                  "urlValue": "={{ $fromAI('URL', `The URL where this article resides.`, 'string') }}"
+                },
+                {
+                  "key": "Tags|multi_select",
+                  "multiSelectValue": "={{ $fromAI('Tags', `General (generic) tags that would be relevant for this article, such as technologies used / talked about, programming language, techniques and so on! Keep them generic not ultra specific.`, 'string') }}"
+                },
+                {
+                  "key": "Publication Date|date",
+                  "date": "={{ $fromAI('publication_date', `The date this article was published if available on the page.`, 'string') }}",
+                  "includeTime": false
+                }
+              ]
+            },
+            "descriptionType": "manual",
+            "toolDescription": "save_to_notion: This tool saves the information to the Notion database."
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "MDVhXc92xUP3UjxB",
+              "name": "Notion account"
+            }
+          },
+          "notesInFlow": false,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "0e70e938-97ac-4aa0-80c1-8f7c9c519b9d",
+          "name": "discord_notification",
+          "type": "n8n-nodes-base.discordTool",
+          "position": [
+            -420,
+            -100
+          ],
+          "webhookId": "617fa695-5a0a-464e-b3f2-bcd77ab5965b",
+          "parameters": {
+            "embeds": {
+              "values": [
+                {
+                  "url": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('URL', ``, 'string') }}",
+                  "title": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Title', ``, 'string') }}",
+                  "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}"
+                }
+              ]
+            },
+            "content": "={{ $fromAI('Message', `Start with an :information_source: emoji. Then tell the chat that the action has been completed.`, 'string') }}",
+            "guildId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1207038600731168821",
+              "cachedResultUrl": "https://discord.com/channels/1207038600731168821",
+              "cachedResultName": "Let's Talk Dev Community"
+            },
+            "options": {},
+            "resource": "message",
+            "channelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1354563802854723774",
+              "cachedResultUrl": "https://discord.com/channels/1207038600731168821/1354563802854723774",
+              "cachedResultName": "research"
+            }
+          },
+          "credentials": {
+            "discordBotApi": {
+              "id": "LfVy6XSgcAgRUPSS",
+              "name": "Discord Bot account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ee123a65-f0db-45e8-8e78-618b6c2b74e9",
+          "name": "Save Article To Notion",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "onError": "continueErrorOutput",
+          "position": [
+            -700,
+            -320
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=You will receive a URL. Your task is to:\n1. use the website_scraper to scrape the provided URL!\n2. use the save_to_notion tool to save the information to Notion.\n3. use the discord_notification tool to send a notification that the research is available, along with the notion URL of the created page.\n\n## Tools\nThe save_to_notion tool expects the following parameters:\n* title: the original title of the article\n* description: short description of what the article is about\n* url: the URL where this article resides.\n* tags: general (generic) tags that would be relevant for this article, such as technologies used / talked about, programming language, techniques and so on! Keep them generic not ultra specific.\n* publication_date: The date this article was published if available on the page.\n* summary: 1-3 sentence summary capturing the absolute essence of this article\n* objective_title: short title for the section about the problem addressed / objective\n* objective_text: description of the core problem, question, or goal the article tackles. Keep it focused.\n* concepts_title: title for the Key Concepts / Solution Overview section\n* concepts_text: explain the main ideas, theories, or the high-level approach of the solution presented. \n* technologies_list: A bulleted list of Technologies, Libraries, Techniques and Patterns Mentioned in the article along with a short description for each.\n* important_code_snippet_description: Description for The most important code snippet in the article. 1-2 sentences of context explaining what this snippet does or why it's important.\n* important_code_snippet: The actual code snippet. The AI must ensure this block doesn't exceed 2000 chars. If a crucial snippet is longer, the AI should either prioritize a key part of it or potentially link to the source if available. Specify the language (e.g., python, javascript) for syntax highlighting.\n* conclusions: A bulleted item list that summarizes the main conclusions, results, or actionable insights from the article.\n* icon: an emoji that represents this article best!\n\nRemember you always have to scrape the website using the website_scraper tool. Don't try to summarize without scraping!\nAlways save the results to notion using the save_to_notion tool. Only execute this tool once!"
+            }
+          },
+          "executeOnce": true,
+          "notesInFlow": false,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "4a7f0a06-0d5f-4013-964c-fcc272484ff4",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -1000,
+            -320
+          ],
+          "webhookId": "3e4878bb-dcb4-4591-975f-8f279605e90b",
+          "parameters": {
+            "public": true,
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5bcfe9f7-a58f-4851-8ac4-ad6de06705df",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1060,
+            -120
+          ],
+          "parameters": {
+            "width": 340,
+            "height": 260,
+            "content": "## Google Gemini AI model\n\nI picked this for the enormous context window and speed. Feel free to experiment with other AI models."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8a1ef34e-9f27-4e68-8ef2-34c488463512",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -280,
+            -420
+          ],
+          "parameters": {
+            "width": 380,
+            "height": 460,
+            "content": "## Browserless (https://www.browserless.io/)\n\nI use Browserless as a self hosted Docker container (alongside n8n). You can use the cloud version of Browserless or any other web scraping tool or API.\n\nSince there isn't a pre-built tool for Browserless , we can simply use the generic HTTP request tool to call Browserless' API."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dfba5742-663c-4b8c-a971-de120c8f73c1",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1980,
+            -820
+          ],
+          "parameters": {
+            "width": 860,
+            "height": 980,
+            "content": "## Setup\n\n1.  **Import Workflow:** Import this template into your n8n instance.\n2.  **Configure Credentials & Notion Database:**\n    * **Notion Database:**\n        * Create or designate a Notion database (like the example \"Knowledge Database\") where articles will be saved.\n        * Ensure this database has the following properties (fields):\n            * `Name` (Type: Text) - *This will store the article title.*\n            * `URL` (Type: URL) - *This will store the original article link.*\n            * `Description` (Type: Text) - *This can store the AI-generated summary.*\n            * `Tags` (Type: Multi-select) - *Optional, for categorization.*\n            * `Publication Date` (Type: Date) - *Optional, \nstore the date the article was published.\n        * Ensure the n8n integration has access to this specific database.\n\t* If you require a different format to the Notion Database, not that you will have to update the Notion tool configuration in this n8n workflow accordingly.\n    * **Notion Credential:** Obtain your Notion API key and add it as a Notion credential in n8n. Select this credential in the `save_to_notion` tool node.\n    * **Configure `save_to_notion` Tool:** In the `save_to_notion` tool node within the workflow, set the 'Database ID' field to the ID of the Notion database you prepared above. Map the workflow data (URL, AI summary, etc.) to the corresponding database properties (`URL`, `Description`, etc.).  In the blocks section of the notion tool, you can define a custom format for the research page, allowing the AI to fill in the exact details you want extracted from any web page!\n    * **Google Gemini AI:** Obtain your API key from [Google AI Studio](https://aistudio.google.com/app/apikey) or Google Cloud Console (if using Vertex AI) and add it as a credential. Select this credential in the \"Tools Agent\" node.\n    * **Discord (or other notification service):** If using Discord notifications, create a Webhook URL ([instructions](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks)) or set up a Bot Token. Add the credential in n8n and select it in the `discord_notification` tool node. Configure the target Channel ID.\n    * **Browserless/HTTP Request:**\n        * **Cloud:** Obtain your API key from [Browserless](https://www.browserless.io/) and configure the `website_scraper` HTTP Request tool node with the correct API endpoint and authentication header.\n        * **Self-Hosted:** Ensure your Browserless Docker container is running and accessible by n8n. Configure the `website_scraper` HTTP Request tool node with your self-hosted Browserless instance URL.\n6.  **Activate Workflow:** Save test and activate the workflow.\n\n## How to customize this workflow to your needs\n\n* **Change AI Model:** Experiment with different AI models supported by n8n (like OpenAI GPT models or Anthropic Claude) in the Agent node if Gemini 2.5 Pro doesn't fit your needs or budget, keeping in mind potential differences in context window size and processing capabilities for large content.\n* **Modify Notion Saving:** Adjust the `save_to_notion` tool node to map different data fields (e.g., change the summary style by modifying the AI prompt, add specific tags, or alter the page content structure) to your Notion database properties.\n* **Adjust Scraping:** Modify the prompt/instructions for the `website_scraper` tool or change the parameters sent to the Browserless API if you need different data extracted from the web pages. You could also swap Browserless for another scraping service/API accessible via the HTTP Request node."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "d5328d32-6ee9-4dd6-a68b-8736c85975fe",
+      "connections": {
+        "Gemini 2.5 PRO": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Save Article To Notion",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "save_to_notion": {
+          "ai_tool": [
+            [
+              {
+                "node": "Save Article To Notion",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "website_scraper": {
+          "ai_tool": [
+            [
+              {
+                "node": "Save Article To Notion",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "discord_notification": {
+          "ai_tool": [
+            [
+              {
+                "node": "Save Article To Notion",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Save Article To Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 9,
+      "nodeTypes": {
+        "n8n-nodes-base.notionTool": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.discordTool": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Mihai Farcas",
+      "username": "mihailtd",
+      "bio": "Full-stack developer with 5+ years streamlining healthcare processes. Proficient in NodeJS, VueJS, MongoDB, PostgreSQL, Kubernetes, and n8n. Ready to optimize your workflows – book a consult via my link.",
+      "verified": true,
+      "links": [
+        "https://mihai.ltd"
+      ],
+      "avatar": "https://gravatar.com/avatar/a73ca84b07b557e95322815bc04859245e9243c7cfd5bf9a14568fd0ce3e72c5?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

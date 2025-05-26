@@ -1,0 +1,170 @@
+{
+  "workflow": {
+    "id": 1112,
+    "name": "Create, update, and get a monitor using UptimeRobot",
+    "views": 1509,
+    "recentViews": 0,
+    "totalViews": 1509,
+    "createdAt": "2021-06-04T14:06:00.224Z",
+    "description": "This workflow allows you to create, update, and get a monitor using the UptimeRobot node.\n\n![workflow-screenshot](fileId:506)\n\n**UptimeRobot node:** This node creates a new monitor of the type `HTTP(S)`.\n\n**UptimeRobot1 node:** This node will update the monitor that we created in the previous node.\n\n**UptimeRobot2 node:** This node will get the information of the monitor that we created in the previous node.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "UptimeRobot2",
+          "type": "n8n-nodes-base.uptimeRobot",
+          "position": [
+            890,
+            320
+          ],
+          "parameters": {
+            "id": "={{$json[\"id\"]}}",
+            "resource": "monitor",
+            "operation": "get"
+          },
+          "credentials": {
+            "uptimeRobotApi": "UptimeRobot API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "UptimeRobot",
+          "type": "n8n-nodes-base.uptimeRobot",
+          "position": [
+            490,
+            320
+          ],
+          "parameters": {
+            "url": "https://n8n.io",
+            "type": 1,
+            "resource": "monitor",
+            "operation": "create",
+            "friendlyName": "n8n"
+          },
+          "credentials": {
+            "uptimeRobotApi": "UptimeRobot API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "UptimeRobot1",
+          "type": "n8n-nodes-base.uptimeRobot",
+          "position": [
+            690,
+            320
+          ],
+          "parameters": {
+            "id": "={{$json[\"id\"]}}",
+            "resource": "monitor",
+            "operation": "update",
+            "updateFields": {
+              "friendly_name": "n8n website"
+            }
+          },
+          "credentials": {
+            "uptimeRobotApi": "UptimeRobot API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "UptimeRobot": {
+          "main": [
+            [
+              {
+                "node": "UptimeRobot1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UptimeRobot1": {
+          "main": [
+            [
+              {
+                "node": "UptimeRobot2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.uptimeRobot": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 491,
+        "icon": "file:uptimerobot.svg",
+        "name": "n8n-nodes-base.uptimeRobot",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uptimerobot/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/uptimeRobot/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "UptimeRobot"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxjaXJjbGUgY3g9IjI1NiIgY3k9IjI1NiIgcj0iMjU2IiBmaWxsPSIjMkE4QzAwIi8+PGNpcmNsZSBjeD0iMjU2LjUiIGN5PSIyNTYuNSIgcj0iMTQxLjUiIGZpbGw9IiMyMDIwMUYiIHN0cm9rZT0iI0ZGRiIgc3Ryb2tlLXdpZHRoPSIyMCIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "UptimeRobot",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 16,
+        "name": "DevOps"
+      }
+    ],
+    "image": [
+      {
+        "id": 506,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/c4e9f68d90604ee6a8a0b2c46b408e81.png"
+      }
+    ]
+  }
+}

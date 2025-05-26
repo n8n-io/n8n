@@ -1,0 +1,3754 @@
+{
+  "workflow": {
+    "id": 3408,
+    "name": "AI YouTube Playlist & Video Analyst Chatbot",
+    "views": 1465,
+    "recentViews": 19,
+    "totalViews": 1465,
+    "createdAt": "2025-04-02T13:25:05.835Z",
+    "description": "# AI YouTube Playlist & Video Analyst Chatbot\n\nThis n8n workflow transforms entire YouTube playlists or single videos into interactive knowledge bases you can chat with. Ask questions and get summaries without needing to watch hours of content.\n\n## 🌟 How it Works\n\n1.  **🔗 Provide a Link:** Start by giving the workflow a URL for a YouTube playlist or a single video.\n2.  **📄 Content Retrieval:** The workflow automatically fetches the video details and transcripts for the provided link. For playlists, it can process multiple videos at once (you might be asked how many).\n3.  **🧠 AI Processing:** Google's Gemini AI reads through the transcripts, understands the content, and creates summaries.\n4.  **💾 Storage & Context:** The processed information and summaries are stored in a vector database (Qdrant), making them ready for conversation. **Context is managed using Redis**, remembering the current video/playlist you're discussing.\n5.  **💬 Chat & Ask:** Now, you can ask the AI agent questions about the playlist or video content! **Because context is maintained**, you can ask follow-up questions (like \"expand on point X\") without needing to provide the URL again.\n\n## 🛠️ Requirements\n\n* **Community Node:** This workflow uses the `youtubeTranscripter` community node to fetch video transcripts. You'll need to install it in your n8n environment.\n    * **Installation:** `npm install n8n-nodes-youtube-transcription-dmr`\n    * **Important:** Community nodes require a **self-hosted n8n instance**.\n* **Redis:** A Redis instance is required for managing conversation context and status between interactions.\n* **Credentials:** You will need API credentials configured in your n8n instance for:\n    * Google Gemini (AI Models)\n    * Qdrant (Vector Store)\n    * Redis (Context Store)\n\n## 🤖 AI Agent Capabilities\n\nEngage with the AI agent to explore the video content. Since the agent remembers the context of your conversation, you can ask detailed follow-up questions naturally:\n\n* Get a quick **summary** of a single video or an entire playlist.\n* Ask for **key takeaways** or main topics discussed.\n* Query for **specific information** mentioned in the videos.\n* Ask the agent to **elaborate** on a specific point previously mentioned.\n* Understand complex subjects **without watching** the full duration.\n\n## 🚀 Use Cases\n\n* **📊 Content Analysis:** Quickly understand the themes and key points across a playlist or long video.\n* **📚 Research & Learning:** Extract insights from educational series or tutorials efficiently.\n* **✍️ Content Creation:** Easily repurpose video transcript information into blog posts, notes, or social media content.\n* **⏱️ Save Time:** Get the essence of video content when you're short on time.\n* **♿ Accessibility:** Offers a text-based way to interact with and understand video content.\n\n## ✨ Sample Prompts\n\n* Please analyze this playlist and tell me the main topics covered: [YouTube Playlist URL]\n* Summarize the first 5 videos in this playlist: [YouTube Playlist URL]\n* _(Follow-up)_ Tell me more about the main point in video 3.\n* What are the key points discussed in this video? [YouTube Video URL]\n* _(Follow-up)_ Expand on the second key point you mentioned.\n* Does the video at [YouTube Video URL] mention [specific topic]?",
+    "workflow": {
+      "id": "4Tq5HZBdETVe7jEb",
+      "meta": {
+        "instanceId": "2cb7a61f866faf57392b91b31f47e08a2b3640258f0abd08dd71f087f3243a5a",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "⚡AI-Powered YouTube Playlist & Video Summarization and Analysis v2",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "505077d1-a2e4-4b0d-99d6-756940022c3d",
+          "name": "Google Gemini Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -440,
+            -40
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-pro-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5da369db-b801-4653-888d-0e6042620298",
+          "name": "Handle Queries",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -160,
+            -280
+          ],
+          "parameters": {
+            "text": "={{ $('Chat').item.json.chatInput }}",
+            "options": {
+              "systemMessage": "=You are an intelligent assistant that can respond to queries related to the content of a Youtube Playlist or a single Video.\n\n# YOUR TASK\nDecide if the user has provided the info required and reply accordingly. If there is no url in context you have to suggest the user to provide one. \n\n\n1. If the user provided a YouTube Playlist or Video URL: reply in structured markdown format to the user based on the formulated questions and context. Assume the user is here because they don't won't / have time to watch such videos so:\n- Use the tool called `chat_playlist_data`, which can analyze YouTube videos. Use this tool effectively to process video content and generate structured summaries.\n- Your answers needs to be exhaustive and minimise bullet points\n- Be verbose in your response\n\n2. 1. If the user provided a YouTube Playlist or Video URL:\n- Do not ask for more specific details - always try to summarize the videos with the data from the tool `chat_playlist_data`\n- Never reply \"already provided a detailed summary\" - always try to summarize again the videos with more info from the tool `chat_playlist_data` - even if you have already provided the data before (so repeat yourself).\n\n3. If the user HAS NOT provided a YouTube Playlist URL or a invaid URL: gently invite the user to provide the URL so you can process it. \n\n# Rules\n\n## YouTube Playlist URL Definition\n- A URL from www.youtube.com or youtube.com.\n- Contains the query parameter `list=` followed by a playlist ID.\n- Example: https://www.youtube.com/playlist?list=PLXXXXXX (where PLXXXXXX is the playlist ID).\n\n## YouTube Video URL Definition\n- A URL from www.youtube.com, youtube.com, or youtu.be.\n- For www.youtube.com or youtube.com, it contains the query parameter `v=` followed by a video ID.\n- For youtu.be, it follows the format https://youtu.be/VIDEO_ID.\n- Examples:\n  - https://www.youtube.com/watch?v=VIDEO_ID (where VIDEO_ID is the video ID).\n  - https://youtu.be/VIDEO_ID\n- Does NOT have a query parameter `list=`\n\n# Context\n{\n  \"intent\": {{ $('Default Intent').item.json.output?.intent || \"NONE\" }},\n  \"url\": {{ $('Default Intent').item.json.output?.url || \"\" }},\n  \"id\": {{ $('Default Intent').item.json.output?.id || \"\" }},\n  \"limit\": {{ $('Default Intent').item.json.output?.limit || 0 }},\n  \"status\": {{ $('Default Intent').item.json.output?.status || 'PENDING' }}\n}"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "866bf387-3482-4615-94d5-fd72d5db21da",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1380,
+            -200
+          ],
+          "parameters": {
+            "include": "selectedOtherFields",
+            "options": {},
+            "fieldToSplitOut": "transcript",
+            "fieldsToInclude": "youtubeId"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "359404ce-4bc9-4e4d-9a26-22b9f9b176c9",
+          "name": "Summarize & Analyze Transcript",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            660,
+            540
+          ],
+          "parameters": {
+            "text": "=Please analyze the given text and create a structured summary following these guidelines:\n\n1. Break down the content into main topics using Level 2 headers (##)\n2. Under each header:\n   - List only the most essential concepts and key points\n   - Use bullet points for clarity\n   - Keep explanations concise\n   - Preserve technical accuracy\n   - Highlight key terms in bold\n3. Format requirements:\n   - Use markdown formatting\n   - Keep bullet points simple (no nesting)\n   - Bold important terms using **term**\n   - Use tables for comparisons\n   - Include relevant technical details\n\nPlease provide a clear, structured summary that captures the core concepts while maintaining technical accuracy.\n\n**Make sure the summary is 300-400 max characters long.**\n\nInclude metadata such as video number, id, and title in the summary.\n\n**Here is the text**\n\nVideo number: {{ $json.video_number }}\nTitle: {{ $json.title }}\nYoutube ID: {{ $json.youtubeId }}\nTranscript:\n{{ $json.transcript_text }}",
+            "promptType": "define"
+          },
+          "typeVersion": 1.4
+        },
+        {
+          "id": "036765df-6da4-4430-bcea-af4066fb7c24",
+          "name": "Concatenate",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            1700,
+            -200
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSplitBy": "youtubeId",
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "transcript.text",
+                  "separateBy": " ",
+                  "aggregation": "concatenate"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9152725c-15ca-41a0-8f98-108834e0c8be",
+          "name": "Split Out1",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            660,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "videos"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fee0e045-614a-41f0-ac75-051dff773e77",
+          "name": "Limit",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            860,
+            40
+          ],
+          "parameters": {
+            "maxItems": "={{ $('Update Context Intent').item.json.output.limit }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a691c1c7-d8c4-4eab-861b-f7cfcbeb0fc8",
+          "name": "Qdrant Vector Store",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            1680,
+            480
+          ],
+          "parameters": {
+            "mode": "insert",
+            "options": {},
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Update Context Intent').first().json.output.id }}"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "mb8rw8tmUeP6aPJm",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c3949e8f-0deb-4106-aaa5-e64403024243",
+          "name": "Recursive Character Text Splitter",
+          "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+          "position": [
+            1800,
+            860
+          ],
+          "parameters": {
+            "options": {},
+            "chunkSize": 1200,
+            "chunkOverlap": 200
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3b23c6b-14c0-4805-8220-7c6166268276",
+          "name": "Embeddings Google Gemini",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+          "position": [
+            1660,
+            700
+          ],
+          "parameters": {
+            "modelName": "models/text-embedding-004"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6f4ee00d-dcdc-4468-9713-115912c1e571",
+          "name": "Google Gemini Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            640,
+            740
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "75442631-512e-4b0e-a5a8-ed3e3a3e1f94",
+          "name": "Embeddings Google Gemini1",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+          "position": [
+            -120,
+            320
+          ],
+          "parameters": {
+            "modelName": "models/text-embedding-004"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c33ceeca-9bf0-4dd2-b8df-fc2a1ccdf512",
+          "name": "Chat",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -2780,
+            -460
+          ],
+          "webhookId": "e66183cc-1eed-4968-b34b-bcecf1bb55e8",
+          "parameters": {
+            "public": true,
+            "options": {
+              "loadPreviousSession": "notSupported"
+            },
+            "initialMessages": "Hi there! 👋\nPlease provide a URL of a Youtube playlist you would like me to analise."
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "06bb2dfd-027c-4902-9559-2de080f6c145",
+          "name": "Video Titles",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1160,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "id,title"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d9bbdda2-ef26-4b6c-94d0-7542f88f1530",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1700,
+            20
+          ],
+          "parameters": {
+            "mode": "combineBySql",
+            "query": "SELECT \n  ROW_NUMBER() AS video_number,\n  input1.youtubeId, input2.title, input1.concatenated_transcript_text as transcript_text FROM input1 LEFT JOIN input2 ON input1.youtubeId = input2.id"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "e6febdb9-370b-478d-b470-d6c2d3314d7b",
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            980,
+            540
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b5e935c5-4973-40a3-adb9-fa76904d2ed9",
+                  "name": "video_number",
+                  "type": "number",
+                  "value": "={{ $('Merge').item.json.video_number }}"
+                },
+                {
+                  "id": "e98f417d-123f-4a85-b2f7-64430e7b0250",
+                  "name": "youtubeId",
+                  "type": "string",
+                  "value": "={{ $('Merge').item.json.youtubeId }}"
+                },
+                {
+                  "id": "d0ced7fd-c9a3-4a09-bf09-e4b5e45dd03d",
+                  "name": "title",
+                  "type": "string",
+                  "value": "={{ $('Merge').item.json.title }}"
+                },
+                {
+                  "id": "31a80e6d-9b02-4d21-b888-1a00c036a04b",
+                  "name": "summary",
+                  "type": "string",
+                  "value": "={{ $json.text }}"
+                },
+                {
+                  "id": "ef12f3f2-3d63-4e78-835f-7da004393a07",
+                  "name": "transcript_text",
+                  "type": "string",
+                  "value": "={{ $('Merge').item.json.transcript_text }}"
+                },
+                {
+                  "id": "afa841e2-6f8b-4b27-9f28-10368ee32c2e",
+                  "name": "playlistId",
+                  "type": "string",
+                  "value": "={{ $('Update Context Intent').first().json.output.id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2736a1e6-a982-4f60-aa8d-658e9a3e9193",
+          "name": "AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2720,
+            480
+          ],
+          "parameters": {
+            "text": "=Please analyze the given \"Transcript summary\" and create a full summary overview, following the below guidelines.\n\n1. Provide a full descriptive break down of the content of each video. Assume the user does not won't or have time to watch such videos, so:\n- Your summary needs to be exhaustive, descriptive, and minimise bullet points\n- Your summary needs to captures all the core concepts while maintaining technical accuracy\n- Your summary will be verbose\n\n2. Consider that the intent of the user is not to watch the videos but rather have all the content required and summaries from on the \"Transcript summary\".\n\n3. Use the tool called `chat_playlist_data`, which can analyze YouTube videos. Use this tool effectively to process video content and generate structured summaries.\n\nUser message:\n{{ $('Chat').item.json.chatInput }}\n\nTranscript summary:\n{{ $('Full Summary').item.json.concatenated_summary }}",
+            "agent": "conversationalAgent",
+            "options": {},
+            "promptType": "define"
+          },
+          "executeOnce": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "cf1e5c50-9c89-465f-beca-482cbd9affba",
+          "name": "Google Gemini Chat Model4",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            2520,
+            720
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1cbcec5e-b58c-4fce-b944-08c47a7385db",
+          "name": "Delete Collection",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueRegularOutput",
+          "position": [
+            1340,
+            480
+          ],
+          "parameters": {
+            "url": "=https://3114dbb7-bd13-4807-8815-c3c8784f66d6.eu-west-1-0.aws.cloud.qdrant.io/collections/{{ $('Update Context Intent').first().json.playlistID }}/points/delete",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n  \"filter\": {}\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            },
+            "nodeCredentialType": "qdrantApi"
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "mb8rw8tmUeP6aPJm",
+              "name": "QdrantApi account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "16d7eaec-1d98-42dd-89aa-2681a9d1697d",
+          "name": "Default Data Loader",
+          "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+          "position": [
+            1820,
+            700
+          ],
+          "parameters": {
+            "options": {
+              "metadata": {
+                "metadataValues": [
+                  {
+                    "name": "video_number",
+                    "value": "={{ $input.item.json.video_number }}"
+                  },
+                  {
+                    "name": "=youtubeId",
+                    "value": "={{ $input.item.json.youtubeId }}"
+                  },
+                  {
+                    "name": "summary",
+                    "value": "={{ $input.item.json.summary }}"
+                  },
+                  {
+                    "name": "title",
+                    "value": "={{ $input.item.json.title }}"
+                  },
+                  {
+                    "name": "playlistId",
+                    "value": "={{ $input.item.json.playlistId }}"
+                  }
+                ]
+              }
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d3bc9db2-7618-46fd-b825-2cc0ad45fc22",
+          "name": "Chat Buffer Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -260,
+            -40
+          ],
+          "parameters": {
+            "sessionKey": "={{ $('Chat').item.json.sessionId }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 10
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "fb55b13f-880f-404c-9446-9f8a238c8a5c",
+          "name": "Full Summary",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            2520,
+            480
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "summary",
+                  "separateBy": "\n",
+                  "aggregation": "concatenate"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "efc2fc99-c738-425e-9ee1-669e378e197f",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -560,
+            -400
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1080,
+            "height": 900,
+            "content": "## RAG & Reply to User Query\n- Retrieves and provides answers to user queries combining retrieval-augmented generation.\n- Processes messages without specific routing rules.\n     "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0040adf6-2cfc-4b79-ba81-b76740bfd158",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            -400
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1380,
+            "height": 700,
+            "content": "## Fetch and prepare Playlist video transcripts data for processing \n- Collects and organizes playlist video transcripts.\n- Prepares data for analysis and summarization."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "59b29fc5-5d88-40c0-a273-9dc71d9f009e",
+          "name": "Chat Buffer Memory1",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            2700,
+            720
+          ],
+          "parameters": {
+            "sessionKey": "={{ $('Chat').item.json.sessionId }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 10
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "afb6f6be-d299-402e-a9c6-2c60fbf4974e",
+          "name": "YouTube Transcript",
+          "type": "n8n-nodes-youtube-transcription-dmr.youtubeTranscripter",
+          "position": [
+            1160,
+            -200
+          ],
+          "parameters": {
+            "videoId": "={{ $json.id }}",
+            "continueOnFail": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9a43eb4a-9d4c-4fce-b19c-94485aa8af76",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            340
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 640,
+            "height": 700,
+            "content": "## Summarize & Analyze Transcript\n- Creates summarized data from transcripts."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "676677f0-3dae-4873-a449-92930ced534e",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1240,
+            340
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 980,
+            "height": 700,
+            "content": "## Store Embeddings\n- Saves embedded data for future use.\n- Updates current context to maintain the flow of the conversation.     "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9ecd4d0d-b8bd-4a5d-981f-49fa515c17be",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2260,
+            340
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 940,
+            "height": 880,
+            "content": "## First Summary Analysis\n- Conducts initial analysis of summarized data.\n- Return to the user insights from processed transcripts."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "45ae8377-0848-45fb-a7a3-aba8d44e3d35",
+          "name": "Message Intent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "onError": "continueRegularOutput",
+          "position": [
+            -2260,
+            -460
+          ],
+          "parameters": {
+            "text": "= {{ $('Chat').item.json.chatInput }}",
+            "options": {
+              "systemMessage": "=**# YOUR TASK:**\nPlease analyze the user's message and decide if the user has provided the info required - and ALWAYS reply using the **Output format** defined below.\n\n# Output format\nYou use the following JSON structure to reply, don't include anything else, and alway inlude all the fields:\n```\n{\n  \"intent\": PLAYLIST|VIDEO|NONE,\n  \"url\": Youtube Playlist or Video URL or empty string,\n  \"id\": Youtube Playlist or Video ID or empty string,\n  \"limit\": number, default 0,\n  \"status\": Previous context status `{{ $json.context_intent?.status }}` or \"PENDING\"\n}\n```\n\n## INTENT field GUIDELINES:\n\n**Respond with \"PLAYLIST\" if:**\n- The messsage contains a valid Youtube Playlist URL\n\n**Respond with \"VIDEO\" if:**\n- The messsage contains a valid Youtube Video URL\n\n**Respond with \"NONE\" if:**\n- The messsage does not contains a valid Youtube Playlist or Video URL\n\n## LIMIT field GUIDELINE:\nIf the \"Previous Context\" intent or the current intent is a Playlist: Based on current or most recent user message, check if there is an indication of how many videos to process, otherwise default to 0.\n\n## STATUS field GUIDELINE\nIf intent is a Playlist or Video and _different_ from the the \"Previous Context\" then use \"PENDING\" since the user intent is to run a new process. Otherwise use the \"Previous Context\" status value.\n\n\n# Rules for Playlist and Video\n\n## YouTube Playlist URL Definition\n- A URL from www.youtube.com or youtube.com.\n- Contains the query parameter `&list=` followed by a playlist ID.\n- Example: https://www.youtube.com/...&list=PLXXXXXX (where PLXXXXXX is the playlist ID).\n\n## YouTube Video URL Definition\n- A URL from www.youtube.com, youtube.com, or youtu.be.\n- For www.youtube.com or youtube.com, it contains the query parameter `v=` followed by a video ID.\n- For youtu.be, it follows the format https://youtu.be/VIDEO_ID.\n- Examples:\n  - https://www.youtube.com/watch?v=VIDEO_ID (where VIDEO_ID is the video ID).\n  - https://youtu.be/VIDEO_ID\n- IMPORTANT: YouTube Video URL **Does NOT have a query parameter `list=`**\n\n\n# Previous Context\n{{ JSON.stringify($json.context_intent) }}\n"
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "retryOnFail": true,
+          "typeVersion": 1.7,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "a29403f0-ed5c-465c-a43d-84e8dee69662",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            -2020,
+            -220
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"intent\": \"PLAYLIST|VIDEO|NONE\",\n  \"url\": \"Youtube Playlist or Video URL or empty string,\",\n  \"id\": \"Youtube Playlist or Video ID or empty string,\",\n  \"limit\": \"number of playlist videos to process or 0\",\n  \"status\": \"PENDING|READY|DONE\"\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "b3f43325-aa7b-47f3-8bbb-e27fa0c44a1e",
+          "name": "Update Context Intent",
+          "type": "n8n-nodes-base.redis",
+          "position": [
+            -1160,
+            -640
+          ],
+          "parameters": {
+            "key": "=context_intent_{{ $('Chat').item.json.sessionId }}",
+            "value": "=intent {{ $('Process Status').item.json.output?.intent || null }} url {{ $('Process Status').item.json.output?.url || \"\" }} id {{ $('Process Status').item.json.output?.id || \"\" }} limit {{ $('Process Status').item.json.output?.limit || 0 }} status {{ $('Process Status').item.json.output?.status || 'PENDING'  }}",
+            "keyType": "hash",
+            "operation": "set",
+            "valueIsJSON": false
+          },
+          "credentials": {
+            "redis": {
+              "id": "mA0f9F1ROUThyrRW",
+              "name": "Redis account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9c296501-049c-44b5-ae8d-8dda2c523278",
+          "name": "Get Previous Context Intent",
+          "type": "n8n-nodes-base.redis",
+          "onError": "continueRegularOutput",
+          "position": [
+            -2440,
+            -460
+          ],
+          "parameters": {
+            "key": "=context_intent_{{ $('Chat').item.json.sessionId }}",
+            "keyType": "hash",
+            "options": {
+              "dotNotation": false
+            },
+            "operation": "get",
+            "valueIsJSON": false,
+            "propertyName": "context_intent"
+          },
+          "credentials": {
+            "redis": {
+              "id": "mA0f9F1ROUThyrRW",
+              "name": "Redis account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "9499d9f2-7d6d-432b-bdde-b4b98b90b224",
+          "name": "Route Message Intent",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            -1700,
+            -460
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "PROCESS",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "44e008af-4a1a-429d-adb6-039e74b643a6",
+                        "operator": {
+                          "type": "boolean",
+                          "operation": "true",
+                          "singleValue": true
+                        },
+                        "leftValue": "={{ \n  ($json.output.intent == \"VIDEO\" || $json.output.intent == \"PLAYLIST\")\n  && $json.output.status != \"DONE\" \n}}",
+                        "rightValue": "/PLAYLIST|VIDEO/"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "QUERY",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "12641857-945d-4470-968e-f3f805bfe1cd",
+                        "operator": {
+                          "type": "boolean",
+                          "operation": "true",
+                          "singleValue": true
+                        },
+                        "leftValue": "={{ \n  $json.output.intent == \"NONE\" || $json.output.status == \"DONE\"\n}}",
+                        "rightValue": "NONE"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {
+              "fallbackOutput": "extra"
+            }
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "dfd329e8-98b1-4ae8-8cc1-a1a5215b1c09",
+          "name": "Process Status",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1340,
+            -640
+          ],
+          "parameters": {
+            "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nif ($input.last().json.output.intent == 'VIDEO') {\n  $input.last().json.output.status = 'READY'\n}\n\nelse if ($input.last().json.output.intent == 'PLAYLIST' && parseInt($input.last().json.output.limit) > 0) {\n  $input.last().json.output.status = 'READY'\n}\n\nelse {\n  $input.last().json.output = {\n    intent: $('Default Intent').first().json.output.intent,\n    url: $('Default Intent').first().json.output.url,\n    id: $('Default Intent').first().json.output.id,\n    limit: $('Default Intent').first().json.output.limit,\n    status: 'PENDING',\n  }\n}\n\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c84c21c6-0948-4628-b7a8-7cd2a5602cdc",
+          "name": "Simple Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -2180,
+            -220
+          ],
+          "parameters": {
+            "sessionKey": "=intent_{{ $('Chat').item.json.sessionId }}",
+            "sessionIdType": "customKey"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "8ad2e1d1-b657-47cd-afa5-4fc49dc7e0e6",
+          "name": "Simple Memory3",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            1040,
+            -1180
+          ],
+          "parameters": {
+            "sessionKey": "=pl_n_{{ $('Chat').item.json.sessionId }}",
+            "sessionIdType": "customKey"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "cf4d7c73-d9b1-42da-9ccc-6abccde4110c",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2540,
+            -620
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1080,
+            "height": 580,
+            "content": "## Message intent routing\n- Retrieves the previous context for continuity.\n- Ensures data integrity before processing.\n- Routes incoming messages based on intent.\n     "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c0ecf826-b803-421a-aa2a-cb713131fbb7",
+          "name": "Google Gemini Chat Model6",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            -2340,
+            -220
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash-lite"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "513a8c71-e982-47df-87bd-1e3d3ae9c613",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1420,
+            -1020
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 460,
+            "height": 580,
+            "content": "## Update Context\n- Updates any issues detected in the context.\n- Prepares data for workflow progression.\n     "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d4a9d7aa-dfee-418f-900a-9649f0405861",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            -1480
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 480,
+            "height": 460,
+            "content": "## Ask number of Playlist videos to process"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f89481a4-64a2-4895-821f-effe48f7d331",
+          "name": "Numb of Videos",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            900,
+            -1380
+          ],
+          "parameters": {
+            "text": "={{ $('Chat').item.json.chatInput }}",
+            "options": {
+              "systemMessage": "=**Objective:**\n\nWe are here because the user wants to analyse a playlist in context, but we are missing how many videos he would like to process. Please reply to the user asking user to provide a number.\n\n## Context\n{{ JSON.stringify($json.output) }}"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "bb8fa898-4953-4148-8339-2d205b86fc91",
+          "name": "Default Intent",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1920,
+            -460
+          ],
+          "parameters": {
+            "jsCode": "if(\n  ($('Message Intent').first().json?.output?.intent == 'NONE' \n     || Object.keys($('Message Intent').first().json?.output || {}).length == 0)\n  && Object.keys($('Get Previous Context Intent').first().json.context_intent).length > 0\n) {\n  //use prev context intent\n  if(!$input.first().json.output) {\n    $input.first().json.output = {}\n  }\n  $input.first().json.output.intent = $('Get Previous Context Intent').first().json.context_intent?.intent || \"NONE\";\n  $input.first().json.output.url = $('Get Previous Context Intent').first().json.context_intent?.url || \"\";\n  $input.first().json.output.id = $('Get Previous Context Intent').first().json.context_intent?.id || \"\";\n  $input.first().json.output.limit = $('Get Previous Context Intent').first().json.context_intent?.limit || 0;\n  $input.first().json.output.status = $('Get Previous Context Intent').first().json.context_intent?.status || \"PENDING\";\n} else {\n  // $input.first().json.output.intent = $('Message Intent').first().json.context_intent?.intent || \"NONE\";\n  // $input.first().json.output.url = $('Message Intent').first().json.context_intent?.url || \"\";\n  // $input.first().json.output.id = $('Message Intent').first().json.context_intent?.id || \"\";\n  // $input.first().json.output.limit = $('Message Intent').first().json.context_intent?.limit || 0;\n  // $input.first().json.output.status = $('Message Intent').first().json.context_intent?.status || \"PENDING\";\n}\n\n// else use message intent\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0f1d1bb6-22c0-4b65-beaf-eaf4401d7550",
+          "name": "Playlist Limit",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            160,
+            -860
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "6ee01f0a-9533-4fb3-b023-cfcc422d9011",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('Process Status').item.json.output.intent }}",
+                  "rightValue": "PLAYLIST"
+                },
+                {
+                  "id": "e9575bb2-3c60-498b-b2c7-436b62e5195c",
+                  "operator": {
+                    "type": "number",
+                    "operation": "lte"
+                  },
+                  "leftValue": "={{ parseInt($('Process Status').item.json.output.limit) }}",
+                  "rightValue": 0
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "083c17aa-de83-4f3c-8d71-f665903ce3d5",
+          "name": "Playlist or Video",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            160,
+            -640
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "outputKey": "VIDEO",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "cc3ec644-7c3d-4d9f-b7a7-89b85824e3e3",
+                        "operator": {
+                          "name": "filter.operator.equals",
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('Route Message Intent').item.json.output.intent }}",
+                        "rightValue": "VIDEO"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                },
+                {
+                  "outputKey": "PLAYLIST",
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "33beac83-b96b-4e76-9d18-e22df163ea4d",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $('Route Message Intent').item.json.output.intent }}",
+                        "rightValue": "PLAYLIST"
+                      }
+                    ]
+                  },
+                  "renameOutput": true
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "0626bc2d-9e3a-4a4f-a331-62e8b6c69840",
+          "name": "Get Fields for Summary",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            2340,
+            480
+          ],
+          "parameters": {
+            "jsCode": "return $('Edit Fields').all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "4aaaed18-ce90-4296-aba2-b5fa9492655d",
+          "name": "Update Context Process Done1",
+          "type": "n8n-nodes-base.redis",
+          "position": [
+            2040,
+            480
+          ],
+          "parameters": {
+            "key": "=context_intent_{{ $('Chat').first().json.sessionId }}",
+            "value": "=intent {{ $('Process Status').first().json.output?.intent || null }} url {{ $('Process Status').first().json.output?.url || \"\" }} id {{ $('Process Status').first().json.output?.id || \"\" }} limit {{ $('Process Status').first().json.output?.limit || 0 }} status DONE",
+            "keyType": "hash",
+            "operation": "set",
+            "valueIsJSON": false
+          },
+          "credentials": {
+            "redis": {
+              "id": "mA0f9F1ROUThyrRW",
+              "name": "Redis account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "d3f71d59-a158-43e2-bfbd-a3bec20dea5b",
+          "name": "Google Gemini Chat Model8",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            880,
+            -1180
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash-thinking-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fa6b8a79-436e-4742-9732-cd5c1b2d3c88",
+          "name": "Playlist HTTP Request",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            660,
+            -200
+          ],
+          "parameters": {
+            "url": "={{ $('Update Context Intent').item.json.output.url }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "99d6da96-8983-4e7d-8343-b9ac975f5d20",
+          "name": "YouTube Transcript1",
+          "type": "n8n-nodes-youtube-transcription-dmr.youtubeTranscripter",
+          "position": [
+            1200,
+            -860
+          ],
+          "parameters": {
+            "videoId": "={{ $('Update Context Intent').item.json.output.id }}",
+            "continueOnFail": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "41a07802-3fba-42fa-8482-f526a7e1b173",
+          "name": "Video HTTP Request",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            900,
+            -860
+          ],
+          "parameters": {
+            "url": "={{ $('Update Context Intent').item.json.output.url }}",
+            "options": {}
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "02103114-9c22-49b1-9dee-746b84cdef66",
+          "name": "Get Title and Desc",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1200,
+            -640
+          ],
+          "parameters": {
+            "jsCode": "/**\n * This code node contains a modified version of play-dl,\n * which is licensed under the GNU General Public License Version 3 (GPLv3).\n *\n * Original Library Name: play-dl\n * Original Library Source: https://github.com/play-dl/play-dl/tree/main\n * Original Library License: GNU General Public License Version 3 (GPLv3)\n * (See: https://www.gnu.org/licenses/gpl-3.0.en.html)\n *\n * Modifications were made to the original library for use within this N8N workflow.\n * These modifications are also licensed under the GNU General Public License Version 3 (GPLv3).\n *\n * This program is distributed in the hope that it will be useful,\n * but WITHOUT ANY WARRANTY; without even the implied warranty of\n * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n * GNU General Public License for more details.\n *\n * You should have received a copy of the GNU General Public License\n * along with this program.  If not, see <https://www.gnu.org/licenses/>.\n */\n\n\n/**\n * Basic function to get specific data (title, description, duration)\n * from pre-fetched HTML body data of a YouTube video page.\n * Assumes the HTML body is passed as the first argument.\n *\n * @param {string} body HTML body data of the YouTube video page.\n * @param {string} video_id YouTube video ID.\n * @param {string} url YouTube video URL.\n * @returns {Promise<{title: string, description: string, duration: number}>} Video Basic Info.\n * @throws {Error} If video ID cannot be extracted, captcha is detected,\n * or necessary data cannot be parsed.\n */\nasync function video_basic_info(body, video_id, url) {\n  // --- Input Validation ---\n  if (typeof body !== 'string') {\n    throw new Error('body parameter must be a string of HTML');\n  }\n  if (typeof video_id !== 'string' || !video_id.trim()) {\n    throw new Error('video_id parameter must be a non-empty string');\n  }\n  if (typeof url !== 'string' || !url.trim()) {\n    throw new Error('url parameter must be a non-empty URL string');\n  }\n\n  // --- Captcha Check ---\n  // Added check for consent page as well\n  if (body.includes('Our systems have detected unusual traffic') || body.includes('consent.google.com')) {\n    throw new Error('Captcha or Consent page encountered: YouTube likely requires interaction or detected bot-like activity.');\n  }\n\n  // --- Extract Player Data ---\n  let player_data;\n  try {\n    // More robust regex to find ytInitialPlayerResponse, stopping at the next semicolon\n    const player_data_match = body.match(/var ytInitialPlayerResponse\\s*=\\s*({.+?});\\s*(?:var |<\\/script)/);\n    if (!player_data_match || !player_data_match[1]) {\n      // Fallback attempt with simpler split (less reliable)\n      const split_data = body.split('var ytInitialPlayerResponse = ');\n      player_data = split_data?.[1]?.split(';</script>')?.[0];\n    } else {\n      player_data = player_data_match[1];\n    }\n\n    if (!player_data) {\n      // Check for common failure indicators in the HTML if data isn't found\n      if (body.includes('<title>YouTube</title>') && !body.includes('videoDetails')) {\n        throw new Error('Could not find ytInitialPlayerResponse data. The page might be a generic YouTube page, not a video page, or the structure changed.');\n      }\n      throw new Error('Could not find ytInitialPlayerResponse data.');\n    }\n  } catch (error) {\n    console.log(\"Error during player_data extraction:\", error);\n    throw new Error(`Failed during player data extraction: ${error}`);\n  }\n\n\n  let player_response;\n  try {\n    player_response = JSON.parse(player_data);\n  } catch (e) {\n    console.log(\"Raw player_data that failed parsing:\", player_data.substring(0, 500) + '...'); // Log start of data\n    throw new Error(`Failed to parse ytInitialPlayerResponse JSON: ${e}`);\n  }\n\n  // --- Extract Required Video Details ---\n  // Use optional chaining for safety\n  const vid = player_response?.videoDetails;\n\n  // Add more robust checking, including playability status\n  if (!vid) {\n    const playabilityStatus = player_response?.playabilityStatus;\n    let reason = \"videoDetails object not found in the response.\";\n    if (playabilityStatus?.status && playabilityStatus.status !== 'OK') {\n      reason = ` Playability status: ${playabilityStatus.status}. Reason: ${playabilityStatus.reason ||\n        playabilityStatus.errorScreen?.playerErrorMessageRenderer?.reason?.simpleText ||\n        playabilityStatus.errorScreen?.playerKavRenderer?.reason?.simpleText ||\n        'No specific reason provided.'\n        }`;\n    } else if (playabilityStatus?.status === 'OK' && !vid) {\n      reason = \" Playability status is OK, but videoDetails is still missing. Response structure might have changed.\";\n    }\n    throw new Error(`Could not get video details. ${reason}`);\n  }\n\n  // --- Return Simplified Data ---\n  // Ensure values exist before accessing, provide defaults if necessary\n  return {\n    title: vid.title || 'N/A',\n    description: vid.shortDescription || '', // Default to empty string if missing\n    duration: Number(vid.lengthSeconds) || 0, // Default to 0 if missing/invalid\n  };\n}\n\n\nreturn video_basic_info($input.first().json.data, $('Update Context Intent').first().json.output.id, $('Update Context Intent').first().json.output.url);"
+          },
+          "retryOnFail": true,
+          "typeVersion": 2,
+          "alwaysOutputData": true,
+          "waitBetweenTries": 500
+        },
+        {
+          "id": "6cea694e-0147-4cd0-a601-9b232813a1d3",
+          "name": "Split Out2",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1440,
+            -860
+          ],
+          "parameters": {
+            "include": "selectedOtherFields",
+            "options": {},
+            "fieldToSplitOut": "transcript",
+            "fieldsToInclude": "youtubeId"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c479fb51-e17d-477a-b40b-65458cc3e679",
+          "name": "Concatenate1",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            1660,
+            -860
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSplitBy": "youtubeId",
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "transcript.text",
+                  "separateBy": " ",
+                  "aggregation": "concatenate"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ccca5021-248b-4a98-af6b-ee92b2d63dca",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            800,
+            -1000
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1140,
+            "height": 560,
+            "content": "## Fetch and prepare single video transcripts data for processing\n- Retrieves and pre-processes single video transcripts.\n- Prepares data for analysis and summarization.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e9ecc6e-2b4d-4ae8-8949-d4b92eaf9287",
+          "name": "Get Videos",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1520,
+            480
+          ],
+          "parameters": {
+            "jsCode": "return $('Edit Fields').all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f8ea7a40-b1f9-4dc2-959d-0e765331b191",
+          "name": "Get Playlist Videos Data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            860,
+            -200
+          ],
+          "parameters": {
+            "jsCode": "/**\n * This code node contains a modified version of play-dl,\n * which is licensed under the GNU General Public License Version 3 (GPLv3).\n *\n * Original Library Name: play-dl\n * Original Library Source: https://github.com/play-dl/play-dl/tree/main\n * Original Library License: GNU General Public License Version 3 (GPLv3)\n * (See: https://www.gnu.org/licenses/gpl-3.0.en.html)\n *\n * Modifications were made to the original library for use within this N8N workflow.\n * These modifications are also licensed under the GNU General Public License Version 3 (GPLv3).\n *\n * This program is distributed in the hope that it will be useful,\n * but WITHOUT ANY WARRANTY; without even the implied warranty of\n * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the\n * GNU General Public License for more details.\n *\n * You should have received a copy of the GNU General Public License\n * along with this program.  If not, see <https://www.gnu.org/licenses/>.\n */\n\n\n/**\n * Gets YouTube playlist info from a playlist url.\n *\n * Example\n * ```js\n * const playlist = await play.playlist_info('youtube playlist url')\n *\n * const playlist = await play.playlist_info('youtube playlist url', { incomplete : true })\n * ```\n * @param body HTML body of the playlist page\n * @param url Playlist URL\n * @returns YouTube Playlist\n */\nfunction playlist_info(body, url) {\n  let url_ = url.trim();\n  if (body.indexOf('Our systems have detected unusual traffic from your computer network.') !== -1)\n    throw new Error('Captcha page: YouTube has detected that you are a bot!');\n\n  const response = JSON.parse(\n    body\n      .split('var ytInitialData = ')[1]\n      .split(';</script>')[0]\n      .split(/;\\s*(var|const|let)\\s/)[0]\n  );\n\n  if (response.alerts) {\n    if (response.alerts[0].alertWithButtonRenderer?.type === 'INFO') {\n      throw new Error(\n        `While parsing playlist url\\n${response.alerts[0].alertWithButtonRenderer.text.simpleText}`\n      );\n    } else if (response.alerts[0].alertRenderer?.type === 'ERROR')\n      throw new Error(`While parsing playlist url\\n${response.alerts[0].alertRenderer.text.runs[0].text}`);\n    else throw new Error('While parsing playlist url\\nUnknown Playlist Error');\n  }\n  if (response.currentVideoEndpoint) {\n    return getWatchPlaylist(response, body, url_);\n  } else return getNormalPlaylist(response, body);\n}\n\n/**\n * Function to parse Playlist from YouTube search\n * @param data html data of that request\n * @param limit No. of videos to parse\n * @returns Array of YouTube Video objects.\n */\nfunction getPlaylistVideos(data, limit = Infinity) {\n  const videos = [];\n\n  for (let i = 0; i < data.length; i++) {\n    if (limit === videos.length) break;\n    const info = data[i].playlistVideoRenderer;\n    if (!info || !info.shortBylineText) continue;\n\n    videos.push({\n      id: info.videoId,\n      duration: parseInt(info.lengthSeconds) || 0,\n      duration_raw: info.lengthText?.simpleText ?? '0:00',\n      thumbnails: info.thumbnail.thumbnails,\n      title: info.title.runs[0].text,\n      upcoming: info.upcomingEventData?.startTime\n        ? new Date(parseInt(info.upcomingEventData.startTime) * 1000)\n        : undefined,\n      channel: {\n        id: info.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.browseId || undefined,\n        name: info.shortBylineText.runs[0].text || undefined,\n        url: `https://www.youtube.com${info.shortBylineText.runs[0].navigationEndpoint.browseEndpoint.canonicalBaseUrl ||\n          info.shortBylineText.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url\n          }`,\n        icon: undefined\n      }\n    });\n  }\n  return videos;\n}\n\n\nfunction getWatchPlaylist(response, body, url) {\n  const playlist_details = response.contents.twoColumnWatchNextResults.playlist?.playlist;\n  if (!playlist_details)\n    throw new Error(\"Watch playlist unavailable due to YouTube layout changes.\")\n\n  const videos = getWatchPlaylistVideos(playlist_details.contents);\n  const videoCount = playlist_details.totalVideos;\n  const channel = playlist_details.shortBylineText?.runs?.[0];\n  const badge = playlist_details.badges?.[0]?.metadataBadgeRenderer?.style.toLowerCase();\n\n  return {\n    id: playlist_details.playlistId || '',\n    title: playlist_details.title || '',\n    videoCount: parseInt(videoCount) || 0,\n    videos: videos,\n    url: url,\n    channel: {\n      id: channel?.navigationEndpoint?.browseEndpoint?.browseId || null,\n      name: channel?.text || null,\n      url: `https://www.youtube.com${channel?.navigationEndpoint?.browseEndpoint?.canonicalBaseUrl ||\n        channel?.navigationEndpoint?.commandMetadata?.webCommandMetadata?.url\n        }`,\n      verified: Boolean(badge?.includes('verified')),\n      artist: Boolean(badge?.includes('artist'))\n    }\n  };\n}\n\nfunction getNormalPlaylist(response, body) {\n  const json_data =\n    response.contents.twoColumnBrowseResultsRenderer.tabs[0].tabRenderer.content.sectionListRenderer.contents[0]\n      .itemSectionRenderer.contents[0].playlistVideoListRenderer.contents;\n  const playlist_details = response.sidebar.playlistSidebarRenderer.items;\n  const videos = getPlaylistVideos(json_data, 100);\n\n  const data = playlist_details[0].playlistSidebarPrimaryInfoRenderer;\n  if (!data.title.runs || !data.title.runs.length) throw new Error('Failed to Parse Playlist info.');\n\n  const author = playlist_details[1]?.playlistSidebarSecondaryInfoRenderer.videoOwner;\n  const views = data.stats.length === 3 ? data.stats[1].simpleText.replace(/\\D/g, '') : 0;\n  const lastUpdate =\n    data.stats\n      .find((x) => 'runs' in x && x['runs'].find((y) => y.text.toLowerCase().includes('last update')))\n      ?.runs.pop()?.text ?? null;\n  const videosCount = data.stats[0].runs[0].text.replace(/\\D/g, '') || 0;\n\n  return {\n    id: data.title.runs[0].navigationEndpoint.watchEndpoint.playlistId,\n    title: data.title.runs[0].text,\n    videoCount: parseInt(videosCount) || 0,\n    lastUpdate: lastUpdate,\n    views: parseInt(views) || 0,\n    videos: videos,\n    url: `https://www.youtube.com/playlist?list=${data.title.runs[0].navigationEndpoint.watchEndpoint.playlistId}`,\n    link: `https://www.youtube.com${data.title.runs[0].navigationEndpoint.commandMetadata.webCommandMetadata.url}`,\n    channel: author\n      ? {\n        name: author.videoOwnerRenderer.title.runs[0].text,\n        id: author.videoOwnerRenderer.title.runs[0].navigationEndpoint.browseEndpoint.browseId,\n        url: `https://www.youtube.com${author.videoOwnerRenderer.navigationEndpoint.commandMetadata.webCommandMetadata.url ||\n          author.videoOwnerRenderer.navigationEndpoint.browseEndpoint.canonicalBaseUrl\n          }`,\n        icons: author.videoOwnerRenderer.thumbnail.thumbnails ?? []\n      }\n      : {},\n    thumbnail: data.thumbnailRenderer.playlistVideoThumbnailRenderer?.thumbnail.thumbnails.length\n      ? data.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails[\n      data.thumbnailRenderer.playlistVideoThumbnailRenderer.thumbnail.thumbnails.length - 1\n      ]\n      : null\n  };\n}\n\nfunction parseDuration(text) {\n  if (!text) return 0;\n  const split = text.split(':');\n\n  switch (split.length) {\n    case 2:\n      return parseInt(split[0]) * 60 + parseInt(split[1]);\n\n    case 3:\n      return parseInt(split[0]) * 60 * 60 + parseInt(split[1]) * 60 + parseInt(split[2]);\n\n    default:\n      return 0;\n  }\n}\n\nfunction getWatchPlaylistVideos(data, limit = Infinity) {\n  const videos = [];\n\n  for (let i = 0; i < data.length; i++) {\n    if (limit === videos.length) break;\n    const info = data[i].playlistPanelVideoRenderer;\n    if (!info || !info.shortBylineText) continue;\n    const channel_info = info.shortBylineText.runs[0];\n\n    videos.push({\n      id: info.videoId,\n      duration: parseDuration(info.lengthText?.simpleText) || 0,\n      duration_raw: info.lengthText?.simpleText ?? '0:00',\n      thumbnails: info.thumbnail.thumbnails,\n      title: info.title.simpleText,\n      upcoming:\n        info.thumbnailOverlays[0].thumbnailOverlayTimeStatusRenderer?.style === 'UPCOMING' || undefined,\n      channel: {\n        id: channel_info.navigationEndpoint.browseEndpoint.browseId || undefined,\n        name: channel_info.text || undefined,\n        url: `https://www.youtube.com${channel_info.navigationEndpoint.browseEndpoint.canonicalBaseUrl ||\n          channel_info.navigationEndpoint.commandMetadata.webCommandMetadata.url\n          }`,\n        icon: undefined\n      }\n    });\n  }\n\n  return videos;\n}\n\n\nreturn playlist_info($input.first().json.data, $('Update Context Intent').first().json.output.url);"
+          },
+          "retryOnFail": true,
+          "typeVersion": 2,
+          "alwaysOutputData": true,
+          "waitBetweenTries": 500
+        },
+        {
+          "id": "71b60b8e-06df-45a8-85a3-7b9e938fb6f0",
+          "name": "Embeddings Google Gemini2",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+          "position": [
+            2640,
+            1060
+          ],
+          "parameters": {
+            "modelName": "models/text-embedding-004"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "58feccf5-1b97-4c88-b274-444e177f4515",
+          "name": "Qdrant Vector Store3",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            -100,
+            160
+          ],
+          "parameters": {
+            "options": {},
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Default Intent').first().json.output?.id }}"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "mb8rw8tmUeP6aPJm",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "6cff2236-3e78-4e8c-bb3d-5140f106c530",
+          "name": "Answer questions with a vector store",
+          "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+          "position": [
+            180,
+            -40
+          ],
+          "parameters": {
+            "name": "chat_playlist_data",
+            "topK": 10,
+            "description": "=Retrive data about the Playlist or Video from the vector store.\nplaylistId or youtubeId: {{ $('Default Intent').item.json.output?.id }}\n\n**User Message:**\n{{ $('Chat').item.json.chatInput }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "312081d9-9279-4700-a432-e9f878d5361e",
+          "name": "Qdrant Vector Store4",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            2700,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Default Intent').first().json.output?.id }}"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "mb8rw8tmUeP6aPJm",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f5cba8b5-226d-4b0a-8cb6-a51728ac8247",
+          "name": "Answer questions with a vector store1",
+          "type": "@n8n/n8n-nodes-langchain.toolVectorStore",
+          "position": [
+            2860,
+            700
+          ],
+          "parameters": {
+            "name": "chat_playlist_data",
+            "topK": 6,
+            "description": "=User Message:\n{{ $('Chat').item.json.chatInput }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "22f18788-b47f-4187-9146-28e6de5ec7a6",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            3000,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2aa52dd2-169b-43dc-8202-1d60f5fd55c0",
+          "name": "Google Gemini Chat Model3",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            220,
+            160
+          ],
+          "parameters": {
+            "options": {},
+            "modelName": "models/gemini-2.0-flash"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d96d3670-ab95-4afc-a275-33f03383a204",
+          "name": "Qdrant Vector Store2",
+          "type": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+          "position": [
+            -820,
+            -880
+          ],
+          "parameters": {
+            "mode": "load",
+            "prompt": "Are there any documents in the store?",
+            "options": {},
+            "qdrantCollection": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Process Status').item.json.output?.id }}"
+            }
+          },
+          "credentials": {
+            "qdrantApi": {
+              "id": "mb8rw8tmUeP6aPJm",
+              "name": "QdrantApi account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "7c289d61-09b2-461e-b771-8781f60828c7",
+          "name": "Embeddings Google Gemini4",
+          "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+          "position": [
+            -840,
+            -640
+          ],
+          "parameters": {
+            "modelName": "models/text-embedding-004"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "2zwuT5znDglBrUCO",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "59be01b0-3ff9-4cc2-b569-c0cb4dcae3ec",
+          "name": "If",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -260,
+            -880
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "795da689-23c3-49d5-a312-ca18e2c9d5e3",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $json.count_document }}",
+                  "rightValue": 0
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ab9bc74d-9659-44fe-aa08-4878609ef808",
+          "name": "Count Content",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            -460,
+            -880
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "document"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5c953435-1052-4e1c-9d2f-2439ba944b28",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            20,
+            -1020
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 500,
+            "height": 580,
+            "content": "## Process or ask for more details\n- Decides next steps based on workflow conditions e.g. missing number of playlist videos to process.\n- Route to Playlist or Video processing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "78760cd2-74db-482d-b660-bd53a3184b95",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -920,
+            -1020
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 880,
+            "height": 580,
+            "content": "## Already Processed? \n- Check if we already have embeddings in the vector store."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a8dc1b1e-2ba9-4b85-9f2f-c3d07ec67c32",
+          "name": "Update Context Intent1",
+          "type": "n8n-nodes-base.redis",
+          "position": [
+            -460,
+            -640
+          ],
+          "parameters": {
+            "key": "=context_intent_{{ $('Chat').item.json.sessionId }}",
+            "value": "=intent {{ $('Process Status').item.json.output?.intent || null }} url {{ $('Process Status').item.json.output?.url || \"\" }} id {{ $('Process Status').item.json.output?.id || \"\" }} limit {{ $('Process Status').item.json.output?.limit || 0 }} status DONE",
+            "keyType": "hash",
+            "operation": "set",
+            "valueIsJSON": false
+          },
+          "credentials": {
+            "redis": {
+              "id": "mA0f9F1ROUThyrRW",
+              "name": "Redis account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "36ea2e25-8d29-4ec6-bc6a-15c98153c390",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2540,
+            20
+          ],
+          "parameters": {
+            "width": 1080,
+            "height": 1320,
+            "content": "# AI-Powered YouTube Playlist & Video Summarization and Analysis Chat Bot\n\nThis N8N workflow transforms YouTube playlists or individual videos into interactive knowledge bases. Instead of watching videos, users can chat with the workflow to get summaries and answers based on the video transcripts.\n\n## How it Works:\n\n1.  **Chat Interaction & Intent Detection:**\n    * The workflow starts via a chat interface (`Chat Trigger`), prompting the user for a YouTube playlist or video URL.\n    * It retrieves any previous conversation context stored in Redis.\n    * A Google Gemini AI agent (`Message Intent`) analyzes the user's input to determine if it contains a valid YouTube playlist URL, a video URL, or neither (`NONE`). It extracts the URL, the corresponding ID (Playlist ID or Video ID), and checks if the user specified a limit for the number of playlist videos to process.\n    * The workflow maintains context (like the current URL, ID, and processing status) using Redis (`Update Context Intent`, `Get Previous Context Intent`).\n\n2.  **Routing & Pre-processing Checks:**\n    * Based on the detected intent and whether the content needs processing, a `Switch` node (`Route Message Intent`) directs the workflow.\n    * If a valid URL is provided and hasn't been processed yet (`status != 'DONE'`), it proceeds to the processing pipeline.\n    * It checks if embeddings for the given ID already exist in the Qdrant vector store (`Qdrant Vector Store2`, `If`). If they do, it skips processing and moves to the query handling stage.\n    * If the input is a playlist URL but no video limit is specified (`limit=0`), it prompts the user to provide one (`Numb of Videos` agent).\n\n3.  **Video/Playlist Processing Pipeline:**\n    * **Data Fetching:**\n        * For **Playlists**: Fetches the playlist page (`Playlist HTTP Request`), extracts video details using custom code (`Get Playlist Videos Data`), limits the videos if specified (`Limit`), and then fetches the transcript for each video (`YouTube Transcript`).\n        * For **Videos**: Fetches the video page (`Video HTTP Request`), extracts title/description (`Get Title and Desc`), and fetches the transcript (`YouTube Transcript1`).\n    * **Transcript Processing & Summarization:**\n        * Transcripts are retrieved using the `youtubeTranscripter` node.\n        * Transcripts are concatenated (`Concatenate`, `Concatenate1`).\n        * Data (like video ID, title, transcript text) is merged and structured (`Merge`, `Edit Fields`).\n        * Each video's transcript is summarized by a Google Gemini AI chain (`Summarize & Analyze Transcript`).\n    * **Embedding & Storage:**\n        * Any existing data for the playlist/video ID is cleared from the Qdrant vector store (`Delete Collection`).\n        * The processed transcripts (potentially alongside summaries/metadata) are loaded (`Default Data Loader`).\n        * Text is split into manageable chunks (`Recursive Character Text Splitter`).\n        * Google Gemini generates vector embeddings for the text chunks (`Embeddings Google Gemini`).\n        * These embeddings are stored in a Qdrant collection, indexed by the playlist or video ID (`Qdrant Vector Store`).\n    * **Status Update & Final Summary:**\n        * The context status in Redis is updated to 'DONE' (`Update Context Process Done1`).\n        * All individual video summaries are combined (`Full Summary`).\n        * An AI agent (`AI Agent`) may generate a final, comprehensive summary or response based on the processed data, using a tool to query the vector store (`Answer questions with a vector store1`).\n\n4.  **Query Handling (Chatting with Content):**\n    * If the user's input is identified as a query rather than a new URL to process (or if processing for a URL is complete), the workflow activates the main query handler.\n    * A conversational AI agent (`Handle Queries`), powered by Google Gemini and equipped with chat memory (`Chat Buffer Memory`), answers user questions.\n    * This agent uses a specialized tool (`Answer questions with a vector store`) that retrieves relevant information directly from the Qdrant vector store based on the user's query and the stored embeddings."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "7c1d0978-ccea-4618-bcbf-560b34f77023",
+      "connections": {
+        "If": {
+          "main": [
+            [
+              {
+                "node": "Update Context Intent1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Playlist Limit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Chat": {
+          "main": [
+            [
+              {
+                "node": "Get Previous Context Intent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit": {
+          "main": [
+            [
+              {
+                "node": "YouTube Transcript",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Video Titles",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Summarize & Analyze Transcript",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Concatenate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Videos": {
+          "main": [
+            [
+              {
+                "node": "Qdrant Vector Store",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out1": {
+          "main": [
+            [
+              {
+                "node": "Limit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out2": {
+          "main": [
+            [
+              {
+                "node": "Concatenate1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Concatenate": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields": {
+          "main": [
+            [
+              {
+                "node": "Delete Collection",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Concatenate1": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Full Summary": {
+          "main": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Video Titles": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Count Content": {
+          "main": [
+            [
+              {
+                "node": "If",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "Message Intent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Default Intent": {
+          "main": [
+            [
+              {
+                "node": "Route Message Intent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Message Intent": {
+          "main": [
+            [
+              {
+                "node": "Default Intent",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            []
+          ]
+        },
+        "Playlist Limit": {
+          "main": [
+            [
+              {
+                "node": "Numb of Videos",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Playlist or Video",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Process Status": {
+          "main": [
+            [
+              {
+                "node": "Update Context Intent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory3": {
+          "ai_memory": [
+            [
+              {
+                "node": "Numb of Videos",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete Collection": {
+          "main": [
+            [
+              {
+                "node": "Get Videos",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Playlist or Video": {
+          "main": [
+            [
+              {
+                "node": "Video HTTP Request",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Playlist HTTP Request",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Chat Buffer Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "Handle Queries",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Title and Desc": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Video HTTP Request": {
+          "main": [
+            [
+              {
+                "node": "YouTube Transcript1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get Title and Desc",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "YouTube Transcript": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Chat Buffer Memory1": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Default Data Loader": {
+          "ai_document": [
+            [
+              {
+                "node": "Qdrant Vector Store",
+                "type": "ai_document",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Qdrant Vector Store": {
+          "main": [
+            [
+              {
+                "node": "Update Context Process Done1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "YouTube Transcript1": {
+          "main": [
+            [
+              {
+                "node": "Split Out2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Qdrant Vector Store2": {
+          "main": [
+            [
+              {
+                "node": "Count Content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Qdrant Vector Store3": {
+          "ai_tool": [
+            []
+          ],
+          "ai_vectorStore": [
+            [
+              {
+                "node": "Answer questions with a vector store",
+                "type": "ai_vectorStore",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Qdrant Vector Store4": {
+          "ai_vectorStore": [
+            [
+              {
+                "node": "Answer questions with a vector store1",
+                "type": "ai_vectorStore",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Route Message Intent": {
+          "main": [
+            [
+              {
+                "node": "Process Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Handle Queries",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Handle Queries",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Playlist HTTP Request": {
+          "main": [
+            [
+              {
+                "node": "Get Playlist Videos Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Context Intent": {
+          "main": [
+            [
+              {
+                "node": "Qdrant Vector Store2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Fields for Summary": {
+          "main": [
+            [
+              {
+                "node": "Full Summary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Context Intent1": {
+          "main": [
+            [
+              {
+                "node": "Handle Queries",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings Google Gemini": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Qdrant Vector Store",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Playlist Videos Data": {
+          "main": [
+            [
+              {
+                "node": "Split Out1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Answer questions with a vector store1",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings Google Gemini1": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Qdrant Vector Store3",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings Google Gemini2": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Qdrant Vector Store4",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embeddings Google Gemini4": {
+          "ai_embedding": [
+            [
+              {
+                "node": "Qdrant Vector Store2",
+                "type": "ai_embedding",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Handle Queries",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Summarize & Analyze Transcript",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model3": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Answer questions with a vector store",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model4": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model6": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Message Intent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model8": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Numb of Videos",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Message Intent",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Previous Context Intent": {
+          "main": [
+            [
+              {
+                "node": "Message Intent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Context Process Done1": {
+          "main": [
+            [
+              {
+                "node": "Get Fields for Summary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize & Analyze Transcript": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Recursive Character Text Splitter": {
+          "ai_textSplitter": [
+            [
+              {
+                "node": "Default Data Loader",
+                "type": "ai_textSplitter",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Answer questions with a vector store": {
+          "ai_tool": [
+            [
+              {
+                "node": "Handle Queries",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Answer questions with a vector store1": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 72,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 6
+        },
+        "n8n-nodes-base.limit": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.redis": {
+          "count": 4
+        },
+        "n8n-nodes-base.switch": {
+          "count": 2
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 4
+        },
+        "n8n-nodes-base.summarize": {
+          "count": 4
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 12
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolVectorStore": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.vectorStoreQdrant": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 7
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.documentDefaultDataLoader": {
+          "count": 1
+        },
+        "n8n-nodes-youtube-transcription-dmr.youtubeTranscripter": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "dmr",
+      "username": "dmr",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/8f3c6f9bc1a0f7f73d3421323e7fbd024f8dd48e8f97bb4a16ae77865d33394a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 33,
+        "icon": "file:redis.svg",
+        "name": "n8n-nodes-base.redis",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.redis/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/redis/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Redis"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNBNDFFMTEiIGQ9Ik01Ny42NTYgNDMuOTljLTMuMjAxIDEuNjgzLTE5Ljc4NyA4LjU2MS0yMy4zMTggMTAuNDE3cy01LjQ5NCAxLjgzOC04LjI4My40OTRjLTIuNzktMS4zNDMtMjAuNDQ5LTguNTM1LTIzLjYyOS0xMC4wNjdDLjgzNCA0NC4wNjYuMDAyIDQzLjQyMi4wMDIgNDIuODExdi02LjExN3MyMi45OC01LjA0NSAyNi42OS02LjM4OCA0Ljk5NS0xLjM5IDguMTU0LS4yMjVjMy4xNiAxLjE2NSAyMi4wMzUgNC42MDMgMjUuMTU0IDUuNzU2djYuMDMyYzAgLjYwNS0uNzIgMS4yODMtMi4zNSAyLjEyNHoiLz48cGF0aCBmaWxsPSIjRDgyQzIwIiBkPSJNNTcuNjU2IDM3Ljg3MmMtMy4yMDEgMS42ODUtMTkuNzg3IDguNTYtMjMuMzE4IDEwLjQxN3MtNS40OTQgMS44MzgtOC4yODMuNDk0Yy0yLjc5LTEuMzQzLTIwLjQ0OS04LjUzNC0yMy42My0xMC4wNjhzLTMuMjQzLTIuNTg4LS4xMjItMy44MmwyNC4zODgtOS41MmMzLjcxLTEuMzQgNC45OTQtMS4zOSA4LjE1My0uMjI1czE5LjY0MyA3Ljc4IDIyLjc0NyA4Ljk1MWMzLjEwMyAxLjE3IDMuMjQgMi4wODYuMDM3IDMuNzg2eiIvPjxwYXRoIGZpbGw9IiNBNDFFMTEiIGQ9Ik01Ny42NTYgMzQuMDE1Yy0zLjIwMSAxLjY4My0xOS43ODcgOC41NjEtMjMuMzE4IDEwLjQxN3MtNS40OTQgMS44MzgtOC4yODMuNDk1Yy0yLjc5LTEuMzQ0LTIwLjQ0OS04LjUzNi0yMy42MjktMTAuMDY3Qy44MzQgMzQuMDkyLjAwMiAzMy40NDcuMDAyIDMyLjgzNlYyNi43MnMyMi45OC01LjA0NSAyNi42OS02LjM4N2MzLjcxMS0xLjM0MyA0Ljk5NS0xLjM5IDguMTU0LS4yMjUgMy4xNiAxLjE2NSAyMi4wMzUgNC42MDIgMjUuMTU0IDUuNzU2djYuMDMyYzAgLjYwNS0uNzIgMS4yODMtMi4zNSAyLjEyM3oiLz48cGF0aCBmaWxsPSIjRDgyQzIwIiBkPSJNNTcuNjU2IDI3Ljg5OGMtMy4yMDEgMS42ODUtMTkuNzg3IDguNTYxLTIzLjMxOCAxMC40MTdzLTUuNDk0IDEuODM4LTguMjgzLjQ5NWMtMi43OS0xLjM0NC0yMC40NDktOC41MzQtMjMuNjMtMTAuMDY3LTMuMTgtMS41MzQtMy4yNDMtMi41ODgtLjEyMi0zLjgybDI0LjM4OC05LjUyYzMuNzEtMS4zNDMgNC45OTQtMS4zOSA4LjE1My0uMjI1IDMuMTYgMS4xNjYgMTkuNjQ0IDcuNzg1IDIyLjc2NSA4LjkzNXMzLjI0IDIuMDg1LjAzOCAzLjc4NXoiLz48cGF0aCBmaWxsPSIjQTQxRTExIiBkPSJNNTcuNjU2IDIzLjY3MWMtMy4yMDEgMS42ODMtMTkuNzg3IDguNTYxLTIzLjMxOCAxMC40MTlzLTUuNDk0IDEuODM4LTguMjgzLjQ5NWMtMi43OS0xLjM0NC0yMC40NDktOC41MzUtMjMuNjI5LTEwLjA2OS0xLjU5Mi0uNzY1LTIuNDI0LTEuNDExLTIuNDI0LTIuMDJ2LTYuMTFzMjIuOTgtNS4wNDUgMjYuNjktNi4zODggNC45OTUtMS4zOSA4LjE1NC0uMjI1YzMuMTYgMS4xNjUgMjIuMDM1IDQuNTkxIDI1LjE1NCA1Ljc0NXY2LjAzMmMwIC42MDUtLjcyIDEuMjgzLTIuMzUgMi4xMjN6Ii8+PHBhdGggZmlsbD0iI0Q4MkMyMCIgZD0iTTU3LjY1NiAxNy41NTNjLTMuMjAxIDEuNjg1LTE5Ljc4NyA4LjU2MS0yMy4zMTggMTAuNDE3cy01LjQ5NCAxLjgzOC04LjI4My40OTVjLTIuNzktMS4zNDQtMjAuNDQ5LTguNTM0LTIzLjYzLTEwLjA2OHMtMy4yNDMtMi41ODctLjEyMi0zLjgybDI0LjM4OC05LjUyYzMuNzEtMS4zNDMgNC45OTQtMS4zOSA4LjE1My0uMjI2IDMuMTYgMS4xNjUgMTkuNjQzIDcuNzg1IDIyLjc2NSA4LjkzNnMzLjI0IDIuMDg1LjAzOCAzLjc4NXoiLz48cGF0aCBmaWxsPSIjRkZGIiBkPSJtMzEuNDk3IDE1LjAzMi0xLjg4LTMuMTUzLTYuMDAyLS41NDUgNC40OC0xLjYzTDI2Ljc1IDcuMmw0LjE5MiAxLjY1MyAzLjk1NS0xLjMwNS0xLjA3IDIuNTg2IDQuMDMyIDEuNTI0LTUuMTk4LjU0NnptLTEwLjAxNCA2LjI3NSAxMy45MDMtMi4xNTMtNC4yIDYuMjExem0tMTEuMTctNS4xNjdjMC0xLjYxIDMuMzE0LTIuOTA2IDcuNDMxLTIuOTA2IDQuMTE4IDAgNy40MzIgMS4yOTYgNy40MzIgMi45MDZzLTMuMzE0IDIuOTA1LTcuNDMyIDIuOTA1Yy00LjExNyAwLTcuNDMxLTEuMjk1LTcuNDMxLTIuOTA1Ii8+PHBhdGggZmlsbD0iIzdBMEMwMCIgZD0ibTUyLjIzMyAxNS43MTQtOC4yMjQgMy4yNzYtLjAwNy02LjU1NnoiLz48cGF0aCBmaWxsPSIjQUQyMTE1IiBkPSJtNDQuMDEgMTguOTkxLS44OS4zNTMtOC4yMTctMy4yNzYgOS4wOTQtMy42M3oiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Redis",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1191,
+        "icon": "fa:grip-lines-vertical",
+        "name": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.textsplitterrecursivecharactertextsplitter/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Text Splitters"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Recursive Character Text Splitter"
+        },
+        "iconData": {
+          "icon": "grip-lines-vertical",
+          "type": "icon"
+        },
+        "displayName": "Recursive Character Text Splitter",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1237,
+        "icon": "file:limit.svg",
+        "name": "n8n-nodes-base.limit",
+        "codex": {
+          "data": {
+            "alias": [
+              "Limit",
+              "Remove",
+              "Slice",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Limit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjMkZCNjdDIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcGF0aD0idXJsKCNhKSIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNNTEyIDQ1OGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDEyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoNjhjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMTUyLTIyMmMtNi42MjcgMC0xMi01LjM3My0xMi0xMlYzMGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDI0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MTk0YzAgNi42MjctNS4zNzMgMTItMTIgMTJ6Ii8+PHBhdGggZD0iTTE0OS41NzcgMTQ2Ljk4MmM5LjM5OC05LjM0NiAyNC41OTQtOS4zMDQgMzMuOTQxLjA5NUwyNTYgMjE5Ljk2NGw3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMCAzNTBjMC02LjYyNyA1LjM3My0xMiAxMi0xMmg0ODhjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDEyYy02LjYyNyAwLTEyLTUuMzczLTEyLTEyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Limit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1241,
+        "icon": "file:summarize.svg",
+        "name": "n8n-nodes-base.summarize",
+        "codex": {
+          "data": {
+            "alias": [
+              "Append",
+              "Array",
+              "Average",
+              "Concatenate",
+              "Count",
+              "Group",
+              "Item",
+              "List",
+              "Max",
+              "Min",
+              "Pivot",
+              "Sum",
+              "Summarise",
+              "Summarize",
+              "Transform",
+              "Unique"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Summarize"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjRjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzIgOTFjLTE1LjQ2NCAwLTI4IDEyLjUzNi0yOCAyOHYzMTdjMCAxNS40NjQgMTIuNTM2IDI4IDI4IDI4aDI0OGMxNS40NjQgMCAyOC0xMi41MzYgMjgtMjhWMTE5YzAtMTUuNDY0LTEyLjUzNi0yOC0yOC0yOGgtNmE2IDYgMCAwIDEtNi02VjQ5YTYgNiAwIDAgMSA2LTZoNmM0MS45NzQgMCA3NiAzNC4wMjYgNzYgNzZ2MzE3YzAgNDEuOTc0LTM0LjAyNiA3Ni03NiA3NkgxMzJjLTQxLjk3NCAwLTc2LTM0LjAyNi03Ni03NlYxMTljMC00MS45NzQgMzQuMDI2LTc2IDc2LTc2aDZhNiA2IDAgMCAxIDYgNnYzNmE2IDYgMCAwIDEtNiA2eiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iI0Y5MiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMjU2IDBjLTI3LjIzMiAwLTUwLjIyNyAxOC4xNDItNTcuNTU4IDQzSDE4MmE2IDYgMCAwIDAtNiA2djcwYTYgNiAwIDAgMCA2IDZoMTQ4YTYgNiAwIDAgMCA2LTZWNDlhNiA2IDAgMCAwLTYtNmgtMTYuNDQyQzMwNi4yMjcgMTguMTQyIDI4My4yMzIgMCAyNTYgMG0wIDQwYTE5LjkgMTkuOSAwIDAgMC0xMC41NDEgM0MyMzkuNzgxIDQ2LjUyOCAyMzYgNTIuODIzIDIzNiA2MGMwIDExLjA0NiA4Ljk1NCAyMCAyMCAyMHMyMC04Ljk1NCAyMC0yMGMwLTcuMTc3LTMuNzgxLTEzLjQ3Mi05LjQ1OS0xN0ExOS45IDE5LjkgMCAwIDAgMjU2IDQwbTEwMSAxNzljMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgyMzNjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ2LTI0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjRjkyIiBkPSJNMTk3IDIwN2MwIDEzLjI1NS0xMC43NDUgMjQtMjQgMjRzLTI0LTEwLjc0NS0yNC0yNCAxMC43NDUtMjQgMjQtMjQgMjQgMTAuNzQ1IDI0IDI0Ii8+PHBhdGggZmlsbD0iI0Y5MiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzU3IDM5NWMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDIzM2MtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMjRjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxMTJjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGZpbGw9IiNGOTIiIGQ9Ik0xOTcgMzgzYzAgMTMuMjU1LTEwLjc0NSAyNC0yNCAyNHMtMjQtMTAuNzQ1LTI0LTI0IDEwLjc0NS0yNCAyNC0yNCAyNCAxMC43NDUgMjQgMjQiLz48cGF0aCBmaWxsPSIjRjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNTcgMzA3YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMjMzYy02LjYyNyAwLTEyLTUuMzczLTEyLTEydi0yNGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDExMmM2LjYyNyAwIDEyIDUuMzczIDEyIDEyeiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iI0Y5MiIgZD0iTTE5NyAyOTVjMCAxMy4yNTUtMTAuNzQ1IDI0LTI0IDI0cy0yNC0xMC43NDUtMjQtMjQgMTAuNzQ1LTI0IDI0LTI0IDI0IDEwLjc0NSAyNCAyNCIvPjwvc3ZnPg=="
+        },
+        "displayName": "Summarize",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1243,
+        "icon": "file:binary.svg",
+        "name": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.documentdefaultdataloader/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Document Loaders"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Default Data Loader"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3NjgiIGhlaWdodD0iMTAyNCI+PHBhdGggZmlsbD0iIzdEN0Q4NyIgZD0iTTAgOTYwVjY0aDU3NmwxOTIgMTkydjcwNHptNzA0LTY0MEw1MTIgMTI4SDY0djc2OGg2NDB6TTMyMCA1MTJIMTI4VjI1NmgxOTJ6bS02NC0xOTJoLTY0djEyOGg2NHptMCA0NDhoNjR2NjRIMTI4di02NGg2NFY2NDBoLTY0di02NGgxMjh6bTI1Ni0zMjBoNjR2NjRIMzg0di02NGg2NFYzMjBoLTY0di02NGgxMjh6bTY0IDM4NEgzODRWNTc2aDE5MnptLTY0LTE5MmgtNjR2MTI4aDY0eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Default Data Loader",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1248,
+        "icon": "file:qdrant.svg",
+        "name": "@n8n/n8n-nodes-langchain.vectorStoreQdrant",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoreqdrant/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Vector Stores",
+                "Tools",
+                "Root Nodes"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Qdrant Vector Store"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz4KPHN2ZyB3aWR0aD0iMjU2cHgiIGhlaWdodD0iMjk2cHgiIHZpZXdCb3g9IjAgMCAyNTYgMjk2IiB2ZXJzaW9uPSIxLjEiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIj4KICAgIDx0aXRsZT5xZHJhbnQ8L3RpdGxlPgogICAgPGRlZnM+CiAgICAgICAgPGxpbmVhckdyYWRpZW50IHgxPSI4MS41NjE5MDQ4JSIgeTE9IjQ0Ljg0MjEwNTMlIiB4Mj0iLTE4LjA4NTcxNDMlIiB5Mj0iNDQuODQyMTA1MyUiIGlkPSJsaW5lYXJHcmFkaWVudC0xIj4KICAgICAgICAgICAgPHN0b3Agc3RvcC1jb2xvcj0iI0ZGMzM2NCIgb2Zmc2V0PSIwJSI+PC9zdG9wPgogICAgICAgICAgICA8c3RvcCBzdG9wLWNvbG9yPSIjQzkxNTQwIiBzdG9wLW9wYWNpdHk9IjAiIG9mZnNldD0iMTAwJSI+PC9zdG9wPgogICAgICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8L2RlZnM+CiAgICA8Zz4KICAgICAgICA8cG9seWdvbiBmaWxsPSIjMjQzODZDIiBwb2ludHM9IjIwMS4zMTcwNSAyNzEuNzIyNDI3IDE5NS40MjI3MTUgMTA5LjIxMjY3IDE4NC43NDc3ODEgNjYuMzY4MjM2OCAyNTYgNzMuOTExMjU0NSAyNTYgMjcwLjQ5MjUwOSAyMTIuNDc0NzU3IDI5NS42MTI2MjYiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWdvbiBmaWxsPSIjNzU4OUJFIiBwb2ludHM9IjI1NS45OTUxNTEgNzMuODk5ODEwNyAyMTIuNDY5OTA4IDk5LjAzNzM4NCAxMjIuNjQ5NjM0IDc5LjMzNDY0NzEgMTcuNTE2MDAwOCAxMjIuMTQwMjg4IDEuMTM3MDQ4NGUtMTQgNzMuODk5ODEwNyA2My45ODgzMTM3IDM2Ljk0OTkwNTMgMTI3Ljk5NjAyNCAwIDE5MS45ODYyNzcgMzYuOTQ5OTA1MyI+PC9wb2x5Z29uPgogICAgICAgIDxwb2x5bGluZSBmaWxsPSIjQjJCRkU4IiBwb2ludHM9IjAuMDAzMTAzNDA0MTIgNzMuODk5ODEwNyA0My41MjgzNDYyIDk5LjAzNzM4NCA2OC43NTkwMjE3IDE3NC4wNzM4MTYgMTUzLjk0OTQwNSAyNDIuMjM2MjA5IDEyOC4wMDEwNjcgMjk1LjU5OTI0MyA2My45OTMzNTY4IDI1OC42NDczOTggMC4wMDMxMDM0MDQxMiAyMjEuNjk3NDkyIDAuMDAzMTAzNDA0MTIgNzMuODk3ODcxIj48L3BvbHlsaW5lPgogICAgICAgIDxwb2x5bGluZSBmaWxsPSIjMjQzODZDIiBwb2ludHM9IjE1Ni44NTY5MDYgMjAyLjgwNzQ1OSAxMjguMDAxMDY3IDI0NS4zNDczNzEgMTI4LjAwMTA2NyAyOTUuNjAzMTIyIDE2OC45NDY2MDUgMjcxLjk3ODQ1OCAxOTAuMDQzOTM0IDI0MC40NzUwMjciPjwvcG9seWxpbmU+CiAgICAgICAgPHBvbHlnb24gZmlsbD0iIzc1ODlCRSIgcG9pbnRzPSIxMjguMDE4NTIzIDE5NS4xMDcxMzggODcuMDU1NTI4NyAxMjQuMTg0NjU2IDk1Ljg3ODcwMDUgMTAwLjY3ODMwOSAxMjkuNDIwNjggODQuNDE1Njk1NSAxNjguOTQ2NDExIDEyNC4xODU4MTkiPjwvcG9seWdvbj4KICAgICAgICA8cG9seWxpbmUgZmlsbD0iI0IyQkZFOCIgcG9pbnRzPSI4Ny4wNTU1Mjg3IDEyNC4xNzg4MzcgMTI4LjAwMTA2NyAxNDcuODAzNTAxIDEyOC4wMDEwNjcgMTk1LjA5MTYyMSA5MC4xMzE3NzggMTk2LjcyMDkyNyA2Ny4yMjQ3NzYzIDE2Ny40NzEzNDQgODcuMDU1NTI4NyAxMjQuMTc4ODU2Ij48L3BvbHlsaW5lPgogICAgICAgIDxwb2x5Z29uIGZpbGw9IiMyNDM4NkMiIHBvaW50cz0iMTI4LjAwMTA2NyAxNDcuNzk5NjIxIDE2OC45NDY2MDUgMTI0LjE3Njg5NyAxOTYuODEzMjM0IDE3MC41NzY2NjggMTYzLjA5MDg2OSAxOTguNDM5NDE4IDEyOC4wMDEwNjcgMTk1LjA4OTI5MyI+PC9wb2x5Z29uPgogICAgICAgIDxwYXRoIGQ9Ik0xNjguOTQ2NjA1LDI3MS45NzQ1NzkgTDIxMi40NzE4NDgsMjk1LjYwMTE4MiBMMjEyLjQ3MTg0OCw5OS4wMzkzMjM3IEwxNzAuMjI2NzU5LDc0LjY1ODIwNSBMMTI4LjAwMTA2Nyw1MC4yNzcwODY0IEw4NS43NTU5NzgyLDc0LjY1ODIwNSBMNDMuNTMwMjg1OCw5OS4wMzkzMjM3IEw0My41MzAyODU4LDE5Ni41ODEyNTUgTDg1Ljc1NTk3ODIsMjIwLjk2MjM3MyBMMTI4LjAwMTA2NywyNDUuMzQ1NDMyIEwxNjguOTQ2NjA1LDIyMS42OTk0MzIgTDE2OC45NDY2MDUsMjcxLjk3NDU3OSBaIE0xNjguOTQ2NjA1LDE3MS40NDM2ODEgTDEyOC4wMDEwNjcsMTk1LjA4Nzc0MiBMODcuMDU1NTI4NywxNzEuNDQzNjgxIEw4Ny4wNTU1Mjg3LDEyNC4xNzQ5NTcgTDEyOC4wMDEwNjcsMTAwLjUzMDg5NyBMMTY4Ljk0NjYwNSwxMjQuMTc0OTU3IEwxNjguOTQ2NjA1LDE3MS40NDM2ODEiIGZpbGw9IiNEQzI0NEMiPjwvcGF0aD4KICAgICAgICA8cG9seWdvbiBmaWxsPSJ1cmwoI2xpbmVhckdyYWRpZW50LTEpIiBwb2ludHM9IjEyOC4wMTg1MjMgMjQ1LjM2Mjg4OCAxMjguMDE4NTIzIDE5NS4wOTkzNzkgODcuMjg2MzQ0MyAxNzEuNjU3MDQxIDg3LjI4NjM0NDMgMjIxLjgzNzE0NiI+PC9wb2x5Z29uPgogICAgPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "Qdrant Vector Store",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1261,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.embeddingsgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Embeddings"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Embeddings Google Gemini"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Embeddings Google Gemini",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1269,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.toolVectorStore",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolvectorstore/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Answer questions with a vector store"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Vector Store Question Answer Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

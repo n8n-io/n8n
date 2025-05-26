@@ -1,0 +1,33 @@
+URL: https://docs.n8n.io/integrations/creating-nodes/build/reference/node-base-files/
+Scraped_At: 2025-05-20T19:08:39.929488
+
+Node base file
+#
+The node base file contains the core code of your node. All nodes must have a base file. The contents of this file are different depending on whether you're building a declarative-style or programmatic-style node. For guidance on which style to use, refer to
+Choose your node building approach
+.
+These documents give short code snippets to help understand the code structure and concepts. For full walk-throughs of building a node, including real-world code examples, refer to
+Build a declarative-style node
+or
+Build a programmatic-style node
+.
+You can also explore the
+n8n-nodes-starter
+and n8n's own
+nodes
+for a wider range of examples. The starter contains basic examples that you can build on. The n8n
+Mattermost node
+is a good example of a more complex programmatic-style node, including versioning.
+For all nodes, refer to the:
+Structure of the node base file
+Standard parameters
+For declarative-style nodes, refer to the:
+Declarative-style parameters
+For programmatic-style nodes, refer to the:
+Programmatic-style parameters
+Programmatic-style execute() method
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

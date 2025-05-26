@@ -1,0 +1,20 @@
+URL: https://docs.n8n.io/code/cookbook/http-node/
+Scraped_At: 2025-05-20T18:41:29.223101
+
+Examples using n8n's HTTP Request node
+#
+The HTTP Request node is one of the most versatile nodes in n8n. Use this node to make HTTP requests to query data from any app or service with a REST API.
+Refer to
+HTTP Request
+for information on node settings.
+Pagination
+Related resources
+#
+HTTP Request
+Built-in methods and variables reference
+Expressions
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

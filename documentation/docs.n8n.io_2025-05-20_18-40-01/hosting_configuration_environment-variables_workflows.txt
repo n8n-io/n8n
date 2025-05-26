@@ -1,0 +1,50 @@
+URL: https://docs.n8n.io/hosting/configuration/environment-variables/workflows/
+Scraped_At: 2025-05-20T18:44:13.286366
+
+Workflows environment variables
+#
+File-based configuration
+You can add
+_FILE
+to individual variables to provide their configuration in a separate file. Refer to
+Keeping sensitive data in separate files
+for more details.
+Variable
+Type
+Default
+Description
+N8N_ONBOARDING_FLOW_DISABLED
+Boolean
+false
+Whether to disable onboarding tips when creating a new workflow (true) or not (false).
+N8N_WORKFLOW_ACTIVATION_BATCH_SIZE
+Number
+1
+How many workflows to activate simultaneously during startup.
+N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION
+String
+workflowsFromSameOwner
+Which workflows can call a workflow. Options are:
+any
+,
+none
+,
+workflowsFromAList
+,
+workflowsFromSameOwner
+. This feature requires
+Workflow sharing
+.
+N8N_WORKFLOW_TAGS_DISABLED
+Boolean
+false
+Whether to disable workflow tags (true) or enable tags (false).
+WORKFLOWS_DEFAULT_NAME
+String
+My workflow
+The default name used for new workflows.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

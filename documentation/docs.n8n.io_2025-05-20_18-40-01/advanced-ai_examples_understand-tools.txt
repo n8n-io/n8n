@@ -1,0 +1,44 @@
+URL: https://docs.n8n.io/advanced-ai/examples/understand-tools/
+Scraped_At: 2025-05-20T18:40:18.773064
+
+What's a tool in AI?
+#
+In AI, 'tools' has a specific meaning. Tools act like addons that your AI can use to access extra context or resources.
+Here are a couple of other ways of expressing it:
+Tools are interfaces that an agent can use to interact with the world (
+source
+)
+We can think of these tools as being almost like functions that your AI model can call (
+source
+)
+AI tools in n8n
+#
+n8n provides tool
+sub-nodes
+that you can connect to your
+AI agent
+. As well as providing some popular tools, such as
+Wikipedia
+and
+SerpAPI
+, n8n provides three especially powerful tools:
+Call n8n Workflow Tool
+: use this to load any n8n workflow as a tool.
+Custom Code Tool
+: write code that your agent can run.
+HTTP Request Tool
+: make calls to fetch a website or data from an API.
+The next three examples highlight the Call n8n Workflow Tool:
+Chat with Google Sheets
+Call an API to fetch data
+Set up a human fallback
+You can also learn how to
+let AI dynamically specify parameters for tools with the
+$fromAI()
+function
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

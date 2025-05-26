@@ -1,0 +1,28 @@
+URL: https://docs.n8n.io/advanced-ai/langchain/langchain-learning-resources/
+Scraped_At: 2025-05-20T18:40:25.685599
+
+LangChain learning resources
+#
+You don't need to know details about LangChain to use n8n, but it can be helpful to learn a few concepts. This pages lists some learning resources that people at n8n have found helpful.
+The
+LangChain documentation
+includes introductions to key concepts and possible use cases. Choose the
+LangChain | Python
+or
+LangChain | JavaScript
+documentation for quickstarts, code examples, and API documentation. LangChain also provide
+code templates
+(Python only), offering ideas for potential use cases and common patterns.
+What Product People Need To Know About LangChain
+provides a list of terminology and concepts, explained with helpful metaphors. Aimed at a wide audience.
+If you prefer video, this
+YouTube series by Greg Kamradt
+works through the LangChain documentation, providing code examples as it goes.
+n8n offers space to discuss LangChain on the
+Discord
+. Join to share your projects and discuss ideas with the community.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,1948 @@
+{
+  "workflow": {
+    "id": 2609,
+    "name": "Automatically Correct Wrong Shipping Addresses in Billbee Orders",
+    "views": 404,
+    "recentViews": 0,
+    "totalViews": 404,
+    "createdAt": "2024-12-05T10:23:11.248Z",
+    "description": "# **Address Validation Workflow**\n\n## **About**\nThis workflow automates the process of validating and correcting client shipping addresses in Billbee, ensuring accurate delivery information. It's ideal for e-commerce businesses looking to save time and reduce errors in their order fulfillment process. The workflow uses Billbee, an order management platform for small to medium-sized online retailers, and the Endereco API for address validation.\n\n## **Who Is This For?**\n- **E-Commerce Businesses**: Streamline order fulfillment by automatically correcting common shipping address errors.\n- **Warehouse Teams**: Reduce manual work and ensure packages are shipped to the correct address.\n- **Small to Medium-Sized Retailers**: Businesses using Billbee to manage orders and requiring efficient, automated solutions for address validation.\n\n## **How it Works**\n1. **Trigger**: Workflow starts via a Billbee Webhook when an order is imported.  \n2. **Fetch Data**: Retrieve the client's shipping address using the Order ID.  \n3. **Validate Address**: Send the address to the Endereco API for validation and correction (e.g., house number errors).  \n4. **Conditional Actions**:  \n   - **Valid Address**: Update the address in Billbee.  \n   - **Invalid Address**: Tag the order with \"Validation Error.\"  \n5. **Track Status**: Add tags in Billbee for processed orders.\n\n## **Setup Steps**\n1. **API Keys**: Obtain Billbee Developer/User API Keys and Endereco API Key.  \n2. **Billbee Rule**: Create an automation rule:  \n   - **Trigger**: Order imported.  \n   - **Action**: Call External URL with `OrderId` to trigger n8n workflow.  \n3. **Optional**: Use a secondary trigger (e.g., order state changes to \"gepackt\") for manual corrections.\n\n## **Customization Options**\n1. **Filter Delivery Addresses**:  \n   - Customize filters to exclude specific delivery types, such as pickup shops (\"Postfiliale,\" \"Paketshop,\" or \"Packstation\").  \n   - Filters can be adjusted within Billbee or in the workflow.\n\n2. **Error Handling**:  \n   - Configure additional actions for orders that fail validation, such as notifying your team or flagging orders for manual review.\n\n3. **Order Tags**:  \n   - Define custom tags in Billbee to better track order statuses (e.g., \"Address Corrected,\" \"Validation Error\").\n\n4. **Trigger Types**:  \n   - Use additional triggers such as changes to order states (e.g., \"gepackt\" or \"In Fulfillment\") for manual corrections or validations.\n\n5. **Address Fields**:  \n   - Modify the workflow to focus on specific address components, such as postal codes, city names, or country codes.\n\n6. **Validation Rules**:  \n   - Adjust Endereco API settings or add custom logic to refine validation criteria based on your business needs.\n\n### **API Documentation**\n- **Endereco**: [Endereco API Docs](https://github.com/Endereco/enderecoservice_api)  \n- **Billbee**: [Billbee API Docs](https://app.billbee.io//swagger/ui/index)\n",
+    "workflow": {
+      "id": "VaU41OXvni95OlAL",
+      "meta": {
+        "instanceId": "1bc0f4fa5e7d17ac362404cbb49337e51e5061e019cfa24022a8667c1f1ce287",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "address validation",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "c6e389ae-6db2-416b-8f6f-91749fbc860f",
+          "name": "get order data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2500,
+            880
+          ],
+          "parameters": {
+            "url": "=https://api.billbee.io/api/v1/orders/{{ $json.orderID }}",
+            "options": {},
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Billbee-Api-Key",
+                  "value": "={{ $json['X-Billbee-Api-Key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "1b27594b-af74-4c25-bb4f-27550bcd152e",
+          "name": "Split Out Order Data",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            2660,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "Data.ShippingAddress.BillbeeId, Data.ShippingAddress.FirstName, Data.ShippingAddress.LastName, Data.ShippingAddress.Street, Data.ShippingAddress.HouseNumber, Data.ShippingAddress.Zip, Data.ShippingAddress.City, Data.ShippingAddress.CountryISO2, Data.ShippingAddress.Line2, Data.ShippingAddress.NameAddition"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "43808f6f-815d-419c-9e6f-c12d436108f2",
+          "name": "Set Address Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2820,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "dbda7791-09eb-4ae9-b1e8-7ce8582a5b4a",
+                  "name": "first_name",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.FirstName'] }}"
+                },
+                {
+                  "id": "1d13d702-b422-48c4-be04-db7869776897",
+                  "name": "family_name",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.LastName'] }}"
+                },
+                {
+                  "id": "9169466f-5639-4b58-80d3-c041ccea5e21",
+                  "name": "Street",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.Street'] }}"
+                },
+                {
+                  "id": "ea20b727-83c0-4c23-94c7-29f4f57eda78",
+                  "name": "housenumber",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.HouseNumber'].replace(\"/\",\"\")}}"
+                },
+                {
+                  "id": "81c3ebb0-6975-4b69-93f1-42dba7f2f60b",
+                  "name": "zip",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.Zip'] }}"
+                },
+                {
+                  "id": "2f1a6786-d48b-4475-805e-1db2fef2b5c3",
+                  "name": "location",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.City'] }}"
+                },
+                {
+                  "id": "4b6a4eb2-8867-4d9e-a4fb-32b66f466b58",
+                  "name": "BillbeeID",
+                  "type": "string",
+                  "value": "={{ $('Webhook').item.json.query.Id }}"
+                },
+                {
+                  "id": "814513e9-9e56-4fb8-84bc-fd01456af443",
+                  "name": "BillbeeShippingAddressID",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.BillbeeId'] }}"
+                },
+                {
+                  "id": "bd45c9b8-d9fb-4d3f-be13-d202b8a3430d",
+                  "name": "CountryISO2",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.CountryISO2'] }}"
+                },
+                {
+                  "id": "c8e08606-d860-4482-8b4e-c68fe4c1974f",
+                  "name": "AddressLine2",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.Line2'] }}"
+                },
+                {
+                  "id": "fe1cb8a4-6c21-4505-8337-e31f07386a8c",
+                  "name": "NameAddition",
+                  "type": "string",
+                  "value": "={{ $json['Data.ShippingAddress.NameAddition'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "3e5f3fc5-d3e2-4f4a-978e-795893e016cc",
+          "name": "Check Address endereco api",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4140,
+            760
+          ],
+          "parameters": {
+            "url": "https://endereco-service.de/rpc/v1",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"jsonrpc\": \"2.0\",\n  \"id\": 1,\n  \"method\": \"addressCheck\",\n  \"params\": {\n    \"country\": \"{{ $json['CountryISO2']}}\",\n    \"language\": \"{{ $json[\"CountryISO2\"] }}\",\n    \"postCode\": \"{{ $json[\"zip\"] }}\",\n    \"cityName\": \"{{ $json[\"location\"] }}\",\n    \"street\": \"{{ $json[\"Street\"] }}\",\n    \"houseNumber\": \"{{ $json[\"housenumber\"] }}\"\n  }\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Auth-Key",
+                  "value": "={{ $('ConfigNode').item.json['X-Auth-Key-Endereco'] }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "X-Transaction-Id",
+                  "value": "not_required"
+                },
+                {
+                  "name": "X-Transaction-Referer",
+                  "value": "n8n"
+                },
+                {
+                  "name": "X-Agent",
+                  "value": "n8n"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "3b02a11e-719b-41ef-b84f-b1e06d83854a",
+          "name": "Split Out Corrected Address",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            4600,
+            720
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "result.predictions"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3b6135a-6a0e-4c37-95ef-6e33f14c5e74",
+          "name": "set new delivery address to billbee",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4920,
+            720
+          ],
+          "parameters": {
+            "url": "=https://api.billbee.io/api/v1/customers/addresses/{{ $('Set Address Fields').item.json[\"BillbeeShippingAddressID\"] }}",
+            "method": "PATCH",
+            "options": {},
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "Housenumber",
+                  "value": "={{ $json.houseNumber }}"
+                },
+                {
+                  "name": "Street",
+                  "value": "={{ $json.street }}"
+                },
+                {
+                  "name": "Zip",
+                  "value": "={{ $json.postCode }}"
+                },
+                {
+                  "name": "City",
+                  "value": "={{ $json.cityName }}"
+                }
+              ]
+            },
+            "genericAuthType": "httpBasicAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Billbee-Api-Key",
+                  "value": "={{ $('ConfigNode').item.json['X-Billbee-Api-Key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "b170217c-b2d7-4514-b070-403e29964e4b",
+          "name": "Wait",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            2120,
+            960
+          ],
+          "webhookId": "0f7b87d2-ec90-4f54-9971-31e564206980",
+          "parameters": {
+            "amount": 1
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "17ea8895-05cd-4ffd-af31-aace970f8073",
+          "name": "Wait1",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            4760,
+            720
+          ],
+          "webhookId": "b7a0738c-0890-45f5-a435-bc9d9a9062bb",
+          "parameters": {
+            "amount": 1
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d8d005e4-3b94-49d6-82dc-2919ca69dd2f",
+          "name": "check if new address is not empty",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            4320,
+            760
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "2a9d055a-4607-4e87-bb6a-ecc1a31826e0",
+                  "operator": {
+                    "type": "array",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.result.predictions }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "3ad15e79-e4c8-4adf-90a5-aaf61cfe4825",
+          "name": "set billbee tag",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4580,
+            920
+          ],
+          "parameters": {
+            "url": "=https://api.billbee.io/api/v1/orders/{{ $('Set Address Fields').item.json[\"BillbeeID\"] }}/tags",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n  \"Tags\": [\n    \"endereco_address_failed\"\n  ]\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Billbee-Api-Key",
+                  "value": "={{ $('ConfigNode').item.json['X-Billbee-Api-Key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "6b0e5cfb-95d5-43a0-a665-6b8db6b6ad98",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2260,
+            820
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 481,
+            "height": 198,
+            "content": "## Get and Prepare Oder Data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a2524895-b0dd-492b-b425-548ccbabf5c2",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            460,
+            460
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1110.4301052736698,
+            "height": 544.444950562247,
+            "content": "# **Address Validation Workflow**\n### **Requirements**\n- **Billbee Developer API Key**: Request via email: `support@billbee.io`.\n- **Billbee User API Key**: Found in the **Billbee settings**.\n- **Endereco API Key**: Register at [Endereco API](https://www.endereco.de/en/integrations/address-api/). **30-Day Free Trial available**.\n## **About**\nThis workflow automates the process of validating client shipping addresses, saving time and reducing errors. Your **warehouse team** will appreciate it!\n## **How it Works**\n1. **Start**: The workflow is triggered by a **Webhook** sent from Billbee (see configuration). The webhook provides the **Order ID**.\n2. **Retrieve Order Data**: Use the Order ID to call the **Billbee Order Endpoint**. This fetches the client's shipping address.\n3. **Data Mapping and Manipulation**: Rename and map the fields. Apply optional filters and data adjustments.\n3.1 **Validating the housenumber** (Most common error)\n4. **Validate Address**: Send the shipping address to the **Endereco API**. The API validates the address and, if necessary, suggests a corrected address.\n5. **Conditional Check**: **Was a new address suggested?** **Yes**: Update the client’s shipping address in Billbee. **No**: Add a **\"Validation Error\"** tag to the Billbee order.\n6. **Tag the Order**: For successfully validated orders, add a tag in Billbee to mark them as processed.\n### **Benefits**\n- **Time-Saving**: Automates address validation, reducing manual effort.\n- **Error Reduction**: Identifies incorrect addresses and suggests corrections automatically.\n- **Transparency**: Tracks the validation status with tags in Billbee.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "31bb6e73-e702-4577-8b7f-a9850e80cbaf",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1060,
+            1040
+          ],
+          "parameters": {
+            "width": 276,
+            "height": 219,
+            "content": "## API Docs\n\nEndereco:\nhttps://github.com/Endereco/enderecoservice_api\n\nBillbee:\nhttps://app.billbee.io//swagger/ui/index\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4bb9d0c1-0838-449b-bb1e-c4912173d9df",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            460,
+            1040
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 574.5277463210057,
+            "height": 573.7065374509425,
+            "content": "### Bilbee Setup \n### **Rule Settings**\n- **Name of the Rule:** Endereco Address Validation\n- **Comment:** *No comment provided.*\n- **Active:** ✅ Active\n- **Stop Rule Processing After This Rule:** ⬜ Disabled\n### **Trigger:**\n- **Event:** Order imported  \n- **Import Type:** All import types\n### **Conditions:**\n- **Restrict Shop:** Rule applies only if the order comes from one of the defined shops.\n### **Actions:**\n- **Call External URL:**  \n  - **URL:** `YOUR_N8N_WEBHOOK_LINK?Id={OrderId}`\nThis rule ensures that for every imported order from a specific shop, the external webhook URL is triggered with the `OrderId` as a parameter.\n\n### Option 2\n\nIf order state gets changed to \"gepackt\", \"In Fulfillment\" by this you can manually correct the orders within Billbee as most address are fine. Make sure that the State does not trigger a different automation"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ad409a55-db7f-4699-9d56-98d7a2164afe",
+          "name": "check if housenumer is not empty",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3260,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "5dbd8016-9c70-4cd8-9c7b-22b6779d7ae3",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.housenumber }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "0131cf4e-983b-4cc5-8305-e4a644f9e700",
+          "name": "check if addressline 2 contains number",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3420,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "e758c0d9-caf6-40e8-9ceb-cd786e346709",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.AddressLine2.isNumeric() }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "14d67019-a6c2-4ad4-9c0e-383ee3e1f3e9",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1360,
+            1320
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "13c4f784-fb7a-4a61-b106-eb92dbc8f2d0",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "851d9d42-2b50-4a40-8d46-7d3decf897c2",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1080,
+            1300
+          ],
+          "parameters": {
+            "color": 3,
+            "height": 239.63602562365423,
+            "content": "## Include Filter \nYou want to filter out PickUp Shops or Parcel Stations for example in Germany:\n\n\"Postfiliale, Paketshop, Packstation\"\n\nThis can also be set up within Billbee"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a07c7816-bcb6-457d-a621-ccfebcc384ad",
+          "name": "set value of addressline2 as housenumber",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3600,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7c21cf08-4ae8-4856-ae2f-0f25053aebde",
+                  "name": "housenumber",
+                  "type": "string",
+                  "value": "={{ $json.AddressLine2 }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c22fb34a-252f-4570-b576-089bb3243bfd",
+          "name": "Filter Out PickUpShops",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            3040,
+            880
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "b6bf1576-9082-446b-9072-13130bf7d724",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.Street }}",
+                  "rightValue": "Postfiliale"
+                },
+                {
+                  "id": "f7e18eb3-a3df-49df-adb4-d9c807963478",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.Street }}",
+                  "rightValue": "Packstation"
+                },
+                {
+                  "id": "51c548d1-1eed-4caf-b32c-402b8ce73042",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notContains"
+                  },
+                  "leftValue": "={{ $json.Street }}",
+                  "rightValue": "Paketshop"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b2b3c72a-d3d0-467f-8f60-17f40c7a3650",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3020,
+            820
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 155.04025478630723,
+            "height": 185.20127393153615,
+            "content": "## Open ME!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ea2e9abf-1461-4754-b663-83e771207627",
+          "name": "check if addressline 2 contains number and letter",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3560,
+            1080
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "loose"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "c82c2273-b34c-42e1-871d-31db72d2ad49",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json[\"AddressLine2\"].match(/^(?=.*\\d)(?=.*[A-Za-z]).+$/) !== null }}\n",
+                  "rightValue": ""
+                }
+              ]
+            },
+            "looseTypeValidation": true
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b532b22f-421e-4bd8-8241-ca559e77c3ca",
+          "name": "set billbee tag manual check",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3780,
+            1200
+          ],
+          "parameters": {
+            "url": "=https://api.billbee.io/api/v1/orders/{{ $('Set Address Fields').item.json[\"BillbeeID\"] }}/tags",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n  \"Tags\": [\n    \"manual_address_check\"\n  ]\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Billbee-Api-Key",
+                  "value": "={{ $('ConfigNode').item.json['X-Billbee-Api-Key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "bdb10514-2fa7-4727-a8e7-aa8394fced6f",
+          "name": "set value of addressline2 as housenumber number+letter",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3760,
+            1020
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7c21cf08-4ae8-4856-ae2f-0f25053aebde",
+                  "name": "housenumber",
+                  "type": "string",
+                  "value": "={{ $json.AddressLine2 }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "cf0a516f-f019-40f8-8d09-ff02a034781d",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3000,
+            760
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 907.6568579769853,
+            "height": 627.257034553087,
+            "content": "## House Number Validation"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "82a16bec-77e9-4717-8111-69f8f068c925",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            4040,
+            700
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1325.4150814203485,
+            "height": 354.5727675883748,
+            "content": "## Address Validation & Correction"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "07f54a0d-2b13-4996-95a4-4c225402abe1",
+          "name": "set billbee success",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            5080,
+            720
+          ],
+          "parameters": {
+            "url": "=https://api.billbee.io/api/v1/orders/{{ $('Set Address Fields').item.json[\"BillbeeID\"] }}/tags",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "{\n  \"Tags\": [\n    \"endereco_address_validated\"\n  ]\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "X-Billbee-Api-Key",
+                  "value": "={{ $('ConfigNode').item.json['X-Billbee-Api-Key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "bd2f3340-f389-48e1-a90d-1625b6845556",
+          "name": "ConfigNode",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1860,
+            960
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "c4d1415a-636b-4673-bba5-699168af2b2e",
+                  "name": "X-Billbee-Api-Key",
+                  "type": "string",
+                  "value": "INSERT BILLBEE DEVELOPER API KEY"
+                },
+                {
+                  "id": "69c630d7-d64c-49be-a594-88b05d44a091",
+                  "name": "X-Auth-Key-Endereco",
+                  "type": "string",
+                  "value": "INSERT ENDERECO API KEY"
+                },
+                {
+                  "id": "75977810-a10a-45ea-b536-d4b8f0f59b15",
+                  "name": "orderID",
+                  "type": "string",
+                  "value": "={{ $json.query.Id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7619e573-116a-4f87-b6d2-b652ee7a25b7",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1800,
+            1120
+          ],
+          "parameters": {
+            "color": 3,
+            "height": 251.61012258936577,
+            "content": "### **Setup**\n\n**Create an Basic Auth for BillbeeUser**\n-E-Mail as Username, Password User API Key\n\nPaste your Billbee Developer Key (X Key) and Endereco API Key\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "31c17f6e-0e90-4db1-9048-4b13bd36cc90",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2500,
+            1100
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 150,
+            "height": 135.6842625042993,
+            "content": "### **Setup**\n\nSelect your BillbeeUser Basic Auth \n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ca1e1a8b-6107-4e0c-81c4-2a3b715aed11",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            1640,
+            960
+          ],
+          "webhookId": "786e8a93-9837-44e6-81ae-a173ce25a14f",
+          "parameters": {
+            "path": "786e8a93-9837-44e6-81ae-a173ce25a14f",
+            "options": {}
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Webhook": [
+          {
+            "json": {
+              "body": {},
+              "query": {
+                "Id": "300000221273261"
+              },
+              "params": {},
+              "headers": {
+                "host": "sfx-ecommerce.app.n8n.cloud",
+                "x-real-ip": "49.12.91.132",
+                "tracestate": "dd=s:-1",
+                "traceparent": "00-00000000000000004c0234c4a8ce641b-3f1af42f856c7eb3-00",
+                "accept-encoding": "gzip",
+                "x-forwarded-for": "49.12.91.132",
+                "x-forwarded-host": "sfx-ecommerce.app.n8n.cloud",
+                "x-forwarded-port": "443",
+                "x-forwarded-proto": "https",
+                "x-datadog-trace-id": "5476998116086277147",
+                "x-forwarded-server": "traefik-78bdf4fd45-vvczp",
+                "x-datadog-parent-id": "4547215258723057331",
+                "x-datadog-sampling-priority": "-1"
+              },
+              "webhookUrl": "https://sfx-ecommerce.app.n8n.cloud/webhook/786e8a93-9837-44e6-81ae-a173ce25a14f",
+              "executionMode": "production"
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "1f498c7a-468a-48c4-b044-64455eb51aa2",
+      "connections": {
+        "Wait": {
+          "main": [
+            [
+              {
+                "node": "get order data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait1": {
+          "main": [
+            [
+              {
+                "node": "set new delivery address to billbee",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "ConfigNode",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "ConfigNode": {
+          "main": [
+            [
+              {
+                "node": "Wait",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "get order data": {
+          "main": [
+            [
+              {
+                "node": "Split Out Order Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Address Fields": {
+          "main": [
+            [
+              {
+                "node": "Filter Out PickUpShops",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Order Data": {
+          "main": [
+            [
+              {
+                "node": "Set Address Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Out PickUpShops": {
+          "main": [
+            [
+              {
+                "node": "check if housenumer is not empty",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Address endereco api": {
+          "main": [
+            [
+              {
+                "node": "check if new address is not empty",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Corrected Address": {
+          "main": [
+            [
+              {
+                "node": "Wait1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check if housenumer is not empty": {
+          "main": [
+            [
+              {
+                "node": "Check Address endereco api",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "check if addressline 2 contains number",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check if new address is not empty": {
+          "main": [
+            [
+              {
+                "node": "Split Out Corrected Address",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "set billbee tag",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set new delivery address to billbee": {
+          "main": [
+            [
+              {
+                "node": "set billbee success",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check if addressline 2 contains number": {
+          "main": [
+            [
+              {
+                "node": "set value of addressline2 as housenumber",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "check if addressline 2 contains number and letter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set value of addressline2 as housenumber": {
+          "main": [
+            [
+              {
+                "node": "Check Address endereco api",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check if addressline 2 contains number and letter": {
+          "main": [
+            [
+              {
+                "node": "set value of addressline2 as housenumber number+letter",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "set billbee tag manual check",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set value of addressline2 as housenumber number+letter": {
+          "main": [
+            [
+              {
+                "node": "Check Address endereco api",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 31,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 4
+        },
+        "n8n-nodes-base.set": {
+          "count": 4
+        },
+        "n8n-nodes-base.wait": {
+          "count": 2
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 10
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 6
+        }
+      }
+    },
+    "user": {
+      "name": "Simon",
+      "username": "simonfes",
+      "bio": "I am an E-commerce entrepreneur specializing in spare parts, with a strong passion for automation and AI.\n\nI leverage n8n to build complex workflows, integrating tools like SeaTable, Supabase with various E-com platforms. \n\nI'm dedicated to continuously improving workflow processes, particularly in the e-commerce sector.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/602c41571e8b6e23ec9804f20339d7d817476d734532baa8b52326e7b5eab5f3?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,54 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.linear/
+Scraped_At: 2025-05-20T18:49:00.836295
+
+Linear node
+#
+Use the Linear node to automate work in Linear, and integrate Linear with other applications. n8n has built-in support for a wide range of Linear features, including creating, updating, deleting, and getting issues.
+On this page, you'll find a list of operations the Linear node supports and links to more resources.
+Credentials
+Refer to
+Linear credentials
+for guidance on setting up authentication.
+Operations
+#
+Issue
+Create
+Delete
+Get
+Get All
+Update
+Templates and examples
+#
+Customer Support Channel and Ticketing System with Slack and Linear
+by Jimleuk
+View template details
+Visual Regression Testing with Apify and AI Vision Model
+by Jimleuk
+View template details
+Send alert when data is created in app/database
+by n8n Team
+View template details
+Browse Linear integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

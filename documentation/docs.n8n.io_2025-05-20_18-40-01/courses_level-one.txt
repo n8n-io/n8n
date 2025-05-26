@@ -1,0 +1,77 @@
+URL: https://docs.n8n.io/courses/level-one/
+Scraped_At: 2025-05-20T18:41:39.851287
+
+Level one: Introduction
+#
+Welcome to the
+n8n Course Level 1
+!
+Is this course right for me?
+#
+This course introduces you to the fundamental concepts within n8n and develops your low-code automation expertise.
+This course is for you if you:
+Are starting to use n8n for the first time.
+Are looking for some extra help creating your first workflow.
+Want to automate processes in your personal or working life.
+This course introduces n8n concepts and demonstrates practical workflow building without assuming any prior familiarity with n8n. If you'd like to get a feel for the basics without as much explanation, consult our
+quickstart guide
+.
+What will I learn in this course?
+#
+We believe in learning by doing. You can expect some theoretical information about the basic concepts and components of n8n, followed by practice of building workflows step by step.
+By the end of this course you will know:
+How to set up n8n and navigate the Editor UI.
+How n8n structures data.
+How to configure different node parameters and add credentials.
+When and how to use conditional logic in workflows.
+How to schedule and control workflows.
+How to import, download, and share workflows with others.
+You will build two workflows:
+A two-node workflow to get articles from Hacker News
+A seven-node workflow to help your client get records from a data warehouse, filter them, make calculations, and notify team members about the results
+What do I need to get started?
+#
+n8n set up
+: You can use
+n8n Cloud
+(or the
+self-hosted version
+if you have experience hosting services).
+A course user ID
+:
+Sign up here
+to get your unique ID and other credentials you will need in the course.
+Basic knowledge of JavaScript and
+APIs
+would be helpful, but isn't necessary.
+An
+account on the n8n community forum
+if you wish to receive a profile badge and avatar upon successful completion.
+How long does the course take?
+#
+Completing the course should take around
+two hours
+. You don't have to complete it in one go; feel free to take breaks and resume whenever you are ready.
+How do I complete the course?
+#
+There are two milestones in this course that test your knowledge of what you have learned in the lessons:
+Building the
+main workflow
+Passing the
+quiz
+at the end of the course
+Check your progress
+You can always
+check your progress
+throughout the course by entering your unique ID
+here
+.
+If you complete the milestones above, you will get
+a badge and an avatar
+in your forum profile. You can then share your profile and course verification ID to showcase your n8n skills to others.
+Let's get started!
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

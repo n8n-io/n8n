@@ -1,0 +1,537 @@
+{
+  "workflow": {
+    "id": 3326,
+    "name": "Build Custom AI Agent with LangChain & Gemini (Self-Hosted)",
+    "views": 2981,
+    "recentViews": 26,
+    "totalViews": 2981,
+    "createdAt": "2025-03-26T01:02:38.093Z",
+    "description": "## Overview  \nThis workflow leverages the LangChain code node to implement a fully customizable conversational agent. Ideal for users who need granular control over their agent's prompts while reducing unnecessary token consumption from reserved tool-calling functionality (compared to n8n's built-in Conversation Agent).  \n![截屏20250327 17.53.50.png](fileId:1063)\n\n## Setup Instructions  \n1. **Configure Gemini Credentials**: Set up your Google Gemini API key ([Get API key here](https://ai.google.dev/) if needed). Alternatively, you may use other AI provider nodes.  \n2. **Interaction Methods**:  \n   - Test directly in the workflow editor using the \"Chat\" button  \n   - Activate the workflow and access the chat interface via the URL provided by the `When Chat Message Received` node  \n\n## Customization Options  \n1. **Interface Settings**: Configure chat UI elements (e.g., title) in the `When Chat Message Received` node  \n2. **Prompt Engineering**:  \n   - Define agent personality and conversation structure in the `Construct & Execute LLM Prompt` node's template variable  \n   - ⚠️ Template must preserve `{chat_history}` and `{input}` placeholders for proper LangChain operation  \n3. **Model Selection**: Swap language models through the `language model` input field in `Construct & Execute LLM Prompt`  \n4. **Memory Control**: Adjust conversation history length in the `Store Conversation History` node  \n\n## Requirements:  \n⚠️ This workflow uses the **LangChain Code node**, which only works on **self-hosted n8n**.  \n*(Refer to [LangChain Code node docs](https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.code/))*\n",
+    "workflow": {
+      "id": "yCIEiv9QUHP8pNfR",
+      "meta": {
+        "instanceId": "f29695a436689357fd2dcb55d528b0b528d2419f53613c68c6bf909a92493614",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Build Custom AI Agent with LangChain & Gemini (Self-Hosted)",
+      "tags": [
+        {
+          "id": "7M5ZpGl3oWuorKpL",
+          "name": "share",
+          "createdAt": "2025-03-26T01:17:15.342Z",
+          "updatedAt": "2025-03-26T01:17:15.342Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "8bd5382d-f302-4e58-b377-7fc5a22ef994",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -220,
+            0
+          ],
+          "webhookId": "b8a5d72c-4172-40e8-b429-d19c2cd6ce54",
+          "parameters": {
+            "public": true,
+            "options": {
+              "responseMode": "lastNode",
+              "allowedOrigins": "*",
+              "loadPreviousSession": "memory"
+            },
+            "initialMessages": ""
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "6ae8a247-4077-4569-9e2c-bb68bcecd044",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            80,
+            240
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.7,
+              "safetySettings": {
+                "values": [
+                  {
+                    "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+                    "threshold": "BLOCK_NONE"
+                  }
+                ]
+              }
+            },
+            "modelName": "models/gemini-2.0-flash-exp"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "UEjKMw0oqBTAdCWJ",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bbe6dcfa-430f-43f9-b0e9-3cf751b98818",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            -240
+          ],
+          "parameters": {
+            "width": 260,
+            "height": 220,
+            "content": "👇 **Prompt Engineering**\n   - Define agent personality and conversation structure in the `Construct & Execute LLM Prompt` node's template variable  \n   - ⚠️ Template must preserve `{chat_history}` and `{input}` placeholders for proper LangChain operation  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "892a431a-6ddf-47fc-8517-1928ee99c95b",
+          "name": "Store conversation history",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            280,
+            240
+          ],
+          "parameters": {},
+          "notesInFlow": false,
+          "typeVersion": 1.3
+        },
+        {
+          "id": "f9a22dbf-cac7-4d70-85b3-50c44a2015d5",
+          "name": "Construct & Execute LLM Prompt",
+          "type": "@n8n/n8n-nodes-langchain.code",
+          "position": [
+            380,
+            0
+          ],
+          "parameters": {
+            "code": {
+              "execute": {
+                "code": "const { PromptTemplate } = require('@langchain/core/prompts');\nconst { ConversationChain } = require('langchain/chains');\nconst { BufferMemory } = require('langchain/memory');\n\nconst template = `\nYou'll be roleplaying as the user's girlfriend. Your character is a woman with a sharp wit, logical mindset, and a charmingly aloof demeanor that hides your playful side. You're passionate about music, maintain a fit and toned physique, and carry yourself with quiet self-assurance. Career-wise, you're established and ambitious, approaching life with positivity while constantly striving to grow as a person.\n\nThe user affectionately calls you \"Bunny,\" and you refer to them as \"Darling.\"\n\nEssential guidelines:\n1. Respond exclusively in Chinese\n2. Never pose questions to the user - eliminate all interrogative forms\n3. Keep responses brief and substantive, avoiding rambling or excessive emojis\n\nContext framework:\n- Conversation history: {chat_history}\n- User's current message: {input}\n\nCraft responses that feel authentic to this persona while adhering strictly to these parameters.\n`;\n\nconst prompt = new PromptTemplate({\n  template: template,\n  inputVariables: [\"input\", \"chat_history\"], \n});\n\nconst items = this.getInputData();\nconst model = await this.getInputConnectionData('ai_languageModel', 0);\nconst memory = await this.getInputConnectionData('ai_memory', 0);\nmemory.returnMessages = false;\n\nconst chain = new ConversationChain({ llm:model, memory:memory, prompt: prompt, inputKey:\"input\", outputKey:\"output\"});\nconst output = await chain.call({ input: items[0].json.chatInput});\n\nreturn output;\n"
+              }
+            },
+            "inputs": {
+              "input": [
+                {
+                  "type": "main",
+                  "required": true,
+                  "maxConnections": 1
+                },
+                {
+                  "type": "ai_languageModel",
+                  "required": true,
+                  "maxConnections": 1
+                },
+                {
+                  "type": "ai_memory",
+                  "required": true,
+                  "maxConnections": 1
+                }
+              ]
+            },
+            "outputs": {
+              "output": [
+                {
+                  "type": "main"
+                }
+              ]
+            }
+          },
+          "retryOnFail": false,
+          "typeVersion": 1
+        },
+        {
+          "id": "fe104d19-a24d-48b3-a0ac-7d3923145373",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -240,
+            -260
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 420,
+            "height": 240,
+            "content": "### Setup Instructions  \n1. **Configure Gemini Credentials**: Set up your Google Gemini API key ([Get API key here](https://ai.google.dev/) if needed). Alternatively, you may use other AI provider nodes.  \n2. **Interaction Methods**:  \n   - Test directly in the workflow editor using the \"Chat\" button  \n   - Activate the workflow and access the chat interface via the URL provided by the `When Chat Message Received` node  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f166214d-52b7-4118-9b54-0b723a06471a",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -220,
+            160
+          ],
+          "parameters": {
+            "height": 100,
+            "content": "👆 **Interface Settings**\nConfigure chat UI elements (e.g., title) in the `When Chat Message Received` node  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "da6ca0d6-d2a1-47ff-9ff3-9785d61db9f3",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            20,
+            420
+          ],
+          "parameters": {
+            "width": 200,
+            "height": 140,
+            "content": "👆 **Model Selection**\nSwap language models through the `language model` input field in `Construct & Execute LLM Prompt`  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0b4dd1ac-8767-4590-8c25-36cba73e46b6",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            240,
+            420
+          ],
+          "parameters": {
+            "width": 200,
+            "height": 140,
+            "content": "👆 **Memory Control**\nAdjust conversation history length in the `Store Conversation History` node  "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1",
+        "saveManualExecutions": false,
+        "saveDataSuccessExecution": "none"
+      },
+      "versionId": "77cd5f05-f248-442d-86c3-574351179f26",
+      "connections": {
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Construct & Execute LLM Prompt",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store conversation history": {
+          "ai_memory": [
+            [
+              {
+                "node": "Construct & Execute LLM Prompt",
+                "type": "ai_memory",
+                "index": 0
+              },
+              {
+                "node": "When chat message received",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Construct & Execute LLM Prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Construct & Execute LLM Prompt": {
+          "main": [
+            []
+          ],
+          "ai_memory": [
+            []
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 49,
+    "workflowInfo": {
+      "nodeCount": 9,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "@n8n/n8n-nodes-langchain.code": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "shepard",
+      "username": "shepard",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/817c459c4341406e8b06d803efbbcd482989fa13d615a43d261e717bb46ae06c?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1127,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.code",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.code/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Miscellaneous"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "LangChain Code"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "LangChain Code",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 1063,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/2025_03_27_17_53_50_52bfbca02f.png"
+      }
+    ]
+  }
+}

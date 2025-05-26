@@ -1,0 +1,1502 @@
+{
+  "workflow": {
+    "id": 3307,
+    "name": "🍅 Custom Pomodoro Tracker using Telegram and Google Sheet",
+    "views": 1220,
+    "recentViews": 9,
+    "totalViews": 1220,
+    "createdAt": "2025-03-24T11:35:08.457Z",
+    "description": "*Tags: Productivity, Pomodoro, Organization*\n\n### Context  \nHey! I’m Samir, a Supply Chain Engineer and Data Scientist from Paris, founder of [LogiGreen Consulting](https://logi-green.com) 🌱\n\nA significant improvement in my productivity came from following the **Pomodoro Technique**.\n\n### What is the Pomodoro Technique?  \nThe Pomodoro Technique is a time management method that breaks your workday into 25-minute focus intervals followed by short breaks. After 4 cycles, you take a longer break to recharge.  \nIt helps maintain concentration while preventing burnout.\n\n![Explaination](https://runmefit.com/wp-content/uploads/2024/01/How-the-Pomodoro-Technique-Works.jpg)\n\nI’ve used this technique with web apps to receive break/work notifications. But I always wished I had a way to **track my sessions** for self-assessment.\n\n&gt; Let’s use **n8n** to boost our productivity and log our deep work sessions automatically!\n\n📬 For business inquiries, you can add me on [Here](https://www.linkedin.com/in/samir-saci)\n\n### Who Is This Template For?  \nI built this workflow for creators, freelancers, students, and professionals who love the Pomodoro technique but want more than just timers — they want data.\n\nThis template helps you:\n- Track every deep work session automatically\n- Store logs in Google Sheets for later analysis\n- Stay in control via Telegram commands  \n\nThere is no need to pay for premium apps. It’s all **free** and powered by **n8n**.\n\n### How Does It Work?  \nThis Telegram bot tracks your Pomodoro sessions and sends you alerts during the process.\n\n**Here’s what happens:**\n\n1. A user sends `/start` to the bot.\n2. It launches a 25-minute deep work timer.\n3. After 25 minutes, the bot sends a break reminder.\n4. **After four cycles**, a long break is triggered and the session is logged.\n5. The session is **automatically recorded to Google Sheets** with (Date & Time, User ID, Pomodoro count, Session ID, Duration of focus and breaks)\n\n![Example of chat interaction](https://www.samirsaci.com/content/images/2025/03/image-10.png)\n\n### What Gets Tracked?\n\n| Field              | Description                          |\n|-------------------|--------------------------------------|\n| Date & Time        | When the session was logged          |\n| User ID           | Your Telegram ID                     |\n| Block Type    | Deep Work or Short Break\n| Pomodoro Count    | Number of cycles completed            |\n| Working Session ID        | Unique ID for each session           |\n| Focus Duration    | Length of each deep work session     |\n| Break Duration    | Short or long break info             |\n\nYou can use this workflow as a base to bring additional features like:\n- Connecting with tasks from **Google Task**\n- Send automated productivity reports to monitor your activity\n- Link a Pomodoro with a task using **Google Calendar**\n\n\n### What Do I Need to Start?\n\nThis workflow is beginner-friendly — **no coding required**.\n\n- **Google Drive API** and **Google Sheet API** credentials\n- A Google Sheet set up to log sessions (with the columns of the table above)\n- API Credentials:\n  - **Google Sheets API** (OAuth2)\n  - **Telegram Bot Token**\n- Telegram app to chat with the bot\n\n&gt; The template is plug-and-play. Just follow the sticky notes in the n8n editor to configure it.\n\n### Next Steps  \nFollow the sticky notes in the n8n workflow editor to:\n\n- Set your credentials  \n- Connect your Google Sheet  \n- Initialize the static data  \n- Launch your first `/start` command on Telegram\n\n![Tutorial ScreenShot](https://www.samirsaci.com/content/images/2025/04/Pomodoro-Timer.png)  \n🎥 [**Watch My Tutorial**](https://www.youtube.com/watch?v=ztMMrmbgGEo)\n\n🚀 Curious how n8n can supercharge **productivity and learning skills?**?  \n📬 Let’s connect on [**LinkedIn**](https://www.linkedin.com/in/samir-saci)\n\nThis workflow has been created with N8N 1.82.1\nSubmitted: March 24th, 2025",
+    "workflow": {
+      "meta": {
+        "instanceId": "6a5e68bcca67c4cdb3e0b698d01739aea084e1ec06e551db64aeff43d174cb23",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "bc49829b-45f2-4910-9c37-907271982f14",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            0
+          ],
+          "parameters": {
+            "width": 780,
+            "height": 540,
+            "content": "### 4. Do you need more details?\nFind a step-by-step guide in this tutorial\n![Guide](https://www.samirsaci.com/content/images/2025/04/Pomodoro-Timer.png)\n[🎥 Watch My Tutorial](https://www.youtube.com/watch?v=ztMMrmbgGEo)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b5f24526-f1fc-43b0-82bf-887288838304",
+          "name": "Telegram Trigger",
+          "type": "n8n-nodes-base.telegramTrigger",
+          "position": [
+            -2560,
+            540
+          ],
+          "webhookId": "09021985-57be-46c0-ac3d-c3a029ebf9e9",
+          "parameters": {
+            "updates": [
+              "message"
+            ],
+            "additionalFields": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "8bb53ae0-515a-493d-9c1a-8a06362ada2e",
+          "name": "If",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -2340,
+            540
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a0be860f-a9ae-4a49-b478-dac25bd550e2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "startsWith"
+                  },
+                  "leftValue": "={{ $('Telegram Trigger').item.json.message.text }}",
+                  "rightValue": "/"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "2bba3d64-03b7-4875-ac13-d4be13d2aa6d",
+          "name": "Deep Work",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            -1680,
+            460
+          ],
+          "webhookId": "e4e8c51c-286e-47ff-809c-510069debd56",
+          "parameters": {
+            "unit": "minutes",
+            "amount": 25
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "bc3ea269-cbc5-4c7d-8ea1-74413883e425",
+          "name": "Break",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            -1340,
+            460
+          ],
+          "webhookId": "3d3e199b-257c-4517-ab36-3e32242dabf8",
+          "parameters": {
+            "unit": "minutes"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "da225392-cd09-4afb-ba56-816484c742ae",
+          "name": "Initiate Static Data",
+          "type": "n8n-nodes-base.code",
+          "notes": "You only need to run the initialization step once per workflow, regardless of the number of Telegram chat IDs. The initialization creates the telegramStates object within the global static data of the workflow. Once that object exists, the workflow will use it to store the state for any chat ID.",
+          "position": [
+            -2540,
+            -160
+          ],
+          "parameters": {
+            "jsCode": "let workflowStaticData = $getWorkflowStaticData('global');\nif (!workflowStaticData.telegramStates) {\n    workflowStaticData.telegramStates = {}; \n}\nreturn workflowStaticData;\n"
+          },
+          "notesInFlow": false,
+          "typeVersion": 2
+        },
+        {
+          "id": "b4f1ae18-ff8d-4b1d-8c26-8e3f87350d2d",
+          "name": "Increment Count",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1180,
+            460
+          ],
+          "parameters": {
+            "jsCode": "let workflowStaticData = $getWorkflowStaticData('global');\n\nif (!workflowStaticData.telegramStates) {\n    workflowStaticData.telegramStates = {}; \n}\n\nlet userId = $('Telegram Trigger').first().json.message.chat.id.toString();\n\n// Ensure the user object exists\nif (!workflowStaticData.telegramStates[userId]) {\n    workflowStaticData.telegramStates[userId] = { count: 0, sessionId: \"\", startTime: \"\" };\n}\n\n// Check if sessionId is missing, then generate one\nif (!workflowStaticData.telegramStates[userId].sessionId) {\n    workflowStaticData.telegramStates[userId].sessionId = Date.now().toString(36) + Math.random().toString(36).substring(2, 8);\n    workflowStaticData.telegramStates[userId].startTime = new Date().toISOString();\n}\n\n// Increment the Pomodoro count\nworkflowStaticData.telegramStates[userId].count += 1;\n\n// Return the updated session details\nreturn [\n    {\n        json: {\n            count: workflowStaticData.telegramStates[userId].count,\n            sessionId: workflowStaticData.telegramStates[userId].sessionId,\n            startTime: workflowStaticData.telegramStates[userId].startTime\n        }\n    }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5315d3fc-9c1e-4f3d-9e00-81f806d84e6a",
+          "name": "Record Deep Work",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            -720,
+            400
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "Date": "={{ $now.format('dd-LL-yyyy') }}",
+                "Time": "={{ $now.hour.toString().padStart(2, '0') }}:{{ $now.minute.toString().padStart(2, '0') }} ",
+                "User ID": "={{ $json.result.chat.id }}",
+                "Block Type": "Deep Work",
+                "Pomodoro Count": "={{ $('Increment Count').item.json.count }}",
+                "Working Session ID": "={{ $('Increment Count').item.json.sessionId }}",
+                "Break Duration (min)": "5",
+                "Focus Duration (min)": "25"
+              },
+              "schema": [
+                {
+                  "id": "Date",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Date",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Time",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Time",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "User ID",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "User ID",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Working Session ID",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Working Session ID",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Block Type",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Block Type",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Pomodoro Count",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Pomodoro Count",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Focus Duration (min)",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Focus Duration (min)",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Break Duration (min)",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Break Duration (min)",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "=",
+              "cachedResultName": "="
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "=",
+              "cachedResultUrl": "=",
+              "cachedResultName": "="
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.5
+        },
+        {
+          "id": "7328bccb-bb00-42bb-9659-6f66600894cc",
+          "name": "Record Long Break",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            -120,
+            460
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "Date": "={{ $now.format('dd-LL-yyyy') }}",
+                "Time": "={{ $now.hour.toString().padStart(2, '0') }}:{{ $now.minute.toString().padStart(2, '0') }} ",
+                "User ID": "={{ $json.result.chat.id }}",
+                "Block Type": "Long Break",
+                "Pomodoro Count": "={{ $('Increment Count').item.json.count }}",
+                "Working Session ID": "={{ $('Increment Count').item.json.sessionId }}",
+                "Break Duration (min)": "15",
+                "Focus Duration (min)": "0"
+              },
+              "schema": [
+                {
+                  "id": "Date",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Date",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Time",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Time",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "User ID",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "User ID",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Working Session ID",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Working Session ID",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Block Type",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Block Type",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Pomodoro Count",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Pomodoro Count",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Focus Duration (min)",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "Focus Duration (min)",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Break Duration (min)",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "Break Duration (min)",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "=",
+              "cachedResultName": "="
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "=",
+              "cachedResultUrl": "=",
+              "cachedResultName": "="
+            }
+          },
+          "typeVersion": 4.5
+        },
+        {
+          "id": "2d45a378-7188-4ac2-bb2e-c0ba745794d7",
+          "name": "Instructions Message",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            -2160,
+            660
+          ],
+          "webhookId": "a4c1043e-0520-4ef6-994c-6e733f90827b",
+          "parameters": {
+            "text": "=💡 Oops! That’s not a valid command.\n\nHere’s what you can do:\n✅ /start – Kick off a Pomodoro session and get in the zone.\n✅ /stop – Wrap up your session like a productivity pro.\n\nNow, let’s get some deep work done! 🔥💻",
+            "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "additionalFields": {}
+          },
+          "notesInFlow": true,
+          "typeVersion": 1.2
+        },
+        {
+          "id": "14c90858-f22d-4495-bda0-c846209e6736",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2580,
+            -400
+          ],
+          "parameters": {
+            "width": 440,
+            "height": 380,
+            "content": "### 0. Initiate Workplace Static Data\nRun it **once** before activating the workflow to initialize workspace data that will be used to **store state flags** and **outputs from users**.\n\n#### How to setup?\n- **Code Node:** do not change anything, just run it\n  [Learn more about the code node](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "26cdb973-26eb-41a6-b071-11b5b51faf70",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2580,
+            0
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 620,
+            "height": 940,
+            "content": "### 1. Workflow Trigger with Telegram Message\n1. The workflow is triggered by a user message. \n2. The second is checking if the message is a command (starting with \"/\") to route it to the proper block. If the message is not a command, the bot sends an instruction message to the user.\n3. The third node checks if the message is a **/stop**. If yes, we stop the workflow the bot send a notice to the user and state variables are clears\n\n#### How to setup?\n- **Telegram Nodes:** set up your telegram bot credentials\n[Learn more about the Telegram Trigger Node](https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6d4f131c-076e-4d0a-9738-847692557468",
+          "name": "start or stop?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -2160,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "f169eadd-424b-42b0-8229-615608ecb23c",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('Telegram Trigger').item.json.message.text }}",
+                  "rightValue": "/start"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "aa50b802-83f1-47da-a9eb-cf2fc9576c28",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1900,
+            0
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 1360,
+            "height": 940,
+            "content": "### 2. Deep Work Blocks of 25 minutes\n1. The bot notifies the user that the session started.\n2. After 25 minutes, it sends a notification to inform the user that [he/she] should take a break.\n3. The loop continues until we reached four working sessions.\n\n#### Why do we need Google Sheets?\nEach deep work session is recorded to help users keep track of their stats.\n\n#### How to setup?\n- **Deep Work & Break Mode**: fix the amount of time you want for the deep work session (Default: 25 min) and the short break (Default: 5 min)\n- **Telegram Nodes:** set up your telegram bot credentials\n[Learn more about the Telegram Trigger Node](https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/)\n- **Record Deep Work in the Google Sheet Node**:\n   1. Add your Google Sheet API credentials to access the Google Sheet file\n   2. Select the file using the list, an URL or an ID\n   3. Select the sheet in which you want to record your working sessions\n   4. Map the fields\n  [Learn more about the Google Sheet Node](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6a7b7b74-61b0-40de-8def-7bc602302d05",
+          "name": "Long Break Notification",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            -440,
+            520
+          ],
+          "webhookId": "251e850d-fcad-4fe8-a335-001ff1677415",
+          "parameters": {
+            "text": "🍴 Time for a long break. Great job!",
+            "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "additionalFields": {
+              "appendAttribution": false
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "fc63c241-53ee-4443-9a8c-a8f8a5da992b",
+          "name": "Clear Variables1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1680,
+            760
+          ],
+          "parameters": {
+            "jsCode": "let workflowStaticData = $getWorkflowStaticData('global');\nif (workflowStaticData.telegramStates) {\n    delete workflowStaticData.telegramStates[$('Telegram Trigger').first().json.message.chat.id.toString()];\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "12297308-57ca-493f-8e65-49e396042893",
+          "name": "Clear Variables2",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -120,
+            640
+          ],
+          "parameters": {
+            "jsCode": "let workflowStaticData = $getWorkflowStaticData('global');\nif (workflowStaticData.telegramStates) {\n    delete workflowStaticData.telegramStates[$('Telegram Trigger').first().json.message.chat.id.toString()];\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "46ab1b8b-c9be-4da9-a470-d1a4c9fcc219",
+          "name": "< 4 Cycles",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -720,
+            540
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "307c1ccf-9a10-49e6-a59d-d250edb1cae5",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $('Increment Count').item.json.count }}",
+                  "rightValue": 4
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "22752905-50fc-48ee-9b4c-f80e6184c17f",
+          "name": "Short Break Notification",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            -1520,
+            460
+          ],
+          "webhookId": "b436cc4e-83d8-4bfa-9de9-e37cde83f9f9",
+          "parameters": {
+            "text": "🚰 Work session complete! Take a short break.",
+            "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "additionalFields": {
+              "appendAttribution": false
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "d43993be-ae96-4f83-8047-fffc956d2bac",
+          "name": "Back to Work Notification",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            -1000,
+            460
+          ],
+          "webhookId": "d13ad958-abf2-46a8-8785-da369933de24",
+          "parameters": {
+            "text": "=🏢 Break over! Back to work for the cycle: {{ $json.count }}",
+            "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "additionalFields": {
+              "appendAttribution": false
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "480f9003-3c1d-44a1-8552-8b59d9d074af",
+          "name": "Start Cycle Notification",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            -1840,
+            460
+          ],
+          "webhookId": "16fa6143-2d4e-44b5-b0d0-3d58bc6022a8",
+          "parameters": {
+            "text": "⏰ Time to focus! 25 minutes of deep work starts now.",
+            "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "additionalFields": {
+              "appendAttribution": false
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "b0ce8b4c-7e41-47f6-b505-46fdf606b84d",
+          "name": "End of Session Notification",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            -1860,
+            760
+          ],
+          "webhookId": "126e70c5-ea40-4bd5-81ee-5ca459db6a0d",
+          "parameters": {
+            "text": "=🛑 You decided to stop the session early.\n🚀 Use /start to relaunch a working session.",
+            "chatId": "={{ $('Telegram Trigger').item.json.message.from.id }}",
+            "additionalFields": {
+              "appendAttribution": false
+            }
+          },
+          "notesInFlow": true,
+          "retryOnFail": false,
+          "typeVersion": 1.2
+        },
+        {
+          "id": "bd6b313b-2418-4b03-ad0e-7373b26b68c3",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -500,
+            0
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 560,
+            "height": 940,
+            "content": "### 3. End of the session for a long break\n1. The bot notifies the user that the session ended.\n2. The long break is recorded in the Google Sheets.\n3. Variables are cleared so the workflow is ready for a new session with this user.\n\n#### How to setup?\n- **Telegram Nodes:** set up your telegram bot credentials\n[Learn more about the Telegram Trigger Node](https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/)\n- **Record Long Break in the Google Sheet Node**:\n   1. Add your Google Sheet API credentials to access the Google Sheet file\n   2. Select the file using the list, an URL or an ID\n   3. Select the sheet in which you want to record your working sessions\n   4. Map the fields\n  [Learn more about the Google Sheet Node](https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets)\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {
+        "Telegram Trigger": [
+          {
+            "message": {
+              "chat": {
+                "id": 0,
+                "type": "private",
+                "username": "=",
+                "first_name": "="
+              },
+              "date": 1742551547,
+              "from": {
+                "id": 0,
+                "is_bot": false,
+                "username": "=",
+                "first_name": "=",
+                "language_code": "en"
+              },
+              "text": "/stop",
+              "entities": [
+                {
+                  "type": "bot_command",
+                  "length": 6,
+                  "offset": 0
+                }
+              ],
+              "message_id": 1846
+            },
+            "update_id": 567456699
+          }
+        ]
+      },
+      "connections": {
+        "If": {
+          "main": [
+            [
+              {
+                "node": "start or stop?",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Instructions Message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Break": {
+          "main": [
+            [
+              {
+                "node": "Increment Count",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Deep Work": {
+          "main": [
+            [
+              {
+                "node": "Short Break Notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "< 4 Cycles": {
+          "main": [
+            [
+              {
+                "node": "Long Break Notification",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Start Cycle Notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "start or stop?": {
+          "main": [
+            [
+              {
+                "node": "Start Cycle Notification",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "End of Session Notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Increment Count": {
+          "main": [
+            [
+              {
+                "node": "Back to Work Notification",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Telegram Trigger": {
+          "main": [
+            [
+              {
+                "node": "If",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Long Break Notification": {
+          "main": [
+            [
+              {
+                "node": "Clear Variables2",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Record Long Break",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Short Break Notification": {
+          "main": [
+            [
+              {
+                "node": "Break",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Start Cycle Notification": {
+          "main": [
+            [
+              {
+                "node": "Deep Work",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Back to Work Notification": {
+          "main": [
+            [
+              {
+                "node": "< 4 Cycles",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Record Deep Work",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "End of Session Notification": {
+          "main": [
+            [
+              {
+                "node": "Clear Variables1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 23,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.code": {
+          "count": 4
+        },
+        "n8n-nodes-base.wait": {
+          "count": 2
+        },
+        "n8n-nodes-base.telegram": {
+          "count": 6
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 2
+        },
+        "n8n-nodes-base.telegramTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Samir Saci",
+      "username": "samirsaci",
+      "bio": "Automation, AI and Analytics for Supply Chain & Business Optimization\nHelping businesses streamline operations using n8n, AI agents, and data science to enhance efficiency and sustainability. \nLinkedin: www.linkedin.com/in/samir-saci",
+      "verified": true,
+      "links": [
+        "https://linktr.ee/samirsaci"
+      ],
+      "avatar": "https://gravatar.com/avatar/d3644476a59e5813c5f00a7933977e2be8805cbdc574958b9cc6a53b45bedd6a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 49,
+        "icon": "file:telegram.svg",
+        "name": "n8n-nodes-base.telegram",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Telegram"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzM3YWVlMiIgZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiLz48cGF0aCBmaWxsPSIjYzhkYWVhIiBkPSJtMjEuNjYxIDM0LjMzOCAzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIvPjxwYXRoIGZpbGw9IiNhOWM2ZDgiIGQ9Im0yNi42OTUgMzcuMDM0LS43MjkgNy43NDZzLS4zMDUgMi4zNzMgMi4wNjggMGw0LjY0NC00LjIwMyIvPjxwYXRoIGQ9Im0yMS43MyAzNC43MTItNy44MDktMi41NDVzLS45MzItLjM3OC0uNjMzLTEuMjM3Yy4wNjItLjE3Ny4xODYtLjMyOC41NTktLjU4OCAxLjczMS0xLjIwNiAzMi4wMjgtMTIuMDk2IDMyLjAyOC0xMi4wOTZzLjg1Ni0uMjg4IDEuMzYxLS4wOTdjLjIzMS4wODguMzc4LjE4Ny41MDMuNTQ4LjA0NS4xMzIuMDcxLjQxMS4wNjguNjg5LS4wMDMuMjAxLS4wMjcuMzg2LS4wNDUuNjc4LS4xODQgMi45NzgtNS43MDYgMjUuMTk4LTUuNzA2IDI1LjE5OHMtLjMzIDEuMy0xLjUxNCAxLjM0NWMtLjQzMi4wMTYtLjk1Ni0uMDcxLTEuNTgyLS42MS0yLjMyMy0xLjk5OC0xMC4zNTItNy4zOTQtMTIuMTI2LTguNThhLjM0LjM0IDAgMCAxLS4xNDYtLjIzOWMtLjAyNS0uMTI1LjEwOC0uMjguMTA4LS4yOHMxMy45OC0xMi40MjcgMTQuMzUyLTEzLjczMWMuMDI5LS4xMDEtLjA3OS0uMTUxLS4yMjYtLjEwNy0uOTI5LjM0Mi0xNy4wMjUgMTAuNTA2LTE4LjgwMSAxMS42MjktLjEwNC4wNjYtLjM5NS4wMjMtLjM5NS4wMjMiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Telegram",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 50,
+        "icon": "file:telegram.svg",
+        "name": "n8n-nodes-base.telegramTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.telegramtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Telegram Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzM3YWVlMiIgZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiLz48cGF0aCBmaWxsPSIjYzhkYWVhIiBkPSJtMjEuNjYxIDM0LjMzOCAzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIvPjxwYXRoIGZpbGw9IiNhOWM2ZDgiIGQ9Im0yNi42OTUgMzcuMDM0LS43MjkgNy43NDZzLS4zMDUgMi4zNzMgMi4wNjggMGw0LjY0NC00LjIwMyIvPjxwYXRoIGQ9Im0yMS43MyAzNC43MTItNy44MDktMi41NDVzLS45MzItLjM3OC0uNjMzLTEuMjM3Yy4wNjItLjE3Ny4xODYtLjMyOC41NTktLjU4OCAxLjczMS0xLjIwNiAzMi4wMjgtMTIuMDk2IDMyLjAyOC0xMi4wOTZzLjg1Ni0uMjg4IDEuMzYxLS4wOTdjLjIzMS4wODguMzc4LjE4Ny41MDMuNTQ4LjA0NS4xMzIuMDcxLjQxMS4wNjguNjg5LS4wMDMuMjAxLS4wMjcuMzg2LS4wNDUuNjc4LS4xODQgMi45NzgtNS43MDYgMjUuMTk4LTUuNzA2IDI1LjE5OHMtLjMzIDEuMy0xLjUxNCAxLjM0NWMtLjQzMi4wMTYtLjk1Ni0uMDcxLTEuNTgyLS42MS0yLjMyMy0xLjk5OC0xMC4zNTItNy4zOTQtMTIuMTI2LTguNThhLjM0LjM0IDAgMCAxLS4xNDYtLjIzOWMtLjAyNS0uMTI1LjEwOC0uMjguMTA4LS4yOHMxMy45OC0xMi40MjcgMTQuMzUyLTEzLjczMWMuMDI5LS4xMDEtLjA3OS0uMTUxLS4yMjYtLjEwNy0uOTI5LjM0Mi0xNy4wMjUgMTAuNTA2LTE4LjgwMSAxMS42MjktLjEwNC4wNjYtLjM5NS4wMjMtLjM5NS4wMjMiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Telegram Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": []
+  }
+}

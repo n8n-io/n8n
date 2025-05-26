@@ -1,0 +1,182 @@
+{
+  "workflow": {
+    "id": 651,
+    "name": "Receive updates when a form submission occurs in your Webflow website",
+    "views": 683,
+    "recentViews": 0,
+    "totalViews": 683,
+    "createdAt": "2020-09-11T11:47:33.830Z",
+    "description": "![workflow-screenshot](fileId:225)",
+    "workflow": {
+      "id": "42",
+      "name": "Receive updates when a form submission occurs in your Webflow website",
+      "nodes": [
+        {
+          "name": "Webflow Trigger",
+          "type": "n8n-nodes-base.webflowTrigger",
+          "position": [
+            514,
+            217
+          ],
+          "webhookId": "ce934229-1396-4920-8bfe-10579aa6f9dd",
+          "parameters": {
+            "site": "5f4e2d2bbdf69039816428f7",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "webflowOAuth2Api": "webflow"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.webflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 132,
+        "icon": "file:webflow.svg",
+        "name": "n8n-nodes-base.webflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.webflowtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/webflow/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webflow Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjcgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9IjEiIHk9IjEiLz48c3ltYm9sIGlkPSJhIiBvdmVyZmxvdz0idmlzaWJsZSI+PGcgZmlsbC1ydWxlPSJub256ZXJvIiBzdHJva2U9Im5vbmUiPjxwYXRoIGZpbGw9IiM0MzUzZmYiIGQ9Ik0wIDMyQzAgMTQuMjcyIDE0LjI3MiAwIDMyIDBzMzIgMTQuMjcyIDMyIDMyLTE0LjI3MiAzMi0zMiAzMlMwIDQ5LjcyOCAwIDMyIi8+PHBhdGggZD0ibTQxLjQgMjguMi0yLjkgOS4xNGMwLS43LTItMTUuODYtMi0xNS44Ni00LjYgMC03LjA0IDMuMjYtOC4zMiA2LjcybC0zLjU0IDkuMTZjMC0uNjYtLjUtOS4wOC0uNS05LjA4YTcuNDggNy40OCAwIDAgMC03LjI2LTYuNzhsMy43NiAyMi45NmM0LjggMCA3LjQtMy4yNiA4Ljc0LTYuNzJsMy03LjhjMCAuMzIgMiAxNC41MiAyIDE0LjUyYTkuMjQgOS4yNCAwIDAgMCA4LjgtNi40Nmw2LjgtMTYuNTJjLTQuOCAwLTcuMzIgMy4yNi04LjYgNi43MnoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Webflow Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 225,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/79c1c0aee9874923ad2fbdf7d738ee29.png"
+      }
+    ]
+  }
+}

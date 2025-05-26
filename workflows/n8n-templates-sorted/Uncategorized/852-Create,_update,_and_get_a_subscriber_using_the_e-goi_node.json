@@ -1,0 +1,273 @@
+{
+  "workflow": {
+    "id": 852,
+    "name": "Create, update, and get a subscriber using the e-goi node",
+    "views": 265,
+    "recentViews": 0,
+    "totalViews": 265,
+    "createdAt": "2020-12-28T10:29:18.442Z",
+    "description": "This workflow allows you to create, update, and get a subscriber using the E-goi node.\n\n![workflow-screenshot](fileId:354)",
+    "workflow": {
+      "id": "189",
+      "name": "Create, update, and get a subscriber using the e-goi node",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            270,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "e-goi",
+          "type": "n8n-nodes-base.egoi",
+          "position": [
+            470,
+            300
+          ],
+          "parameters": {
+            "list": 1,
+            "email": "nathan@testmail.com",
+            "additionalFields": {
+              "first_name": "Nathan"
+            }
+          },
+          "credentials": {
+            "egoiApi": "e-goi Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "e-goi1",
+          "type": "n8n-nodes-base.egoi",
+          "position": [
+            670,
+            300
+          ],
+          "parameters": {
+            "list": "={{$node[\"e-goi\"].parameter[\"list\"]}}",
+            "contactId": "={{$node[\"e-goi\"].json[\"base\"][\"contact_id\"]}}",
+            "operation": "update",
+            "updateFields": {
+              "first_name": "Nat"
+            }
+          },
+          "credentials": {
+            "egoiApi": "e-goi Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "e-goi2",
+          "type": "n8n-nodes-base.egoi",
+          "position": [
+            870,
+            300
+          ],
+          "parameters": {
+            "list": "={{$node[\"e-goi\"].parameter[\"list\"]}}",
+            "contactId": "={{$node[\"e-goi1\"].json[\"base\"][\"contact_id\"]}}",
+            "operation": "get"
+          },
+          "credentials": {
+            "egoiApi": "e-goi Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "e-goi": {
+          "main": [
+            [
+              {
+                "node": "e-goi1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "e-goi1": {
+          "main": [
+            [
+              {
+                "node": "e-goi2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "e-goi",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.egoi": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 427,
+        "icon": "file:egoi.svg",
+        "name": "n8n-nodes-base.egoi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.egoi/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/egoi/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "E-goi"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTI2Ljc3NzkgNS4yOTE2NEwxMy4yMTcgNUwxMi42OTE1IDM0LjE2OTlMMTcuNzExMiAyOS4xODg2TDI3LjcyODIgMjguMDc3OUwyNi43Nzc5IDUuMjkxNjRaIiBmaWxsPSIjMDBBRURBIi8+CjxwYXRoIGQ9Ik0xMS4wNDcxIDUuMjM1NThMMTEuODA3NCAyOC40NTk0QzguNjk5NDEgMjkuMDMxNSAyLjAyNTE0IDI4LjA1NTUgMC4yNDc2MTIgMTkuNTUxM0MtMS41Mjk5OCAxMS4wNDcxIDYuNjk4MjYgNi40NTg0OSAxMS4wNDcxIDUuMjM1NThaIiBmaWxsPSIjMDBBRURBIi8+CjxwYXRoIGQ9Ik0yOC43NjU2IDI3LjY4NTJMMjguNTA4NSA5LjM0MTgxQzMyLjg2ODUgMTAuNDg2MiA0MS4yNDIxIDE0LjQzNTMgMzkuODQ0NiAyMS4wODgzQzM4LjQ0NzEgMjcuNzQxMyAzMS44NzM1IDI4LjI1NzQgMjguNzY1NiAyNy42ODUyWiIgZmlsbD0iIzAwQUVEQSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "E-goi",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 354,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/13e0f80842ae4a53aec2ce3f45a8e64b.png"
+      }
+    ]
+  }
+}

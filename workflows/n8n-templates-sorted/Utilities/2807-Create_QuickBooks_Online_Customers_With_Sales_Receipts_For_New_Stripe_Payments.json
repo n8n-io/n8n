@@ -1,0 +1,1060 @@
+{
+  "workflow": {
+    "id": 2807,
+    "name": "Create QuickBooks Online Customers With Sales Receipts For New Stripe Payments",
+    "views": 1401,
+    "recentViews": 2,
+    "totalViews": 1401,
+    "createdAt": "2025-01-27T13:06:22.575Z",
+    "description": "Streamline your accounting by automatically creating QuickBooks Online customers and sales receipts whenever a successful Stripe payment is processed. Ideal for businesses looking to reduce manual data entry and improve accounting efficiency.\n\n## How it works\n\n1. **Trigger**: The workflow is triggered when a new successful payment intent event is received from Stripe.\n2. **Retrieve Customer Data**: Fetches customer details from Stripe associated with the payment.\n3. **Check QuickBooks Customer**: Searches QuickBooks Online to see if the customer already exists using their email address.\n4. **Create or Use Existing Customer**: If the customer doesn't exist in QuickBooks, they are created; otherwise, the existing customer is used.\n5. **Generate Sales Receipt**: A sales receipt is created in QuickBooks Online with payment details, including item descriptions, amounts, and currency.\n\n## Set up steps\n\n1. **Connect Accounts**: Authenticate both your QuickBooks Online and Stripe accounts in n8n.\n2. **Webhook Setup**: Configure the Stripe webhook to send `payment_intent.succeeded` events to this workflow.\n3. **Test the Workflow**: Trigger a test payment in Stripe to validate the integration.\n4. **Customize Details**: Adjust item descriptions or other fields in the QuickBooks sales receipt JSON body as needed.\n\nThis workflow requires basic familiarity with n8n, but setup can be completed in under 15 minutes for most users.",
+    "workflow": {
+      "meta": {
+        "instanceId": "6f3fb2495ae05d668c93cbf9e1649128d6e08178f8a900941cf97e588f18fdfc",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "7fe02521-c46a-4314-9387-b7b4983fa859",
+          "name": "POST Sales Receipt",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1320,
+            -120
+          ],
+          "parameters": {
+            "url": "https://sandbox-quickbooks.api.intuit.com/v3/company/9341453851324714/salesreceipt?minorversion=73",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"Line\": [\n    {\n      \"Description\": \"{{ $json.data.object.description }}\",\n      \"DetailType\": \"SalesItemLineDetail\",\n      \"SalesItemLineDetail\": {\n        \"TaxCodeRef\": {\n          \"value\": \"NON\"\n        },\n        \"Qty\": 1,\n        \"UnitPrice\": {{ $json.data.object.amount_received / 100 }},\n        \"ItemRef\": {\n          \"name\": \"Subscription\", \n          \"value\": \"10\"\n        }\n      },\n      \"Amount\": {{ $json.data.object.amount / 100 }},\n      \"LineNum\": 1\n    }\n  ],\n  \"CustomerRef\": {\n    \"value\": {{ $input.all()[2].json.QueryResponse.Customer[0].BillAddr.Id }},\n    \"name\": \"{{ $input.all()[2].json.QueryResponse.Customer[0].DisplayName }}\"\n  },\n  \"CurrencyRef\": {\n    \"value\": \"{{ $json.data.object.currency.toUpperCase() }}\"\n  },\n  \"PrivateNote\": \"Payment from Stripe Payment Intent ID: {{ $json.data.object.id }}\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "quickBooksOAuth2Api"
+          },
+          "credentials": {
+            "quickBooksOAuth2Api": {
+              "id": "IUNAfwwSgnbwWygB",
+              "name": "QuickBooks Online account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5ed429d7-c93d-48c8-b603-ca8d7efb57ed",
+          "name": "GET Quickbooks Customer",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            400,
+            -20
+          ],
+          "parameters": {
+            "url": "=https://sandbox-quickbooks.api.intuit.com/v3/company/9341453851324714/query?query=select * from Customer Where PrimaryEmailAddr = '{{ $json.email }}'&minorversion=73\n\n",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "quickBooksOAuth2Api"
+          },
+          "credentials": {
+            "httpCustomAuth": {
+              "id": "hqXGCVkt6W41KDDK",
+              "name": "Custom Auth account"
+            },
+            "quickBooksOAuth2Api": {
+              "id": "IUNAfwwSgnbwWygB",
+              "name": "QuickBooks Online account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "bef5b4c3-4948-4294-bd80-7039342edf0d",
+          "name": "Get Stripe Customer",
+          "type": "n8n-nodes-base.stripe",
+          "position": [
+            240,
+            -140
+          ],
+          "parameters": {
+            "resource": "customer",
+            "customerId": "={{ $json.data.object.customer }}"
+          },
+          "credentials": {
+            "stripeApi": {
+              "id": "o6KHVZiU8S7O38wq",
+              "name": "Stripe account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "042fff2c-b5e7-4877-b935-f6a707118c4a",
+          "name": "New Payment",
+          "type": "n8n-nodes-base.stripeTrigger",
+          "position": [
+            80,
+            -260
+          ],
+          "webhookId": "5cc15770-f762-4389-8372-1b2926de4570",
+          "parameters": {
+            "events": [
+              "payment_intent.succeeded"
+            ]
+          },
+          "credentials": {
+            "stripeApi": {
+              "id": "o6KHVZiU8S7O38wq",
+              "name": "Stripe account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "12235c25-712b-4e84-b744-60573e00d381",
+          "name": "If Customer Exists",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            560,
+            100
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "aef7393c-c4ff-4196-887d-6a9b057381f8",
+                  "operator": {
+                    "type": "string",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.QueryResponse.Customer[0].PrimaryEmailAddr.Address }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "68f63246-cb95-494f-918c-c0c6da5a64f9",
+          "name": "Use Stripe Customer",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            880,
+            120
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "e9eea332-7109-479f-8f50-65b3b9438e0e",
+          "name": "Create QuickBooks Customer",
+          "type": "n8n-nodes-base.quickbooks",
+          "position": [
+            1100,
+            120
+          ],
+          "parameters": {
+            "operation": "create",
+            "displayName": "={{ $input.all()[0].json.name }}",
+            "additionalFields": {
+              "Balance": "={{ $input.all()[0].json.balance }}",
+              "PrimaryEmailAddr": "={{ $input.all()[0].json.email }}"
+            }
+          },
+          "credentials": {
+            "quickBooksOAuth2Api": {
+              "id": "IUNAfwwSgnbwWygB",
+              "name": "QuickBooks Online account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "f805f03d-93b7-4e3b-8b6a-37d9dd802368",
+          "name": "Merge Stripe and QuickBooks Data",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1100,
+            -120
+          ],
+          "parameters": {
+            "numberInputs": 3
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "b9c31838-2bb7-4882-bd15-c096cb97e225",
+          "name": "Merge Payment and QuickBooks Customer",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1320,
+            120
+          ],
+          "parameters": {},
+          "executeOnce": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "cb69fcee-8d5d-47ab-be76-9e25cb0a7f42",
+          "name": "POST Sales Receipt To QuickBooks",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1540,
+            120
+          ],
+          "parameters": {
+            "url": "https://sandbox-quickbooks.api.intuit.com/v3/company/9341453851324714/salesreceipt?minorversion=73",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"Line\": [\n    {\n      \"Description\": \"{{ $json.data.object.description }}\",\n      \"DetailType\": \"SalesItemLineDetail\",\n      \"SalesItemLineDetail\": {\n        \"TaxCodeRef\": {\n          \"value\": \"NON\"\n        },\n        \"Qty\": 1,\n        \"UnitPrice\": {{ $json.data.object.amount_received / 100 }},\n        \"ItemRef\": {\n          \"name\": \"Subscription\", \n          \"value\": \"10\"\n        }\n      },\n      \"Amount\": {{ $json.data.object.amount / 100 }},\n      \"LineNum\": 1\n    }\n  ],\n  \"CustomerRef\": {\n    \"value\": {{ $input.all()[1].json.Id}},\n    \"name\": \"{{ $input.all()[1].json.DisplayName }}\"\n  },\n  \"CurrencyRef\": {\n    \"value\": \"{{ $json.data.object.currency.toUpperCase() }}\"\n  },\n  \"PrivateNote\": \"Payment from Stripe Payment Intent ID: {{ $json.data.object.id }}\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "quickBooksOAuth2Api"
+          },
+          "credentials": {
+            "quickBooksOAuth2Api": {
+              "id": "IUNAfwwSgnbwWygB",
+              "name": "QuickBooks Online account"
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 4.2
+        }
+      ],
+      "pinData": {
+        "New Payment": [
+          {
+            "id": "evt_3Qjf7fJJNVDH5POn01Am9Q1x",
+            "data": {
+              "object": {
+                "id": "pi_3Qjf54D14htxZ8341jkWWJJs",
+                "amount": 9500,
+                "object": "payment_intent",
+                "review": null,
+                "source": null,
+                "status": "succeeded",
+                "created": 1737456794,
+                "invoice": "in_1Qje8QD14htxZ834S3Gh3Nn6",
+                "currency": "usd",
+                "customer": "cus_R4OkhTTT1ebzPl",
+                "livemode": false,
+                "metadata": {},
+                "shipping": null,
+                "processing": null,
+                "application": null,
+                "canceled_at": null,
+                "description": "Subscription update",
+                "next_action": null,
+                "on_behalf_of": null,
+                "client_secret": "pi_3Qjf54D14htxZ8341jkWWJJs_secret_FXltcZHFUDM8I4F0AQjRPE9Vz",
+                "latest_charge": "ch_3Qjf54D14htxZ8341xwQhggm",
+                "receipt_email": null,
+                "transfer_data": null,
+                "amount_details": {
+                  "tip": {}
+                },
+                "capture_method": "automatic",
+                "payment_method": "pm_1Qh6nED14htxZ834bTgSzUQy",
+                "transfer_group": null,
+                "amount_received": 9500,
+                "amount_capturable": 0,
+                "last_payment_error": null,
+                "setup_future_usage": null,
+                "cancellation_reason": null,
+                "confirmation_method": "automatic",
+                "payment_method_types": [
+                  "amazon_pay",
+                  "card",
+                  "cashapp",
+                  "link"
+                ],
+                "statement_descriptor": null,
+                "application_fee_amount": null,
+                "payment_method_options": {
+                  "card": {
+                    "network": null,
+                    "installments": null,
+                    "mandate_options": null,
+                    "request_three_d_secure": "automatic"
+                  },
+                  "link": {
+                    "persistent_token": null
+                  },
+                  "cashapp": {},
+                  "amazon_pay": {
+                    "express_checkout_element_session_id": null
+                  }
+                },
+                "automatic_payment_methods": null,
+                "statement_descriptor_suffix": null,
+                "payment_method_configuration_details": null
+              }
+            },
+            "type": "payment_intent.succeeded",
+            "object": "event",
+            "created": 1737456956,
+            "request": {
+              "id": "req_vbXfG1vUORKZJ6",
+              "idempotency_key": "e63d5e07-f753-429c-bd06-c642e23d9ff8"
+            },
+            "livemode": false,
+            "api_version": "2020-08-27",
+            "pending_webhooks": 3
+          }
+        ],
+        "Get Stripe Customer": [
+          {
+            "id": "cus_R4OkhTTT1ebzPl",
+            "name": "Test Usershvili",
+            "email": "Birds@Intuit.com",
+            "phone": null,
+            "object": "customer",
+            "address": {
+              "city": null,
+              "line1": null,
+              "line2": null,
+              "state": null,
+              "country": "GE",
+              "postal_code": null
+            },
+            "balance": 0,
+            "created": 1729495354,
+            "currency": "usd",
+            "discount": null,
+            "livemode": false,
+            "metadata": {},
+            "shipping": null,
+            "delinquent": false,
+            "tax_exempt": "none",
+            "test_clock": null,
+            "description": null,
+            "default_source": null,
+            "invoice_prefix": "F73B0901",
+            "default_currency": "usd",
+            "invoice_settings": {
+              "footer": null,
+              "custom_fields": null,
+              "rendering_options": null,
+              "default_payment_method": null
+            },
+            "preferred_locales": [
+              "en-GB"
+            ]
+          }
+        ]
+      },
+      "connections": {
+        "New Payment": {
+          "main": [
+            [
+              {
+                "node": "Get Stripe Customer",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge Stripe and QuickBooks Data",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge Payment and QuickBooks Customer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If Customer Exists": {
+          "main": [
+            [
+              {
+                "node": "Merge Stripe and QuickBooks Data",
+                "type": "main",
+                "index": 2
+              }
+            ],
+            [
+              {
+                "node": "Use Stripe Customer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "POST Sales Receipt": {
+          "main": [
+            []
+          ]
+        },
+        "Get Stripe Customer": {
+          "main": [
+            [
+              {
+                "node": "GET Quickbooks Customer",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Use Stripe Customer",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Use Stripe Customer": {
+          "main": [
+            [
+              {
+                "node": "Create QuickBooks Customer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GET Quickbooks Customer": {
+          "main": [
+            [
+              {
+                "node": "If Customer Exists",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Merge Stripe and QuickBooks Data",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Create QuickBooks Customer": {
+          "main": [
+            [
+              {
+                "node": "Merge Payment and QuickBooks Customer",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Merge Stripe and QuickBooks Data": {
+          "main": [
+            [
+              {
+                "node": "POST Sales Receipt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge Payment and QuickBooks Customer": {
+          "main": [
+            [
+              {
+                "node": "POST Sales Receipt To QuickBooks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 10,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 3
+        },
+        "n8n-nodes-base.stripe": {
+          "count": 1
+        },
+        "n8n-nodes-base.quickbooks": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 3
+        },
+        "n8n-nodes-base.stripeTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Artur",
+      "username": "arlusm1",
+      "bio": "Software Engineer",
+      "verified": true,
+      "links": [
+        "https://n8nlogic.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/d8f6cbf5ad5847e53a4b6f809a8738fc33bf20246f2207bcdad4e5d6a10e0a2c?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 54,
+        "icon": "file:stripe.svg",
+        "name": "n8n-nodes-base.stripeTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-your-customer-journey-with-n8n-an-interview-with-blent-ai/",
+                  "icon": "🚀",
+                  "label": "Automate your customer journey with n8n: An interview with Blent.ai"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.stripetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/stripe/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Stripe Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjU0IC04MCAzNjAgMzYwIj48cGF0aCBkPSJNNDE0IDExMy40YzAtMjUuNi0xMi40LTQ1LjgtMzYuMS00NS44LTIzLjggMC0zOC4yIDIwLjItMzguMiA0NS42IDAgMzAuMSAxNyA0NS4zIDQxLjQgNDUuMyAxMS45IDAgMjAuOS0yLjcgMjcuNy02LjV2LTIwYy02LjggMy40LTE0LjYgNS41LTI0LjUgNS41LTkuNyAwLTE4LjMtMy40LTE5LjQtMTUuMmg0OC45YzAtMS4zLjItNi41LjItOC45bS00OS40LTkuNWMwLTExLjMgNi45LTE2IDEzLjItMTYgNi4xIDAgMTIuNiA0LjcgMTIuNiAxNnptLTYzLjUtMzYuM2MtOS44IDAtMTYuMSA0LjYtMTkuNiA3LjhsLTEuMy02LjJoLTIydjExNi42bDI1LTUuMy4xLTI4LjNjMy42IDIuNiA4LjkgNi4zIDE3LjcgNi4zIDE3LjkgMCAzNC4yLTE0LjQgMzQuMi00Ni4xLS4xLTI5LTE2LjYtNDQuOC0zNC4xLTQ0LjhtLTYgNjguOWMtNS45IDAtOS40LTIuMS0xMS44LTQuN2wtLjEtMzcuMWMyLjYtMi45IDYuMi00LjkgMTEuOS00LjkgOS4xIDAgMTUuNCAxMC4yIDE1LjQgMjMuMyAwIDEzLjQtNi4yIDIzLjQtMTUuNCAyMy40bS03MS4zLTc0LjggMjUuMS01LjRWMzZsLTI1LjEgNS4zem0wIDcuNmgyNS4xdjg3LjVoLTI1LjF6bS0yNi45IDcuNC0xLjYtNy40aC0yMS42djg3LjVoMjVWOTcuNWM1LjktNy43IDE1LjktNi4zIDE5LTUuMnYtMjNjLTMuMi0xLjItMTQuOS0zLjQtMjAuOCA3LjRtLTUwLTI5LjEtMjQuNCA1LjItLjEgODAuMWMwIDE0LjggMTEuMSAyNS43IDI1LjkgMjUuNyA4LjIgMCAxNC4yLTEuNSAxNy41LTMuM1YxMzVjLTMuMiAxLjMtMTkgNS45LTE5LTguOVY5MC42aDE5VjY5LjNoLTE5ek03OS4zIDk0LjdjMC0zLjkgMy4yLTUuNCA4LjUtNS40IDcuNiAwIDE3LjIgMi4zIDI0LjggNi40VjcyLjJjLTguMy0zLjMtMTYuNS00LjYtMjQuOC00LjZDNjcuNSA2Ny42IDU0IDc4LjIgNTQgOTUuOWMwIDI3LjYgMzggMjMuMiAzOCAzNS4xIDAgNC42LTQgNi4xLTkuNiA2LjEtOC4zIDAtMTguOS0zLjQtMjcuMy04djIzLjhjOS4zIDQgMTguNyA1LjcgMjcuMyA1LjcgMjAuOCAwIDM1LjEtMTAuMyAzNS4xLTI4LjItLjEtMjkuOC0zOC4yLTI0LjUtMzguMi0zNS43IiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojNjM1YmZmIi8+PC9zdmc+"
+        },
+        "displayName": "Stripe Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      },
+      {
+        "id": 455,
+        "icon": "file:quickbooks.svg",
+        "name": "n8n-nodes-base.quickbooks",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbooks/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/quickbooks/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "QuickBooks Online"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNTAwIDI1MDAiPjxjaXJjbGUgY3g9IjEyNTAiIGN5PSIxMjUwIiByPSIxMjUwIiBmaWxsPSIjMmNhMDFjIi8+PHBhdGggZmlsbD0iI2ZmZiIgZD0iTTMwMS4zIDEyNDkuNmMuMSAyODIuNiAyMjggNTEyLjQgNTEwLjYgNTE0LjloNzIuM3YtMTg4LjloLTcyLjNjLTE3NS4yIDQ3LjgtMzU1LjktNTUuNS00MDMuNi0yMzAuNy0uNC0xLjQtLjctMi44LTEuMS00LjItNDkuMS0xNzcuNSA1My43LTM2MS40IDIzMC42LTQxMi41aDM2LjFhMzIyIDMyMiAwIDAgMSAxMzcuNSAwSDk4N3YxMDAyLjljLS45IDEwNi4xIDg0LjQgMTkyLjkgMTkwLjUgMTkzLjlWNzI5LjZIODEzYy0yODQuNiAxLjUtNTE0IDIzMy40LTUxMi41IDUxOHYuMXptMTM4Ny41LTUxOS44aC03Mi4zdjE5OC45aDcyLjNjMTc0LjgtNDcuNyAzNTUuMSA1NS4zIDQwMi44IDIzMCAuNCAxLjMuNyAyLjcgMS4xIDQgNDguOCAxNzYuOS01My43IDM2MC4xLTIyOS45IDQxMS4xaC0zNi4xYTMyMiAzMjIgMCAwIDEtMTM3LjUgMGgtMTc1LjZWNTcxYy45LTEwNi4xLTg0LjQtMTkyLjktMTkwLjUtMTkzLjl2MTM5Ny40aDM2NC41YzI4Ny4xLTQuNSA1MTYuMi0yNDAuOCA1MTEuOC01MjcuOS00LjQtMjgwLjgtMjMwLjktNTA3LjQtNTExLjgtNTExLjh6Ii8+PC9zdmc+"
+        },
+        "displayName": "QuickBooks Online",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      },
+      {
+        "id": 499,
+        "icon": "file:stripe.svg",
+        "name": "n8n-nodes-base.stripe",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.stripe/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/stripe/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Stripe"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjU0IC04MCAzNjAgMzYwIj48cGF0aCBkPSJNNDE0IDExMy40YzAtMjUuNi0xMi40LTQ1LjgtMzYuMS00NS44LTIzLjggMC0zOC4yIDIwLjItMzguMiA0NS42IDAgMzAuMSAxNyA0NS4zIDQxLjQgNDUuMyAxMS45IDAgMjAuOS0yLjcgMjcuNy02LjV2LTIwYy02LjggMy40LTE0LjYgNS41LTI0LjUgNS41LTkuNyAwLTE4LjMtMy40LTE5LjQtMTUuMmg0OC45YzAtMS4zLjItNi41LjItOC45bS00OS40LTkuNWMwLTExLjMgNi45LTE2IDEzLjItMTYgNi4xIDAgMTIuNiA0LjcgMTIuNiAxNnptLTYzLjUtMzYuM2MtOS44IDAtMTYuMSA0LjYtMTkuNiA3LjhsLTEuMy02LjJoLTIydjExNi42bDI1LTUuMy4xLTI4LjNjMy42IDIuNiA4LjkgNi4zIDE3LjcgNi4zIDE3LjkgMCAzNC4yLTE0LjQgMzQuMi00Ni4xLS4xLTI5LTE2LjYtNDQuOC0zNC4xLTQ0LjhtLTYgNjguOWMtNS45IDAtOS40LTIuMS0xMS44LTQuN2wtLjEtMzcuMWMyLjYtMi45IDYuMi00LjkgMTEuOS00LjkgOS4xIDAgMTUuNCAxMC4yIDE1LjQgMjMuMyAwIDEzLjQtNi4yIDIzLjQtMTUuNCAyMy40bS03MS4zLTc0LjggMjUuMS01LjRWMzZsLTI1LjEgNS4zem0wIDcuNmgyNS4xdjg3LjVoLTI1LjF6bS0yNi45IDcuNC0xLjYtNy40aC0yMS42djg3LjVoMjVWOTcuNWM1LjktNy43IDE1LjktNi4zIDE5LTUuMnYtMjNjLTMuMi0xLjItMTQuOS0zLjQtMjAuOCA3LjRtLTUwLTI5LjEtMjQuNCA1LjItLjEgODAuMWMwIDE0LjggMTEuMSAyNS43IDI1LjkgMjUuNyA4LjIgMCAxNC4yLTEuNSAxNy41LTMuM1YxMzVjLTMuMiAxLjMtMTkgNS45LTE5LTguOVY5MC42aDE5VjY5LjNoLTE5ek03OS4zIDk0LjdjMC0zLjkgMy4yLTUuNCA4LjUtNS40IDcuNiAwIDE3LjIgMi4zIDI0LjggNi40VjcyLjJjLTguMy0zLjMtMTYuNS00LjYtMjQuOC00LjZDNjcuNSA2Ny42IDU0IDc4LjIgNTQgOTUuOWMwIDI3LjYgMzggMjMuMiAzOCAzNS4xIDAgNC42LTQgNi4xLTkuNiA2LjEtOC4zIDAtMTguOS0zLjQtMjcuMy04djIzLjhjOS4zIDQgMTguNyA1LjcgMjcuMyA1LjcgMjAuOCAwIDM1LjEtMTAuMyAzNS4xLTI4LjItLjEtMjkuOC0zOC4yLTI0LjUtMzguMi0zNS43IiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojNjM1YmZmIi8+PC9zdmc+"
+        },
+        "displayName": "Stripe",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": []
+  }
+}

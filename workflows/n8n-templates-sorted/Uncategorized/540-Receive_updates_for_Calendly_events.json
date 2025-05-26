@@ -1,0 +1,125 @@
+{
+  "workflow": {
+    "id": 540,
+    "name": "Receive updates for Calendly events",
+    "views": 1067,
+    "recentViews": 0,
+    "totalViews": 1067,
+    "createdAt": "2020-07-20T10:13:51.011Z",
+    "description": "Companion workflow for Calendly Trigger node docs\n\n![workflow-screenshot](fileId:138)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Calendly Trigger",
+          "type": "n8n-nodes-base.calendlyTrigger",
+          "position": [
+            880,
+            400
+          ],
+          "webhookId": "9d13bcea-781a-4462-a9af-44bfb1fb6891",
+          "parameters": {
+            "events": [
+              "invitee.created",
+              "invitee.canceled"
+            ]
+          },
+          "credentials": {
+            "calendlyApi": "calendly_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.calendlyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 302,
+        "icon": "file:calendly.svg",
+        "name": "n8n-nodes-base.calendlyTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.calendlytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/calendly/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Calendly Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MjUuOCA1MzUuNzMiPjxkZWZzPjxzdHlsZT4uY2xzLTJ7ZmlsbDojMDA2YmZmfS5jbHMtM3tmaWxsOiMwYWU5ZWZ9PC9zdHlsZT48L2RlZnM+PGcgaWQ9IkxheWVyXzIiIGRhdGEtbmFtZT0iTGF5ZXIgMiI+PGcgaWQ9IkxvZ29fYXNzZXRzIiBkYXRhLW5hbWU9IkxvZ28gYXNzZXRzIj48ZyBpZD0iQnJhbmRfbWFyayIgZGF0YS1uYW1lPSJCcmFuZCBtYXJrIj48cGF0aCBkPSJtNDQzLjc0IDMzNy42Mi0yNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAxLTEyMC44MiA2OS43NWgtNTQuMzNhMTM5LjUyIDEzOS41MiAwIDAgMS0xMjAuODItNjkuNzVsLTI3LjE2LTQ3LjA1YTEzOS41MiAxMzkuNTIgMCAwIDEgMC0xMzkuNTFsMjcuMTYtNDcuMDVBMTM5LjUzIDEzOS41MyAwIDAgMSAyNDEuNDMgODEuM2g1NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAxIDEyMC44MiA2OS43NmwyNy4xNiA0Ny4wNWExMzkgMTM5IDAgMCAxIDguNTUgMTcuNTVjMCAuMTIuMDkuMjMuMTMuMzVhMTAyLjE1IDEwMi4xNSAwIDAgMCA0NC4zMy0xOC4yNGMwLS4xNC0uMDgtLjI4LS4xMy0uNDNhMjM3LjggMjM3LjggMCAwIDAtMzMuMjktNjcuNTggMjQwLjcgMjQwLjcgMCAwIDAtNTItNTMuNDggMjM5LjMgMjM5LjMgMCAwIDAtMzEyLjY4IDM2MC44IDIzOS40MyAyMzkuNDMgMCAwIDAgMzk4LTk4LjY5Yy4wNS0uMTUuMDktLjI5LjEzLS40M2ExMDIuMTUgMTAyLjE1IDAgMCAwLTQ0LjMzLTE4LjI0YzAgLjEyLS4wOS4yMy0uMTMuMzVhMTM5IDEzOSAwIDAgMS04LjU4IDE3LjU1IiBzdHlsZT0iZmlsbDpub25lIi8+PHBhdGggZD0iTTM2MC40IDM0Ny40Yy0xNyAxNS4wOS0zOC4yMSAzMy44Ny03Ni43OCAzMy44N2gtMjNjLTI3Ljg4IDAtNTMuMjMtMTAuMTItNzEuMzctMjguNDktMTcuNzItMTcuOTQtMjcuNDgtNDIuNS0yNy40OC02OS4xNnYtMzEuNTFjMC0yNi42NiA5Ljc2LTUxLjIyIDI3LjQ4LTY5LjE2IDE4LjE0LTE4LjM3IDQzLjQ5LTI4LjQ5IDcxLjM3LTI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYgMTguNzggNzYuNzggMzMuODcgMTcuNjUgMTUuNjUgMzIuOSAyOS4xNiA3My41MiAyOS4xNmExMTYgMTE2IDAgMCAwIDE4LjUtMS40OGMwLS4xMi0uMDgtLjIzLS4xMy0uMzVhMTM5IDEzOSAwIDAgMC04LjU1LTE3LjU1bC0yNy4xNi00Ny4wNUExMzkuNTMgMTM5LjUzIDAgMCAwIDI5NS43NiA4MS4zaC01NC4zM2ExMzkuNTMgMTM5LjUzIDAgMCAwLTEyMC44MiA2OS43NmwtMjcuMTYgNDcuMDVhMTM5LjUyIDEzOS41MiAwIDAgMCAwIDEzOS41MWwyNy4xNiA0Ny4wNWExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44MiA2OS43NWg1NC4zM2ExMzkuNTIgMTM5LjUyIDAgMCAwIDEyMC44Mi02OS43NWwyNy4xNi00Ny4wNWExMzkgMTM5IDAgMCAwIDguNTUtMTcuNTVjMC0uMTIuMDktLjIzLjEzLS4zNWExMTYgMTE2IDAgMCAwLTE4LjUtMS40OGMtNDAuNjIgMC01NS44NyAxMy41MS03My41MiAyOS4xNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTI4My42MiAxODNoLTIzYy00Mi40MiAwLTcwLjMgMzAuMy03MC4zIDY5LjA5djMxLjUxYzAgMzguNzkgMjcuODggNjkuMDkgNzAuMyA2OS4wOWgyM2M2MS44MiAwIDU3LTYzIDE1MC4zLTYzYTE0NCAxNDQgMCAwIDEgMjYuMzcgMi40MSAxMzkuNCAxMzkuNCAwIDAgMCAwLTQ4LjQ2IDE0My4zIDE0My4zIDAgMCAxLTI2LjM3IDIuNDJjLTkzLjMzLS4wMS04OC40OC02My4wNi0xNTAuMy02My4wNiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTUxMy45MSAzMTUuMTNhMTMwLjIgMTMwLjIgMCAwIDAtNTMuNjItMjNjMCAuMTYtLjA1LjMyLS4wOC40N2ExMzguNSAxMzguNSAwIDAgMS03Ljc5IDI3LjE2QTEwMi4xNSAxMDIuMTUgMCAwIDEgNDk2Ljc1IDMzOGMwIC4xNC0uMDguMjgtLjEzLjQzQTIzNy44IDIzNy44IDAgMCAxIDQ2My4zMyA0MDZhMjQwLjcgMjQwLjcgMCAwIDEtNTIgNTMuNDhBMjM5LjMgMjM5LjMgMCAwIDEgOTguNjUgOTguNjVhMjM5LjQzIDIzOS40MyAwIDAgMSAzOTggOTguNjljLjA1LjE1LjA5LjI5LjEzLjQzQTEwMi4xNSAxMDIuMTUgMCAwIDEgNDUyLjQyIDIxNmExMzkuNCAxMzkuNCAwIDAgMSA3LjggMjcuMThjMCAuMTUgMCAuMy4wNy40NGExMjkuOTQgMTI5Ljk0IDAgMCAwIDUzLjYyLTIzYzE1LjI5LTExLjMxIDEyLjMzLTI0LjA5IDEwLTMxLjY1QzQ5MC4yMiA3OS41MiAzODguMzMgMCAyNjcuODYgMCAxMTkuOTMgMCAwIDExOS45MyAwIDI2Ny44NnMxMTkuOTMgMjY3Ljg3IDI2Ny44NiAyNjcuODdjMTIwLjQ3IDAgMjIyLjM2LTc5LjUyIDI1Ni0xODguOTQgMi4zOC03LjU2IDUuMzQtMjAuMzQtOS45NS0zMS42NiIgY2xhc3M9ImNscy0yIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PHBhdGggZD0iTTQ1Mi40MiAyMTZhMTE2IDExNiAwIDAgMS0xOC41IDEuNDhjLTQwLjYyIDAtNTUuODctMTMuNTEtNzMuNTItMjkuMTYtMTctMTUuMDktMzguMjEtMzMuODctNzYuNzgtMzMuODdoLTIzYy0yNy44OCAwLTUzLjIzIDEwLjEyLTcxLjM3IDI4LjQ5LTE3LjcyIDE3Ljk0LTI3LjQ4IDQyLjUtMjcuNDggNjkuMTZ2MzEuNTFjMCAyNi42NiA5Ljc2IDUxLjIyIDI3LjQ4IDY5LjE2IDE4LjE0IDE4LjM3IDQzLjQ5IDI4LjQ5IDcxLjM3IDI4LjQ5aDIzYzM4LjU3IDAgNTkuNzYtMTguNzggNzYuNzgtMzMuODcgMTcuNjUtMTUuNjUgMzIuOS0yOS4xNiA3My41Mi0yOS4xNmExMTYgMTE2IDAgMCAxIDE4LjUgMS40OCAxMzguNSAxMzguNSAwIDAgMCA3Ljc5LTI3LjE2YzAtLjE1LjA2LS4zMS4wOC0uNDdhMTQ0IDE0NCAwIDAgMC0yNi4zNy0yLjQxYy05My4zMyAwLTg4LjQ4IDYzLTE1MC4zIDYzaC0yM2MtNDIuNDIgMC03MC4zLTMwLjMtNzAuMy02OS4wOXYtMzEuNDdjMC0zOC43OSAyNy44OC02OS4wOSA3MC4zLTY5LjA5aDIzYzYxLjgyIDAgNTcgNjMgMTUwLjMgNjNhMTQzLjMgMTQzLjMgMCAwIDAgMjYuMzctMi40MmMwLS4xNCAwLS4yOS0uMDctLjQ0YTEzOS40IDEzOS40IDAgMCAwLTcuOC0yNy4xNiIgY2xhc3M9ImNscy0zIi8+PC9nPjwvZz48L2c+PC9zdmc+"
+        },
+        "displayName": "Calendly Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 138,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6a00013083724416bf05fbefb09f9dea.png"
+      }
+    ]
+  }
+}

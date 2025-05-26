@@ -1,0 +1,1728 @@
+{
+  "workflow": {
+    "id": 3717,
+    "name": "Search LinkedIn companies and add them to Airtable CRM",
+    "views": 1109,
+    "recentViews": 1109,
+    "totalViews": 1109,
+    "createdAt": "2025-04-26T13:58:44.656Z",
+    "description": "# Search LinkedIn companies and add them to Airtable CRM\n\n### Who is this for?\nThis template is ideal for sales teams, business development professionals, and marketers looking to build a robust prospect database without manual LinkedIn research. Perfect for agencies, consultants, and B2B companies targeting specific business profiles.\n\n### What problem does this workflow solve?\nManually researching companies on LinkedIn and adding them to your CRM is time-consuming and error-prone. This automation eliminates the tedious process of finding, qualifying, and importing prospects into your database.\n\n### What this workflow does\nThis workflow automatically searches for companies on LinkedIn based on your criteria (keywords, size, location), retrieves detailed information about each company, filters them based on quality indicators (follower count and website availability), and adds new companies to your Airtable CRM while preventing duplicates.\n\n### Setup\n1. Create a Ghost Genius API account and get your API key\n2. Configure HTTP Request nodes with Header Auth credentials (Name: \"Authorization\", Value: \"Bearer your_api_key\")\n3. Create an Airtable base named \"CRM\" with columns: name, website, LinkedIn, id, etc.\n4. Set up your Airtable credentials following n8n documentation\n5. Add your company search selection criteria to the \u201cSet Variables\u201d node.\n\n### How to customize this workflow\n- Modify search parameters in the \"Set Variables\" node to target different industries, locations, or company sizes\n- Adjust the follower count threshold in the \"Filter Valid Companies\" node based on your qualification criteria\n- Customize the Airtable fields mapping in the \"Add Company to CRM\" node to match your database structure\n- Add notification nodes (Slack, Email) to alert you when new companies are added",
+    "workflow": {
+      "id": "NOycL25YOISt8OLU",
+      "meta": {
+        "instanceId": "95a1299fb2b16eb2219cb044f54e72c2d00dcd2c72efe717b3c308d200f29927",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Search LinkedIn companies and add them to Airtable CRM",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "671698bb-adb4-48dc-9115-c6557b5ffc5d",
+          "name": "When clicking \u2018Test workflow\u2019",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            80,
+            460
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "315d7d7d-145d-4326-a1ae-9da2d1a420b4",
+          "name": "Process Each Company",
+          "type": "n8n-nodes-base.splitInBatches",
+          "onError": "continueRegularOutput",
+          "position": [
+            1020,
+            460
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "efaca93a-d954-491d-a03b-d727efeafe07",
+          "name": "Get Company Info",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueRegularOutput",
+          "position": [
+            1260,
+            460
+          ],
+          "parameters": {
+            "url": "https://api.ghostgenius.fr/v2/company",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 1,
+                  "batchInterval": 2000
+                }
+              }
+            },
+            "sendQuery": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "={{ $json.url }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "bLl270qRTYghd4Za",
+              "name": "Instantly"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "22551be2-9c65-44e4-9e07-9491a5e8e12e",
+          "name": "Filter Valid Companies",
+          "type": "n8n-nodes-base.if",
+          "onError": "continueRegularOutput",
+          "position": [
+            1480,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "5ea943a6-8f6c-4cb0-b194-8c92d4b2aacc",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.website }}",
+                  "rightValue": "[null]"
+                },
+                {
+                  "id": "8235b9bb-3cd4-4ed4-a5dc-921127ff47c7",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $json.followers_count }}",
+                  "rightValue": 200
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "d68f1aef-c0af-4611-8e66-bce1cc041197",
+          "name": "Check If Company Exists",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1880,
+            460
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appjYSpxvs8mlJaIW",
+              "cachedResultUrl": "https://airtable.com/appjYSpxvs8mlJaIW",
+              "cachedResultName": "CRM"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tbliG5xhydGGgk3nD",
+              "cachedResultUrl": "https://airtable.com/appjYSpxvs8mlJaIW/tbliG5xhydGGgk3nD",
+              "cachedResultName": "CRM"
+            },
+            "options": {},
+            "operation": "search",
+            "filterByFormula": "={id} = '{{ $json.id.toNumber() }}'"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "xEgnWLP3bQAkHxtH",
+              "name": "Airtable Personal Access Token account 3"
+            }
+          },
+          "typeVersion": 2.1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "79b37427-388f-42f8-abde-43b47badd7b8",
+          "name": "Is New Company?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2120,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "050c33be-c648-44d7-901c-51f6ff024e97",
+                  "operator": {
+                    "type": "object",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $('Check If Company Exists').all().first().json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "8c2a5434-261e-48c7-b515-d6517e6e9304",
+          "name": "Add Company to CRM",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            2380,
+            460
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "appjYSpxvs8mlJaIW",
+              "cachedResultUrl": "https://airtable.com/appjYSpxvs8mlJaIW",
+              "cachedResultName": "CRM"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tbliG5xhydGGgk3nD",
+              "cachedResultUrl": "https://airtable.com/appjYSpxvs8mlJaIW/tbliG5xhydGGgk3nD",
+              "cachedResultName": "CRM"
+            },
+            "columns": {
+              "value": {
+                "id": "={{ $('Filter Valid Companies').item.json.id.toNumber() }}",
+                "Name": "={{ $('Filter Valid Companies').item.json.name }}",
+                "Country": "\ud83c\uddfa\ud83c\uddf8 United States",
+                "Summary": "={{ $('Filter Valid Companies').item.json.description }}",
+                "Tagline": "={{ $('Filter Valid Companies').item.json.tagline }}",
+                "Website": "={{ $('Filter Valid Companies').item.json.website }}",
+                "Category": "Growth Marketing Agency 11-50 \ud83c\udf0d",
+                "LinkedIn": "={{ $('Filter Valid Companies').item.json.url }}"
+              },
+              "schema": [
+                {
+                  "id": "Name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Website",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Website",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "LinkedIn",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "LinkedIn",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Category",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "Growth Marketing Agency 11-50 \ud83c\udf0d",
+                      "value": "Growth Marketing Agency 11-50 \ud83c\udf0d"
+                    }
+                  ],
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Category",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "id",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "id",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Tagline",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Tagline",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Summary",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Summary",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Index",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "Index",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "Country",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "\ud83c\udde8\ud83c\uddf1 Chili",
+                      "value": "\ud83c\udde8\ud83c\uddf1 Chili"
+                    },
+                    {
+                      "name": "\ud83c\uddf0\ud83c\uddff Kazakhstan",
+                      "value": "\ud83c\uddf0\ud83c\uddff Kazakhstan"
+                    },
+                    {
+                      "name": "\ud83c\uddf8\ud83c\uddea Su\u00e8de",
+                      "value": "\ud83c\uddf8\ud83c\uddea Su\u00e8de"
+                    },
+                    {
+                      "name": "\ud83c\uddf3\ud83c\uddf4 Norv\u00e8ge",
+                      "value": "\ud83c\uddf3\ud83c\uddf4 Norv\u00e8ge"
+                    },
+                    {
+                      "name": "\ud83c\uddf5\ud83c\uddea P\u00e9rou",
+                      "value": "\ud83c\uddf5\ud83c\uddea P\u00e9rou"
+                    },
+                    {
+                      "name": "\ud83c\uddf9\ud83c\uddfc Ta\u00efwan",
+                      "value": "\ud83c\uddf9\ud83c\uddfc Ta\u00efwan"
+                    },
+                    {
+                      "name": "\ud83c\udde6\ud83c\uddf9 Autriche",
+                      "value": "\ud83c\udde6\ud83c\uddf9 Autriche"
+                    },
+                    {
+                      "name": "\ud83c\udde9\ud83c\uddf0 Danemark",
+                      "value": "\ud83c\udde9\ud83c\uddf0 Danemark"
+                    },
+                    {
+                      "name": "\ud83c\uddf7\ud83c\uddfa Russie",
+                      "value": "\ud83c\uddf7\ud83c\uddfa Russie"
+                    },
+                    {
+                      "name": "\ud83c\uddf0\ud83c\uddf7 Cor\u00e9e du Sud",
+                      "value": "\ud83c\uddf0\ud83c\uddf7 Cor\u00e9e du Sud"
+                    },
+                    {
+                      "name": "\ud83c\uddea\ud83c\uddea Estonie",
+                      "value": "\ud83c\uddea\ud83c\uddea Estonie"
+                    },
+                    {
+                      "name": "\ud83c\uddf7\ud83c\uddf4 Roumanie",
+                      "value": "\ud83c\uddf7\ud83c\uddf4 Roumanie"
+                    },
+                    {
+                      "name": "\ud83c\udde8\ud83c\uddf4 Colombie",
+                      "value": "\ud83c\udde8\ud83c\uddf4 Colombie"
+                    },
+                    {
+                      "name": "\ud83c\uddee\ud83c\uddf7 Iran",
+                      "value": "\ud83c\uddee\ud83c\uddf7 Iran"
+                    },
+                    {
+                      "name": "\ud83c\udde6\ud83c\uddf7 Argentine",
+                      "value": "\ud83c\udde6\ud83c\uddf7 Argentine"
+                    },
+                    {
+                      "name": "\ud83c\udde7\ud83c\uddea Belgique",
+                      "value": "\ud83c\udde7\ud83c\uddea Belgique"
+                    },
+                    {
+                      "name": "\ud83c\uddec\ud83c\uddf7 Gr\u00e8ce",
+                      "value": "\ud83c\uddec\ud83c\uddf7 Gr\u00e8ce"
+                    },
+                    {
+                      "name": "\ud83c\uddf2\ud83c\udde6 Maroc",
+                      "value": "\ud83c\uddf2\ud83c\udde6 Maroc"
+                    },
+                    {
+                      "name": "\ud83c\uddf5\ud83c\uddf1 Pologne",
+                      "value": "\ud83c\uddf5\ud83c\uddf1 Pologne"
+                    },
+                    {
+                      "name": "\ud83c\uddf5\ud83c\uddf9 Portugal",
+                      "value": "\ud83c\uddf5\ud83c\uddf9 Portugal"
+                    },
+                    {
+                      "name": "\ud83c\udde7\ud83c\uddf7 Br\u00e9sil",
+                      "value": "\ud83c\udde7\ud83c\uddf7 Br\u00e9sil"
+                    },
+                    {
+                      "name": "\ud83c\uddf0\ud83c\uddea Kenya",
+                      "value": "\ud83c\uddf0\ud83c\uddea Kenya"
+                    },
+                    {
+                      "name": "\ud83c\uddee\ud83c\uddf9 Italie",
+                      "value": "\ud83c\uddee\ud83c\uddf9 Italie"
+                    },
+                    {
+                      "name": "\ud83c\uddee\ud83c\uddf1 Isra\u00ebl",
+                      "value": "\ud83c\uddee\ud83c\uddf1 Isra\u00ebl"
+                    },
+                    {
+                      "name": "\ud83c\uddf2\ud83c\uddfd Mexique",
+                      "value": "\ud83c\uddf2\ud83c\uddfd Mexique"
+                    },
+                    {
+                      "name": "\ud83c\uddfa\ud83c\udde6 Ukraine",
+                      "value": "\ud83c\uddfa\ud83c\udde6 Ukraine"
+                    },
+                    {
+                      "name": "\ud83c\uddeb\ud83c\uddf7 France",
+                      "value": "\ud83c\uddeb\ud83c\uddf7 France"
+                    },
+                    {
+                      "name": "\ud83c\uddf9\ud83c\uddf7 Turquie",
+                      "value": "\ud83c\uddf9\ud83c\uddf7 Turquie"
+                    },
+                    {
+                      "name": "\ud83c\uddf2\ud83c\uddfe Malaisie",
+                      "value": "\ud83c\uddf2\ud83c\uddfe Malaisie"
+                    },
+                    {
+                      "name": "\ud83c\uddf5\ud83c\udded Philippines",
+                      "value": "\ud83c\uddf5\ud83c\udded Philippines"
+                    },
+                    {
+                      "name": "\ud83c\uddff\ud83c\udde6 Afrique du Sud",
+                      "value": "\ud83c\uddff\ud83c\udde6 Afrique du Sud"
+                    },
+                    {
+                      "name": "\ud83c\udde9\ud83c\uddea Allemagne",
+                      "value": "\ud83c\udde9\ud83c\uddea Allemagne"
+                    },
+                    {
+                      "name": "\ud83c\uddf3\ud83c\uddf1 Pays-Bas",
+                      "value": "\ud83c\uddf3\ud83c\uddf1 Pays-Bas"
+                    },
+                    {
+                      "name": "\ud83c\uddea\ud83c\uddf8 Espagne",
+                      "value": "\ud83c\uddea\ud83c\uddf8 Espagne"
+                    },
+                    {
+                      "name": "\ud83c\uddf8\ud83c\uddec Singapour",
+                      "value": "\ud83c\uddf8\ud83c\uddec Singapour"
+                    },
+                    {
+                      "name": "\ud83c\udde6\ud83c\uddfa Australie",
+                      "value": "\ud83c\udde6\ud83c\uddfa Australie"
+                    },
+                    {
+                      "name": "\ud83c\udde8\ud83c\udde6 Canada",
+                      "value": "\ud83c\udde8\ud83c\udde6 Canada"
+                    },
+                    {
+                      "name": "\ud83c\udde6\ud83c\uddea \u00c9mirats arabes unis",
+                      "value": "\ud83c\udde6\ud83c\uddea \u00c9mirats arabes unis"
+                    },
+                    {
+                      "name": "\ud83c\uddf5\ud83c\uddf0 Pakistan",
+                      "value": "\ud83c\uddf5\ud83c\uddf0 Pakistan"
+                    },
+                    {
+                      "name": "\ud83c\uddec\ud83c\udde7 Royaume-Uni",
+                      "value": "\ud83c\uddec\ud83c\udde7 Royaume-Uni"
+                    },
+                    {
+                      "name": "\ud83c\uddee\ud83c\uddf3 Inde",
+                      "value": "\ud83c\uddee\ud83c\uddf3 Inde"
+                    },
+                    {
+                      "name": "\ud83c\uddfa\ud83c\uddf8 United States",
+                      "value": "\ud83c\uddfa\ud83c\uddf8 United States"
+                    }
+                  ],
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "Country",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "State",
+                  "type": "options",
+                  "display": true,
+                  "options": [
+                    {
+                      "name": "Not yet added",
+                      "value": "Not yet added"
+                    },
+                    {
+                      "name": "Added to the campaign",
+                      "value": "Added to the campaign"
+                    },
+                    {
+                      "name": "No mail found",
+                      "value": "No mail found"
+                    },
+                    {
+                      "name": "No employee found",
+                      "value": "No employee found"
+                    },
+                    {
+                      "name": "To do later",
+                      "value": "To do later"
+                    },
+                    {
+                      "name": "Meeting booked",
+                      "value": "Meeting booked"
+                    }
+                  ],
+                  "removed": true,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "State",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [],
+              "attemptToConvertTypes": false,
+              "convertFieldsToString": false
+            },
+            "options": {},
+            "operation": "create"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "xEgnWLP3bQAkHxtH",
+              "name": "Airtable Personal Access Token account 3"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "e7bc9249-8873-4db8-8a17-e0c064e72f07",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            40,
+            100
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 800,
+            "height": 560,
+            "content": "## LinkedIn Company Search\nThis section initiates the workflow and searches for your target companies on LinkedIn using the Ghost Genius API. \n\nYou can filter and refine your search using keywords, company size, location, industry, or even whether the company has active job postings. Use the \"Set Variables\" node for it.\n\nNote that you can retrieve a maximum of 1000 companies per search (corresponding to 100 LinkedIn pages), so it's important not to exceed this number of results to avoid losing prospects.\n\n**Example:** Let's say I want to target Growth Marketing Agencies with 11-50 employees. I do my search and see that there are 10,000 results. So I refine my search by using location to go country by country and retrieve all 10,000 results in several batches ranging from 500 to 1000 depending on the country.\n\n**Tips:** Pour tester le workflow ou pour voir le nombre r\u00e9sultat de ta recherche change le param\u00e8tre de pagination (Max Pages) dans le node \"Search Companies\". Il sera affich\u00e9 tout en haut dans le JSON de r\u00e9ponse. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "77f086d4-c2a5-4e09-92fc-b8db0dc8d610",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            920,
+            100
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 780,
+            "height": 560,
+            "content": "## Company Data Processing \nThis section processes each company individually.\n\nWe retrieve all the company information using Get Company Details by using the LinkedIn link obtained from the previous section.\n\nThen we filter the company based on the number of followers, which gives us a first indication of the company's credibility (200 in this case), and whether their LinkedIn page has a website listed.\n\nThe workflow implements batch processing with a 2-second delay between requests to respect API rate limits. This methodical approach ensures reliable data collection while preventing API timeouts.\n\nYou can adjust these thresholds based on your target market - increasing the follower count for more established businesses or decreasing it for emerging markets."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4e2d908a-2f75-4a94-ba81-998a0d3dc72d",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1780,
+            100
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 780,
+            "height": 560,
+            "content": "## CRM Integration\nThis section handles the Airtable CRM integration.\n\nIt first checks if the company already exists in your database (using LinkedIn ID) to prevent duplicates because when you do close enough searches, some companies may come up several times.\n\nIf it's a new company, it adds the record to Airtable with comprehensive details including name, LinkedIn URL, website, tagline, description, and category. \n\nThe workflow automatically tags companies as 'Growth Marketing Agency 11-50 \ud83c\udf0d' and sets the country to '\ud83c\uddfa\ud83c\uddf8 United States' (customize according to your use case)."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9620a657-e17d-4728-a040-dd2ac2d290e0",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            -300
+          ],
+          "parameters": {
+            "width": 600,
+            "height": 320,
+            "content": "## Introduction\nWelcome to my template! Before explaining how to set it up, here's some important information:\n\nThis automation is very easy to implement and is designed for anyone wanting to build and enrich a solid CRM through LinkedIn research.\n\nThe initial data source can be changed as long as you have the LinkedIn URL of the company.\n\nFor any questions, you can send me a DM on my [LinkedIn](https://www.linkedin.com/in/matthieu-belin83/) :)  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "09e9a6bd-1790-4f0f-a97c-5d2bb2595efb",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1000,
+            -300
+          ],
+          "parameters": {
+            "width": 600,
+            "height": 320,
+            "content": "## Setup\n- Create an account on [Ghost Genius API](ghostgenius.fr) and get your API key.\n\n- Configure the Search Companies and Get Company Info modules by creating a \"Header Auth\" credential:\n**Name: \"Authorization\"**\n**Value: \"Bearer api_key\"**\n\n- Create an Airtable base named \"CRM\" and add at least the following columns: name (default), website (url), LinkedIn (url), id (number).\n\n- Configure your Airtable credential by following the n8n documentation.\n\n- Add your company search selection criteria to the \u201cSet Variables\u201d node."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d90e07f3-d87c-4a1e-a94a-5540464026c5",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1700,
+            -300
+          ],
+          "parameters": {
+            "width": 600,
+            "height": 320,
+            "content": "## Tools \n**(You can use the API and CRM of your choice; this is only a suggestion)**\n\n- API Linkedin : [Ghost Genius API](ghostgenius.fr) \n\n- API Documentation : [Documentation](ghostgenius.fr/docs)\n\n- CRM : [Airtable](airtable.com)\n\n- LinkedIn Location ID Finder : [Ghost Genius Locations ID Finder](ghostgenius.fr/tools/search-sales-navigator-locations-id)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "89a5a739-b1ce-4012-a64a-d1dfced589ab",
+          "name": "Set Variables",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            280,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "e81e4891-4786-4dd9-a338-d1095e27f382",
+                  "name": "Your target",
+                  "type": "string",
+                  "value": "Growth Marketing Agency"
+                },
+                {
+                  "id": "ed2b6b08-66aa-4d4b-b68c-698b5e841930",
+                  "name": "B: 1-10 employees, C: 11-50 employees, D: 51-200 employees, E: 201-500 employees, F: 501-1000 employees, G: 1001-5000 employees, H: 5001-10,000 employees, I: 10,001+ employees",
+                  "type": "string",
+                  "value": "C"
+                },
+                {
+                  "id": "f1d02f1a-8115-4e0c-a5ec-59bf5b54263b",
+                  "name": "Location (find it on : https://www.ghostgenius.fr/tools/search-sales-navigator-locations-id)",
+                  "type": "string",
+                  "value": "103644278"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "3de1fad5-53c0-4fc3-b97b-1a96515df9c6",
+          "name": "Search Companies",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            480,
+            460
+          ],
+          "parameters": {
+            "url": "https://api.ghostgenius.fr/v2/search/companies",
+            "options": {
+              "pagination": {
+                "pagination": {
+                  "parameters": {
+                    "parameters": [
+                      {
+                        "name": "page",
+                        "value": "={{ $pageCount + 1 }}"
+                      }
+                    ]
+                  },
+                  "requestInterval": 2000,
+                  "limitPagesFetched": true,
+                  "completeExpression": "={{ $response.body.data.isEmpty() }}",
+                  "paginationCompleteWhen": "other"
+                }
+              }
+            },
+            "sendQuery": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "keywords",
+                  "value": "={{ $json['Your target'] }}"
+                },
+                {
+                  "name": "company_size",
+                  "value": "={{ $json['B: 1-10 employees, C: 11-50 employees, D: 51-200 employees, E: 201-500 employees, F: 501-1000 employees, G: 1001-5000 employees, H: 5001-10,000 employees, I: 10,001+ employees'] }}"
+                },
+                {
+                  "name": "location",
+                  "value": "={{ $json['Location (https://www'].ghostgenius['fr/tools/search-sales-navigator-locations-id)'] }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "bLl270qRTYghd4Za",
+              "name": "Instantly"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "1e696afe-cb72-4be0-b04d-c9965f53de0d",
+          "name": "Extract Company Data",
+          "type": "n8n-nodes-base.splitOut",
+          "onError": "continueRegularOutput",
+          "position": [
+            680,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "7a2e7f5b-8666-4f81-9c08-85a772dc242a",
+      "connections": {
+        "Set Variables": {
+          "main": [
+            [
+              {
+                "node": "Search Companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is New Company?": {
+          "main": [
+            [
+              {
+                "node": "Add Company to CRM",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Process Each Company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Company Info": {
+          "main": [
+            [
+              {
+                "node": "Filter Valid Companies",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Search Companies": {
+          "main": [
+            [
+              {
+                "node": "Extract Company Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add Company to CRM": {
+          "main": [
+            [
+              {
+                "node": "Process Each Company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Company Data": {
+          "main": [
+            [
+              {
+                "node": "Process Each Company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Process Each Company": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Get Company Info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Valid Companies": {
+          "main": [
+            [
+              {
+                "node": "Check If Company Exists",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Process Each Company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check If Company Exists": {
+          "main": [
+            [
+              {
+                "node": "Is New Company?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \u2018Test workflow\u2019": {
+          "main": [
+            [
+              {
+                "node": "Set Variables",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 2
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Matthieu",
+      "username": "yaznow",
+      "bio": "",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/0087102f41989fc3569adf570c8b0417d9c27884311ec012ce71b0dc2a80b11a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "\ud83c\udfaf",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "\ud83d\udd17",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "\ud83d\udc65",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "\ud83e\udde0",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "\ud83e\uddf0",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "\ud83d\ude4b\u200d\u2640\ufe0f",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "\ud83c\udf96",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "\ud83d\udef5",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "\ud83e\uddec",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "\u270d\ufe0f",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "\ud83e\uddfe",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "\ud83d\udef3",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " \ud83e\udea2",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "\u26a1\ufe0f",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "\ud83d\udcdc",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "\ud83c\udfa8",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "\ud83e\udd16",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "\ud83e\uddf0",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "\ud83e\udd84",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "\ud83c\udfa1",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "\u2728",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "\ud83e\udd1f",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "\ud83d\udef5",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "\ud83c\udfed",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "\ud83e\uddec",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "\ud83e\udd2c",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "\ud83d\udd17",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "\u2699\ufe0f",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "\ud83d\udc65",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "\u26a1\ufe0f",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "\ud83c\udff7\ufe0f",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "\ud83e\udd16",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "\ud83e\udde0",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "\ud83d\ude4c",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "\ud83c\udfa1",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "\ud83c\udf96",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "\ud83c\udfed",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "\ud83d\udce1",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "\ud83e\uddfe",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "\ud83d\udd17",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "\u2699\ufe0f",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "\ud83d\udc65",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "\u26a1\ufe0f",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "\ud83d\udcf9",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "\ud83e\udd16",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "\ud83e\uddf0",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "\ud83c\udfa1",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "\ud83c\udf96",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "\ud83d\udef5",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "\ud83c\udf96",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking \u2018Test workflow\u2019",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

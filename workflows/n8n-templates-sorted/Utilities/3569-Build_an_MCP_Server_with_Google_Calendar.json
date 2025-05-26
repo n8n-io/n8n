@@ -1,0 +1,923 @@
+{
+  "workflow": {
+    "id": 3569,
+    "name": "Build an MCP Server with Google Calendar",
+    "views": 1642,
+    "recentViews": 113,
+    "totalViews": 1642,
+    "createdAt": "2025-04-16T09:13:50.769Z",
+    "description": "### Who is this for?\nThis template is designed for anyone who wants to integrate MCP with their AI Agents. Whether you're a developer, a data analyst, or an automation enthusiast, if you're looking to leverage the power of MCP and Google Calendar in your n8n workflows, this template is for you.\n\n### What problem is this workflow solving?\nThis template caters to MCP beginners seeking a hands - on example and developers looking to integrate Google Calendar MCP service. When integrating MCP with Google Calendar, manually updating AI Agents after changes to Google Calendar tools on the MCP Server is time - consuming and error - prone. \n\nThis template automates the process, enabling the AI Agent to instantly recognize changes made to Google Calendar on the MCP Server. In project management, for example, it ensures that task schedule updates in Google Calendar are automatically detected by the AI Agent. With detailed steps, it simplifies the integration process for all users. \n\n### What this workflow does\nThis workflow focuses on integrating MCP with Google Calendar within n8n. Specifically, it allows you to build an MCP Server and Client using Google Calendar nodes in n8n. Any changes made to the Google Calendar tools on the MCP Server are automatically recognized by the MCP Client in the workflow. This means that you can make changes to your Google Calendar (such as adding, deleting, or modifying events) on the MCP Server, and the MCP Client in the n8n workflow will immediately detect these changes without any manual intervention.\n\n### Setup\n#### Requirements\n- An active n8n account.\n- Access to Google Calendar API. You need to  enable the Google Calendar API, and create the necessary credentials (OAuth 2.0 client ID).\n- Basic knowledge of n8n workflows and MCP concepts.\n\n#### Step - by - step guide\n1. **Create a new workflow in n8n**: Log in to your n8n account and create a new workflow.\n2. **Add Google Calendar nodes**: Search for and add the Google Calendar nodes to your workflow. Configure the nodes with your Google Calendar API credentials.\n3. **Set up the MCP Server and Client**: Use the appropriate nodes in n8n to set up the MCP Server and Client. Connect the Google Calendar nodes to the MCP nodes as required.\n4. **Test the workflow**: Make some changes to your Google Calendar on the MCP Server and check if the MCP Client in the n8n workflow can detect these changes.\n\n### How to customize this workflow to your needs\nIf you want to customize this workflow, you can:\n- **Modify the triggers**: You can change the conditions under which the MCP Client detects changes. For example, you can set it to detect only specific types of events in Google Calendar.\n- **Integrate with other services**: You can add more nodes to the workflow to integrate with other services, such as sending notifications to Slack or saving data to a database when a change is detected.",
+    "workflow": {
+      "id": "5opbTWPZRN05bYdz",
+      "meta": {
+        "instanceId": "2ca62dfdbee183085041310c6198e97a69dbf85e4843e42c21169e2f5e3db806",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Build an MCP Server with Google Calendar",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "4be79e3f-3e83-4432-b23f-4e4e9cac171b",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -360,
+            -800
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 2720,
+            "height": 140,
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "439a0233-c8ec-4ea5-8630-0f6e62c76bef",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            520,
+            -780
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 960,
+            "height": 80,
+            "content": "# Learn How to Build a MCP Server with Google Calendar"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "08996f0a-4a2d-438f-a8d7-aca78968d33f",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -360,
+            -600
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 620,
+            "height": 280,
+            "content": "# Introduce\n\nThis tutorial focuses on guiding users through the process of deploying MCP service with Google Calendar. By following this step - by - step guide, you'll be able to leverage the powerful features of MCP Server with Google Calendar, such as creating, reading, updating, and deleting events."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0f866ad6-d1af-4732-be64-8c97af7e55ac",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -360,
+            -240
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 620,
+            "height": 760,
+            "content": "# Author\n![SunGuannan](https://avatars.githubusercontent.com/u/176571840?v=4)\n### SunGuannan\nFreelance consultant from China, specializing in automations and data analysis. I work with select clients, addressing their toughest projects.\n\nFor business inquiries, email me at sguann2023@gmail.com.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4e2cdec7-8d04-40a7-9270-0f408ebf2efb",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            -600
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 620,
+            "content": "## Step1: Google Calendar tools require credentials\nIf you don't have your Google Credentials set up in n8n yet, watch [this](https://www.youtube.com/watch?v=3Ai1EPznlAc) video to learn how to do it.\n\nIf you are using n8n Cloud plans, it's very intuitive to setup and you may not even need the tutorial."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0a3941f5-959f-499c-b5a6-b2b66b203b1e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            -420
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 620,
+            "height": 220,
+            "content": "## Step 2: Create MCP Server Trigger and activate\nLog in to n8n and create a new workflow. On the new workflow page, click “Add First Step” to open a searchable menu of nodes and triggers. \n\nType “MCP Server Trigger” in the search bar and select it from the results to start your workflow. \n\nThis sets up how n8n receives events from the MCP Server, laying the groundwork for integrating Google Calendar into your automation. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "42800020-7ed3-4419-9847-d2a751aa3071",
+          "name": "SearchEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            400,
+            260
+          ],
+          "parameters": {
+            "limit": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Limit', ``, 'number') }}",
+            "options": {},
+            "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+            "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "sguann2023@gmail.com",
+              "cachedResultName": "sguann2023@gmail.com"
+            },
+            "operation": "getAll"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "Wi0S7gZu9R8zFjTC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "5d2bce57-f77d-4fd1-9342-d81107a6009d",
+          "name": "CreateEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            520,
+            260
+          ],
+          "parameters": {
+            "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+            "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "sguann2023@gmail.com",
+              "cachedResultName": "sguann2023@gmail.com"
+            },
+            "additionalFields": {
+              "summary": "={{ $fromAI(\"event_title\", \"The event title\", \"string\") }}",
+              "description": "={{ $fromAI(\"event_description\", \"The event description\", \"string\") }}"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "Wi0S7gZu9R8zFjTC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "dbebec9c-fecc-4154-ba77-cfbb519ba40a",
+          "name": "UpdateEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            640,
+            260
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "sguann2023@gmail.com",
+              "cachedResultName": "sguann2023@gmail.com"
+            },
+            "operation": "update",
+            "updateFields": {
+              "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+              "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+              "summary": "={{ $fromAI(\"event_title\", \"The event title\", \"string\") }}",
+              "description": "={{ $fromAI(\"event_description\", \"The event description\", \"string\") }}"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "Wi0S7gZu9R8zFjTC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "24ef1fd5-29dc-4208-a33b-5337307d01e0",
+          "name": "DeleteEvent",
+          "type": "n8n-nodes-base.googleCalendarTool",
+          "position": [
+            760,
+            260
+          ],
+          "parameters": {
+            "eventId": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Event_ID', ``, 'string') }}",
+            "options": {},
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "sguann2023@gmail.com",
+              "cachedResultName": "sguann2023@gmail.com"
+            },
+            "operation": "delete"
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "Wi0S7gZu9R8zFjTC",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "ec4aa55d-c6ee-4990-9c51-6ee1892600dd",
+          "name": "Google Calendar MCP",
+          "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+          "position": [
+            400,
+            60
+          ],
+          "webhookId": "f9d9d5ea-6f83-42c8-ae50-ee6c71789bca",
+          "parameters": {
+            "path": "my-calendar"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7e49bc5e-c3c1-47b3-8a0a-8f3b91ad954b",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            -180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 620,
+            "height": 600,
+            "content": "## Step 3: Incorporate Google Calendar Tools\nAfter creating the MCP Server Trigger, rename it to \"Google Calendar MCP \" for clarity. \n\nClick \"Tools\" and type \"Google Calendar\" in the search bar to find tools for various Google Calendar operations. \n\nYou can add multiple tools, each for a specific task. For example, \"Get Many\" retrieves multiple events, \"Create\" makes new ones, \"Update\" modifies existing events, and \"Delete\" removes them. Use these tools to build customized, efficient workflows for your Google Calendar data. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6a86eb61-0e1f-4de1-a77f-0470fe1cd3ec",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            440
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 620,
+            "height": 580,
+            "content": "## Step 4: Copy Your MCP Server Trigger URL and Activate Your Workflow\nDouble - click on the \"Google Calendar MCP\" node. On the node detail page, you'll locate the production URL, which might look something like \"https://xxx/mcp/my - calendar/sse\". Make sure to copy this URL as it will be used later in your workflow setup.\n\nAfter obtaining the URL, save the workflow. Then, check the \"Inactive\" button to activate the trigger. \n![Inactive](https://1.gravatar.com/userimage/264834967/9a4d54537ef20427192f47fd8e413814?size=256)\n![Active](https://1.gravatar.com/userimage/264834967/01bf3678cce04b3428586c908beb9954?size=256)\nOnce activated, your workflow will start listening for events from the MCP Server, enabling seamless integration with the Google Calendar service."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aed25c42-78e1-4984-8831-768e2bbe6888",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            -600
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 620,
+            "height": 140,
+            "content": "## Step 5: Create a New Workflow for AI Agent\nAt this stage, you're required to create a new workflow. Once the new workflow interface is open, click on the \"Add First Step\" option. In the list of available nodes and triggers that appears, search for and select the \"on Chat Message\" option to add it to your workflow. This sets the initial trigger for your AI-Agent-related workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "214dbba6-dffe-4c43-8c14-77babd52107f",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            960,
+            -440
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 620,
+            "height": 1060,
+            "content": "## Step 6: Add AI Agent Node\nAfter successfully creating the Chat Messages Trigger, you can proceed to add an \"AI Agent\" node right after it. Double - click on this newly added \"AI Agent\" node to open its configuration panel.\n\nIn the configuration, you'll need to add a specific option. Under the System Message field, enter the following text: \"You are a helpful assistant. Current datetime is {{ $now.toString() }}\". This message provides the AI with the current date and time, which can be useful for context in various interactions.\n\nNext, select an appropriate Large Language Model (LLM) from the available options. This model will be responsible for handling the chat and delivering events.\n\nTo enable continuous and context - aware conversations, add memory to the Agent. This allows the AI Agent to remember previous interactions, providing a more seamless and engaging chat experience.\n\nFinally, search for and add the \"MCP Client\" tool. In the SSE Endpoint section of the \"MCP Client\" configuration, paste the URL that you copied in Step 4. This step connects the AI Agent workflow to the MCP Server, enabling data flow and interaction between the two. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7ba10d96-e1cc-456d-9174-c848524466dd",
+          "name": "AI Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1220,
+            20
+          ],
+          "parameters": {
+            "options": {
+              "systemMessage": "=You are a helpful assistant.\nCurrent datetime is {{ $now.toString() }}"
+            }
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "2d577167-74d2-4966-8c39-79477787ed68",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            1020,
+            20
+          ],
+          "webhookId": "7b02318f-1c6b-4f2a-9a4f-b17fa69ea680",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "0c5f70f5-5156-42f1-90ab-1f294f2fa2d9",
+          "name": "Simple Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            1320,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "cf747bc2-9c08-4f8f-9408-135e17ef0d3d",
+          "name": "Calendar MCP",
+          "type": "@n8n/n8n-nodes-langchain.mcpClientTool",
+          "position": [
+            1440,
+            240
+          ],
+          "parameters": {
+            "sseEndpoint": "https://xxx.app.n8n.cloud/mcp/my-calendar/sse"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8891a5de-e35f-4367-bfb7-0e54ce4452be",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            360
+          ],
+          "parameters": {
+            "color": 7,
+            "height": 240,
+            "content": "## Why model 4o? 👆\nAfter testing 4o-mini it had some difficulties handling the calendar requests, while the 4o model handled it with ease.\n\nDepending on your prompt and tools, 4o-mini might be able to work well too, but it requires further testing."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f5d9ddb5-5957-4d22-8d85-a1c08eb813d8",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1620,
+            -600
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 740,
+            "height": 520,
+            "content": "# Let's Try!\n\n![create](https://0.gravatar.com/userimage/264834967/5dfab90301432c344990fafb166546e1?size=256)\n\n![create-finish](https://0.gravatar.com/userimage/264834967/7126b569dd9868c056f9ad3a23be2a25?size=256)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "31b467cd-1d70-4c05-ae14-9f9e455cd55c",
+          "name": "gpt-4o",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1180,
+            240
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "40ZaiQQN82bPTck0",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "007f0f3f-e7ca-4ea8-acba-cfde3bd8d1dd",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1620,
+            -40
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 740,
+            "height": 80,
+            "content": "# Enjoy It! 😊 😊 😊 "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "c99542aa-af94-4e26-b255-473a26e0a962",
+      "connections": {
+        "gpt-4o": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CreateEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DeleteEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SearchEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UpdateEvent": {
+          "ai_tool": [
+            [
+              {
+                "node": "Google Calendar MCP",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calendar MCP": {
+          "ai_tool": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Simple Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "AI Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 23,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 13
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleCalendarTool": {
+          "count": 4
+        },
+        "@n8n/n8n-nodes-langchain.mcpTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.mcpClientTool": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "GuanNan",
+      "username": "sun-guannan",
+      "bio": "",
+      "verified": false,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/93cbdf7c418b233351f8fefc2a383d459694d1f4e7c3409f0c70676244b07a47?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1292,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpClientTool",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Client"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolmcp/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Model Context Protocol",
+                "Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "MCP Client"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Client Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1293,
+        "icon": "file:../mcp.svg",
+        "name": "@n8n/n8n-nodes-langchain.mcpTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Model Context Protocol",
+              "MCP Server"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.mcptrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Core Nodes",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Root Nodes",
+                "Model Context Protocol"
+              ],
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MCP Server Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDE5NSAxOTUiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+Cgk8ZyBzdHJva2U9IiMwMDAiIHN0cm9rZS13aWR0aD0iMTIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCI+CgkJPHBhdGggZD0iTTI1IDk3Ljg1MjhMOTIuODgyMyAyOS45NzA2QzEwMi4yNTUgMjAuNTk4IDExNy40NTEgMjAuNTk4IDEyNi44MjMgMjkuOTcwNlYyOS45NzA2QzEzNi4xOTYgMzkuMzQzMSAxMzYuMTk2IDU0LjUzOTEgMTI2LjgyMyA2My45MTE3TDc1LjU1ODEgMTE1LjE3NyIvPgoJCTxwYXRoIGQ9Ik03Ni4yNjUzIDExNC40N0wxMjYuODIzIDYzLjkxMTdDMTM2LjE5NiA1NC41MzkxIDE1MS4zOTIgNTQuNTM5MSAxNjAuNzY1IDYzLjkxMTdMMTYxLjExOCA2NC4yNjUyQzE3MC40OTEgNzMuNjM3OCAxNzAuNDkxIDg4LjgzMzggMTYxLjExOCA5OC4yMDYzTDk5LjcyNDggMTU5LjZDOTYuNjAwNiAxNjIuNzI0IDk2LjYwMDYgMTY3Ljc4OSA5OS43MjQ4IDE3MC45MTNMMTEyLjMzMSAxODMuNTIiLz4KCQk8cGF0aCBkPSJNMTA5Ljg1MyA0Ni45NDExTDU5LjY0ODIgOTcuMTQ1N0M1MC4yNzU3IDEwNi41MTggNTAuMjc1NyAxMjEuNzE0IDU5LjY0ODIgMTMxLjA4N1YxMzEuMDg3QzY5LjAyMDggMTQwLjQ1OSA4NC4yMTY4IDE0MC40NTkgOTMuNTg5NCAxMzEuMDg3TDE0My43OTQgODAuODgyMiIvPgoJPC9nPgo8L3N2Zz4K"
+        },
+        "displayName": "MCP Server Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

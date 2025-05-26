@@ -1,0 +1,17 @@
+URL: https://docs.n8n.io/privacy-security/incident-response/
+Scraped_At: 2025-05-20T19:09:42.834348
+
+Incident response
+#
+n8n implements incident response best practices for identifying, documenting, resolving and communicating incidents.
+n8n publishes incident notifications to a status page at
+n8n Status
+.
+n8n notifies customers of any data breaches according to the company's
+Data Processing Addendum
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

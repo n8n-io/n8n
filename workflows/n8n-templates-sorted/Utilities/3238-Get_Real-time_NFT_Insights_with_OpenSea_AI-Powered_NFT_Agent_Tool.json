@@ -1,0 +1,1019 @@
+{
+  "workflow": {
+    "id": 3238,
+    "name": "Get Real-time NFT Insights with OpenSea AI-Powered NFT Agent Tool",
+    "views": 239,
+    "recentViews": 1,
+    "totalViews": 239,
+    "createdAt": "2025-03-20T15:07:10.949Z",
+    "description": "**Instantly access NFT metadata, collections, traits, contracts, and ownership details from OpenSea!** This workflow integrates **GPT-4o-mini AI**, **OpenSea API**, and **n8n automation** to provide **structured NFT data** for traders, collectors, and investors.  \n\n## **How It Works**  \n1. **Receives user queries** via Telegram, webhooks, or another connected interface.  \n2. **Determines the correct API tool** based on the request (e.g., user profile, NFT metadata, contract details).  \n3. **Retrieves data from OpenSea API** *(requires API key)*.  \n4. **Processes the information** using an AI-powered NFT insights engine.  \n5. **Returns structured insights** in an easy-to-read format for quick decision-making.  \n\n## **What You Can Do with This Agent**  \n🔹 **Retrieve OpenSea User Profiles** → Get **user bio, links, and profile info**.  \n🔹 **Fetch NFT Collection Details** → Get **collection metadata, traits, fees, and contract info**.  \n🔹 **Analyze NFT Metadata** → Retrieve **ownership, rarity, and trait-based pricing**.  \n🔹 **Monitor NFTs Owned by a Wallet** → Track **all NFTs under a specific account**.  \n🔹 **Retrieve Smart Contract Data** → Get **blockchain contract details for an NFT collection**.  \n🔹 **Identify Valuable Traits** → Fetch **NFT trait insights and rarity scores**.  \n\n## **Example Queries You Can Use**  \n✅ _\"Get OpenSea profile for `0xA5f49655E6814d9262fb656d92f17D7874d5Ac7E`.\"_  \n✅ _\"Retrieve details for the 'Azuki' NFT collection.\"_  \n✅ _\"Fetch metadata for NFT #5678 from 'Bored Ape Yacht Club'.\"_  \n✅ _\"Show all NFTs owned by `0x123...` on Ethereum.\"_  \n✅ _\"Get contract details for NFT collection 'CloneX'.\"_  \n\n## **Available API Tools & Endpoints**  \n1️⃣ **Get OpenSea Account Profile** → `/api/v2/accounts/{address_or_username}` _(Retrieve user bio, links, and image)_  \n2️⃣ **Get NFT Collection Details** → `/api/v2/collections/{collection_slug}` _(Get collection-wide metadata)_  \n3️⃣ **Get NFT Metadata** → `/api/v2/chain/{chain}/contract/{address}/nfts/{identifier}` _(Retrieve individual NFT details)_  \n4️⃣ **Get NFTs Owned by Account** → `/api/v2/chain/{chain}/account/{address}/nfts` _(List all NFTs owned by a wallet)_  \n5️⃣ **Get NFTs by Collection** → `/api/v2/collection/{collection_slug}/nfts` _(Retrieve all NFTs from a specific collection)_  \n6️⃣ **Get NFTs by Contract** → `/api/v2/chain/{chain}/contract/{address}/nfts` _(Retrieve all NFTs under a contract)_  \n7️⃣ **Get Payment Token Details** → `/api/v2/chain/{chain}/payment_token/{address}` _(Fetch info on payment tokens used in NFT transactions)_  \n8️⃣ **Get NFT Traits** → `/api/v2/traits/{collection_slug}` _(Retrieve collection-wide trait data)_  \n\n## **Set Up Steps**  \n1. **Get an OpenSea API Key**  \n   - Sign up at [OpenSea API](https://docs.opensea.io/reference/api-keys) and request an API key.  \n2. **Configure API Credentials in n8n**  \n   - Add your OpenSea API key under **HTTP Header Authentication**.  \n3. **Connect the Workflow to Telegram, Slack, or Database (Optional)**  \n   - Use **n8n integrations** to send alerts to **Telegram, Slack, or save results to Google Sheets, Notion, etc.**  \n4. **Deploy and Test**  \n   - Send a query (e.g., `\"Azuki latest sales\"`) and receive instant NFT market insights!  \n\n**Unlock powerful NFT analytics with AI-powered OpenSea insights—start now!**  \n",
+    "workflow": {
+      "id": "ZBH1ExE58wsoodkZ",
+      "meta": {
+        "instanceId": "a5283507e1917a33cc3ae615b2e7d5ad2c1e50955e6f831272ddd5ab816f3fb6"
+      },
+      "name": "OpenSea NFT Agent Tool",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "33cb5db2-a023-4a6c-a4ad-3f4b3c35ce42",
+          "name": "NFT Agent Brain",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1340,
+            240
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "yUizd8t0sD5wMYVG",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "9d1fa8e4-3acf-4ace-965c-ea5cdfcdc366",
+          "name": "NFT Agent Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            1520,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "d396bb90-00a6-41da-898d-7815d8d25fe3",
+          "name": "OpenSea NFT Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2140,
+            -20
+          ],
+          "parameters": {
+            "text": "={{ $json.message }}",
+            "options": {
+              "systemMessage": "# **🛠 OpenSea NFT Agent – System Message**  \n\n## **🔹 Role & Purpose**\nThe **OpenSea NFT Agent** is a powerful AI-driven assistant specialized in retrieving, analyzing, and processing NFT-related data from **OpenSea's API**. It provides insights into:\n- User profiles\n- NFT collections and contracts\n- Individual NFTs, their metadata, traits, and ownership\n- Payment tokens used in NFT transactions\n- Bulk NFT retrievals (by account, collection, or contract)  \n\nThis agent is designed to interact **directly** with OpenSea’s API and follows strict formatting rules to ensure valid requests and accurate responses.\n\n---\n\n# **⚡ Available Tools & How to Use Them**\nThe **NFT Agent** has access to **multiple OpenSea API endpoints**, each serving a specific purpose.\n\n## **1️⃣ Get Account**\n📍 **Endpoint**: `/api/v2/accounts/{address_or_username}`  \n🔹 **Description**: Retrieves an OpenSea user profile, including:\n  - Bio  \n  - Social media usernames  \n  - Profile image  \n\n🔹 **Required Parameter**:  \n  - `address_or_username` → Public blockchain address or OpenSea username  \n\n🔹 **Example Query**:  \n  _\"Retrieve OpenSea profile for user `0xA5f49655E6814d9262fb656d92f17D7874d5Ac7E`.\"_\n\n---\n\n## **2️⃣ Get Collection**\n📍 **Endpoint**: `/api/v2/collections/{collection_slug}`  \n🔹 **Description**: Fetches details about a specific NFT collection, including:\n  - Collection metadata  \n  - Fees  \n  - Traits  \n  - Social media links  \n\n🔹 **Required Parameter**:  \n  - `collection_slug` → Unique identifier for the collection (found in OpenSea URL)  \n\n🔹 **Example Query**:  \n  _\"Retrieve details for the 'Bored Ape Yacht Club' collection.\"_\n\n---\n\n## **3️⃣ Get Collections**\n📍 **Endpoint**: `/api/v2/collections`  \n🔹 **Description**: Fetches a **list of NFT collections** with optional filters.  \n\n🔹 **Optional Parameters**:  \n  - `chain` → Filter by blockchain (**must be a valid chain** from the list below).  \n  - `creator_username` → Return collections from a specific OpenSea username.  \n  - `include_hidden` → Boolean (`true`/`false`) to include hidden collections.  \n  - `limit` → Number of results (1-100, default: 100).  \n  - `next` → Cursor for pagination.  \n  - `order_by` → Sorting option (`created_date`, `market_cap`, `num_owners`, `one_day_change`, `seven_day_change`, `seven_day_volume`).  \n\n🔹 **Example Query**:  \n  _\"List the top 10 NFT collections on Ethereum sorted by market cap.\"_\n\n---\n\n## **4️⃣ Get Contract**\n📍 **Endpoint**: `/api/v2/chain/{chain}/contract/{address}`  \n🔹 **Description**: Retrieves **smart contract details** for an NFT collection.  \n\n🔹 **Required Parameters**:  \n  - `chain` → Blockchain network (**must be valid, see list below**).  \n  - `address` → Smart contract address of the NFT collection.  \n\n🔹 **Example Query**:  \n  _\"Retrieve contract details for `0xABCDEF...` on Ethereum.\"_\n\n---\n\n## **5️⃣ Get NFT**\n📍 **Endpoint**: `/api/v2/chain/{chain}/contract/{address}/nfts/{identifier}`  \n🔹 **Description**: Retrieves **metadata, traits, ownership, and rarity** of a specific NFT.  \n\n🔹 **Required Parameters**:  \n  - `chain` → Blockchain network (**must be valid, see list below**).  \n  - `address` → Smart contract address of the NFT collection.  \n  - `identifier` → The **NFT Token ID**.  \n\n🔹 **Example Query**:  \n  _\"Retrieve metadata for NFT #1234 from Ethereum contract `0xABCDEF...`.\"_\n\n---\n\n## **6️⃣ Get NFTs (by Account)**\n📍 **Endpoint**: `/api/v2/chain/{chain}/account/{address}/nfts`  \n🔹 **Description**: Retrieves **all NFTs owned** by a given account address.  \n\n🔹 **Required Parameters**:  \n  - `chain` → Blockchain network (**must be valid, see list below**).  \n  - `address` → Public blockchain address of the owner.  \n\n🔹 **Optional Parameters**:  \n  - `collection` → Filter by specific NFT collection.  \n  - `limit` → Number of NFTs to return (1-200, default: 50).  \n  - `next` → Cursor for pagination.  \n\n🔹 **Example Query**:  \n  _\"Retrieve all NFTs owned by `0x123...` on Ethereum.\"_\n\n---\n\n## **⚠️ Important Rules & Restrictions**\n### **🚨 1. Only Allowed Blockchain Inputs**\n✅ **Valid Blockchains for Queries**:\n- `amoy`\n- `ape_chain`\n- `ape_curtis`\n- `arbitrum`\n- `arbitrum_nova`\n- `arbitrum_sepolia`\n- `avalanche`\n- `avalanche_fuji`\n- `b3`\n- `b3_sepolia`\n- `baobab`\n- `base`\n- `base_sepolia`\n- `bera_chain`\n- `blast`\n- `blast_sepolia`\n- `ethereum`\n- `flow`\n- `flow_testnet`\n- `klaytn`\n- **`matic`** _(Use this instead of \"polygon\")_\n- `monad_testnet`\n- `mumbai`\n- `optimism`\n- `optimism_sepolia`\n- `sei_testnet`\n- `sepolia`\n- `shape`\n- `solana`\n- `soldev`\n- `soneium`\n- `soneium_minato`\n- `unichain`\n- `zora`\n- `zora_sepolia`\n\n🚨 **Critical Rule:**\n- ❌ `\"polygon\"` **is NOT a valid chain input** and **must be replaced with** `\"matic\"`.  \n- ❌ Using an unsupported blockchain **will cause an error**.  \n- ✅ Always verify blockchain names before executing a query.\n\n---\n\n## **📌 Example Queries**\n✅ _\"Find the OpenSea profile for `0x123...`.\"_  \n✅ _\"List all NFT collections created by `CryptoArtistX`.\"_  \n✅ _\"Retrieve contract details for `0xABC...` on Ethereum.\"_  \n✅ _\"Fetch metadata for NFT #5678 in 'Azuki' collection.\"_  \n✅ _\"List the top 5 NFT collections on Solana, ordered by market cap.\"_  \n\n---\n\n## **⚠️ Error Handling**\nIf an OpenSea API request fails, **check for errors**:\n- ✅ `200` → Success  \n- ❌ `400` → Bad Request (Invalid input format)  \n- ❌ `404` → Not Found (Incorrect `collection_slug`, `address`, or `identifier`)  \n- ❌ `500` → Server Error (OpenSea API issue)  \n\n---\n\n# **🚀 Conclusion**\nThe **OpenSea NFT Agent** is a **specialized AI-powered assistant** designed to retrieve and analyze NFT-related data on OpenSea. Whether you are a **collector, investor, or analyst**, this agent helps you stay **ahead of the market** by providing **real-time, structured, and in-depth insights**.  \n\n**🔥 Follow all rules to ensure successful API queries! 🔥**"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "c055762a-8fe7-4141-a639-df2372f30060",
+          "name": "Workflow Input Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            1420,
+            -20
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "message"
+                },
+                {
+                  "name": "sessionId"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e2b0e848-ae9a-4fce-bf74-11cdebca512e",
+          "name": "OpenSea Get Account",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1720,
+            240
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/accounts/{address_or_username}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves an OpenSea account profile, including bio, social media usernames, and profile image.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "a343aba5-6a1c-4a19-8054-d80a92b30db0",
+          "name": "OpenSea Get Collection",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1920,
+            240
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/collections/{collection_slug}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves details of a specific NFT collection from OpenSea, including fees, traits, and links.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "c21482cd-bc29-47ee-9913-b200abdfd5bd",
+          "name": "OpenSea Get Collections",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2120,
+            240
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/collections",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "chain",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "creator_username",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "include_hidden",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "order_by",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves a list of OpenSea collections with filtering options for blockchain, creator, visibility, sorting, and pagination.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "ab41e2bc-8c99-41ae-bfa5-5a94c8068f33",
+          "name": "OpenSea Get Contract",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2340,
+            240
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/chain/{chain}/contract/{address}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves details of a smart contract from OpenSea based on a given blockchain and contract address.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f938ea94-59f7-4e9b-a75f-02b8e606e8ed",
+          "name": "OpenSea Get NFT",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2580,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/chain/{chain}/contract/{address}/nfts/{identifier}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves metadata, traits, ownership information, and rarity for a single NFT on OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "c62f092e-353e-4038-a875-d3c86b9e2a3d",
+          "name": "OpenSea Get NFTs by Account",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            2820,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/chain/{chain}/account/{address}/nfts",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "collection",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves NFTs owned by a given account address on OpenSea, allowing filtering by collection, blockchain, and pagination options.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "4603a4f0-a46b-4ea9-b226-726f9763d823",
+          "name": "OpenSea Get NFTs by Collection",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            3080,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/collection/{collection_slug}/nfts",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves multiple NFTs for a given collection on OpenSea, allowing pagination and limit options.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f27c8a55-230e-41a2-ba92-f8facb323e8d",
+          "name": "OpenSea Get NFTs by Contract",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            3320,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/chain/{chain}/contract/{address}/nfts",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves multiple NFTs for a given smart contract on OpenSea, allowing pagination and limit options.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "6043b056-339b-4bdd-898e-91e3b5915afd",
+          "name": "OpenSea Get Payment Token",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            3540,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/chain/{chain}/payment_token/{address}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves details of a payment token from OpenSea based on a given blockchain and token address.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "5601cd2a-45f8-4cb6-acd8-02e44b033dcb",
+          "name": "OpenSea Get Traits",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            3760,
+            260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/traits/{collection_slug}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves the traits in a given NFT collection from OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                },
+                {
+                  "name": "x-api-key",
+                  "value": "YOUR_OPENSEA_API_KEY",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "86a6c757-bbda-41a9-90d1-1e8af808ae66",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            160,
+            -1240
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 920,
+            "height": 1880,
+            "content": "# OpenSea NFT Agent Tool (n8n Workflow) Guide\n\n## 🚀 Workflow Overview\nThe **OpenSea NFT Agent Tool** is a specialized **AI-powered assistant** designed to interact with **OpenSea's API** to fetch, analyze, and process NFT-related data. It helps users access **NFT ownership, metadata, traits, collections, contracts, and payment tokens** efficiently.\n\n### 🎯 **Key Features**:\n- Retrieve **OpenSea user profiles** by wallet address or username.\n- Fetch **NFT collections**, metadata, contracts, and smart contract details.\n- Access **individual NFT details**, including rarity and ownership.\n- Track **NFTs owned by an account**, collections, and smart contracts.\n- Retrieve **payment tokens** and NFT traits.\n- Ensure **API request validity** and structured responses.\n\n---\n\n## 🔗 **Nodes & Functions**\n\n### **1️⃣ NFT Agent Brain**\n- **Type**: AI Language Model (GPT-4o Mini)\n- **Purpose**: Processes NFT-related API requests and interprets OpenSea data queries.\n\n### **2️⃣ NFT Agent Memory**\n- **Type**: AI Memory Buffer\n- **Purpose**: Stores session data to maintain context across multiple queries.\n\n### **3️⃣ OpenSea Get Account**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/accounts/{address_or_username}`\n- **Function**: Fetches an OpenSea **user profile**, including bio, social links, and profile image.\n\n### **4️⃣ OpenSea Get Collection**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/collections/{collection_slug}`\n- **Function**: Retrieves **collection metadata**, fees, and traits.\n\n### **5️⃣ OpenSea Get Collections**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/collections`\n- **Function**: Fetches **a list of NFT collections**, filtered by chain, creator, visibility, or ranking.\n\n### **6️⃣ OpenSea Get Contract**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/chain/{chain}/contract/{address}`\n- **Function**: Retrieves **NFT collection smart contract details**.\n\n### **7️⃣ OpenSea Get NFT**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/chain/{chain}/contract/{address}/nfts/{identifier}`\n- **Function**: Fetches **metadata, traits, rarity, and ownership** of a single NFT.\n\n### **8️⃣ OpenSea Get NFTs by Account**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/chain/{chain}/account/{address}/nfts`\n- **Function**: Retrieves **all NFTs owned** by a wallet address.\n\n### **9️⃣ OpenSea Get NFTs by Collection**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/collection/{collection_slug}/nfts`\n- **Function**: Fetches **all NFTs in a collection**.\n\n### **🔟 OpenSea Get NFTs by Contract**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/chain/{chain}/contract/{address}/nfts`\n- **Function**: Retrieves **NFTs linked to a smart contract**.\n\n### **11️⃣ OpenSea Get Payment Token**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/chain/{chain}/payment_token/{address}`\n- **Function**: Fetches details of a **cryptocurrency/token** used for NFT transactions.\n\n### **12️⃣ OpenSea Get Traits**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/traits/{collection_slug}`\n- **Function**: Retrieves **trait categories and attributes** for a given collection.\n\n---\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c35f3855-5167-4230-8017-f60297d1dcec",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1540,
+            -1240
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1000,
+            "height": 1060,
+            "content": "## 📌 **How to Use the Workflow**\n\n### ✅ **Step 1: Input Data**\n- Provide the necessary parameters like `collection_slug`, `chain`, `address`, or `identifier`.\n\n### ✅ **Step 2: Execute API Calls**\n- The workflow retrieves and structures **NFT ownership, metadata, and analytics**.\n\n### ✅ **Step 3: Analyze & Output Results**\n- Results can be integrated into dashboards, alerts, or Telegram notifications.\n\n---\n\n## ⚠️ **Common API Queries & Examples**\n\n### **1️⃣ Get OpenSea User Profile**\n```plaintext\nGET https://api.opensea.io/api/v2/accounts/0xA5f49655E6814d9262fb656d92f17D7874d5Ac7E\n```\n\n### **2️⃣ Get Collection Details**\n```plaintext\nGET https://api.opensea.io/api/v2/collections/boredapeyachtclub\n```\n\n### **3️⃣ Get NFT Metadata**\n```plaintext\nGET https://api.opensea.io/api/v2/chain/ethereum/contract/0xABCDEF.../nfts/1234\n```\n\n### **4️⃣ Get All NFTs Owned by a Wallet**\n```plaintext\nGET https://api.opensea.io/api/v2/chain/ethereum/account/0x123.../nfts\n```\n\n### **5️⃣ Get Payment Token Details**\n```plaintext\nGET https://api.opensea.io/api/v2/chain/ethereum/payment_token/0xABC...DEF\n```\n\n---\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c96fc837-37b2-4351-9175-7b52fba1e38b",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2940,
+            -1240
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 840,
+            "height": 480,
+            "content": "## ⚡ **Error Handling & Troubleshooting**\n| **Error Code** | **Description** |\n|--------------|----------------|\n| `200` | Success |\n| `400` | Bad Request (Invalid input) |\n| `404` | Not Found (Incorrect slug, address, or identifier) |\n| `500` | Server Error (OpenSea API issue) |\n\n### 🔹 **Fixing Common Errors**\n- Ensure correct **wallet address**, **NFT identifier**, or **collection slug**.\n- Always use `\"matic\"` instead of `\"polygon\"` for chain input.\n- If OpenSea API is **down**, retry after some time.\n\n---\n\n## 🚀 **Connect with Me for Support**\nIf you need assistance, custom OpenSea NFT insights, or automation support, feel free to connect with me on LinkedIn:\n\n🌐 **Don Jayamaha – LinkedIn**  \n🔗 [http://linkedin.com/in/donjayamahajr](http://linkedin.com/in/donjayamahajr)"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "1bdf4330-2c81-47dc-8729-1737eb19cd40",
+      "connections": {
+        "NFT Agent Brain": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get NFT": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "NFT Agent Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Traits": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Account": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Contract": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Collection": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Workflow Input Trigger": {
+          "main": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Collections": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Payment Token": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get NFTs by Account": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get NFTs by Contract": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get NFTs by Collection": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea NFT Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 49,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 10
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Don Jayamaha Jr",
+      "username": "don-the-gem-dealer",
+      "bio": "With 12 years of experience as a Blockchain Strategist and Web3 Architect, I specialize in bridging the gap between traditional industries and decentralized technologies. My expertise spans tokenized assets, crypto payment integrations, and blockchain-driven market solutions.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/donjayamahajr/"
+      ],
+      "avatar": "https://gravatar.com/avatar/95f70084b3fec5ed68a61eef6dc6128dfb085d865a02ed631d0853d2730696bf?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

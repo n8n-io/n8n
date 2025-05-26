@@ -1,0 +1,98 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mattermost/
+Scraped_At: 2025-05-20T18:49:21.898238
+
+Mattermost node
+#
+Use the Mattermost node to automate work in Mattermost, and integrate Mattermost with other applications. n8n has built-in support for a wide range of Mattermost features, including creating, deleting, and getting channels, and users, as well as posting messages, and adding reactions.
+On this page, you'll find a list of operations the Mattermost node supports and links to more resources.
+Credentials
+Refer to
+Mattermost credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Channel
+Add a user to a channel
+Create a new channel
+Soft delete a channel
+Get a page of members for a channel
+Restores a soft deleted channel
+Search for a channel
+Get statistics for a channel
+Message
+Soft delete a post, by marking the post as deleted in the database
+Post a message into a channel
+Post an ephemeral message into a channel
+Reaction
+Add a reaction to a post.
+Remove a reaction from a post
+Get all the reactions to one or more posts
+User
+Create a new user
+Deactivates the user and revokes all its sessions by archiving its user object.
+Retrieve all users
+Get a user by email
+Get a user by ID
+Invite user to team
+Templates and examples
+#
+Standup bot (4/4): Worker
+by Jonathan
+View template details
+Receive a Mattermost message when a user updates their profile on Facebook
+by Harshil Agrawal
+View template details
+Send Instagram statistics to Mattermost
+by damien
+View template details
+Browse Mattermost integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+Mattermost's documentation
+for more information about the service.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Channel ID field error
+#
+If you're not the System Administrator, you might get an error:
+there was a problem loading the parameter options from server: "Mattermost error response: You do not have the appropriate permissions.
+next to the
+Channel ID
+field.
+Ask your system administrator to grant you the
+post:channel
+permission.
+Find the channel ID
+#
+To find the channel ID in Mattermost:
+Select the channel from the left sidebar.
+Select the channel name at the top.
+Select
+View Info
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

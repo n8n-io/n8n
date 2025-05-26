@@ -1,0 +1,71 @@
+URL: https://docs.n8n.io/courses/level-two/
+Scraped_At: 2025-05-20T18:42:02.213924
+
+Level two: Introduction
+#
+Welcome to the
+n8n Course Level 2
+!
+Is this course right for me?
+#
+This course is for you if you:
+Want to automate somewhat complex business processes.
+Want to dive deeper into n8n after taking the
+Level 1 course
+.
+What will I learn in this course?
+#
+The focus in this course is on working with data. You will learn how to:
+Use the data structure of n8n correctly.
+Process different data types (for example, XML, HTML, date, time, and binary data).
+Merge data from different sources (for example, a database, spreadsheet, or CRM).
+Use functions and JavaScript code in the
+Code node
+.
+Deal with error workflows and workflow errors.
+You will learn all this by completing short practical exercises after the theoretical explanations and building a business workflow following instructions.
+What do I need to get started?
+#
+To follow along this course (at a comfortable pace) you will need the following:
+n8n set up
+: You can use the
+self-hosted version
+or
+n8n Cloud
+.
+A user ID
+:
+Sign up here
+to get your unique ID and other credentials you will need in the course.
+Basic n8n skills
+: We strongly recommend taking the
+Level 1 course
+before this one.
+Basic JavaScript understanding
+How long does the course take?
+#
+Completing the course should take around
+two hours
+. You don't have to complete it in one go; feel free to take breaks and resume whenever you are ready.
+How do I complete the course?
+#
+There are two milestones in this course that test your knowledge of what you have learned in the lessons:
+Building the
+main workflow
+Passing the
+quiz
+at the end of the course
+You can always
+check your progress
+throughout the course by entering your unique ID
+here
+.
+If you successfully complete the milestones above, you will get
+a badge and an avatar
+in your forum profile. You can then share your profile and course verification ID to showcase your n8n skills to others.
+Let's get started!
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

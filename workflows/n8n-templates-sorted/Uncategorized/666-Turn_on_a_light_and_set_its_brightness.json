@@ -1,0 +1,208 @@
+{
+  "workflow": {
+    "id": 666,
+    "name": "Turn on a light and set its brightness",
+    "views": 930,
+    "recentViews": 0,
+    "totalViews": 930,
+    "createdAt": "2020-09-15T11:00:24.430Z",
+    "description": "![workflow-screenshot](fileId:239)",
+    "workflow": {
+      "id": "58",
+      "name": "Turn on a light and set its brightness",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            590,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Philips Hue",
+          "type": "n8n-nodes-base.philipsHue",
+          "position": [
+            790,
+            260
+          ],
+          "parameters": {
+            "lightId": "123",
+            "additionalFields": {
+              "bri": 90
+            }
+          },
+          "credentials": {
+            "philipsHueOAuth2Api": "philips-hue"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Philips Hue",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.philipsHue": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 352,
+        "icon": "file:philipshue.png",
+        "name": "n8n-nodes-base.philipsHue",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.philipshue/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/philipsHue/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Philips Hue"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Philips Hue",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 239,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/7d0065c83bb64b4c8119b77af3b9320d.png"
+      }
+    ]
+  }
+}

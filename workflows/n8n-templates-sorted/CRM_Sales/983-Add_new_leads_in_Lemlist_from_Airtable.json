@@ -1,0 +1,291 @@
+{
+  "workflow": {
+    "id": 983,
+    "name": "Add new leads in Lemlist from Airtable",
+    "views": 384,
+    "recentViews": 0,
+    "totalViews": 384,
+    "createdAt": "2021-03-15T10:06:39.714Z",
+    "description": "This workflow allows you to add new leads in Lemlist from Airtable.\n\n![workflow-screenshot](fileId:442)\n\n**Airtable node:** This node lists all the emails that are stored in your Table. You may have the email addresses stored in a Google Sheet, CRM, or database. Replace the Airtable node with the respective node to get the list of the email addresses.\n\n**Lemlist node:** This node creates new leads for a campaign in Lemlist taking the information from the previous node.\n\n**Lemlist1 node:** This node returns the information of a lead from Lemlist.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            440,
+            320
+          ],
+          "parameters": {
+            "operation": "list",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "airtableApi": "Airtable Credentials n8n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Lemlist",
+          "type": "n8n-nodes-base.lemlist",
+          "position": [
+            640,
+            320
+          ],
+          "parameters": {
+            "email": "={{$json[\"fields\"][\"Email\"]}}",
+            "resource": "lead",
+            "campaignId": "cam_H5pYEryq6mRKBiy5v",
+            "additionalFields": {
+              "firstName": "={{$json[\"fields\"][\"Name\"]}}"
+            }
+          },
+          "credentials": {
+            "lemlistApi": "Lemlist API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Lemlist1",
+          "type": "n8n-nodes-base.lemlist",
+          "position": [
+            840,
+            320
+          ],
+          "parameters": {
+            "email": "={{$node[\"Airtable\"].json[\"fields\"][\"Email\"]}}",
+            "resource": "lead",
+            "operation": "get"
+          },
+          "credentials": {
+            "lemlistApi": "Lemlist API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Lemlist": {
+          "main": [
+            [
+              {
+                "node": "Lemlist1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable": {
+          "main": [
+            [
+              {
+                "node": "Lemlist",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.lemlist": {
+          "count": 2
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 463,
+        "icon": "file:lemlist.svg",
+        "name": "n8n-nodes-base.lemlist",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.lemlist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/lemlist/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Lemlist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjEyMjc1IDBIMzIuODc3MkMzNi44MTEgMCA0MCAzLjE4ODk2IDQwIDcuMTIyNzRWMzIuODc3MkM0MCAzNi44MTA5IDM2LjgxMSAzOS45OTk5IDMyLjg3NzIgMzkuOTk5OUg3LjEyMjc1QzMuMTg4OTYgMzkuOTk5OSAwIDM2LjgxMDkgMCAzMi44NzcyVjcuMTIyNzRDMCAzLjE4ODk2IDMuMTg4OTYgMCA3LjEyMjc1IDBaTTI4LjIzNTYgMTAuNzE0NEgxOC45MDczQzE4LjMyNzMgMTAuNzE0NCAxNy44NTczIDExLjE4NDQgMTcuODU3MyAxMS43NjQzVjEzLjIzNThDMTcuODU3MyAxMy44MTU3IDE4LjMyNzMgMTQuMjg1OCAxOC45MDczIDE0LjI4NThIMjguMjM1NkMyOC44MTU1IDE0LjI4NTggMjkuMjg1NiAxMy44MTU3IDI5LjI4NTYgMTMuMjM1OFYxMS43NjQzQzI5LjI4NTYgMTEuMTg0NCAyOC44MTU1IDEwLjcxNDQgMjguMjM1NiAxMC43MTQ0Wk0xOC45MDczIDE4LjIxNTFIMjYuNTY5M0MyNy4xNDkxIDE4LjIxNTEgMjcuNjE5MSAxOC42ODUxIDI3LjYxOTEgMTkuMjY0OVYyMC43MzY2QzI3LjYxOTEgMjEuMzE2NSAyNy4xNDkxIDIxLjc4NjUgMjYuNTY5MyAyMS43ODY1SDE4LjkwNzNDMTguMzI3MyAyMS43ODY1IDE3Ljg1NzMgMjEuMzE2NSAxNy44NTczIDIwLjczNjZWMTkuMjY0OUMxNy44NTczIDE4LjY4NTEgMTguMzI3MyAxOC4yMTUxIDE4LjkwNzMgMTguMjE1MVpNMjkuMjg1NiAyOC4yMzU3VjI2Ljc2NEMyOS4yODU2IDI2LjE4NDUgMjguODE1MiAyNS43MTQxIDI4LjIzNTYgMjUuNzE0MUgxNy4wMTU2QzE1LjUwNzIgMjUuNzE0MSAxNC4yODU4IDI0LjQ5MjggMTQuMjg1OCAyMi45ODQzVjExLjc2NDNDMTQuMjg1OCAxMS4xODQ3IDEzLjgxNTQgMTAuNzE0NCAxMy4yMzU5IDEwLjcxNDRIMTEuNzY0M0MxMS4xODQ3IDEwLjcxNDQgMTAuNzE0NCAxMS4xODQ3IDEwLjcxNDQgMTEuNzY0M1YyNS4xNzMyQzEwLjg1NTUgMjcuMzgwNSAxMi42MTk0IDI5LjE0NDQgMTQuODI2NyAyOS4yODU1SDI4LjIzNTZDMjguODE1MiAyOS4yODU1IDI5LjI4NTYgMjguODE1MSAyOS4yODU2IDI4LjIzNTdaIiBmaWxsPSIjMzE2QkZGIi8+CjxwYXRoIGQ9Ik0xOC45MDY5IDEwLjcxNDFIMjguMjM1M0MyOC44MTUxIDEwLjcxNDEgMjkuMjg1MyAxMS4xODQyIDI5LjI4NTMgMTEuNzY0VjEzLjIzNTZDMjkuMjg1MyAxMy44MTU1IDI4LjgxNTEgMTQuMjg1NiAyOC4yMzUzIDE0LjI4NTZIMTguOTA2OUMxOC4zMjY5IDE0LjI4NTYgMTcuODU2OSAxMy44MTU1IDE3Ljg1NjkgMTMuMjM1NlYxMS43NjRDMTcuODU2OSAxMS4xODQyIDE4LjMyNjkgMTAuNzE0MSAxOC45MDY5IDEwLjcxNDFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTguOTA2OSAxOC4yMTUxSDI2LjU2ODlDMjcuMTQ4OCAxOC4yMTUxIDI3LjYxODggMTguNjg1MSAyNy42MTg4IDE5LjI2NDlWMjAuNzM2NkMyNy42MTg4IDIxLjMxNjUgMjcuMTQ4OCAyMS43ODY1IDI2LjU2ODkgMjEuNzg2NUgxOC45MDY5QzE4LjMyNjkgMjEuNzg2NSAxNy44NTY5IDIxLjMxNjUgMTcuODU2OSAyMC43MzY2VjE5LjI2NDlDMTcuODU2OSAxOC42ODUxIDE4LjMyNjkgMTguMjE1MSAxOC45MDY5IDE4LjIxNTFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjkuMjg1NiAyNi43NjM4VjI4LjIzNTRDMjkuMjg1NiAyOC44MTQ5IDI4LjgxNTIgMjkuMjg1MyAyOC4yMzU2IDI5LjI4NTNIMTQuODI2N0MxMi42MTk0IDI5LjE0NDIgMTAuODU1NSAyNy4zODAzIDEwLjcxNDQgMjUuMTczVjExLjc2NEMxMC43MTQ0IDExLjE4NDUgMTEuMTg0NyAxMC43MTQxIDExLjc2NDMgMTAuNzE0MUgxMy4yMzU5QzEzLjgxNTQgMTAuNzE0MSAxNC4yODU4IDExLjE4NDUgMTQuMjg1OCAxMS43NjRWMjIuOTg0MUMxNC4yODU4IDI0LjQ5MjUgMTUuNTA3MiAyNS43MTM5IDE3LjAxNTYgMjUuNzEzOUgyOC4yMzU2QzI4LjgxNTIgMjUuNzEzOSAyOS4yODU2IDI2LjE4NDMgMjkuMjg1NiAyNi43NjM4WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Lemlist",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 442,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/3542d9adbdb048b3bf51f4b663c4cc13.png"
+      }
+    ]
+  }
+}

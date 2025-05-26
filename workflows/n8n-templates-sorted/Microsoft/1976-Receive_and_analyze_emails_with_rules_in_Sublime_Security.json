@@ -1,0 +1,1298 @@
+{
+  "workflow": {
+    "id": 1976,
+    "name": "Receive and analyze emails with rules in Sublime Security",
+    "views": 1615,
+    "recentViews": 0,
+    "totalViews": 1615,
+    "createdAt": "2023-11-13T08:50:29.487Z",
+    "description": "\nThis n8n workflow provides a comprehensive automation solution for processing email attachments, specifically targeting enhanced security protocols for organizations that use platforms like Outlook. It starts with the IMAP node, which is set to ingest emails and identify those with .eml attachments.\n\nOnce an email with an attachment is ingested, the workflow progresses to a conditional operation where it checks for the presence of attachments. If an attachment is found, the binary data is moved and converted to JSON format, preparing it for further analysis. This meticulous approach to detecting attachments is crucial for maintaining a robust security posture, allowing for the proactive identification and handling of potentially malicious content.\n\nIn the subsequent stage, the workflow leverages the capabilities of Sublime Security by analyzing the email attachment. The binary file is scrutinized for threats, and upon detection, the information is split to matched and unmatched data. This process not only speeds up the threat detection mechanism but also ensures compatibility with other systems, such as Slack, resulting in a smooth and efficient workflow. This automation emphasizes operational efficiency with minimal user involvement, enhancing the organization's defense against cyber threats.\n\nThe final phase of the workflow involves preparing the output for a Slack report. Whether a threat is detected or not, n8n ensures that stakeholders are immediately informed by dispatching comprehensive reports or notifications to Slack channels. This promotes a culture of transparency and prompt action within the team.",
+    "workflow": {
+      "id": "84KL1bsi9OvbAapn",
+      "meta": {
+        "instanceId": "03e9d14e9196363fe7191ce21dc0bb17387a6e755dcc9acc4f5904752919dca8"
+      },
+      "name": "Receive_and_analyze_emails_with_rules_in_Sublime_Security",
+      "tags": [
+        {
+          "id": "GCHVocImoXoEVnzP",
+          "name": "🛠️ In progress",
+          "createdAt": "2023-10-31T02:17:21.618Z",
+          "updatedAt": "2023-10-31T02:17:21.618Z"
+        },
+        {
+          "id": "QPJKatvLSxxtrE8U",
+          "name": "Secops",
+          "createdAt": "2023-10-31T02:15:11.396Z",
+          "updatedAt": "2023-10-31T02:15:11.396Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "b1ad1c9a-ba5d-46d6-9ce1-b3bb9346c766",
+          "name": "Email Trigger (IMAP)",
+          "type": "n8n-nodes-base.emailReadImap",
+          "position": [
+            720,
+            1120
+          ],
+          "parameters": {
+            "format": "resolved",
+            "options": {}
+          },
+          "credentials": {
+            "imap": {
+              "id": "BDCrQbPFgl8k3ArL",
+              "name": "Matti Outlook email"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e43b0257-0d83-4f7e-8824-3ca1d4cf6110",
+          "name": "Move Binary Data",
+          "type": "n8n-nodes-base.moveBinaryData",
+          "position": [
+            1240,
+            740
+          ],
+          "parameters": {
+            "options": {
+              "encoding": "base64"
+            },
+            "sourceKey": "attachment_0",
+            "setAllData": false
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "97359abc-7ca9-4599-9112-4416618d0c36",
+          "name": "IF email has attachment",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1020,
+            900
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $binary.attachment_0 }}",
+                  "operation": "isNotEmpty"
+                },
+                {
+                  "value1": "={{ $binary.attachment_0.mimeType }}",
+                  "value2": "message/rfc822"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "046f87e0-8759-4952-85be-78bf36a70994",
+          "name": "Split to matched and unmatched",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1760,
+            740
+          ],
+          "parameters": {
+            "jsCode": "// Loop over input items and add a new field\n// called 'myNewField' to the JSON of each one\nmatched = []\nunmatched = []  \n\nfor (const item of $input.first().json.rule_results) {\n  if (item.matched) {\n    matched.push(item)\n  } else {\n    unmatched.push(item)    \n  }\n}\n\nreturn {\n  json: {\n    matched,\n    unmatched\n  }\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f88b852d-f2a4-4d78-aaef-40050c0efef8",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            720,
+            920
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ce7288d4-61ec-4222-a29e-8a72ed2ee32e",
+          "name": "Slack",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            2260,
+            740
+          ],
+          "parameters": {
+            "text": "={{ $json.message }}",
+            "select": "channel",
+            "channelId": {
+              "__rl": true,
+              "mode": "name",
+              "value": "#test-matti-tomi"
+            },
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "180",
+              "name": "Awesom-O"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "70c76c01-50ef-47a4-b552-bc6fea5079ed",
+          "name": "Format the message",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2040,
+            740
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "message",
+                  "value": "=No. of rules that matched {{ $json[\"matched\"].length }} / {{ $json[\"matched\"].length + $json[\"unmatched\"].length }}\n\nMatched rules:\n{{ $json[\"matched\"].pluck(\"rule\").pluck(\"name\").join('\\n') }}\n"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "52af4700-0dc5-4f5f-8664-97d2aacdab76",
+          "name": "Notify about missing attachment",
+          "type": "n8n-nodes-base.slack",
+          "position": [
+            2260,
+            920
+          ],
+          "parameters": {
+            "text": "No attachment found in an email\n",
+            "select": "channel",
+            "channelId": {
+              "__rl": true,
+              "mode": "name",
+              "value": "#test-matti-tomi"
+            },
+            "otherOptions": {}
+          },
+          "credentials": {
+            "slackApi": {
+              "id": "180",
+              "name": "Awesom-O"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "19be16c9-3908-4a2d-87e4-f721c33dc124",
+          "name": "Analyze email with Sublime Security",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1500,
+            740
+          ],
+          "parameters": {
+            "url": "https://api.platform.sublimesecurity.com/v0/messages/analyze",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"raw_message\": \"{{ $json.data }}\",\n  \"run_active_detection_rules\": true,\n  \"run_all_detection_rules\": false\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "content-type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "buIfmuHDZZQ2MyYz",
+              "name": "Sublime Security bearer token"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a39d52d6-26e0-485e-8d32-984e26f71f9b",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            240,
+            298.6458865911087
+          ],
+          "parameters": {
+            "width": 618.0312276650722,
+            "height": 963.8594737915395,
+            "content": "![imap](https://i.imgur.com/lVqCPYb.png)\n# Workflow Overview\nLeverage n8n's IMAP node to `seamlessly ingest emails as .eml attachments`, streamlining your security protocols and response strategies. \n\nThis setup is crucial for organizations utilizing platforms like Outlook, which offers a specialized security feature that designates specific inboxes for phishing attempts. \n\nWhen a phishing email is flagged through Outlook's interface, the system is designed to convert it into an .eml file and direct it to a dedicated phishing inbox. This process not only centralizes your phishing threat management but also ensures that each potential threat is queued for immediate and thorough analysis. \n\nBy integrating with n8n, you can automate the capture of these emails, transforming user-reported incidents into actionable data without manual intervention, enhancing your cybersecurity response and preserving your workflow's integrity.\n\n## Ingest emails as attachments as .eml file. \nSet your phishing email inbox here via your imap credentials. You can also replace this with any other node that retrieves emails as .eml attachments. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3cb757ce-2083-44de-8508-89039c6bca9d",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1444,
+            361
+          ],
+          "parameters": {
+            "width": 503.7209302325584,
+            "height": 710.138909846923,
+            "content": "![Sublime Security](https://i.imgur.com/DfXJLIw.png)\n## Analyze Attachment and format output\nIf an attachment is detected, n8n facilitates its secure transfer to Sublime Security for detailed analysis. This automated process not only speeds up the threat detection mechanism but also formats the output for compatibility with other systems, such as Slack, ensuring a smooth and efficient workflow. \n\nThrough this automation, you're not just analyzing emails; you're fortifying your defense against cyber threats and enhancing operational efficiency with minimal user involvement."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "83756b95-a3a8-4145-9d10-fc7e3b2121f8",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1980,
+            354.9999999999999
+          ],
+          "parameters": {
+            "width": 476.0465116279074,
+            "height": 777.0757733319455,
+            "content": "![Slack](https://i.imgur.com/iKyMV0N.png)\n## Prep output for Slack Report\nn8n completes the cycle of threat analysis and communication by preparing and delivering comprehensive reports directly to your Slack channels. \n\nThis ensures that all stakeholders are immediately informed about potential threats, fostering a culture of transparency and prompt action. \n\nIn instances where no attachment is found, n8n proactively dispatches a notification to Slack, signaling your team to investigate further. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a443e91b-6b0b-4fb8-b9d5-6f1d236da053",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            880,
+            360.90897077923785
+          ],
+          "parameters": {
+            "width": 541.1627906976748,
+            "height": 715.8304363872012,
+            "content": "![n8n](https://i.imgur.com/lKnBNnH.png)\n## Check for attachments and send to sublime if any found \nUpon receiving an email via the IMAP node, n8n executes a meticulous inspection to detect the presence of attachments. This is more than a mere check; it's an essential layer of your security posture to identify and handle potentially malicious content proactively. \n\nIf an attachment is found, the binary file is converted to JSON for further analysis. "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Move Binary Data": [
+          {
+            "json": {
+              "to": {
+                "html": "<span class=\"mp_address_group\"><a href=\"mailto:mattiasn8n@outlook.com\" class=\"mp_address_email\">mattiasn8n@outlook.com</a></span>",
+                "text": "mattiasn8n@outlook.com",
+                "value": [
+                  {
+                    "name": "",
+                    "address": "mattiasn8n@outlook.com"
+                  }
+                ]
+              },
+              "data": "RGVsaXZlcmVkLVRvOiB0b21pdHVydGlhaW5lbkBnbWFpbC5jb20NClJlY2VpdmVkOiBieSAyMDAyOmExNzo5MDY6OTRjZTpiMDo5YTE6OWFiMzoyMTkyIHdpdGggU01UUCBpZCBkMTRjc3AxODYzNzMzZWp5Ow0KICAgICAgICBUdWUsIDUgU2VwIDIwMjMgMDY6MzI6MDQgLTA3MDAgKFBEVCkNClgtR29vZ2xlLVNtdHAtU291cmNlOiBBR0hUK0lHZU1DOTcwRHg3T2VyT25idnFtamVOSmR0ZXBPdXNjaWRtUHEvc1YzNzg3eDFaRHUvUUdtVEhFWHFqclNIbDJpNHRSQ3dJDQpYLVJlY2VpdmVkOiBieSAyMDAyOmExNzo5MGI6Zjg1OmIwOjI2MzoxNjFjOjllOWMgd2l0aCBTTVRQIGlkIGZ0NS0yMDAyMGExNzA5MGIwZjg1MDBiMDAyNjMxNjFjOWU5Y21yMTcwNzUyNzRwamIuMTIuMTY5MzkyMDcyMzYzMTsNCiAgICAgICAgVHVlLCAwNSBTZXAgMjAyMyAwNjozMjowMyAtMDcwMCAoUERUKQ0KQVJDLVNlYWw6IGk9MTsgYT1yc2Etc2hhMjU2OyB0PTE2OTM5MjA3MjM7IGN2PW5vbmU7DQogICAgICAgIGQ9Z29vZ2xlLmNvbTsgcz1hcmMtMjAxNjA4MTY7DQogICAgICAgIGI9UGdKNHFPeWRjdzBmN1VqakNjQ3lnUXBsNkxkNDJURmJoZTVsckM0bDVsak5SLzhMNCtRQzlYUWdKbVVJVGRBVWN0DQogICAgICAgICBJOHZqblB3eWcvd2tGV21xa2pzR2dodGZGMTc5TTY2bkNEWTJIeUgzWUF6M0Z5cy9pUDFlTWhvdDJEOUZaMmduZm5WeA0KICAgICAgICAgNFFobXRQTkErU2FjZ0pXYVE0TGFHQUhaamI3VXBxc1lxUTdndzJicmcxeWZKM2VTekdiK0tCcDRlYThTR2cyL0JmRkQNCiAgICAgICAgIFNGZmM3K1A1RTdrOE1uNE51UFFDd1BBUzB6MFVEMmdHU0dRV0FrNlY3RVhrQWx3cEF5RDdzbHFCanFPbkxKR05kU0JmDQogICAgICAgICBXSTNNSFlSRjNKYjhnTmRXN2RhdlhONUVYREN1VXR3RkVVMk50NVAyZnNVd1VleUlKY2xpODljQjU0QWxsM2hzU3VQTw0KICAgICAgICAgbE8xQT09DQpBUkMtTWVzc2FnZS1TaWduYXR1cmU6IGk9MTsgYT1yc2Etc2hhMjU2OyBjPXJlbGF4ZWQvcmVsYXhlZDsgZD1nb29nbGUuY29tOyBzPWFyYy0yMDE2MDgxNjsNCiAgICAgICAgaD1mZWVkYmFjay1pZDptaW1lLXZlcnNpb246c3ViamVjdDp0bzpmcm9tOmRhdGU6ZGtpbS1zaWduYXR1cmUNCiAgICAgICAgIDptZXNzYWdlLWlkOw0KICAgICAgICBiaD1zNWhrUmxaTVhKQmE3cjVwdVBzZXRxNm5tcW8zbDRaeFBUeFlDQmlOeUI0PTsNCiAgICAgICAgZmg9emNKNzl1S2hLQzdBZU9VM2VtMnE3SUZRemRwMmRsNmxndE1MRWE0ZDB1RT07DQogICAgICAgIGI9aHJ1VkFlbU5OcXFLb2lVTlFpKzJLdHpnTk52ZldDczNPTWtrbGhtcXJyZWlJbVBpZHptM3orZ3JDZ0F5ZmFhaTF2DQogICAgICAgICBDWlhHeG0yN1lKckJlRzl3dXF0dDBSVTIwby9oMTMxbVZXRFAwZ3BlMnVnY3FBR3hvRkVDMXQ0bXU5SXl0aC9aWENoLw0KICAgICAgICAgOWF5NTYyd05HSnY0KzJRWnBuQ1VVQ1BILzg3SG1VdkNVL3oxaURHb1RuajZvdzBKTXpZd0RzTytXdndsWUJlR2tuOTUNCiAgICAgICAgIHhDRnNHeEJpRFgzeGFtSVVIRFNEcnhRcmxpN0pETXNNK3RuVjlEUjRIT1BLa3QyekJwQmEzcXROQ09iSVJ5RzBKS3lzDQogICAgICAgICBmdU9LNnlsNFg5M1cyT2piTGk2cktTK2srVWZPeHVjcU5CckdoNjVKVno3eVZDZTkyRFdMMzdBY29rZHFEQnJYWTdZYg0KICAgICAgICAgVVhKdz09DQpBUkMtQXV0aGVudGljYXRpb24tUmVzdWx0czogaT0xOyBteC5nb29nbGUuY29tOw0KICAgICAgIGRraW09cGFzcyBoZWFkZXIuaT1AYWxpZXhwcmVzcy5jb20gaGVhZGVyLnM9czEwMjQgaGVhZGVyLmI9alRoeU1UbmE7DQogICAgICAgc3BmPXBhc3MgKGdvb2dsZS5jb206IGRvbWFpbiBvZiBhY2NvdW50QG5vdGljZS5hbGlleHByZXNzLmNvbSBkZXNpZ25hdGVzIDguMjE5LjMyLjUzIGFzIHBlcm1pdHRlZCBzZW5kZXIpIHNtdHAubWFpbGZyb209YWNjb3VudEBub3RpY2UuYWxpZXhwcmVzcy5jb207DQogICAgICAgZG1hcmM9cGFzcyAocD1RVUFSQU5USU5FIHNwPVFVQVJBTlRJTkUgZGlzPU5PTkUpIGhlYWRlci5mcm9tPWFsaWV4cHJlc3MuY29tDQpSZXR1cm4tUGF0aDogPGFjY291bnRAbm90aWNlLmFsaWV4cHJlc3MuY29tPg0KUmVjZWl2ZWQ6IGZyb20gb3V0MzItNTMuc2cuYi5kbS5hbGl5dW4uY29tIChvdXQzMi01My5zZy5iLmRtLmFsaXl1bi5jb20uIFs4LjIxOS4zMi41M10pDQogICAgICAgIGJ5IG14Lmdvb2dsZS5jb20gd2l0aCBFU01UUCBpZCBpMi0yMDAyMGExNzA5MGFkYzAyMDBiMDAyNGU0N2ZhZTQ2NnNpOTQyNTMwMnBqdi4xODAuMjAyMy4wOS4wNS4wNi4zMi4wMg0KICAgICAgICBmb3IgPHRvbWl0dXJ0aWFpbmVuQGdtYWlsLmNvbT47DQogICAgICAgIFR1ZSwgMDUgU2VwIDIwMjMgMDY6MzI6MDMgLTA3MDAgKFBEVCkNClJlY2VpdmVkLVNQRjogcGFzcyAoZ29vZ2xlLmNvbTogZG9tYWluIG9mIGFjY291bnRAbm90aWNlLmFsaWV4cHJlc3MuY29tIGRlc2lnbmF0ZXMgOC4yMTkuMzIuNTMgYXMgcGVybWl0dGVkIHNlbmRlcikgY2xpZW50LWlwPTguMjE5LjMyLjUzOw0KQXV0aGVudGljYXRpb24tUmVzdWx0czogbXguZ29vZ2xlLmNvbTsNCiAgICAgICBka2ltPXBhc3MgaGVhZGVyLmk9QGFsaWV4cHJlc3MuY29tIGhlYWRlci5zPXMxMDI0IGhlYWRlci5iPWpUaHlNVG5hOw0KICAgICAgIHNwZj1wYXNzIChnb29nbGUuY29tOiBkb21haW4gb2YgYWNjb3VudEBub3RpY2UuYWxpZXhwcmVzcy5jb20gZGVzaWduYXRlcyA4LjIxOS4zMi41MyBhcyBwZXJtaXR0ZWQgc2VuZGVyKSBzbXRwLm1haWxmcm9tPWFjY291bnRAbm90aWNlLmFsaWV4cHJlc3MuY29tOw0KICAgICAgIGRtYXJjPXBhc3MgKHA9UVVBUkFOVElORSBzcD1RVUFSQU5USU5FIGRpcz1OT05FKSBoZWFkZXIuZnJvbT1hbGlleHByZXNzLmNvbQ0KTWVzc2FnZS1JRDogPDY0ZjcyZGQzLjE3MGEwMjIwLmU4Mjk1LjY1YTVTTVRQSU5fQURERURfQlJPS0VOQG14Lmdvb2dsZS5jb20+DQpYLUdvb2dsZS1PcmlnaW5hbC1NZXNzYWdlLUlEOiBtYWlsbnVsbF9FTUFJTF9SRUdJU1RFUl9lJDdmOGM5YWIwYzU4MDRjOTY5MDYxNmM0Yzc4MTY4NDZhDQpYLUFsaURNLVJjcHRUbzogZEc5dGFYUjFjblJwWVdsdVpXNUFaMjFoYVd3dVkyOXQNCkRLSU0tU2lnbmF0dXJlOiB2PTE7IGE9cnNhLXNoYTI1NjsgYz1yZWxheGVkL3JlbGF4ZWQ7DQoJZD1hbGlleHByZXNzLmNvbTsgcz1zMTAyNDsNCgl0PTE2OTM5MjA3MjI7IGg9RGF0ZTpGcm9tOlRvOk1lc3NhZ2UtSUQ6U3ViamVjdDpNSU1FLVZlcnNpb246Q29udGVudC1UeXBlOw0KCWJoPXM1aGtSbFpNWEpCYTdyNXB1UHNldHE2bm1xbzNsNFp4UFR4WUNCaU55QjQ9Ow0KCWI9alRoeU1UbmEvSXhiNEVyajFTcVpQaW5iYjFURUdLWWdEdDJQTDk4QVIxNGtSMnpwdzEvRDlFNng3Wi9RR3VaZ21GOUJyUzRZVHc5eEgzSTkyUGg2OWMvWHR6aTQxUFNOT2NtMWhYNXFDSlNqQUdrR3dFUHJUOVdNd3NjUUxHak9wSmVIVWdPQTFTOGM3UWVuMTg0TmlHRGlpRnFGQ3EwSStjYlVZYTVkK09jPQ0KWC1FbnZJZDogNTc2NDYwODk4MzU1MDQzNTczDQpSZWNlaXZlZDogZnJvbSBhZS11dC1jcmFiLXMtZjZlZjI4MjUwZGNmZjY5OWNkMDE3MWM3MWRkNzM1NTAtcGRtaHIobWFpbGZyb206YWNjb3VudEBub3RpY2UuYWxpZXhwcmVzcy5jb20gZnA6U01UUERfLVUtLTA2Lktobm0pDQogICAgICAgICAgYnkgc210cC5hbGl5dW4taW5jLmNvbSgxMjcuMC4wLjEpOw0KICAgICAgICAgIFR1ZSwgMDUgU2VwIDIwMjMgMjE6MzI6MDIgKzA4MDANCkRhdGU6IFR1ZSwgNSBTZXAgMjAyMyAwNjozMjowMiAtMDcwMCAoUERUKQ0KRnJvbTogQWxpRXhwcmVzcyA8YWNjb3VudEBub3RpY2UuYWxpZXhwcmVzcy5jb20+DQpUbzogdG9taXR1cnRpYWluZW5AZ21haWwuY29tDQpTdWJqZWN0OiBZb3VyIEFsaUV4cHJlc3MgdmVyaWZpY2F0aW9uIGNvZGUNCkNvbnRlbnQtVHlwZTogbXVsdGlwYXJ0L21peGVkOyANCglib3VuZGFyeT0iLS0tLT1fUGFydF8xNDExOTcyN18xNDI2MDAzNTIyLjE2OTM5MjA3MjIwNjAiDQpGZWVkYmFjay1JRDogZGVmYXVsdDphY2NvdW50QG5vdGljZS5hbGlleHByZXNzLmNvbTpTLW90aGVyczoxNTE5NzMNCk1JTUUtVmVyc2lvbjogMS4wDQoNCi0tLS0tLT1fUGFydF8xNDExOTcyN18xNDI2MDAzNTIyLjE2OTM5MjA3MjIwNjANCkNvbnRlbnQtVHlwZTogdGV4dC9odG1sO2NoYXJzZXQ9dXRmLTgNCkNvbnRlbnQtVHJhbnNmZXItRW5jb2Rpbmc6IHF1b3RlZC1wcmludGFibGUNCg0KPG1ldGEgaHR0cC1lcXVpdj0zRCJDb250ZW50LVR5cGUiIGNvbnRlbnQ9M0QidGV4dC9odG1sOyBjaGFyc2V0PTNEdXRmLTgiPjxkPQ0KaXYgc3R5bGU9M0QiZGlzcGxheTpub25lIj48aW1nIHN0eWxlPTNEImRpc3BsYXk6bm9uZSIgc3JjPTNEImh0dHA6Ly9hZS5tbXN0PQ0KYXQuY29tL2FlLmVkbS5lZG1fb3Blbj90cmFjZWxvZz0zRHJvd2FuLWFlX3VpYy1lbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fPQ0KVVMtMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2PQ0KOTA2MTZjNGM3ODE2ODQ2YSI+PC9kaXY+PGJyPjwhLS1lbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlIyR7aG91eWlKb2JJZH0tLT48IWRvPQ0KY3R5cGUgaHRtbD4NCjxodG1sIHhtbG5zPTNEImh0dHA6Ly93d3cudzMub3JnLzE5OTkveGh0bWwiIHhtbG5zOnY9M0QidXJuOnNjaGVtYXMtbWljcm9zbz0NCmZ0LWNvbTp2bWwiIHhtbG5zOm89M0QidXJuOnNjaGVtYXMtbWljcm9zb2Z0LWNvbTpvZmZpY2U6b2ZmaWNlIj4NCiAgICA8aGVhZD4NCiAgICAgICAgPHRpdGxlPiBBbGlFeHByZXNzIDwvdGl0bGU+DQogICAgICAgIDwhLS1baWYgIW1zb10+PCEtLSAtLT4NCiAgICAgICAgPG1ldGEgaHR0cC1lcXVpdj0zRCJYLVVBLUNvbXBhdGlibGUiIGNvbnRlbnQ9M0QiSUU9M0RlZGdlIj4NCiAgICAgICAgPCEtLTwhW2VuZGlmXS0tPg0KICAgICAgID0yMA0KICAgICAgICA8bWV0YSBuYW1lPTNEInZpZXdwb3J0IiBjb250ZW50PTNEIndpZHRoPTNEZGV2aWNlLXdpZHRoLCBpbml0aWFsLXNjPQ0KYWxlPTNEMSI+DQogICAgICAgIDxzdHlsZSB0eXBlPTNEInRleHQvY3NzIj4NCiAgICAgICAgICAgICNvdXRsb29rIGEgew0KICAgICAgICAgICAgICAgIHBhZGRpbmc6IDA7DQogICAgICAgICAgICB9DQogICAgICAgICAgICBib2R5IHsNCiAgICAgICAgICAgICAgICBtYXJnaW46IDA7DQogICAgICAgICAgICAgICAgcGFkZGluZzogMDsNCiAgICAgICAgICAgICAgICAtd2Via2l0LXRleHQtc2l6ZS1hZGp1c3Q6IDEwMCU7DQogICAgICAgICAgICAgICAgLW1zLXRleHQtc2l6ZS1hZGp1c3Q6IDEwMCU7DQogICAgICAgICAgICB9DQogICAgICAgICAgICB0YWJsZSwNCiAgICAgICAgICAgIHRkIHsNCiAgICAgICAgICAgICAgICBib3JkZXItY29sbGFwc2U6IGNvbGxhcHNlOw0KICAgICAgICAgICAgICAgIG1zby10YWJsZS1sc3BhY2U6IDA7DQogICAgICAgICAgICAgICAgbXNvLXRhYmxlLXJzcGFjZTogMDsNCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIGltZyB7DQogICAgICAgICAgICAgICAgYm9yZGVyOiAwOw0KICAgICAgICAgICAgICAgIGhlaWdodDogYXV0bzsNCiAgICAgICAgICAgICAgICBsaW5lLWhlaWdodDogMTAwJTsNCiAgICAgICAgICAgICAgICBvdXRsaW5lOiBub25lOw0KICAgICAgICAgICAgICAgIHRleHQtZGVjb3JhdGlvbjogbm9uZTsNCiAgICAgICAgICAgICAgICAtbXMtaW50ZXJwb2xhdGlvbi1tb2RlOiBiaWN1YmljOw0KICAgICAgICAgICAgfQ0KICAgICAgICAgICAgcCB7DQogICAgICAgICAgICAgICAgZGlzcGxheTogYmxvY2s7DQogICAgICAgICAgICAgICAgbWFyZ2luOiAxM3B4IDA7DQogICAgICAgICAgICB9DQogICAgICAgIDwvc3R5bGU+DQogICAgICAgIDwhLS1baWYgbXNvXT4gPHhtbD4gPG86T2ZmaWNlRG9jdW1lbnRTZXR0aW5ncz4gPG86QWxsb3dQTkcvPiA8bzpQaXg9DQplbHNQZXJJbmNoPjk2PC9vOlBpeGVsc1BlckluY2g+IDwvbzpPZmZpY2VEb2N1bWVudFNldHRpbmdzPiA8L3htbD4gPCFbZW5kaWY9DQpdLS0+DQogICAgICAgIDwhLS1baWYgbHRlIG1zbyAxMV0+IDxzdHlsZSB0eXBlPTNEInRleHQvY3NzIj4gLm1qLW91dGxvb2stZ3JvdXAtZmk9DQp4IHsgd2lkdGg6MTAwJSAhaW1wb3J0YW50OyB9IDwvc3R5bGU+IDwhW2VuZGlmXS0tPg0KICAgICAgICA8IS0tW2lmICFtc29dPjwhLS0+DQogICAgICAgIDxsaW5rIGhyZWY9M0QiaHR0cHM6Ly9mb250cy5nb29nbGVhcGlzLmNvbS9jc3M/ZmFtaWx5PTNET3BlbitTYW5zOjM9DQowMCw0MDAsNTAwLDcwMCIgcmVsPTNEInN0eWxlc2hlZXQiIHR5cGU9M0QidGV4dC9jc3MiPg0KICAgICAgICA8c3R5bGUgdHlwZT0zRCJ0ZXh0L2NzcyI+DQogICAgICAgICAgICBAaW1wb3J0IHVybChodHRwczovL2ZvbnRzLmdvb2dsZWFwaXMuY29tL2Nzcz9mYW1pbHk9M0RPcGVuK1NhbnM9DQo6MzAwLDQwMCw1MDAsNzAwKTsNCiAgICAgICAgPC9zdHlsZT4NCiAgICAgICAgPCEtLTwhW2VuZGlmXS0tID4gPHN0eWxlIHR5cGU9M0QidGV4dC9jc3MiID4gQG1lZGlhIG9ubHkgc2NyZWVuIGFuZD0NCiAobWluLXdpZHRoOjQ4MHB4KSB7DQogICAgICAgICAgICAgICAgLm1qLWNvbHVtbi1wZXItMTAwIHsNCiAgICAgICAgICAgICAgICAgICAgd2lkdGg6IDEwMCUgIWltcG9ydGFudDsNCiAgICAgICAgICAgICAgICAgICAgbWF4LXdpZHRoOiAxMDAlOw0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAubWotY29sdW1uLXBlci0yNSB7DQogICAgICAgICAgICAgICAgICAgIHdpZHRoOiAyNSUgIWltcG9ydGFudDsNCiAgICAgICAgICAgICAgICAgICAgbWF4LXdpZHRoOiAyNSU7DQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIC5tai1jb2x1bW4tcGVyLTc1IHsNCiAgICAgICAgICAgICAgICAgICAgd2lkdGg6IDc1JSAhaW1wb3J0YW50Ow0KICAgICAgICAgICAgICAgICAgICBtYXgtd2lkdGg6IDc1JTsNCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICAgICAgLm1qLWNvbHVtbi1wZXItNDgtNCB7DQogICAgICAgICAgICAgICAgICAgIHdpZHRoOiA0OC40JSAhaW1wb3J0YW50Ow0KICAgICAgICAgICAgICAgICAgICBtYXgtd2lkdGg6IDQ4LjQlOw0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAubWotY29sdW1uLXBlci01MCB7DQogICAgICAgICAgICAgICAgICAgIHdpZHRoOiA1MCUgIWltcG9ydGFudDsNCiAgICAgICAgICAgICAgICAgICAgbWF4LXdpZHRoOiA1MCU7DQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgfQ0KICAgICAgICA8L3N0eWxlPg0KICAgICAgICA8c3R5bGUgdHlwZT0zRCJ0ZXh0L2NzcyI+DQogICAgICAgICAgICBAbWVkaWEgb25seSBzY3JlZW4gYW5kIChtYXgtd2lkdGg6NDgwcHgpIHsNCiAgICAgICAgICAgICAgICB0YWJsZS5tai1mdWxsLXdpZHRoLW1vYmlsZSB7DQogICAgICAgICAgICAgICAgICAgIHdpZHRoOiAxMDAlICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIHRkLm1qLWZ1bGwtd2lkdGgtbW9iaWxlIHsNCiAgICAgICAgICAgICAgICAgICAgd2lkdGg6IGF1dG8gIWltcG9ydGFudDsNCiAgICAgICAgICAgICAgICB9DQogICAgICAgICAgICB9DQogICAgICAgICAgICBub2lucHV0Lm1qLW1lbnUtY2hlY2tib3ggew0KICAgICAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgbWF4LWhlaWdodDogbm9uZSAhaW1wb3J0YW50Ow0KICAgICAgICAgICAgICAgIHZpc2liaWxpdHk6IHZpc2libGUgIWltcG9ydGFudDsNCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIEBtZWRpYSBvbmx5IHNjcmVlbiBhbmQgKG1heC13aWR0aDo0ODBweCkgew0KICAgICAgICAgICAgICAgIC5tai1tZW51LWNoZWNrYm94W3R5cGU9M0QiY2hlY2tib3giXX4ubWotaW5saW5lLWxpbmtzIHsNCiAgICAgICAgICAgICAgICAgICAgZGlzcGxheTogbm9uZSAhaW1wb3J0YW50Ow0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAubWotbWVudS1jaGVja2JveFt0eXBlPTNEImNoZWNrYm94Il06Y2hlY2tlZH4ubWotaW5saW5lLWxpbj0NCmtzLA0KICAgICAgICAgICAgICAgIC5tai1tZW51LWNoZWNrYm94W3R5cGU9M0QiY2hlY2tib3giXX4ubWotbWVudS10cmlnZ2VyIHsNCiAgICAgICAgICAgICAgICAgICAgZGlzcGxheTogYmxvY2sgIWltcG9ydGFudDsNCiAgICAgICAgICAgICAgICAgICAgbWF4LXdpZHRoOiBub25lICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgICAgIG1heC1oZWlnaHQ6IG5vbmUgIWltcG9ydGFudDsNCiAgICAgICAgICAgICAgICAgICAgZm9udC1zaXplOiBpbmhlcml0ICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIC5tai1tZW51LWNoZWNrYm94W3R5cGU9M0QiY2hlY2tib3giXX4ubWotaW5saW5lLWxpbmtzID4gYSB7DQogICAgICAgICAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIC5tai1tZW51LWNoZWNrYm94W3R5cGU9M0QiY2hlY2tib3giXTpjaGVja2Vkfi5tai1tZW51LXRyaWdnPQ0KZXIgLm1qLW1lbnUtaWNvbi1jbG9zZSB7DQogICAgICAgICAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgfQ0KICAgICAgICAgICAgICAgIC5tai1tZW51LWNoZWNrYm94W3R5cGU9M0QiY2hlY2tib3giXTpjaGVja2Vkfi5tai1tZW51LXRyaWdnPQ0KZXIgLm1qLW1lbnUtaWNvbi1vcGVuIHsNCiAgICAgICAgICAgICAgICAgICAgZGlzcGxheTogbm9uZSAhaW1wb3J0YW50Ow0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgIH0NCiAgICAgICAgPC9zdHlsZT4NCiAgICAgICAgPHN0eWxlIHR5cGU9M0QidGV4dC9jc3MiPg0KICAgICAgICAgICAgQG1lZGlhIG9ubHkgc2NyZWVuIGFuZCAobWluLXdpZHRoOjQ4MXB4KSB7DQogICAgICAgICAgICAgICAgLnByb2R1Y3RzLWxpc3QtdGFibGUgaW1nIHsNCiAgICAgICAgICAgICAgICAgICAgd2lkdGg6IDEyMHB4ICFpbXBvcnRhbnQ7DQogICAgICAgICAgICAgICAgICAgIGRpc3BsYXk6IGJsb2NrOw0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgICAgICAucHJvZHVjdHMtbGlzdC10YWJsZSAuaW1hZ2UtY29sdW1uIHsNCiAgICAgICAgICAgICAgICAgICAgd2lkdGg6IDIwJSAhaW1wb3J0YW50Ow0KICAgICAgICAgICAgICAgIH0NCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIGEgew0KICAgICAgICAgICAgICAgIGNvbG9yOiAjMDAwOw0KICAgICAgICAgICAgfQ0KICAgICAgICAgICAgLnNlcnZlci1pbWcgaW1nIHsNCiAgICAgICAgICAgICAgICB3aWR0aDogMTAwJTsNCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIC5zZXJ2ZXItYm94LW9uZSBhLA0KICAgICAgICAgICAgLnNlcnZlci1ib3gtdHdvIGEgew0KICAgICAgICAgICAgICAgIHRleHQtZGVjb3JhdGlvbjogdW5kZXJsaW5lOw0KICAgICAgICAgICAgICAgIGNvbG9yOiAjMkU5Q0MzOw0KICAgICAgICAgICAgfQ0KICAgICAgICAgICAgLnNlcnZlci1pbWcgaW1nIHsNCiAgICAgICAgICAgICAgICB3aWR0aDogMTAwJTsNCiAgICAgICAgICAgIH0NCiAgICAgICAgICAgIC5zZXJ2ZXItYm94LW9uZSBhLA0KICAgICAgICAgICAgLnNlcnZlci1ib3gtdHdvIGEgew0KICAgICAgICAgICAgICAgIHRleHQtZGVjb3JhdGlvbjogdW5kZXJsaW5lOw0KICAgICAgICAgICAgICAgIGNvbG9yOiAjMkU5Q0MzOw0KICAgICAgICAgICAgfQ0KICAgICAgICA8L3N0eWxlPg0KICAgIDwvaGVhZD4NCiAgICA8Ym9keSBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiNGRkZGRkY7Ij4NCiAgICAgICAgPGRpdiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbj0NCnMtc2VyaWY7IGJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7Ij4NCiAgICAgICAgICAgIDwhLS0gPUU2PUE4PUExPUU2PTlEPUJGIC0tPg0KICAgICAgICA8IS0tIEJvZHkgV3JhcHBlciAtLT4NCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDx0YWJsZSBhbGlnbj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0NCj0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiBjbGFzcz0zRCJib2R5LXdyYXBwZXItb3V0bG9vayIgc3R5bGU9M0Qid2lkdGg6NjAwcD0NCng7IiB3aWR0aD0zRCI2MDAiID4gPHRyPiA8dGQgc3R5bGU9M0QibGluZS1oZWlnaHQ6MHB4O2ZvbnQtc2l6ZTowcHg7bXNvLWxpbj0NCmUtaGVpZ2h0LXJ1bGU6ZXhhY3RseTsiPiA8IVtlbmRpZl0tLT4NCiAgICAgICAgPGRpdiBjbGFzcz0zRCJib2R5LXdyYXBwZXIiIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldD0NCmljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjsgcGFkZGluZy1ib3R0b206IDIwcHg7IGJveC1zaGFkb3c6IDAgNHB4IDEwcD0NCnggI2RkZDsgYmFja2dyb3VuZDogI0YyRjJGMjsgYmFja2dyb3VuZC1jb2xvcjogI0YyRjJGMjsgbWFyZ2luOiAwcHggYXV0bzsgbT0NCmF4LXdpZHRoOiA2MDBweDsgbWFyZ2luLWJvdHRvbTogMTBweDsiPg0KICAgICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjPQ0KaW5nPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kOiNGMkYyRjI7YmFja2dyb3VuZC1jb2xvPQ0KcjojRjJGMkYyO3dpZHRoOjEwMCU7Ij4NCiAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaD0NCm9tYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGRpcmVjdGlvbjogbHRyOyBmb250LXNpemU6IDBweDsgcGFkZGluZzogMTBweCAyMHB4Oz0NCiB0ZXh0LWFsaWduOiBjZW50ZXI7IiBhbGlnbj0zRCJjZW50ZXIiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPiA8dGFibGUgcm9sZT0zRCJwcmVzZW50YXRpb24iPQ0KIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIj4gPCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLSBQcmUtSGVhZGVycyAtLT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT4gPHRyPiA8dGQgY2xhc3M9M0QicHJlLWhlYWRlcj0NCi1vdXRsb29rIiB3aWR0aD0zRCI2MDBweCIgPiA8dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbj0NCmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgY2xhc3M9M0QicHJlLWhlYWRlci1vdXRsb29rIiBzdHlsZT0zRCJ3aWR0aDo1NjBweD0NCjsiIHdpZHRoPTNEIjU2MCIgPiA8dHI+IDx0ZCBzdHlsZT0zRCJsaW5lLWhlaWdodDowcHg7Zm9udC1zaXplOjBweDttc28tbGluZT0NCi1oZWlnaHQtcnVsZTpleGFjdGx5OyI+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9M0QicHJlLWhlYWRlciIgc3R5bGU9M0QiZm9udC1mYW1pbHk6PQ0KIE9wZW4gU2FucywgSGVsdmV0aWNhLCBUYWhvbWEsIEFyaWFsLCBzYW5zLXNlcmlmOyBoZWlnaHQ6IDFweDsgb3ZlcmZsb3c6IGhpPQ0KZGRlbjsgbWFyZ2luOiAwcHggYXV0bzsgbWF4LXdpZHRoOiA1NjBweDsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhPQ0KZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEIndpZHRoOjEwMCU7Ij4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiA9DQpTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGRpcmVjdGlvbjogbHRyOyBmb250LXNpemU6IDBweDs9DQogcGFkZGluZzogMHB4OyB0ZXh0LWFsaWduOiBjZW50ZXI7IiBhbGlnbj0zRCJjZW50ZXIiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDx0YWJsZSByPQ0Kb2xlPTNEInByZXNlbnRhdGlvbiIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiPiA8dHI+PQ0KIDx0ZCBjbGFzcz0zRCIiIHN0eWxlPTNEInZlcnRpY2FsLWFsaWduOnRvcDt3aWR0aDo1NjBweDsiID4gPCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzPTNEIm1qLWNvbHVtbi1wZXI9DQotMTAwIG1qLW91dGxvb2stZ3JvdXAtZml4IiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG89DQptYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGZvbnQtc2l6ZTogMHB4OyB0ZXh0LWFsaWduOiBsZWZ0OyBkaXJlY3Rpb246IGx0cjsgZGk9DQpzcGxheTogaW5saW5lLWJsb2NrOyB2ZXJ0aWNhbC1hbGlnbjogdG9wOyB3aWR0aDogMTAwJTsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsPQ0KbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEInZlcnRpY2FsLWFsPQ0KaWduOnRvcDsiIHdpZHRoPTNEIjEwMCUiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgYWxpZ249M0QiY2U9DQpudGVyIiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY9DQo7IGZvbnQtc2l6ZTogMHB4OyBwYWRkaW5nOiAwOyB3b3JkLWJyZWFrOiBicmVhay13b3JkOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0NCj0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGZvbnQtc2l6ZT0NCjogMXB4OyBmb250LXdlaWdodDogNDAwOyBsaW5lLWhlaWdodDogMDsgdGV4dC1hbGlnbjogY2VudGVyOyBjb2xvcjogI0YyRjJGMj0NCjsiPjwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT4gPC90ZD4gPC89DQp0cj4gPC90YWJsZT4gPCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDwvdGQ+IDwvdHI+IDwvdGFibGU+IDwvdGQ+IDw9DQovdHI+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS0gaGVhZGVyIC0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPiA8dHI+IDx0ZCBjbGFzcz0zRCJoZWFkZXItb3V0PQ0KbG9vayIgd2lkdGg9M0QiNjAwcHgiID4gPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEPQ0KIjAiIGNlbGxzcGFjaW5nPTNEIjAiIGNsYXNzPTNEImhlYWRlci1vdXRsb29rIiBzdHlsZT0zRCJ3aWR0aDo1NjBweDsiIHdpZHRoPQ0KPTNEIjU2MCIgPiA8dHI+IDx0ZCBzdHlsZT0zRCJsaW5lLWhlaWdodDowcHg7Zm9udC1zaXplOjBweDttc28tbGluZS1oZWlnaHQtPQ0KcnVsZTpleGFjdGx5OyI+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9M0QiaGVhZGVyIiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlPQ0KbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGxpbmUtaGVpZ2h0OiAyMnB4OyBwYWRkaW5nOiAxPQ0KNXB4IDA7IG1hcmdpbjogMHB4IGF1dG87IG1heC13aWR0aDogNTYwcHg7Ij4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYT0NCmRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJ3aWR0aDoxMDAlOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgc3R5bGU9M0QiZm9udC1mYW1pbHk6IE9wZW4gPQ0KU2FucywgSGVsdmV0aWNhLCBUYWhvbWEsIEFyaWFsLCBzYW5zLXNlcmlmOyBkaXJlY3Rpb246IGx0cjsgZm9udC1zaXplOiAwcHg7PQ0KIHBhZGRpbmc6IDBweDsgdGV4dC1hbGlnbjogY2VudGVyOyIgYWxpZ249M0QiY2VudGVyIj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPiA8dGFibGUgcj0NCm9sZT0zRCJwcmVzZW50YXRpb24iIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIj4gPHRyPj0NCiA8IVtlbmRpZl0tLT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS0gTE9HTyAtLT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPiA8dGQgY2xhcz0NCnM9M0QiIiBzdHlsZT0zRCJ2ZXJ0aWNhbC1hbGlnbjptaWRkbGU7d2lkdGg6MTQwcHg7IiA+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0zRCJtai1jb2x1bW4tcGVyPQ0KLTI1IG1qLW91dGxvb2stZ3JvdXAtZml4IiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tPQ0KYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGZvbnQtc2l6ZTogMHB4OyB0ZXh0LWFsaWduOiBsZWZ0OyBkaXJlY3Rpb246IGx0cjsgZGlzPQ0KcGxheTogaW5saW5lLWJsb2NrOyB2ZXJ0aWNhbC1hbGlnbjogbWlkZGxlOyB3aWR0aDogMTAwJTsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsPQ0KbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEInZlcnRpY2FsLWFsPQ0KaWduOm1pZGRsZTsiIHdpZHRoPTNEIjEwMCUiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgYWxpZ249M0QiY2U9DQpudGVyIiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY9DQo7IGZvbnQtc2l6ZTogMHB4OyBwYWRkaW5nOiAwOyB3b3JkLWJyZWFrOiBicmVhay13b3JkOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRhYmxlIGJvcmQ9DQplcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0Q9DQoiYm9yZGVyLWNvbGxhcHNlOmNvbGxhcHNlO2JvcmRlci1zcGFjaW5nOjBweDsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI9DQo+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9DQogPHRkIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjs9DQogd2lkdGg6IDE0MHB4OyIgd2lkdGg9M0QiMTQwIj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgID0NCiAgICAgPGEgaHJlZj0zRCJodHRwczovL3d3dy5hbGlleHByZXNzLmNvbT9lZG1fY2xpY2tfbW9kdWxlPTNEaGVhZGVyJmFtcDt0cj0NCmFjZWxvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbT0NCnA7cm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YT0NCiZhbXA7Y2s9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsID0NCkhlbHZldGljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjsgcGFkZGluZzogMCAxMHB4OyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9DQogICAgICAgICA8aW1nIGFsdD0zRCJBbGlFeHByZXNzIiBoZWlnaHQ9M0QiYXV0byIgc3JjPTNEImh0dHBzOi8vYWUwMS5hbGljZG49DQouY29tL2tmL0hUQjFFODM0YUE1RTNLVmpTWkZDNzYydXpYWGF3LnBuZyIgc3R5bGU9M0QiYm9yZGVyOjA7ZGlzcGxheTpibG9jazs9DQpvdXRsaW5lOm5vbmU7dGV4dC1kZWNvcmF0aW9uOm5vbmU7aGVpZ2h0OmF1dG87d2lkdGg6MTAwJTtmb250LXNpemU6MTNweDsiIHc9DQppZHRoPTNEIjE0MCI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9DQogICAgIDwvYT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgID0NCiA8L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90PQ0Kcj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT0NCj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT4gPC90ZD4gPCE9DQpbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tIE5hdmlnYXRpb24gQmFyIC0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDx0ZCBjbGFzPQ0Kcz0zRCJuYXZpZ2F0aW9uLWJhci1vdXRsb29rIiBzdHlsZT0zRCJ2ZXJ0aWNhbC1hbGlnbjptaWRkbGU7d2lkdGg6NDIwcHg7IiA+PQ0KIDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0zRCJtai1jb2x1bW4tcGVyPQ0KLTc1IG1qLW91dGxvb2stZ3JvdXAtZml4IG5hdmlnYXRpb24tYmFyIiBzdHlsZT0zRCJmb250LWZhbWlseTogT3BlbiBTYW5zLCBIPQ0KZWx2ZXRpY2EsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGZvbnQtc2l6ZTogMHB4OyB0ZXh0LWFsaWduOiBsZWZ0OyBkaXJlPQ0KY3Rpb246IGx0cjsgZGlzcGxheTogaW5saW5lLWJsb2NrOyB2ZXJ0aWNhbC1hbGlnbjogbWlkZGxlOyB3aWR0aDogMTAwJTsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsPQ0KbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEInZlcnRpY2FsLWFsPQ0KaWduOm1pZGRsZTsiIHdpZHRoPTNEIjEwMCUiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgYWxpZ249M0Qicmk9DQpnaHQiIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjs9DQogdGV4dC1hbGlnbjogcmlnaHQ7IGZvbnQtc2l6ZTogMHB4OyB3b3JkLWJyZWFrOiBicmVhay13b3JkOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzcz0NCj0zRCJtai1pbmxpbmUtbGlua3MiIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcj0NCmlhbCwgc2Fucy1zZXJpZjsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmPQ0KIG1zbyB8IElFXT4gPHRhYmxlIHJvbGU9M0QicHJlc2VudGF0aW9uIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsPQ0KbHNwYWNpbmc9M0QiMCIgYWxpZ249M0QiY2VudGVyIj4gPHRyPiA8dGQgc3R5bGU9M0QicGFkZGluZzoxNXB4IDEwcHg7IiBjbGFzPQ0Kcz0zRCIiID4gPCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxhIGNsYXM9DQpzPTNEIm1qLWxpbmsiIGhyZWY9M0QiaHR0cHM6Ly90cmFkZS5hbGlleHByZXNzLmNvbS9vcmRlcl9saXN0Lmh0bT9lZG1fY2xpY2s9DQpfbW9kdWxlPTNEaGVhZGVyJmFtcDt0cmFjZWxvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2Q9DQplXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM9DQo1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiIHN0eWxlPTNEImQ9DQppc3BsYXk6IGlubGluZS1ibG9jazsgY29sb3I6ICM4MDgwODA7IGZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldGljYSwgVGE9DQpob21hLCBBcmlhbCwgc2Fucy1zZXJpZjsgZm9udC1zaXplOiAxM3B4OyBmb250LXdlaWdodDogYm9sZDsgbGluZS1oZWlnaHQ6IDI9DQoycHg7IHRleHQtZGVjb3JhdGlvbjogbm9uZTsgdGV4dC10cmFuc2Zvcm06IG5vbmU7IHBhZGRpbmc6IDAgMTBweDsiPjwvYT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLVtpZj0NCiBtc28gfCBJRV0+IDwvdGQ+IDx0ZCBzdHlsZT0zRCJwYWRkaW5nOjE1cHggMTBweDsiIGNsYXNzPTNEIiIgPiA8IVtlbmRpZl0tLT0NCj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGEgY2xhcz0NCnM9M0QibWotbGluayIgaHJlZj0zRCJodHRwczovL3NlcnZpY2UuYWxpZXhwcmVzcy5jb20vcGFnZS9ob21lP3BhZ2VJZD0zRDE3Jj0NCmFtcDtsYW5ndWFnZT0zRGVuJmFtcDtlZG1fY2xpY2tfbW9kdWxlPTNEaGVhZGVyJmFtcDt0cmFjZWxvZz0zRHJvd2FuJmFtcDtybz0NCndhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPTNEbWFpbD0NCm51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbl9lZG1fb3RoZT0NCnIiIHRhcmdldD0zRCJfYmxhbmsiIHN0eWxlPTNEImRpc3BsYXk6IGlubGluZS1ibG9jazsgY29sb3I6ICM4MDgwODA7IGZvbnQtZj0NCmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjsgZm9udC1zaXplOiAxM3B4OyBmbz0NCm50LXdlaWdodDogYm9sZDsgbGluZS1oZWlnaHQ6IDIycHg7IHRleHQtZGVjb3JhdGlvbjogbm9uZTsgdGV4dC10cmFuc2Zvcm06ID0NCm5vbmU7IHBhZGRpbmc6IDAgMTBweDsiPiBIZWxwIENlbnRlciA8L2E+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWY9DQogbXNvIHwgSUVdPiA8L3RkPiA8dGQgc3R5bGU9M0QicGFkZGluZzoxNXB4IDEwcHg7IiBjbGFzcz0zRCIiID4gPCFbZW5kaWZdLS09DQo+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxhIGNsYXM9DQpzPTNEIm1qLWxpbmsiIGhyZWY9M0QiaHR0cHM6Ly9zYWxlLmFsaWV4cHJlc3MuY29tL19fcGMvdjhZcjhmNjI5RC5odG0/ZWRtX2M9DQpsaWNrX21vZHVsZT0zRGhlYWRlciZhbXA7dHJhY2Vsb2c9M0Ryb3dhbiZhbXA7cm93YW5faWQxPTNEZW1haWxSZWdpc3RlckNoZWM9DQprY29kZV8xX2VuX1VTXzIwMjMtMDktMDUmYW1wO3Jvd2FuX21zZ19pZD0zRG1haWxudWxsX0VNQUlMX1JFR0lTVEVSX2UkN2Y4Yzk9DQphYjBjNTgwNGM5NjkwNjE2YzRjNzgxNjg0NmEmYW1wO2NrPTNEaW5fZWRtX290aGVyIiB0YXJnZXQ9M0QiX2JsYW5rIiBzdHlsZT0NCj0zRCJkaXNwbGF5OiBpbmxpbmUtYmxvY2s7IGNvbG9yOiAjODA4MDgwOyBmb250LWZhbWlseTogT3BlbiBTYW5zLCBIZWx2ZXRpYz0NCmEsIFRhaG9tYSwgQXJpYWwsIHNhbnMtc2VyaWY7IGZvbnQtc2l6ZTogMTNweDsgZm9udC13ZWlnaHQ6IGJvbGQ7IGxpbmUtaGVpZz0NCmh0OiAyMnB4OyB0ZXh0LWRlY29yYXRpb246IG5vbmU7IHRleHQtdHJhbnNmb3JtOiBub25lOyBwYWRkaW5nOiAwIDEwcHg7Ij4gQj0NCnV5ZXIgUHJvdGVjdGlvbiA8L2E+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWY9DQogbXNvIHwgSUVdPiA8L3RkPiA8L3RyPjwvdGFibGU+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT4gPC90ZD4gPC89DQp0cj4gPC90YWJsZT4gPCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGQ+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDwvdGQ+IDwvdHI+IDwvdGFibGU+IDwvdGQ+IDw9DQovdHI+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS0gbm90aWNlIC0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPiA8dHI+IDx0ZCBjbGFzcz0zRCJub3RpY2Utd3JhPQ0KcC1vdXRsb29rIG1hcmdpbi1ib3R0b20tb3V0bG9vayIgd2lkdGg9M0QiNjAwcHgiID4gPHRhYmxlIGFsaWduPTNEImNlbnRlciIgPQ0KYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiIGNsYXNzPTNEIm5vdGljZS13cmFwLW91dGxvPQ0Kb2sgbWFyZ2luLWJvdHRvbS1vdXRsb29rIiBzdHlsZT0zRCJ3aWR0aDo1NjBweDsiIHdpZHRoPTNEIjU2MCIgPiA8dHI+IDx0ZCBzPQ0KdHlsZT0zRCJsaW5lLWhlaWdodDowcHg7Zm9udC1zaXplOjBweDttc28tbGluZS1oZWlnaHQtcnVsZTpleGFjdGx5OyI+IDwhW2VuPQ0KZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9M0Qibm90aWNlLXdyYXAgbWFyZ2luLWJvdHRvbSIgc3R5bGU9DQo9M0QiZm9udC1mYW1pbHk6IE9wZW4gU2FucywgSGVsdmV0aWNhLCBUYWhvbWEsIEFyaWFsLCBzYW5zLXNlcmlmOyBtYXJnaW46IDA9DQpweCBhdXRvOyBtYXgtd2lkdGg6IDU2MHB4OyBtYXJnaW4tYm90dG9tOiAxNXB4OyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBhbGlnbj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGE9DQpkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0Qid2lkdGg6MTAwJTsiPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRkIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuID0NClNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjsgZGlyZWN0aW9uOiBsdHI7IGZvbnQtc2l6ZTogMHB4Oz0NCiBwYWRkaW5nOiAwcHg7IHRleHQtYWxpZ246IGNlbnRlcjsiIGFsaWduPTNEImNlbnRlciI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT4gPHRhYmxlIHI9DQpvbGU9M0QicHJlc2VudGF0aW9uIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCI+IDx0cj49DQogPHRkIGNsYXNzPTNEIiIgc3R5bGU9M0QidmVydGljYWwtYWxpZ246dG9wO3dpZHRoOjU2MHB4OyIgPiA8IVtlbmRpZl0tLT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3M9M0QibWotY29sdW1uLXBlcj0NCi0xMDAgbWotb3V0bG9vay1ncm91cC1maXgiIHN0eWxlPTNEImZvbnQtZmFtaWx5OiBPcGVuIFNhbnMsIEhlbHZldGljYSwgVGFobz0NCm1hLCBBcmlhbCwgc2Fucy1zZXJpZjsgZm9udC1zaXplOiAwcHg7IHRleHQtYWxpZ246IGxlZnQ7IGRpcmVjdGlvbjogbHRyOyBkaT0NCnNwbGF5OiBpbmxpbmUtYmxvY2s7IHZlcnRpY2FsLWFsaWduOiB0b3A7IHdpZHRoOiAxMDAlOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHRhYmxlIGJvcmRlcj0zRCIwIiBjZWw9DQpscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiIgd2lkdGg9M0QiMTAwJSI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgYWxpZ249DQo9M0QibGVmdCIgc3R5bGU9M0QiZm9udC1mYW1pbHk6IE9wZW4gU2FucywgSGVsdmV0aWNhLCBUYWhvbWEsIEFyaWFsLCBzYW5zLXM9DQplcmlmOyBiYWNrZ3JvdW5kLWNvbG9yOiAjZmZmZmZmOyBib3JkZXItcmFkaXVzOiAxMHB4OyB2ZXJ0aWNhbC1hbGlnbjogdG9wOyA9DQpwYWRkaW5nOiAzMHB4IDI1cHg7Ij4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBzdD0NCnlsZT0zRCJmb250LWZhbWlseTpPcGVuIFNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcmlhbCwgc2Fucy1zZXJpZjtmb250LXNpej0NCmU6MTRweDtsaW5lLWhlaWdodDoyMHB4O3RleHQtYWxpZ246bGVmdDtjb2xvcjojNEY0RjRGOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGk9DQp2IGNsYXNzPTNEIndyYXAiIHN0eWxlPTNEImNvbG9yOiAjMzMzOyI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9DQogPGRpdiBjbGFzcz0zRCJ0aXRsZSIgc3R5bGU9M0QibWFyZ2luLWJvdHRvbTogMjRweDsgbGluZS1oZWlnaHQ6IDMwcHg7IGZvbnQ9DQotc2l6ZTogMzBweDsgZm9udC13ZWlnaHQ6IDcwMDsiPlVzZSB0aGlzIGNvZGUgdG8gdmVyaWZ5IHlvdXIgZW1haWw8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgID0NCiA8ZGl2IGNsYXNzPTNEImRlYXIiIHN0eWxlPTNEIm1hcmdpbi1ib3R0b206IDEycHg7Ij5IZWxsbyw8L2Rpdj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgID0NCiA8ZGl2IGNsYXNzPTNEImNvbnRlbnQiIHN0eWxlPTNEIm1hcmdpbi1ib3R0b206IDEycHg7Ij5Zb3VyIGNvZGUgaXM6PC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9DQogPGRpdiBjbGFzcz0zRCJjb2RlIiBzdHlsZT0zRCJtYXJnaW4tYm90dG9tOiAxMnB4OyBmb250LXNpemU6IDIwcHg7IGZvbnQtd2U9DQppZ2h0OiA3MDA7IGNvbG9yOiAjRkY0NzQ3OyI+NzgyNDwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPQ0KIDxkaXYgY2xhc3M9M0QiY29udGVudCIgc3R5bGU9M0QibWFyZ2luLWJvdHRvbTogMTJweDsiPlVzZSB0aGlzIHRvIHZlcmlmeSB5PQ0Kb3VyIGVtYWlsIGFkZHJlc3MgYW5kIGNvbXBsZXRlIHlvdXIgcmVnaXN0cmF0aW9uLjwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPQ0KIDxkaXYgY2xhc3M9M0QidGlwcyI+QWZ0ZXIgdmVyaWZpY2F0aW9uLCB5b3Ugd2lsbCBiZSBhYmxlIHRvIG1vZGlmeSB5b3VyIHBhPQ0Kc3N3b3JkLCBlbWFpbCBhZGRyZXNzIGFuZCBwaG9uZSBudW1iZXIuPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA9DQogPGRpdiBjbGFzcz0zRCJ0aXBzIiBzdHlsZT0zRCJtYXJnaW4tYm90dG9tOiAxMnB4OyI+RGlkbid0IHJlcXVlc3QgdGhpcyB2ZXI9DQppZmljYXRpb24gY29kZT8gUGxlYXNlIHNlY3VyZSB5b3VyIGFjY291bnQgYnkgY2hhbmdpbmcgeW91ciBwYXNzd29yZC4gSW4gb3I9DQpkZXIgdG8gcHJvdGVjdCB5b3VyIGFjY291bnQgc2VjdXJpdHksIHBsZWFzZSBkbyBub3QgYWxsb3cgb3RoZXJzIHRvIGFjY2VzcyA9DQp5b3VyIGVtYWlsLjwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPQ0KIDxkaXYgY2xhc3M9M0Qia2luZCI+VGhhbmtzLDwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPQ0KIDxkaXYgY2xhc3M9M0QiQWxpRXhwcmVzcyI+IEFsaUV4cHJlc3MgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Q9DQppdj4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDwvdGQ+IDwvPQ0KdHI+IDwvdGFibGU+IDwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3Rib2R5Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2Pg0KICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPiA8L3RkPiA8L3RyPiA8L3RhYmxlPiA8L3RkPiA8PQ0KL3RyPiA8IVtlbmRpZl0tLT4NCiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT4gPC90YWJsZT4gPCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICAgICAgICA8L3RkPg0KICAgICAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICA8L2Rpdj4NCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+IDwvdGQ+IDwvdHI+IDwvdGFibGU+IDwhW2VuZGlmXS0tPg0KICAgICAgICA8IS0tIGZvb3RlciBzdGFydCAtLT4NCiAgICAgICAgPCEtLSBGb290ZXIgV3JhcHBlciAtLT48ZGl2IGNsYXNzPTNEImZvb3Rlci13cmFwcGVyIiBzdHlsZT0zRCJtYXJnaT0NCm46IDBweCBhdXRvOyBtYXgtd2lkdGg6IDYwMHB4OyI+DQoNCiA8dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcj0NCm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IHdpZHRoOiAxMDAlOyIgd2lkdD0NCmg9M0QiMTAwJSIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgPHRib2R5Pg0KICAgICAgPHRyPg0KICAgICAgIDx0ZCBzdHlsZT0zRCJkaXJlY3Rpb246bHRyO2ZvbnQtc2l6ZTowcHg7cGFkZGluZzoyMHB4IDA7dGV4dC1hbGlnbjpjPQ0KZW50ZXI7Ij4NCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PHRhYmxlIHJvbGU9M0QicHJlc2VudGF0aW9uIiBib3JkZXI9M0QiMCIgY2VsbHBhZD0NCmRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCI+PCFbZW5kaWZdLS0+DQogICAgICAgIDwhLS0gTG92ZSBBbGlFeHByZXNzIC0tPg0KICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48dHI+PHRkIGNsYXNzPTNEIiIgd2lkdGg9M0QiNjAwcHgiPjx0YWJsZSBhbGlnbj0NCj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiBjbGFzcz0zRCIiIHN0eT0NCmxlPTNEIndpZHRoOjYwMHB4OyIgd2lkdGg9M0QiNjAwIj48dHI+PHRkIHN0eWxlPTNEImxpbmUtaGVpZ2h0OjBweDtmb250LXNpej0NCmU6MHB4O21zby1saW5lLWhlaWdodC1ydWxlOmV4YWN0bHk7Ij48IVtlbmRpZl0tLT49MjANCiAgICAgICAgPGRpdiBzdHlsZT0zRCJtYXJnaW46MHB4IGF1dG87bWF4LXdpZHRoOjYwMHB4OyI+DQogICAgICAgICA8dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9DQo9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IHdpZHRoOiAxMDA9DQolOyIgd2lkdGg9M0QiMTAwJSIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJkaXJlY3Rpb246bHRyO2ZvbnQtc2l6ZTowcHg7cGFkZGluZzowcHg7dGV4dC1hbGlnbj0NCjpjZW50ZXI7Ij4NCiAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48dGFibGUgcm9sZT0zRCJwcmVzZW50YXRpb24iIGJvcmRlcj0zRCIwIiBjZT0NCmxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIj48dHI+PHRkIGNsYXNzPTNEIiIgc3R5bGU9M0QidmVydGljYWwtYWxpZz0NCm46dG9wO3dpZHRoOjYwMHB4OyI+PCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgPGRpdiBjbGFzcz0zRCJtai1jb2x1bW4tcGVyLTEwMCBtai1vdXRsb29rLWdyb3VwLWZpeCIgc3R5bGU9M0Q9DQoiZm9udC1zaXplOjBweDt0ZXh0LWFsaWduOmxlZnQ7ZGlyZWN0aW9uOmx0cjtkaXNwbGF5OmlubGluZS1ibG9jazt2ZXJ0aWNhbC09DQphbGlnbjp0b3A7d2lkdGg6MTAwJTsiPg0KICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiIHJvbGU9DQo9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyB2ZXJ0aWNhbC1hbGlnbjogdG9wOyI9DQogd2lkdGg9M0QiMTAwJSIgdmFsaWduPTNEInRvcCIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgIDx0ZCBhbGlnbj0zRCJjZW50ZXIiIHN0eWxlPTNEImZvbnQtc2l6ZTowcHg7cGFkZGluZzoxMHB4IDA9DQogMzBweCAwO3dvcmQtYnJlYWs6YnJlYWstd29yZDsiPg0KICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0zRCJmb250LWZhbWlseTpPcGVuU2FucywgSGVsdmV0aWNhLCBUYWhvbWEsIEFyPQ0KaWFsLCBzYW5zLXNlcmlmO2ZvbnQtc2l6ZToxNHB4O2ZvbnQtd2VpZ2h0OjQwMDtsaW5lLWhlaWdodDoyNHB4O3RleHQtYWxpZ246PQ0KY2VudGVyO2NvbG9yOiM0RjRGNEY7Ij4NCiAgICAgICAgICAgICAgICAgICBTZW50IHdpdGggPUUyPTk5PUE1IGZyb20gQWxpRXhwcmVzcw0KICAgICAgICAgICAgICAgICAgPC9kaXY+PC90ZD4NCiAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgICAgICA8L2Rpdj4NCiAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPjwvdHI+PC90YWJsZT48IVtlbmRpZl0tLT48L3RkPg0KICAgICAgICAgICA8L3RyPg0KICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICA8L3RhYmxlPg0KICAgICAgICA8L2Rpdj49MjANCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PC90ZD48L3RyPjwhW2VuZGlmXS0tPg0KICAgICAgICA8IS0tIHNvY2lhbCB0aXRsZSAtLT4NCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PHRyPjx0ZCBjbGFzcz0zRCIiIHdpZHRoPTNEIjYwMHB4Ij48dGFibGUgYWxpZ249DQo9M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgY2xhc3M9M0QiIiBzdHk9DQpsZT0zRCJ3aWR0aDo2MDBweDsiIHdpZHRoPTNEIjYwMCI+PHRyPjx0ZCBzdHlsZT0zRCJsaW5lLWhlaWdodDowcHg7Zm9udC1zaXo9DQplOjBweDttc28tbGluZS1oZWlnaHQtcnVsZTpleGFjdGx5OyI+PCFbZW5kaWZdLS0+PTIwDQogICAgICAgIDxkaXYgc3R5bGU9M0QibWFyZ2luOjBweCBhdXRvO21heC13aWR0aDo2MDBweDsiPg0KICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPQ0KPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyB3aWR0aDogMTAwPQ0KJTsiIHdpZHRoPTNEIjEwMCUiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICA8dHI+DQogICAgICAgICAgICA8dGQgc3R5bGU9M0QiZGlyZWN0aW9uOmx0cjtmb250LXNpemU6MHB4O3BhZGRpbmc6MHB4O3RleHQtYWxpZ249DQo6Y2VudGVyOyI+DQogICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PHRhYmxlIHJvbGU9M0QicHJlc2VudGF0aW9uIiBib3JkZXI9M0QiMCIgY2U9DQpsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCI+PHRyPjx0ZCBjbGFzcz0zRCIiIHN0eWxlPTNEInZlcnRpY2FsLWFsaWc9DQpuOnRvcDt3aWR0aDo2MDBweDsiPjwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgIDxkaXYgY2xhc3M9M0QibWotY29sdW1uLXBlci0xMDAgbWotb3V0bG9vay1ncm91cC1maXgiIHN0eWxlPTNEPQ0KImZvbnQtc2l6ZTowcHg7dGV4dC1hbGlnbjpsZWZ0O2RpcmVjdGlvbjpsdHI7ZGlzcGxheTppbmxpbmUtYmxvY2s7dmVydGljYWwtPQ0KYWxpZ246dG9wO3dpZHRoOjEwMCU7Ij4NCiAgICAgICAgICAgICAgPHRhYmxlIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPQ0KPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0QiYmFja2dyb3VuZC1jb2xvcjogI0ZGRkZGRjsgdmVydGljYWwtYWxpZ246IHRvcDsiPQ0KIHdpZHRoPTNEIjEwMCUiIHZhbGlnbj0zRCJ0b3AiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICA8dGQgYWxpZ249M0QiY2VudGVyIiBzdHlsZT0zRCJmb250LXNpemU6MHB4O3BhZGRpbmc6MTBweCAyPQ0KNXB4O3dvcmQtYnJlYWs6YnJlYWstd29yZDsiPg0KICAgICAgICAgICAgICAgICAgPGRpdiBzdHlsZT0zRCJmb250LWZhbWlseTpPcGVuU2FucywgSGVsdmV0aWNhLCBUYWhvbWEsIEFyPQ0KaWFsLCBzYW5zLXNlcmlmO2ZvbnQtc2l6ZToxNHB4O2ZvbnQtd2VpZ2h0OmJvbGQ7bGluZS1oZWlnaHQ6MjRweDt0ZXh0LWFsaWduPQ0KOmNlbnRlcjtjb2xvcjojNEY0RjRGOyI+DQogICAgICAgICAgICAgICAgICAgQ09OTkVDVCBXSVRIOg0KICAgICAgICAgICAgICAgICAgPC9kaXY+PC90ZD4NCiAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgICAgICA8L2Rpdj4NCiAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPjwvdHI+PC90YWJsZT48IVtlbmRpZl0tLT48L3RkPg0KICAgICAgICAgICA8L3RyPg0KICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICA8L3RhYmxlPg0KICAgICAgICA8L2Rpdj49MjANCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PC90ZD48L3RyPjwhW2VuZGlmXS0tPg0KICAgICAgICA8IS0tIHNvY2lhbCBlbGVtZW50cyAtLT4NCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PHRyPjx0ZCBjbGFzcz0zRCIiIHdpZHRoPTNEIjYwMHB4Ij48dGFibGUgYWxpZ249DQo9M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgY2xhc3M9M0QiIiBzdHk9DQpsZT0zRCJ3aWR0aDo2MDBweDsiIHdpZHRoPTNEIjYwMCI+PHRyPjx0ZCBzdHlsZT0zRCJsaW5lLWhlaWdodDowcHg7Zm9udC1zaXo9DQplOjBweDttc28tbGluZS1oZWlnaHQtcnVsZTpleGFjdGx5OyI+PCFbZW5kaWZdLS0+PTIwDQogICAgICAgIDxkaXYgc3R5bGU9M0QibWFyZ2luOjBweCBhdXRvO21heC13aWR0aDo2MDBweDsiPg0KICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPQ0KPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyB3aWR0aDogMTAwPQ0KJTsiIHdpZHRoPTNEIjEwMCUiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICA8dHI+DQogICAgICAgICAgICA8dGQgc3R5bGU9M0QiZGlyZWN0aW9uOmx0cjtmb250LXNpemU6MHB4O3BhZGRpbmc6MHB4O3RleHQtYWxpZ249DQo6Y2VudGVyOyI+DQogICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PHRhYmxlIHJvbGU9M0QicHJlc2VudGF0aW9uIiBib3JkZXI9M0QiMCIgY2U9DQpsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCI+PHRyPjx0ZCBjbGFzcz0zRCIiIHN0eWxlPTNEInZlcnRpY2FsLWFsaWc9DQpuOnRvcDt3aWR0aDo2MDBweDsiPjwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgIDxkaXYgY2xhc3M9M0QibWotY29sdW1uLXBlci0xMDAgbWotb3V0bG9vay1ncm91cC1maXgiIHN0eWxlPTNEPQ0KImZvbnQtc2l6ZTowcHg7dGV4dC1hbGlnbjpsZWZ0O2RpcmVjdGlvbjpsdHI7ZGlzcGxheTppbmxpbmUtYmxvY2s7dmVydGljYWwtPQ0KYWxpZ246dG9wO3dpZHRoOjEwMCU7Ij4NCiAgICAgICAgICAgICAgPHRhYmxlIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPQ0KPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0QiYmFja2dyb3VuZC1jb2xvcjogI0ZGRkZGRjsgdmVydGljYWwtYWxpZ246IHRvcDsiPQ0KIHdpZHRoPTNEIjEwMCUiIHZhbGlnbj0zRCJ0b3AiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICA8dGQgYWxpZ249M0QiY2VudGVyIiBzdHlsZT0zRCJmb250LXNpemU6MHB4O3BhZGRpbmc6MCAwIDIwPQ0KcHggMDt3b3JkLWJyZWFrOmJyZWFrLXdvcmQ7Ij49MjANCiAgICAgICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPjx0YWJsZSBhbGlnbj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZT0NCmxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiI+PHRyPiAgICAgICAgICAgICAgID0NCiA8dGQ+PCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgICAgICA8dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2U9DQpsbHNwYWNpbmc9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IGY9DQpsb2F0OiBub25lOyBkaXNwbGF5OiBpbmxpbmUtdGFibGU7IiBiZ2NvbG9yPTNEIiNGRkZGRkYiPg0KICAgICAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgPHRkIHN0eWxlPTNEInBhZGRpbmc6MCAxNHB4OyI+DQogICAgICAgICAgICAgICAgICAgICAgPHRhYmxlIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCI9DQowIiByb2xlPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0QiYmFja2dyb3VuZC1jb2xvcjogI0ZGRkZGRjsgYm9yZGVyLXJhZGl1czo9DQogM3B4OyB3aWR0aDogMjBweDsiIHdpZHRoPTNEIjIwIiBiZ2NvbG9yPTNEIiNGRkZGRkYiPg0KICAgICAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICAgICAgPHRkIHN0eWxlPTNEImZvbnQtc2l6ZTowO2hlaWdodDoyMHB4O3ZlcnRpY2FsLWFsaWc9DQpuOm1pZGRsZTt3aWR0aDoyMHB4OyI+PGEgaHJlZj0zRCJodHRwczovL3d3dy5mYWNlYm9vay5jb20vYWxpZXhwcmVzcz90cmFjZWw9DQpvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm89DQp3YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA9DQo7Y2s9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiPjxpbWcgaGVpZ2h0PTNEIjIwIiBzcmM9M0QiaHR0cHM6Ly9hZTA9DQoxLmFsaWNkbi5jb20va2YvSFRCMU0uSTNhRUNGM0tWalNaSm43NjJuSEZYYXEucG5nIiBzdHlsZT0zRCJib3JkZXItcmFkaXVzOjM9DQpweDtkaXNwbGF5OmJsb2NrOyIgd2lkdGg9M0QiMjAiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPjx0ZD48IVtlbmRpZl0tLT4NCiAgICAgICAgICAgICAgICAgIDx0YWJsZSBhbGlnbj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZT0NCmxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0QiYmFja2dyb3VuZC1jb2xvcjogI0ZGRkZGRjsgZj0NCmxvYXQ6IG5vbmU7IGRpc3BsYXk6IGlubGluZS10YWJsZTsiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICA8dGQgc3R5bGU9M0QicGFkZGluZzowIDE0cHg7Ij4NCiAgICAgICAgICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIj0NCjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBib3JkZXItcmFkaXVzOj0NCiAzcHg7IHdpZHRoOiAyMHB4OyIgd2lkdGg9M0QiMjAiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgc3R5bGU9M0QiZm9udC1zaXplOjA7aGVpZ2h0OjIwcHg7dmVydGljYWwtYWxpZz0NCm46bWlkZGxlO3dpZHRoOjIwcHg7Ij48YSBocmVmPTNEImh0dHBzOi8vdHdpdHRlci5jb20vQWxpRXhwcmVzc19FTj90cmFjZWxvZz0NCj0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YT0NCm5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Yz0NCms9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiPjxpbWcgaGVpZ2h0PTNEIjIwIiBzcmM9M0QiaHR0cHM6Ly9hZTAxLj0NCmFsaWNkbi5jb20va2YvSFRCMW1GbzNheGlIM0tWalNaUGY3NjBCaVZYYXEucG5nIiBzdHlsZT0zRCJib3JkZXItcmFkaXVzOjNweD0NCjtkaXNwbGF5OmJsb2NrOyIgd2lkdGg9M0QiMjAiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPjx0ZD48IVtlbmRpZl0tLT4NCiAgICAgICAgICAgICAgICAgIDx0YWJsZSBhbGlnbj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZT0NCmxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0QiYmFja2dyb3VuZC1jb2xvcjogI0ZGRkZGRjsgZj0NCmxvYXQ6IG5vbmU7IGRpc3BsYXk6IGlubGluZS10YWJsZTsiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgICAgICA8dGQgc3R5bGU9M0QicGFkZGluZzowIDE0cHg7Ij4NCiAgICAgICAgICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIj0NCjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBib3JkZXItcmFkaXVzOj0NCiAzcHg7IHdpZHRoOiAyNHB4OyIgd2lkdGg9M0QiMjQiIGJnY29sb3I9M0QiI0ZGRkZGRiI+DQogICAgICAgICAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgICAgICA8dGQgc3R5bGU9M0QiZm9udC1zaXplOjA7aGVpZ2h0OjIwcHg7dmVydGljYWwtYWxpZz0NCm46bWlkZGxlO3dpZHRoOjIwcHg7Ij48YSBocmVmPTNEImh0dHBzOi8vd3d3LnlvdXR1YmUuY29tL3VzZXIvQWxpRXhwcmVzc0NoYT0NCm5uZWw/dHJhY2Vsb2c9M0Ryb3dhbiZhbXA7cm93YW5faWQxPTNEZW1haWxSZWdpc3RlckNoZWNrY29kZV8xX2VuX1VTXzIwMjMtMD0NCjktMDUmYW1wO3Jvd2FuX21zZ19pZD0zRG1haWxudWxsX0VNQUlMX1JFR0lTVEVSX2UkN2Y4YzlhYjBjNTgwNGM5NjkwNjE2YzRjNz0NCjgxNjg0NmEmYW1wO2NrPTNEaW5fZWRtX290aGVyIiB0YXJnZXQ9M0QiX2JsYW5rIj48aW1nIGhlaWdodD0zRCIyMiIgc3JjPTNEIj0NCmh0dHBzOi8vYWUwMS5hbGljZG4uY29tL2tmL0hkY2VlMjRkMzM0OWE0MTNjYmI1NzcwMWEyYWZkYmY1OWMucG5nIiBzdHlsZT0zRD0NCiJib3JkZXItcmFkaXVzOjNweDtkaXNwbGF5OmJsb2NrOyIgd2lkdGg9M0QiMjQiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPg0KICAgICAgICAgICAgICAgICAgPHRkPjwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlPQ0KbGxzcGFjaW5nPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBmPQ0KbG9hdDogbm9uZTsgZGlzcGxheTogaW5saW5lLXRhYmxlOyIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJwYWRkaW5nOjAgMTRweDsiPg0KICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiPQ0KMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IGJvcmRlci1yYWRpdXM6PQ0KIDNweDsgd2lkdGg6IDIwcHg7IiB3aWR0aD0zRCIyMCIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJmb250LXNpemU6MDtoZWlnaHQ6MjBweDt2ZXJ0aWNhbC1hbGlnPQ0KbjptaWRkbGU7d2lkdGg6MjBweDsiPjxhIGhyZWY9M0QiaHR0cHM6Ly93d3cuaW5zdGFncmFtLmNvbS9hbGlleHByZXNzLz90cmFjPQ0KZWxvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7PQ0Kcm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhPQ0KbXA7Y2s9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiPjxpbWcgaGVpZ2h0PTNEIjIwIiBzcmM9M0QiaHR0cHM6Ly9hPQ0KZTAxLmFsaWNkbi5jb20va2YvSFRCMW5ZazRhRUdGM0tWalNaRnY3NjJfblhYYWgucG5nIiBzdHlsZT0zRCJib3JkZXItcmFkaXVzPQ0KOjNweDtkaXNwbGF5OmJsb2NrOyIgd2lkdGg9M0QiMjAiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPg0KICAgICAgICAgICAgICAgICAgPHRkPjwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlPQ0KbGxzcGFjaW5nPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBmPQ0KbG9hdDogbm9uZTsgZGlzcGxheTogaW5saW5lLXRhYmxlOyIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJwYWRkaW5nOjAgMTRweDsiPg0KICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiPQ0KMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IGJvcmRlci1yYWRpdXM6PQ0KIDNweDsgd2lkdGg6IDI0cHg7IiB3aWR0aD0zRCIyNCIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJmb250LXNpemU6MDtoZWlnaHQ6MjBweDt2ZXJ0aWNhbC1hbGlnPQ0KbjptaWRkbGU7d2lkdGg6MjRweDsiPjxhIGhyZWY9M0QiaHR0cHM6Ly92ay5jb20vYWxpZXhwcmVzcz90cmFjZWxvZz0zRHJvd2FuPQ0KJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPQ0KPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbl9lPQ0KZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiPjxpbWcgaGVpZ2h0PTNEIjIwIiBzcmM9M0QiaHR0cHM6Ly9hZTAxLmFsaWNkbi5jPQ0Kb20va2YvSFRCMXlJSTVhQ1NEM0tWalNaRks3NjIxMFZYYWsucG5nIiBzdHlsZT0zRCJib3JkZXItcmFkaXVzOjNweDtkaXNwbGF5PQ0KOmJsb2NrOyIgd2lkdGg9M0QiMjQiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPg0KICAgICAgICAgICAgICAgICAgPHRkPjwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlPQ0KbGxzcGFjaW5nPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBmPQ0KbG9hdDogbm9uZTsgZGlzcGxheTogaW5saW5lLXRhYmxlOyIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJwYWRkaW5nOjAgMTRweDsiPg0KICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiPQ0KMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IGJvcmRlci1yYWRpdXM6PQ0KIDNweDsgd2lkdGg6IDIwcHg7IiB3aWR0aD0zRCIyMCIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJmb250LXNpemU6MDtoZWlnaHQ6MjBweDt2ZXJ0aWNhbC1hbGlnPQ0KbjptaWRkbGU7d2lkdGg6MjBweDsiPjxhIGhyZWY9M0QiaHR0cHM6Ly9tLm1lL0FsaUV4cHJlc3M/dHJhY2Vsb2c9M0Ryb3dhbiZhPQ0KbXA7cm93YW5faWQxPTNEZW1haWxSZWdpc3RlckNoZWNrY29kZV8xX2VuX1VTXzIwMjMtMDktMDUmYW1wO3Jvd2FuX21zZ19pZD0NCj0zRG1haWxudWxsX0VNQUlMX1JFR0lTVEVSX2UkN2Y4YzlhYjBjNTgwNGM5NjkwNjE2YzRjNzgxNjg0NmEmYW1wO2NrPTNEaW5fZT0NCmRtX290aGVyIiB0YXJnZXQ9M0QiX2JsYW5rIj48aW1nIGhlaWdodD0zRCIyMCIgc3JjPTNEImh0dHBzOi8vYWUwMS5hbGljZG4uYz0NCm9tL2tmL0gxMjliNzM5YWY3Mjk0NGYwOTZjNzViYjVmZWI4OTE2Y0wucG5nIiBzdHlsZT0zRCJib3JkZXItcmFkaXVzOjNweDtkaT0NCnNwbGF5OmJsb2NrOyIgd2lkdGg9M0QiMjAiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPg0KICAgICAgICAgICAgICAgICAgPHRkPjwhW2VuZGlmXS0tPg0KICAgICAgICAgICAgICAgICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlPQ0KbGxzcGFjaW5nPTNEIjAiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBmPQ0KbG9hdDogbm9uZTsgZGlzcGxheTogaW5saW5lLXRhYmxlOyIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJwYWRkaW5nOjAgMTRweDsiPg0KICAgICAgICAgICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiPQ0KMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IGJvcmRlci1yYWRpdXM6PQ0KIDNweDsgd2lkdGg6IDIwcHg7IiB3aWR0aD0zRCIyMCIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJmb250LXNpemU6MDtoZWlnaHQ6MjBweDt2ZXJ0aWNhbC1hbGlnPQ0KbjptaWRkbGU7d2lkdGg6MjBweDsiPjxhIGhyZWY9M0QiaHR0cHM6Ly93YS5tZS84NjU3MTg2NTYzODM5P3RyYWNlbG9nPTNEcm93PQ0KYW4mYW1wO3Jvd2FuX2lkMT0zRGVtYWlsUmVnaXN0ZXJDaGVja2NvZGVfMV9lbl9VU18yMDIzLTA5LTA1JmFtcDtyb3dhbl9tc2dfPQ0KaWQ9M0RtYWlsbnVsbF9FTUFJTF9SRUdJU1RFUl9lJDdmOGM5YWIwYzU4MDRjOTY5MDYxNmM0Yzc4MTY4NDZhJmFtcDtjaz0zRGluPQ0KX2VkbV9vdGhlciIgdGFyZ2V0PTNEIl9ibGFuayI+PGltZyBoZWlnaHQ9M0QiMjAiIHNyYz0zRCJodHRwczovL2FlMDEuYWxpY2RuPQ0KLmNvbS9rZi9INmQ4OGRlOWZiODNiNGI1OTg5MGY3MzNiNzAwMWNmNzZOLnBuZyIgc3R5bGU9M0QiYm9yZGVyLXJhZGl1czozcHg7PQ0KZGlzcGxheTpibG9jazsiIHdpZHRoPTNEIjIwIj48L2E+PC90ZD4NCiAgICAgICAgICAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgICAgICAgPC90YWJsZT48L3RkPg0KICAgICAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgICA8L3RhYmxlPg0KICAgICAgICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PCFbZW5kaWZdLS0+IDwvdGQ+DQogICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PCFbZW5kaWZdLS0+PC90ZD4NCiAgICAgICAgICAgPC90cj4NCiAgICAgICAgICA8L3Rib2R5Pg0KICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgPC9kaXY+PTIwDQogICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPjwvdGQ+PC90cj48L3RhYmxlPjwvdGQ+PC90cj48IVtlbmRpZl0tLT4NCiAgICAgICAgPCEtLSBmb290ZXIgaW5mb3JtYXRpb24gLS0+DQogICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPjx0cj48dGQgY2xhc3M9M0QiZm9vdGVyLWluZm9ybWF0aW9uLW91dGxvb2siIHdpZHQ9DQpoPTNEIjYwMHB4Ij48dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWM9DQppbmc9M0QiMCIgY2xhc3M9M0QiZm9vdGVyLWluZm9ybWF0aW9uLW91dGxvb2siIHN0eWxlPTNEIndpZHRoOjYwMHB4OyIgd2lkdGg9DQo9M0QiNjAwIj48dHI+PHRkIHN0eWxlPTNEImxpbmUtaGVpZ2h0OjBweDtmb250LXNpemU6MHB4O21zby1saW5lLWhlaWdodC1ydWw9DQplOmV4YWN0bHk7Ij48IVtlbmRpZl0tLT49MjANCiAgICAgICAgPGRpdiBjbGFzcz0zRCJmb290ZXItaW5mb3JtYXRpb24iIHN0eWxlPTNEIm1hcmdpbjowcHggYXV0bzttYXgtd2lkdD0NCmg6NjAwcHg7Ij4NCiAgICAgICAgIDx0YWJsZSBhbGlnbj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0NCj0zRCIwIiByb2xlPTNEInByZXNlbnRhdGlvbiIgc3R5bGU9M0QiYmFja2dyb3VuZC1jb2xvcjogI0ZGRkZGRjsgd2lkdGg6IDEwMD0NCiU7IiB3aWR0aD0zRCIxMDAlIiBiZ2NvbG9yPTNEIiNGRkZGRkYiPg0KICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgPHRkIHN0eWxlPTNEImRpcmVjdGlvbjpsdHI7Zm9udC1zaXplOjBweDtwYWRkaW5nOjBweDt0ZXh0LWFsaWduPQ0KOmNlbnRlcjsiPg0KICAgICAgICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPjx0YWJsZSByb2xlPTNEInByZXNlbnRhdGlvbiIgYm9yZGVyPTNEIjAiIGNlPQ0KbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiPjx0cj48dGQgY2xhc3M9M0QiIiBzdHlsZT0zRCJ2ZXJ0aWNhbC1hbGlnPQ0Kbjp0b3A7d2lkdGg6NjAwcHg7Ij48IVtlbmRpZl0tLT4NCiAgICAgICAgICAgICA8ZGl2IGNsYXNzPTNEIm1qLWNvbHVtbi1wZXItMTAwIG1qLW91dGxvb2stZ3JvdXAtZml4IiBzdHlsZT0zRD0NCiJmb250LXNpemU6MHB4O3RleHQtYWxpZ246bGVmdDtkaXJlY3Rpb246bHRyO2Rpc3BsYXk6aW5saW5lLWJsb2NrO3ZlcnRpY2FsLT0NCmFsaWduOnRvcDt3aWR0aDoxMDAlOyI+DQogICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcm9sZT0NCj0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IHZlcnRpY2FsLWFsaWduOiB0b3A7Ij0NCiB3aWR0aD0zRCIxMDAlIiB2YWxpZ249M0QidG9wIiBiZ2NvbG9yPTNEIiNGRkZGRkYiPg0KICAgICAgICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgPHRkIGFsaWduPTNEImNlbnRlciIgc3R5bGU9M0QiZm9udC1zaXplOjBweDtwYWRkaW5nOjEwcHggMj0NCjVweDt3b3JkLWJyZWFrOmJyZWFrLXdvcmQ7Ij4NCiAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9M0QiZm9udC1mYW1pbHk6T3BlblNhbnMsIEhlbHZldGljYSwgVGFob21hLCBBcj0NCmlhbCwgc2Fucy1zZXJpZjtmb250LXNpemU6MTJweDtmb250LXdlaWdodDo0MDA7bGluZS1oZWlnaHQ6MjBweDt0ZXh0LWFsaWduOj0NCmNlbnRlcjtjb2xvcjojNEY0RjRGOyI+DQogICAgICAgICAgICAgICAgICAgPGRpdj4NCiAgICAgICAgICAgICAgICAgICAgPGEgaHJlZj0zRCJodHRwczovL3d3dy5hbGlleHByZXNzLmNvbT8mYW1wO2VkbV9jbGlja19tbz0NCmR1bGU9M0Rmb290ZXImYW1wO3RyYWNlbG9nPTNEcm93YW4mYW1wO3Jvd2FuX2lkMT0zRGVtYWlsUmVnaXN0ZXJDaGVja2NvZGVfMT0NCl9lbl9VU18yMDIzLTA5LTA1JmFtcDtyb3dhbl9tc2dfaWQ9M0RtYWlsbnVsbF9FTUFJTF9SRUdJU1RFUl9lJDdmOGM5YWIwYzU4MD0NCjRjOTY5MDYxNmM0Yzc4MTY4NDZhJmFtcDtjaz0zRGluX2VkbV9vdGhlciIgdGFyZ2V0PTNEIl9ibGFuayIgc3R5bGU9M0QiY29sbz0NCnI6ICMzMzMzMzM7IGxpbmUtaGVpZ2h0OiAyMHB4OyB0ZXh0LWRlY29yYXRpb246IHVuZGVybGluZTsiPkhvbWVwYWdlPC9hPiB8PQ0KPTIwDQogICAgICAgICAgICAgICAgICAgIDxhIGhyZWY9M0QiaHR0cHM6Ly9sb2dpbi5hbGlleHByZXNzLmNvbS8/cmV0dXJuX3VybD0zRGg9DQp0dHAlM0ElMkYlMkZlc2Nyb3cuYWxpYmFiYS5jb20lMkZvcmRlciUyRmJ1c2luZXNzX29yZGVyX2J1eWVyX2xpc3QuaHRtJTNGY3Q9DQptZW51JTNEY3VycmVudF9vcmRlcnMmYW1wO2Zyb209M0RhbGlleHByZXNzJmFtcDsmYW1wO2VkbV9jbGlja19tb2R1bGU9M0Rmb289DQp0ZXImYW1wO3RyYWNlbG9nPTNEcm93YW4mYW1wO3Jvd2FuX2lkMT0zRGVtYWlsUmVnaXN0ZXJDaGVja2NvZGVfMV9lbl9VU18yMDI9DQozLTA5LTA1JmFtcDtyb3dhbl9tc2dfaWQ9M0RtYWlsbnVsbF9FTUFJTF9SRUdJU1RFUl9lJDdmOGM5YWIwYzU4MDRjOTY5MDYxNmM9DQo0Yzc4MTY4NDZhJmFtcDtjaz0zRGluX2VkbV9vdGhlciIgc3R5bGU9M0QiY29sb3I6ICMzMzMzMzM7IGxpbmUtaGVpZ2h0OiAyMHA9DQp4OyB0ZXh0LWRlY29yYXRpb246IHVuZGVybGluZTsiPk15IEFsaUV4cHJlc3M8L2E+IHw9MjANCiAgICAgICAgICAgICAgICAgICAgPGEgaHJlZj0zRCJodHRwczovL3NlcnZpY2UuYWxpZXhwcmVzcy5jb20vcGFnZS9ob21lP3BhZz0NCmVJZD0zRDE3JmFtcDtsYW5ndWFnZT0zRGVuJmFtcDtlZG1fY2xpY2tfbW9kdWxlPTNEZm9vdGVyJmFtcDt0cmFjZWxvZz0zRHJvdz0NCmFuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnXz0NCmlkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbj0NCl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiIHN0eWxlPTNEImNvbG9yOiAjMzMzMzMzOyBsaW5lLWhlaWdodDogMjBweDsgdD0NCmV4dC1kZWNvcmF0aW9uOiB1bmRlcmxpbmU7Ij5IZWxwIENlbnRlcjwvYT4gfD0yMA0KICAgICAgICAgICAgICAgICAgICA8YSBocmVmPTNEImh0dHBzOi8vc2FsZS5hbGlleHByZXNzLmNvbS9fX3BjL3Y4WXI4ZjYyOUQuPQ0KaHRtPyZhbXA7ZWRtX2NsaWNrX21vZHVsZT0zRGZvb3RlciZhbXA7dHJhY2Vsb2c9M0Ryb3dhbiZhbXA7cm93YW5faWQxPTNEZW1hPQ0KaWxSZWdpc3RlckNoZWNrY29kZV8xX2VuX1VTXzIwMjMtMDktMDUmYW1wO3Jvd2FuX21zZ19pZD0zRG1haWxudWxsX0VNQUlMX1JFPQ0KR0lTVEVSX2UkN2Y4YzlhYjBjNTgwNGM5NjkwNjE2YzRjNzgxNjg0NmEmYW1wO2NrPTNEaW5fZWRtX290aGVyIiBzdHlsZT0zRCJjPQ0Kb2xvcjogIzMzMzMzMzsgbGluZS1oZWlnaHQ6IDIwcHg7IHRleHQtZGVjb3JhdGlvbjogdW5kZXJsaW5lOyI+QnV5ZXIgUHJvdGVjPQ0KdGlvbjwvYT4gfD0yMA0KICAgICAgICAgICAgICAgICAgICA8YSBocmVmPTNEImh0dHA6Ly91cy5teS5hbGliYWJhLmNvbS91c2VyL2NvbXBhbnkvZm9yZ2V0PQ0KX3Bhc3N3b3JkX2lucHV0X2VtYWlsLmh0bT8mYW1wO2VkbV9jbGlja19tb2R1bGU9M0Rmb290ZXImYW1wO3RyYWNlbG9nPTNEcm93PQ0KYW4mYW1wO3Jvd2FuX2lkMT0zRGVtYWlsUmVnaXN0ZXJDaGVja2NvZGVfMV9lbl9VU18yMDIzLTA5LTA1JmFtcDtyb3dhbl9tc2dfPQ0KaWQ9M0RtYWlsbnVsbF9FTUFJTF9SRUdJU1RFUl9lJDdmOGM5YWIwYzU4MDRjOTY5MDYxNmM0Yzc4MTY4NDZhJmFtcDtjaz0zRGluPQ0KX2VkbV9vdGhlciIgdGFyZ2V0PTNEIl9ibGFuayIgc3R5bGU9M0QiY29sb3I6ICMzMzMzMzM7IGxpbmUtaGVpZ2h0OiAyMHB4OyB0PQ0KZXh0LWRlY29yYXRpb246IHVuZGVybGluZTsiPkZvcmdvdCB5b3VyIHBhc3N3b3JkPzwvYT4NCiAgICAgICAgICAgICAgICAgICA8L2Rpdj4gVGhpcyBlbWFpbCB3YXMgc2VudCB0byA9MjANCiAgICAgICAgICAgICAgICAgICA8YnI+IFlvdSBhcmUgcmVjZWl2aW5nIHRoaXMgZW1haWwgYmVjYXVzZSB5b3UgYXJlIGEgcmVnaT0NCnN0ZXJlZCBtZW1iZXIgb2Y9MjANCiAgICAgICAgICAgICAgICAgICA8YSBocmVmPTNEImh0dHBzOi8vd3d3LmFsaWV4cHJlc3MuY29tPyZhbXA7ZWRtX2NsaWNrX21vZD0NCnVsZT0zRGZvb3RlciZhbXA7dHJhY2Vsb2c9M0Ryb3dhbiZhbXA7cm93YW5faWQxPTNEZW1haWxSZWdpc3RlckNoZWNrY29kZV8xXz0NCmVuX1VTXzIwMjMtMDktMDUmYW1wO3Jvd2FuX21zZ19pZD0zRG1haWxudWxsX0VNQUlMX1JFR0lTVEVSX2UkN2Y4YzlhYjBjNTgwND0NCmM5NjkwNjE2YzRjNzgxNjg0NmEmYW1wO2NrPTNEaW5fZWRtX290aGVyIiB0YXJnZXQ9M0QiX2JsYW5rIiBzdHlsZT0zRCJjb2xvcj0NCjogIzMzMzMzMzsgbGluZS1oZWlnaHQ6IDIwcHg7IHRleHQtZGVjb3JhdGlvbjogdW5kZXJsaW5lOyI+d3d3LkFsaUV4cHJlc3MuYz0NCm9tLjwvYT4NCiAgICAgICAgICAgICAgICAgICA8YnI+IElmIHlvdSBkb24ndCB3YW50IHRvIHJlY2VpdmUgbWFya2V0aW5nIGVtYWlscyBpbiB0aD0NCmUgZnV0dXJlLCBwbGVhc2U9MjANCiAgICAgICAgICAgICAgICAgICA8YSBocmVmPTNEIiIgdGFyZ2V0PTNEIl9ibGFuayIgc3R5bGU9M0QiY29sb3I6ICMzMzMzMzM7ID0NCmxpbmUtaGVpZ2h0OiAyMHB4OyB0ZXh0LWRlY29yYXRpb246IHVuZGVybGluZTsiPjxicj4gdW5zdWJzY3JpYmUgPC9hPg0KICAgICAgICAgICAgICAgICAgIDxicj4gUmVhZCBvdXI9MjANCiAgICAgICAgICAgICAgICAgICA8YSBocmVmPTNEImh0dHBzOi8vc2VydmljZS5hbGlleHByZXNzLmNvbS9wYWdlL2tub3dsZWRnZT0NCj9wYWdlSWQ9M0QzNyZhbXA7Y2F0ZWdvcnk9M0QxMDAwMDIyMDI4JmFtcDtrbm93bGVkZ2U9M0QxMDYwMDE1MjE2JmFtcDtsYW5ndT0NCmFnZT0zRGVuJmFtcDtlZG1fY2xpY2tfbW9kdWxlPTNEZm9vdGVyJmFtcDt0cmFjZWxvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9DQo9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU09DQpBSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbl9lZG1fb3RoZXIiIHN0eWw9DQplPTNEImNvbG9yOiAjMzMzMzMzOyBsaW5lLWhlaWdodDogMjBweDsgdGV4dC1kZWNvcmF0aW9uOiB1bmRlcmxpbmU7Ij5Qcml2YWM9DQp5IFBvbGljeTwvYT4gYW5kPTIwDQogICAgICAgICAgICAgICAgICAgPGEgaHJlZj0zRCJodHRwczovL3J1bGUuYWxpYmFiYS5jb20vcnVsZS9kZXRhaWwvMjA0MS5odG09DQo/JmFtcDtlZG1fY2xpY2tfbW9kdWxlPTNEZm9vdGVyJmFtcDt0cmFjZWxvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFI9DQplZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVM9DQpURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MTZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmw9DQphbmsiIHN0eWxlPTNEImNvbG9yOiAjMzMzMzMzOyBsaW5lLWhlaWdodDogMjBweDsgdGV4dC1kZWNvcmF0aW9uOiB1bmRlcmxpbmU9DQo7Ij5UZXJtcyBvZiBVc2U8L2E+IGlmIHlvdSBoYXZlIGFueSBxdWVzdGlvbnMuPTIwDQogICAgICAgICAgICAgICAgICAgPGJyPg0KICAgICAgICAgICAgICAgICAgIDxhIGhyZWY9M0QiaHR0cHM6Ly9zZXJ2aWNlLmFsaWV4cHJlc3MuY29tL3BhZ2UvaG9tZT9wYWdlPQ0KSWQ9M0QxNyZhbXA7bGFuZ3VhZ2U9M0RlbiZhbXA7ZWRtX2NsaWNrX21vZHVsZT0zRGZvb3RlciZhbXA7dHJhY2Vsb2c9M0Ryb3dhPQ0KbiZhbXA7cm93YW5faWQxPTNEZW1haWxSZWdpc3RlckNoZWNrY29kZV8xX2VuX1VTXzIwMjMtMDktMDUmYW1wO3Jvd2FuX21zZ19pPQ0KZD0zRG1haWxudWxsX0VNQUlMX1JFR0lTVEVSX2UkN2Y4YzlhYjBjNTgwNGM5NjkwNjE2YzRjNzgxNjg0NmEmYW1wO2NrPTNEaW5fPQ0KZWRtX290aGVyIiB0YXJnZXQ9M0QiX2JsYW5rIiBzdHlsZT0zRCJjb2xvcjogIzMzMzMzMzsgbGluZS1oZWlnaHQ6IDIwcHg7IHRlPQ0KeHQtZGVjb3JhdGlvbjogdW5kZXJsaW5lOyI+IEFsaUV4cHJlc3MgU2VydmljZSBDZW50ZXIgPC9hPg0KICAgICAgICAgICAgICAgICAgIDxicj4gQWxpYmFiYS5jb20gU2luZ2Fwb3JlIEVjb21tZXJjZSBQcml2YXRlIExpbWl0ZWQsPTIwDQogICAgICAgICAgICAgICAgICAgPGJyPiBjL28gMjYvRiBUb3dlciBPbmUsIFRpbWVzIFNxdWFyZSwgMSBNYXRoZXNvbiBTdHJlZXQ9DQosIENhdXNld2F5IEJheSwgSG9uZyBLb25nPTIwDQogICAgICAgICAgICAgICAgICAgPGJyPg0KICAgICAgICAgICAgICAgICAgPC9kaXY+PC90ZD4NCiAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgPC90Ym9keT4NCiAgICAgICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgICAgICA8L2Rpdj4NCiAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48L3RkPjwvdHI+PC90YWJsZT48IVtlbmRpZl0tLT48L3RkPg0KICAgICAgICAgICA8L3RyPg0KICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICA8L3RhYmxlPg0KICAgICAgICA8L2Rpdj49MjANCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PC90ZD48L3RyPjwhW2VuZGlmXS0tPg0KICAgICAgICA8IS0tIGZvb3RlciBsb2dvIC0tPg0KICAgICAgICA8IS0tIHRlbXBsYXRlVmVyc2lvbjogJHt0ZW1wbGF0ZVZlcnNpb259IC0tPg0KICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48dHI+PHRkIGNsYXNzPTNEIiIgd2lkdGg9M0QiNjAwcHgiPjx0YWJsZSBhbGlnbj0NCj0zRCJjZW50ZXIiIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiBjbGFzcz0zRCIiIHN0eT0NCmxlPTNEIndpZHRoOjYwMHB4OyIgd2lkdGg9M0QiNjAwIj48dHI+PHRkIHN0eWxlPTNEImxpbmUtaGVpZ2h0OjBweDtmb250LXNpej0NCmU6MHB4O21zby1saW5lLWhlaWdodC1ydWxlOmV4YWN0bHk7Ij48IVtlbmRpZl0tLT49MjANCiAgICAgICAgPGRpdiBzdHlsZT0zRCJtYXJnaW46MHB4IGF1dG87bWF4LXdpZHRoOjYwMHB4OyI+DQogICAgICAgICA8dGFibGUgYWxpZ249M0QiY2VudGVyIiBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9DQo9M0QiMCIgcm9sZT0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEImJhY2tncm91bmQtY29sb3I6ICNGRkZGRkY7IHdpZHRoOiAxMDA9DQolOyIgd2lkdGg9M0QiMTAwJSIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJkaXJlY3Rpb246bHRyO2ZvbnQtc2l6ZTowcHg7cGFkZGluZzowcHg7dGV4dC1hbGlnbj0NCjpjZW50ZXI7Ij4NCiAgICAgICAgICAgICA8IS0tW2lmIG1zbyB8IElFXT48dGFibGUgcm9sZT0zRCJwcmVzZW50YXRpb24iIGJvcmRlcj0zRCIwIiBjZT0NCmxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIj48dHI+PHRkIGNsYXNzPTNEIiIgc3R5bGU9M0QidmVydGljYWwtYWxpZz0NCm46dG9wO3dpZHRoOjYwMHB4OyI+PCFbZW5kaWZdLS0+DQogICAgICAgICAgICAgPGRpdiBjbGFzcz0zRCJtai1jb2x1bW4tcGVyLTEwMCBtai1vdXRsb29rLWdyb3VwLWZpeCIgc3R5bGU9M0Q9DQoiZm9udC1zaXplOjBweDt0ZXh0LWFsaWduOmxlZnQ7ZGlyZWN0aW9uOmx0cjtkaXNwbGF5OmlubGluZS1ibG9jazt2ZXJ0aWNhbC09DQphbGlnbjp0b3A7d2lkdGg6MTAwJTsiPg0KICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiIHJvbGU9DQo9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyB2ZXJ0aWNhbC1hbGlnbjogdG9wOyI9DQogd2lkdGg9M0QiMTAwJSIgdmFsaWduPTNEInRvcCIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgICA8dHI+DQogICAgICAgICAgICAgICAgIDx0ZCBhbGlnbj0zRCJjZW50ZXIiIHN0eWxlPTNEImZvbnQtc2l6ZTowcHg7cGFkZGluZzo0MHB4IDA9DQo7d29yZC1icmVhazpicmVhay13b3JkOyI+DQogICAgICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiIHI9DQpvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJiYWNrZ3JvdW5kLWNvbG9yOiAjRkZGRkZGOyBib3JkZXItY29sbGFwc2U6IGM9DQpvbGxhcHNlOyBib3JkZXItc3BhY2luZzogMHB4OyIgYmdjb2xvcj0zRCIjRkZGRkZGIj4NCiAgICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICAgICAgIDx0ZCBzdHlsZT0zRCJ3aWR0aDo4MXB4OyI+PGEgaHJlZj0zRCJodHRwczovL3d3dy5hbGlleD0NCnByZXNzLmNvbT90cmFjZWxvZz0zRHJvd2FuJmFtcDtyb3dhbl9pZDE9M0RlbWFpbFJlZ2lzdGVyQ2hlY2tjb2RlXzFfZW5fVVNfMj0NCjAyMy0wOS0wNSZhbXA7cm93YW5fbXNnX2lkPTNEbWFpbG51bGxfRU1BSUxfUkVHSVNURVJfZSQ3ZjhjOWFiMGM1ODA0Yzk2OTA2MT0NCjZjNGM3ODE2ODQ2YSZhbXA7Y2s9M0Rpbl9lZG1fb3RoZXIiIHRhcmdldD0zRCJfYmxhbmsiPjxpbWcgYWx0PTNEIkFsaUV4cHJlcz0NCnMiIGhlaWdodD0zRCJhdXRvIiBzcmM9M0QiaHR0cHM6Ly9hZTAxLmFsaWNkbi5jb20va2YvSFRCMURzaDRiQkt3M0tWalNaVEU3Nj0NCjN1UnBYYXcucG5nIiBzdHlsZT0zRCJib3JkZXI6MDtkaXNwbGF5OmJsb2NrO291dGxpbmU6bm9uZTt0ZXh0LWRlY29yYXRpb246bj0NCm9uZTtoZWlnaHQ6YXV0bzt3aWR0aDoxMDAlO2ZvbnQtc2l6ZToxM3B4OyIgd2lkdGg9M0QiODEiPjwvYT48L3RkPg0KICAgICAgICAgICAgICAgICAgICA8L3RyPg0KICAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgICA8L3RhYmxlPjwvdGQ+DQogICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgIDwvdGFibGU+DQogICAgICAgICAgICAgPC9kaXY+DQogICAgICAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PCFbZW5kaWZdLS0+PC90ZD4NCiAgICAgICAgICAgPC90cj4NCiAgICAgICAgICA8L3Rib2R5Pg0KICAgICAgICAgPC90YWJsZT4NCiAgICAgICAgPC9kaXY+PTIwDQogICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPjwvdGQ+PC90cj48L3RhYmxlPjwvdGQ+PC90cj48L3RhYmxlPjwhW2VuZGlmXS0tPjw9DQovdGQ+DQogICAgICA8L3RyPg0KICAgICA8L3Rib2R5Pg0KICAgIDwvdGFibGU+DQogICA8L2Rpdj49MjANCiAgIDxkaXYgY2xhc3M9M0QidHJhY2UtaW1hZ2UiIHN0eWxlPTNEImRpc3BsYXk6IG5vbmU7IGhlaWdodDogMXB4OyBtYXJnaW46ID0NCjBweCBhdXRvOyBtYXgtd2lkdGg6IDYwMHB4OyI+DQogICAgPHRhYmxlIGFsaWduPTNEImNlbnRlciIgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjA9DQoiIHJvbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJ3aWR0aDoxMDAlOyI+DQogICAgIDx0Ym9keT4NCiAgICAgIDx0cj4NCiAgICAgICA8dGQgc3R5bGU9M0QiZGlyZWN0aW9uOmx0cjtmb250LXNpemU6MHB4O3BhZGRpbmc6MHB4O3RleHQtYWxpZ246Y2VudD0NCmVyOyI+DQogICAgICAgIDwhLS1baWYgbXNvIHwgSUVdPjx0YWJsZSByb2xlPTNEInByZXNlbnRhdGlvbiIgYm9yZGVyPTNEIjAiIGNlbGxwYWQ9DQpkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiPjx0cj48dGQgY2xhc3M9M0QiIiBzdHlsZT0zRCJ2ZXJ0aWNhbC1hbGlnbjp0b3A9DQo7d2lkdGg6NjAwcHg7Ij48IVtlbmRpZl0tLT4NCiAgICAgICAgPGRpdiBjbGFzcz0zRCJtai1jb2x1bW4tcGVyLTEwMCBtai1vdXRsb29rLWdyb3VwLWZpeCIgc3R5bGU9M0QiZm9udD0NCi1zaXplOjBweDt0ZXh0LWFsaWduOmxlZnQ7ZGlyZWN0aW9uOmx0cjtkaXNwbGF5OmlubGluZS1ibG9jazt2ZXJ0aWNhbC1hbGlnbj0NCjp0b3A7d2lkdGg6MTAwJTsiPg0KICAgICAgICAgPHRhYmxlIGJvcmRlcj0zRCIwIiBjZWxscGFkZGluZz0zRCIwIiBjZWxsc3BhY2luZz0zRCIwIiByb2xlPTNEInByPQ0KZXNlbnRhdGlvbiIgd2lkdGg9M0QiMTAwJSI+DQogICAgICAgICAgPHRib2R5Pg0KICAgICAgICAgICA8dHI+DQogICAgICAgICAgICA8dGQgc3R5bGU9M0QidmVydGljYWwtYWxpZ246dG9wO3BhZGRpbmc6MDsiPg0KICAgICAgICAgICAgIDx0YWJsZSBib3JkZXI9M0QiMCIgY2VsbHBhZGRpbmc9M0QiMCIgY2VsbHNwYWNpbmc9M0QiMCIgcm9sZT0NCj0zRCJwcmVzZW50YXRpb24iIHN0eWxlPTNEIiIgd2lkdGg9M0QiMTAwJSI+DQogICAgICAgICAgICAgIDx0Ym9keT4NCiAgICAgICAgICAgICAgIDx0cj4NCiAgICAgICAgICAgICAgICA8dGQgYWxpZ249M0QiY2VudGVyIiBzdHlsZT0zRCJmb250LXNpemU6MHB4O3BhZGRpbmc6MTBweCAyNT0NCnB4O3dvcmQtYnJlYWs6YnJlYWstd29yZDsiPg0KICAgICAgICAgICAgICAgICA8dGFibGUgYm9yZGVyPTNEIjAiIGNlbGxwYWRkaW5nPTNEIjAiIGNlbGxzcGFjaW5nPTNEIjAiIHJvPQ0KbGU9M0QicHJlc2VudGF0aW9uIiBzdHlsZT0zRCJib3JkZXItY29sbGFwc2U6Y29sbGFwc2U7Ym9yZGVyLXNwYWNpbmc6MHB4OyI+DQogICAgICAgICAgICAgICAgICA8dGJvZHk+DQogICAgICAgICAgICAgICAgICAgPHRyPg0KICAgICAgICAgICAgICAgICAgICA8dGQgc3R5bGU9M0Qid2lkdGg6MXB4OyI+PGltZyBoZWlnaHQ9M0QiMSIgc3JjPTNEImh0dHBzPQ0KOi8vbS5hbGlleHByZXNzLmNvbS9pbWcvMXgxLmdpZj8mYW1wO2VkbV9jbGlja19tb2R1bGU9M0Rmb290ZXIiIHN0eWxlPTNEImJvPQ0KcmRlcjowO2Rpc3BsYXk6YmxvY2s7b3V0bGluZTpub25lO3RleHQtZGVjb3JhdGlvbjpub25lO2hlaWdodDoxcHg7d2lkdGg6MTAwPQ0KJTtmb250LXNpemU6MTNweDsiIHdpZHRoPTNEIjEiPjwvdGQ+DQogICAgICAgICAgICAgICAgICAgPC90cj4NCiAgICAgICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgICAgIDwvdGFibGU+PC90ZD4NCiAgICAgICAgICAgICAgIDwvdHI+DQogICAgICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICAgICAgPC90YWJsZT48L3RkPg0KICAgICAgICAgICA8L3RyPg0KICAgICAgICAgIDwvdGJvZHk+DQogICAgICAgICA8L3RhYmxlPg0KICAgICAgICA8L2Rpdj4NCiAgICAgICAgPCEtLVtpZiBtc28gfCBJRV0+PC90ZD48L3RyPjwvdGFibGU+PCFbZW5kaWZdLS0+PC90ZD4NCiAgICAgIDwvdHI+DQogICAgIDwvdGJvZHk+DQogICAgPC90YWJsZT4NCiAgIDwvZGl2Pj0yMA0KICAgICAgICA8IS0tIGZvb3RlciBlbmQgLS0+DQogICAgPC9kaXY+DQo8L2JvZHk+DQo8L2h0bWw+PQ0KDQotLS0tLS09X1BhcnRfMTQxMTk3MjdfMTQyNjAwMzUyMi4xNjkzOTIwNzIyMDYwLS0NCg==",
+              "date": "2023-09-06T13:31:27.000Z",
+              "from": {
+                "html": "<span class=\"mp_address_group\"><span class=\"mp_address_name\">Tomi Turtiainen</span> &lt;<a href=\"mailto:tomi@n8n.io\" class=\"mp_address_email\">tomi@n8n.io</a>&gt;</span>",
+                "text": "Tomi Turtiainen <tomi@n8n.io>",
+                "value": [
+                  {
+                    "name": "Tomi Turtiainen",
+                    "address": "tomi@n8n.io"
+                  }
+                ]
+              },
+              "html": "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\"><div dir=\"ltr\"><br></div>\n",
+              "text": "\n",
+              "headers": {
+                "to": "To: mattiasn8n@outlook.com",
+                "date": "Date: Wed, 6 Sep 2023 16:31:27 +0300",
+                "from": "From: Tomi Turtiainen <tomi@n8n.io>",
+                "subject": "Subject: asdasd",
+                "received": "Received: by mail-lf1-f51.google.com with SMTP id 2adb3069b0e04-500bbe3ef0eso1173362e87.1\r\n        for <mattiasn8n@outlook.com>; Wed, 06 Sep 2023 06:31:39 -0700 (PDT)",
+                "x-sid-pra": "X-SID-PRA: TOMI@N8N.IO",
+                "message-id": "Message-ID: <CAN5dpcHNquvqeC1bC-+0JToUg2Kdzcm4=STS2cT64aC=5RqmoQ@mail.gmail.com>",
+                "x-received": "X-Received: by 2002:a05:6512:550:b0:4f8:6253:540 with SMTP id\r\n h16-20020a056512055000b004f862530540mr1032219lfl.19.1694007098992; Wed, 06\r\n Sep 2023 06:31:38 -0700 (PDT)",
+                "return-path": "Return-Path: tomi@n8n.io",
+                "x-sender-ip": "X-Sender-IP: 209.85.167.51",
+                "content-type": "Content-Type: multipart/mixed; boundary=\"0000000000006226f60604b0c30d\"",
+                "mime-version": "MIME-Version: 1.0",
+                "received-spf": "Received-SPF: Pass (protection.outlook.com: domain of n8n.io designates\r\n 209.85.167.51 as permitted sender) receiver=protection.outlook.com;\r\n client-ip=209.85.167.51; helo=mail-lf1-f51.google.com; pr=C",
+                "x-sid-result": "X-SID-Result: PASS",
+                "dkim-signature": "DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=n8n.io; s=google; t=1694007099; x=1694611899; darn=outlook.com;\r\n        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject\r\n         :date:message-id:reply-to;\r\n        bh=XX+u25qxwUiTQhDYEAKum6cFDiY8kAf9VQXtXT7IG4g=;\r\n        b=DtryoPGLz346xBmbPGAOuNpUz90LjDCRHhDSlQ+FacVezcvnbNtne30NyD5zV1+Nmz\r\n         xbQGR9Leg14yy8CyJ6BB5RdPnGCzyS0jx+xThP9vB/8r9Rfbg2y9R7HpfAHauxZq8WKw\r\n         QbnMn4JwvjFizKABeadgIgrk5zxs78ZHK0IboMyNttPc9YVyho+Q7koLdkdMFnB0bGjH\r\n         B2gud3+PixaUitsJhOGXx0TKpCG58CjFkpwf203YJhNN9k/kUejr8lhlu3K8tXlHnRdl\r\n         uIQg7BwYTLtg2ZLaPXz0VQLUlbnLNbwHHFhXUvJ1D0edRZKk8yGn315NxX9CJ8ta5oKx\r\n         tqww==",
+                "x-message-info": "X-Message-Info:\r\n\tqZelhIiYnPlubV6F6xIgQ5/Mzwaakpnur7bBCplzbP7vmOUxLfcYxrmfap05e717ue9YRnsWC+tgOVq+uN9uCokFEfs/cntY6SPU1rIDMJ2XiRHcXDxWXN2/2HOxMn+YqecYvkeX6IHFuhzmOJBtdhGgfjpDztKpJUUmqN9RcyzI0U+NHd0xDlBzopl+9fN9CkxAIgBkriAe9ipdjAiOuw==",
+                "x-gm-message-state": "X-Gm-Message-State: AOJu0YzkHX9+H/UKNyzFozodiJ17OU4KzydEaaglLky7picVcfrQnODG\r\n\tIoNVpwnJqtuVpDLl9i9cnYIZMFlT5AUv2OjrGh8I8twGmBWyHG5bixU=",
+                "x-message-delivery": "X-Message-Delivery: Vj0xLjE7dXM9MDtsPTA7YT0wO0Q9MTtHRD0yO1NDTD0z",
+                "x-google-smtp-source": "X-Google-Smtp-Source: AGHT+IHCPLcwqEBonKbCznfQtkP79eEZZH2uzDURqzvzU3BNgqCao9T/H/EfqSgjduesLZKMVH7RZ7jGLqOSzVCC0uU=",
+                "x-microsoft-antispam": "X-Microsoft-Antispam: BCL:0;",
+                "x-incomingheadercount": "X-IncomingHeaderCount: 13",
+                "authentication-results": "Authentication-Results: spf=pass (sender IP is 209.85.167.51)\r\n smtp.mailfrom=n8n.io; dkim=pass (signature was verified)\r\n header.d=n8n.io;dmarc=pass action=none header.from=n8n.io;compauth=pass\r\n reason=100",
+                "x-eopattributedmessage": "X-EOPAttributedMessage: 0",
+                "x-ms-publictraffictype": "X-MS-PublicTrafficType: Email",
+                "x-ms-userlastlogontime": "X-MS-UserLastLogonTime: 9/6/2023 1:30:02 PM",
+                "x-google-dkim-signature": "X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;\r\n        d=1e100.net; s=20221208; t=1694007099; x=1694611899;\r\n        h=to:subject:message-id:date:from:mime-version:x-gm-message-state\r\n         :from:to:cc:subject:date:message-id:reply-to;\r\n        bh=XX+u25qxwUiTQhDYEAKum6cFDiY8kAf9VQXtXT7IG4g=;\r\n        b=gNJBR8hHMQgsPmy6aj/fUHgJA80VYzMkBa692pzhafJzxHcKSsoBG6Va8Z/vMmQHHf\r\n         b+79DaJg9AoYuSbhqk17fB1dF/moQh/AyAbEOeTy+ntAlYCJDNOwXP6WV419d0Y1Stds\r\n         Wvx+8Pd4LVhXGUcGRmk5hsnZ7AuPfYi8fbsU+Q/uVaLEp+SFAFgRVBvFpicxD/2AWpNF\r\n         gi3j2RHnBEppPcXFJTmrtTHHmSHwDHIWeRa4d0rfv3JYYGLHVXeJ6OwNgtjF/ogP4Q8A\r\n         avLGYbqt5rY5Z852upyxtVxkWY/H0gHKjfkGH4MQHtja8iFGJa970FZwE81sZ/GhilPF\r\n         lzog==",
+                "x-ms-exchange-eopdirect": "X-MS-Exchange-EOPDirect: true",
+                "x-incomingtopheadermarker": "X-IncomingTopHeaderMarker:\r\n OriginalChecksum:57147F1F6C31873D4EA40450C6B4FCC2A019EE54FDEDA03E8B891047BB320969;UpperCasedChecksum:5F3A1E264AFC755FB3BB49D7A2D706C38ED7B1548108A3EBE6A43EF3E238AE53;SizeAsReceived:2325;Count:13",
+                "x-ms-traffictypediagnostic": "X-MS-TrafficTypeDiagnostic:\r\n DS2PEPF00003444:EE_|CWLP265MB2113:EE_|LO0P265MB6663:EE_",
+                "x-eoptenantattributedmessage": "X-EOPTenantAttributedMessage: 84df9e7f-e9f6-40af-b435-aaaaaaaaaaaa:0",
+                "x-ms-exchange-crosstenant-id": "X-MS-Exchange-CrossTenant-Id: 84df9e7f-e9f6-40af-b435-aaaaaaaaaaaa",
+                "x-ms-exchange-organization-pcl": "X-MS-Exchange-Organization-PCL: 2",
+                "x-ms-exchange-organization-scl": "X-MS-Exchange-Organization-SCL: 1",
+                "x-ms-exchange-crosstenant-authas": "X-MS-Exchange-CrossTenant-AuthAs: Anonymous",
+                "x-microsoft-antispam-message-info": "X-Microsoft-Antispam-Message-Info:\r\n\t=?utf-8?B?TEZ5UU1vOTVYR3dLdWtadnVWZndKTVY2TkhQU3JGckNOblNqOWd0eVRWTkIw?=\r\n =?utf-8?B?eXo1MTkveFBqL3hKb2o4cHRFUFZiTkpLWnpYaCtBbnZkbGhHU1lRZlEzZnJx?=\r\n =?utf-8?B?RUM3YXQ4UXV0dUZBcTVucnpJb2JVbEFBeWxscVlDekVacmNSa25qaFlJVElu?=\r\n =?utf-8?B?WmlBYWFOb1NzQkwrZWo2K0hrRzhQMDN0dFQ3Ly9jdVR0ZDlUclJtbXl0K1VI?=\r\n =?utf-8?B?Uzh0UGZZRDdUSnphaThuV2FOVS84SE5Xa2Q4S05WWFhTN1ptOEVPTGxmd04r?=\r\n =?utf-8?B?dllXeG90TitNak1yWUVJY28wVXQzNFMwVmZRdVZkV1VnUStkTWY1VWVvV1Rr?=\r\n =?utf-8?B?RVNnR3lpRUFHQ1VZeVRnTGl1b0ZwVzlUUXhITHA0SUNsSUd6VHk5RTZZOWs4?=\r\n =?utf-8?B?NGlhNGZPUzAzYllWMHJPVVRtWnV4ZFBmRTVXSUpxdVZVWCtsdEJhRHhWZnN0?=\r\n =?utf-8?B?SDZZYnUvSHIwV25aRWFNbTVyMUxaNzN4ZHpac1lwTmVwdDhMWTFFMXpwMHlC?=\r\n =?utf-8?B?VmxBQ1JtMTNyRkFYWUJmcjlkcmE0NkVTWDJ6eENyUjhyalgwSGdLeTd5VnFM?=\r\n =?utf-8?B?cWJOZzBmbEo4NWl6NHUvMVl5NmY5MzFXNThCV3R0eXFvOTJ6U2N4NVVUMmF2?=\r\n =?utf-8?B?bTFHdVJsZDlyTXNNRmxIdVBYdUt2RmpYZlZLY2RrL2VwdWgybVhnQ09vSllS?=\r\n =?utf-8?B?WUxYNnlzbHN6SmVEaGRjMWwrT3lDSG05NU5NK3pBUlVTYWt3MFFXQXRpMlB1?=\r\n =?utf-8?B?YzMzYjVBclIvd2xmWDJEWkNkcnI1enNoWlkyTFdVaWtCTGt0a1ZRRktUZVRz?=\r\n =?utf-8?B?T2oxYnk4SHRNNlg5b0NMZEVkL0doRW9oZkx6anh5L3ZoSUpGN0xlNDJXcks4?=\r\n =?utf-8?B?Yjg3Y2FheTRBNlp6b2xlbzZERm5iK0VZQUNmeEhQRXZUTzFIUWtidFVEMzU3?=\r\n =?utf-8?B?OHNBL2RzMWk5K1VyL2xXMXd6cU5LU2o3b2RmZmh3R2pHUlBVcjluSnRUWkVL?=\r\n =?utf-8?B?cU9KTUwySUxrVHZ5QTRKeWI3MGxEMDQ5RlpyVkRwM3JQRGFHVkNDVmhtVFlI?=\r\n =?utf-8?B?a1ZzMStzUkRGeXQrS2JTUktQeUZ0QXkwaitHUDB5UGFmSEVHaFVKUEc4QjZQ?=\r\n =?utf-8?B?Z3BvcHpWeW0wK3R3VnQ0bFZXcFVKY2lETTRIMS84RFdOZjlYYldDVEFXNHlE?=\r\n =?utf-8?B?RitORzUzK2ZzNGN6UmtNMXVNY1dlRStkR1ZNcXFueVVPbm9oNUxBcG5HWlU4?=\r\n =?utf-8?B?b0dmcmpYamZPQXpRNnRBeHRHZkhPMTdsWkdmVWhjUHZYL0tQdER0dEluRWEy?=\r\n =?utf-8?B?M0ZBaVZnVnNWUmJHb1pZM2xkRGZjV1dTMEJ5NXNCamc2b09XYmdPMjF2VmM1?=\r\n =?utf-8?B?Rm9yNWJmNGwzZ1lSL1ZCYXhlS3dUN1JyYys3a0dCNklZYmxyb2lXTW1OZFNG?=\r\n =?utf-8?B?b2UzaGFsSU5BbFltSnlZSlh3NjFlOGp4alA0SFVzWHkvVm1DRXdWRTVzZ21Q?=\r\n =?utf-8?B?eEpmb1dFaDJsV1g1VjN0SlFtbzRJZjkrdUV0bjhidzhyY0YzWnRDdnZ1YkFP?=\r\n =?utf-8?B?YWcvUT09?=",
+                "x-ms-exchange-organization-authas": "X-MS-Exchange-Organization-AuthAs: Anonymous",
+                "x-ms-exchange-crosstenant-authsource": "X-MS-Exchange-CrossTenant-AuthSource:\r\n DS2PEPF00003444.namprd04.prod.outlook.com",
+                "x-microsoft-antispam-mailbox-delivery": "X-Microsoft-Antispam-Mailbox-Delivery:\r\n\tucf:0;jmr:0;ex:0;auth:1;dest:I;ENG:(5062000305)(920221119095)(90000117)(920221120095)(90010023)(91010020)(91040095)(9050020)(9100341)(944500132)(2008001134)(2008120430)(4810010)(4910033)(9575002)(10195002)(9320005)(120001);",
+                "x-ms-exchange-organization-authsource": "X-MS-Exchange-Organization-AuthSource:\r\n DS2PEPF00003444.namprd04.prod.outlook.com",
+                "x-ms-exchange-processed-by-bccfoldering": "X-MS-Exchange-Processed-By-BccFoldering: 15.20.6745.026",
+                "x-ms-exchange-transport-endtoendlatency": "X-MS-Exchange-Transport-EndToEndLatency: 00:00:02.5250613",
+                "x-ms-office365-filtering-correlation-id": "X-MS-Office365-Filtering-Correlation-Id: 909e28ef-742f-4b3f-cac4-08dbaedd9a06",
+                "x-ms-exchange-crosstenant-fromentityheader": "X-MS-Exchange-CrossTenant-FromEntityHeader: Internet",
+                "x-ms-exchange-crosstenant-network-message-id": "X-MS-Exchange-CrossTenant-Network-Message-Id: 909e28ef-742f-4b3f-cac4-08dbaedd9a06",
+                "x-ms-exchange-crosstenant-originalarrivaltime": "X-MS-Exchange-CrossTenant-OriginalArrivalTime: 06 Sep 2023 13:31:39.8042\r\n (UTC)",
+                "x-ms-exchange-organization-expirationinterval": "X-MS-Exchange-Organization-ExpirationInterval: 1:00:00:00.0000000",
+                "x-ms-exchange-organization-network-message-id": "X-MS-Exchange-Organization-Network-Message-Id:\r\n 909e28ef-742f-4b3f-cac4-08dbaedd9a06",
+                "x-ms-exchange-organization-expirationstarttime": "X-MS-Exchange-Organization-ExpirationStartTime: 06 Sep 2023 13:31:39.8198\r\n (UTC)",
+                "x-ms-exchange-organization-messagedirectionality": "X-MS-Exchange-Organization-MessageDirectionality: Incoming",
+                "x-ms-exchange-transport-crosstenantheadersstamped": "X-MS-Exchange-Transport-CrossTenantHeadersStamped: CWLP265MB2113",
+                "x-ms-exchange-crosstenant-rms-persistedconsumerorg": "X-MS-Exchange-CrossTenant-RMS-PersistedConsumerOrg:\r\n 00000000-0000-0000-0000-000000000000",
+                "x-ms-exchange-organization-expirationintervalreason": "X-MS-Exchange-Organization-ExpirationIntervalReason: OriginalSubmit",
+                "x-ms-exchange-organization-expirationstarttimereason": "X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit"
+              },
+              "subject": "asdasd",
+              "messageId": "<CAN5dpcHNquvqeC1bC-+0JToUg2Kdzcm4=STS2cT64aC=5RqmoQ@mail.gmail.com>",
+              "textAsHtml": "<p></p>"
+            },
+            "binary": {},
+            "pairedItem": {
+              "item": 0
+            }
+          }
+        ],
+        "Analyze email with Sublime Security": [
+          {
+            "json": {
+              "rule_results": [
+                {
+                  "rule": {
+                    "id": "58544c97-5d1b-4269-8465-5325ccfc05cf",
+                    "name": "Matti + Tomi",
+                    "source": "sender.email.domain.root_domain == \"aliexpress.com\"",
+                    "severity": null
+                  },
+                  "error": null,
+                  "matched": true,
+                  "success": true,
+                  "execution_time": 3.8433e-05,
+                  "external_errors": null
+                },
+                {
+                  "rule": {
+                    "id": "75229a3d-ed82-47e0-a37b-ae1b562c08d5",
+                    "name": "Test rule",
+                    "source": "strings.ilike(subject.subject, \"*Sublime-Standard-Test-String*\")\nor regex.icontains(body.html.raw, \".*Sublime-Standard-Test-String.*\")\nor regex.icontains(body.plain.raw, \".*Sublime-Standard-Test-String.*\")",
+                    "severity": null
+                  },
+                  "error": null,
+                  "matched": false,
+                  "success": true,
+                  "execution_time": 0.002214803,
+                  "external_errors": null
+                }
+              ]
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "25aa0ca5-6e3c-44ed-98f9-37f62a78ed76",
+      "connections": {
+        "Move Binary Data": {
+          "main": [
+            [
+              {
+                "node": "Analyze email with Sublime Security",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format the message": {
+          "main": [
+            [
+              {
+                "node": "Slack",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email Trigger (IMAP)": {
+          "main": [
+            [
+              {
+                "node": "IF email has attachment",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF email has attachment": {
+          "main": [
+            [
+              {
+                "node": "Move Binary Data",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Notify about missing attachment",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split to matched and unmatched": {
+          "main": [
+            [
+              {
+                "node": "Format the message",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Move Binary Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analyze email with Sublime Security": {
+          "main": [
+            [
+              {
+                "node": "Split to matched and unmatched",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 13,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.slack": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.emailReadImap": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.moveBinaryData": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 10,
+        "icon": "fa:inbox",
+        "name": "n8n-nodes-base.emailReadImap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailimap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/imap/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Email Trigger (IMAP)",
+          "color": "#44AA22"
+        },
+        "iconData": {
+          "icon": "inbox",
+          "type": "icon"
+        },
+        "displayName": "Email Trigger (IMAP)",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 40,
+        "icon": "file:slack.svg",
+        "name": "n8n-nodes-base.slack",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.slack/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/slack/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Slack"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgMTUwLjg1MiAxNTAuODUyIj48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIuOTI2IiB5PSIuOTI2Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZS13aWR0aD0iMS44NTIiPjxwYXRoIGZpbGw9IiNlMDFlNWEiIHN0cm9rZT0iI2UwMWU1YSIgZD0iTTQwLjc0MSA5My41NWMwLTguNzM1IDYuNjA3LTE1Ljc3MiAxNC44MTUtMTUuNzcyczE0LjgxNSA3LjAzNyAxNC44MTUgMTUuNzcydjM4LjgyNGMwIDguNzM3LTYuNjA3IDE1Ljc3NC0xNC44MTUgMTUuNzc0cy0xNC44MTUtNy4wMzctMTQuODE1LTE1Ljc3MnoiLz48cGF0aCBmaWxsPSIjZWNiMjJkIiBzdHJva2U9IiNlY2IyMmQiIGQ9Ik05My41NSAxMDcuNDA4Yy04LjczNSAwLTE1Ljc3Mi02LjYwNy0xNS43NzItMTQuODE1czcuMDM3LTE0LjgxNSAxNS43NzItMTQuODE1aDM4LjgyNmM4LjczNSAwIDE1Ljc3MiA2LjYwNyAxNS43NzIgMTQuODE1cy03LjAzNyAxNC44MTUtMTUuNzcyIDE0LjgxNXoiLz48cGF0aCBmaWxsPSIjMmZiNjdjIiBzdHJva2U9IiMyZmI2N2MiIGQ9Ik03Ny43NzggMTUuNzcyQzc3Ljc3OCA3LjAzNyA4NC4zODUgMCA5Mi41OTMgMHMxNC44MTUgNy4wMzcgMTQuODE1IDE1Ljc3MnYzOC44MjZjMCA4LjczNS02LjYwNyAxNS43NzItMTQuODE1IDE1Ljc3MnMtMTQuODE1LTcuMDM3LTE0LjgxNS0xNS43NzJ6Ii8+PHBhdGggZmlsbD0iIzM2YzVmMSIgc3Ryb2tlPSIjMzZjNWYxIiBkPSJNMTUuNzcyIDcwLjM3MUM3LjAzNyA3MC4zNzEgMCA2My43NjMgMCA1NS41NTZzNy4wMzctMTQuODE1IDE1Ljc3Mi0xNC44MTVoMzguODI2YzguNzM1IDAgMTUuNzcyIDYuNjA3IDE1Ljc3MiAxNC44MTVzLTcuMDM3IDE0LjgxNS0xNS43NzIgMTQuODE1eiIvPjxnIHN0cm9rZS1saW5lam9pbj0ibWl0ZXIiPjxwYXRoIGZpbGw9IiNlY2IyMmQiIHN0cm9rZT0iI2VjYjIyZCIgZD0iTTc3Ljc3OCAxMzMuMzMzYzAgOC4yMDggNi42MDcgMTQuODE1IDE0LjgxNSAxNC44MTVzMTQuODE1LTYuNjA3IDE0LjgxNS0xNC44MTUtNi42MDctMTQuODE1LTE0LjgxNS0xNC44MTVINzcuNzc4eiIvPjxwYXRoIGZpbGw9IiMyZmI2N2MiIHN0cm9rZT0iIzJmYjY3YyIgZD0iTTEzMy4zMzQgNzAuMzcxaC0xNC44MTVWNTUuNTU2YzAtOC4yMDcgNi42MDctMTQuODE1IDE0LjgxNS0xNC44MTVzMTQuODE1IDYuNjA3IDE0LjgxNSAxNC44MTUtNi42MDcgMTQuODE1LTE0LjgxNSAxNC44MTV6Ii8+PHBhdGggZmlsbD0iI2UwMWU1YSIgc3Ryb2tlPSIjZTAxZTVhIiBkPSJNMTQuODE1IDc3Ljc3OEgyOS42M3YxNC44MTVjMCA4LjIwNy02LjYwNyAxNC44MTUtMTQuODE1IDE0LjgxNVMwIDEwMC44IDAgOTIuNTkzczYuNjA3LTE0LjgxNSAxNC44MTUtMTQuODE1eiIvPjxwYXRoIGZpbGw9IiMzNmM1ZjEiIHN0cm9rZT0iIzM2YzVmMSIgZD0iTTcwLjM3MSAxNC44MTVWMjkuNjNINTUuNTU2Yy04LjIwNyAwLTE0LjgxNS02LjYwNy0xNC44MTUtMTQuODE1UzQ3LjM0OCAwIDU1LjU1NiAwczE0LjgxNSA2LjYwNyAxNC44MTUgMTQuODE1eiIvPjwvZz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Slack",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 62,
+        "icon": "fa:exchange-alt",
+        "name": "n8n-nodes-base.moveBinaryData",
+        "codex": {
+          "data": {
+            "alias": [
+              "Move Binary Data"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Convert to/from binary data",
+          "color": "#7722CC"
+        },
+        "iconData": {
+          "icon": "exchange-alt",
+          "type": "icon"
+        },
+        "displayName": "Convert to/from binary data",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": []
+  }
+}

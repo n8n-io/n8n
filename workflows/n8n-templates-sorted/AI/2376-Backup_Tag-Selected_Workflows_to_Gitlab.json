@@ -1,0 +1,1206 @@
+{
+  "workflow": {
+    "id": 2376,
+    "name": "Backup Tag-Selected Workflows to Gitlab",
+    "views": 1437,
+    "recentViews": 0,
+    "totalViews": 1437,
+    "createdAt": "2024-08-11T02:28:38.951Z",
+    "description": "Fetches workflow definitions from within n8n, selecting only the ones that have one or more (configurable) assigned tags and then:\n1. Derives a suitable backup filename by reducing the workflow name to a string with alphanumeric characters and no-spaces\n    * *Note: This isn't bulletproof, but works as long as workflow names aren't too crazy.*\n2. Determines which workflows need to be backed up based on whether each one:\n    * has been modified. (*Note: Even repositioning a node counts.*)\n   ...or...\n    * is new. (*Note: Renaming counts as this.*)\n3. Commits JSON copies of each workflow, as necessary, to a Gitlab repository with a generated, date-stamped commit message.\n\n## Setup\n### Credentials\n  * Create a Gitlab Credentials item and assign it to all Gitlab nodes.\n  * Create an n8n Credentials item and assign it to the n8n node\n    * Note: This was tested with **http://localhost:5678/api/v1** but should work with any reachable n8n instance and API key.\n\n### Modify these values in the \"Globals\" Node\n  * **gitlab_owner** - {{your gitlab account}}\n  * **gitlab_project** - {{ your gitlab project name }}\n  * **gitlab_workflow_path** - {{ subdirectory in the project where backup files should be saved/committed }}\n  * **tags_to_match_for_backup** - {{tag(s) to match for backup selection}}\n    * ***ALERT:** According to the **n8n** node's **Filters -&gt; tags** field annotations, and API documentation, this supports a CSV list of multiple tags (e.g. tag1,tag2), **but** the API behavior requires workflows to have **all-of** the listed tags, not **any-of** them.*\n      * **See:** https://github.com/n8n-io/n8n/issues/10348\n      * **TL/DR** - Don't expect a multiple tag list to be **more** inclusive.\n      * **Possible workaround:** To match more than one tag value, duplicate the n8n node into multiple single-tag matches, or split and iterate multiple values, and merge the results.\n\n## Possible Enhancements\n* Make the branch (\"Reference\") for all the gitlab nodes configurable.  Fixed on all as \"main\" in the template.\n* Add an n8n node to generate an audit and store the output in gitlab along with the backups.\n* Extend the workflow at the end to create a Gitlab release/tag whenever any backup files are actually updated or created.\n\n\n",
+    "workflow": {
+      "nodes": [
+        {
+          "id": "3e2820cb-24a4-491b-8f8b-60f97b0748dc",
+          "name": "Backup Now - Manual Trigger",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            520,
+            320
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "bc5588e5-b67a-4713-b8e7-c21227048a2d",
+          "name": "n8n",
+          "type": "n8n-nodes-base.n8n",
+          "position": [
+            980,
+            520
+          ],
+          "parameters": {
+            "filters": {
+              "tags": "={{ $('Globals').first().json.tags_to_match_for_backup }}"
+            },
+            "requestOptions": {}
+          },
+          "credentials": {
+            "n8nApi": {
+              "id": "L3X3qWRmwZRYCpV8",
+              "name": "Source n8n Account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2a5af64d-b5c3-4180-bae5-9efeeaeba99d",
+          "name": "Globals",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            740,
+            400
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "150135fb-c0fb-444b-aeed-eac851af255d",
+                  "name": "gitlab_owner",
+                  "type": "string",
+                  "value": "mygitlabownername"
+                },
+                {
+                  "id": "8a9359c0-5a16-482b-8f3a-c8b20fbc13c0",
+                  "name": "gitlab_project",
+                  "type": "string",
+                  "value": "n8n_workflow_backups"
+                },
+                {
+                  "id": "00843c18-7d09-4d60-ab70-534ca0791504",
+                  "name": "gitlab_workflow_path",
+                  "type": "string",
+                  "value": "workflow_definitions"
+                },
+                {
+                  "id": "8fbcc201-dbff-440b-b440-42e8f1735548",
+                  "name": "tags_to_match_for_backup",
+                  "type": "string",
+                  "value": "gitlab_backup_enabled"
+                },
+                {
+                  "id": "e17051bc-d8b3-4cef-bad0-efe38a7be464",
+                  "name": "execution_type",
+                  "type": "string",
+                  "value": "={{ ( $('Schedule Trigger').isExecuted) ? 'Scheduled' : 'Manual' }}"
+                },
+                {
+                  "id": "8b90fba9-df11-4e07-a7ae-31405143e831",
+                  "name": "execution_time",
+                  "type": "string",
+                  "value": "={{ $now }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b6b44b4b-e5a7-4ce6-9cff-e7a21679ad32",
+          "name": "Create New File(s)",
+          "type": "n8n-nodes-base.gitlab",
+          "position": [
+            2060,
+            540
+          ],
+          "parameters": {
+            "owner": "={{ $('Globals').first().json.gitlab_owner }}",
+            "branch": "main",
+            "filePath": "={{ $('Globals').first().json.gitlab_workflow_path }}/{{ $('Derive Filename From Workflow Name').item.json.normalized_filename }}",
+            "resource": "file",
+            "repository": "={{ $('Globals').first().json.gitlab_project }}",
+            "fileContent": "={{ JSON.stringify($('n8n').item.json, null, 4) }}",
+            "commitMessage": "=(Initial) {{ $('Globals').first().json.execution_type }} Backup - {{ $('Globals').first().json.execution_time }}."
+          },
+          "credentials": {
+            "gitlabApi": {
+              "id": "Nv1DoplS64rrPZVm",
+              "name": "Target GitLab Account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "167ae6cd-b8dd-4e01-aca4-4888fcaf9958",
+          "name": "Edit Existing File(s)",
+          "type": "n8n-nodes-base.gitlab",
+          "position": [
+            2060,
+            340
+          ],
+          "parameters": {
+            "owner": "={{ $('Globals').first().json.gitlab_owner }}",
+            "branch": "main",
+            "filePath": "={{ $('Globals').first().json.gitlab_workflow_path }}/{{ $('Derive Filename From Workflow Name').item.json.normalized_filename }}",
+            "resource": "file",
+            "operation": "edit",
+            "repository": "={{ $('Globals').first().json.gitlab_project }}",
+            "fileContent": "={{ JSON.stringify($('n8n').item.json, null, 4) }}",
+            "commitMessage": "={{ $('Globals').first().json.execution_type }} Backup - {{ $('Globals').first().json.execution_time }}."
+          },
+          "credentials": {
+            "gitlabApi": {
+              "id": "Nv1DoplS64rrPZVm",
+              "name": "Target GitLab Account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a4437388-9143-4c91-841e-c062ab9af3c0",
+          "name": "Derive Filename From Workflow Name",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1160,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d2110dc6-1f31-46b3-991e-556b2255d76e",
+                  "name": "normalized_filename",
+                  "type": "string",
+                  "value": "={{ $json.name.replace(/[^a-zA-Z0-9]/g, '') }}.json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "cb0fca8f-dc43-4903-a8e1-5b7acf9157b1",
+          "name": "Fetch Existing File Content",
+          "type": "n8n-nodes-base.gitlab",
+          "position": [
+            1640,
+            340
+          ],
+          "parameters": {
+            "owner": "={{ $('Globals').first().json.gitlab_owner }}",
+            "filePath": "={{ $('Globals').first().json.gitlab_workflow_path }}/{{ $('Derive Filename From Workflow Name').item.json.normalized_filename }}",
+            "resource": "file",
+            "operation": "get",
+            "repository": "={{ $('Globals').first().json.gitlab_project }}",
+            "asBinaryProperty": false,
+            "additionalParameters": {
+              "reference": "main"
+            }
+          },
+          "credentials": {
+            "gitlabApi": {
+              "id": "Nv1DoplS64rrPZVm",
+              "name": "Target GitLab Account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "816843c4-769c-4033-a38e-1c6ef5325e15",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            120
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 401,
+            "height": 246,
+            "content": "## Gather Gitlab Info"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "19f3fe4d-acba-4e7b-b92c-ce9024a8f37d",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            460
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 398,
+            "height": 240,
+            "content": "## Gather n8n Info"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "418bef31-adf6-419b-87f1-faa2581e5766",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1380,
+            280
+          ],
+          "parameters": {
+            "width": 598,
+            "height": 384.41789416257484,
+            "content": "## Decide Whether to Create or Edit or Skip"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f3b98ded-c767-4822-bcf4-25931be03f48",
+          "name": "Skip Unchanged Files",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1820,
+            340
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "3298ab8b-9934-4ed7-9c38-03f325dc71e2",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEquals"
+                  },
+                  "leftValue": "={{ JSON.stringify($('n8n').item.json, null, 4) }}",
+                  "rightValue": "={{ $json.content.base64Decode() }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6bbf5146-7129-4ca8-8576-39d5cbe8e0b9",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            480,
+            220
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 402,
+            "height": 452,
+            "content": "## Start / Trigger & Configure"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0e5d9c9f-40b4-494d-8233-a2b4fea67d76",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            520,
+            520
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "expression": "30 21 * * 6"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "be08176e-3961-43d7-b182-89a4f45805f6",
+          "name": "Fetch List of Existing Files",
+          "type": "n8n-nodes-base.gitlab",
+          "position": [
+            980,
+            180
+          ],
+          "parameters": {
+            "owner": "={{ $('Globals').first().json.gitlab_owner }}",
+            "filePath": "={{ $('Globals').first().json.gitlab_workflow_path }}",
+            "resource": "file",
+            "operation": "list",
+            "returnAll": true,
+            "repository": "={{ $('Globals').item.json.gitlab_project }}",
+            "additionalParameters": {
+              "ref": "main"
+            }
+          },
+          "credentials": {
+            "gitlabApi": {
+              "id": "Nv1DoplS64rrPZVm",
+              "name": "Target GitLab Account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "674cdaa8-f8fe-4f6d-8743-062d3fd1ff95",
+          "name": "Combine Gitlab Existing Files as Single List Item",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            1180,
+            180
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToAggregate": {
+              "fieldToAggregate": [
+                {
+                  "renameField": true,
+                  "outputFieldName": "gitlab_existing_filenames",
+                  "fieldToAggregate": "name"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "463ae3fb-4d66-497d-81eb-7e55b5945d84",
+          "name": "File Exists in Gitlab?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1440,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "0740c2be-ab9d-4249-af46-0d94f58c318f",
+                  "operator": {
+                    "type": "array",
+                    "operation": "contains",
+                    "rightType": "any"
+                  },
+                  "leftValue": "={{ $('Combine Gitlab Existing Files as Single List Item').first().json.gitlab_existing_filenames }}",
+                  "rightValue": "={{ $('Derive Filename From Workflow Name').item.json.normalized_filename }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        }
+      ],
+      "connections": {
+        "n8n": {
+          "main": [
+            [
+              {
+                "node": "Derive Filename From Workflow Name",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Globals": {
+          "main": [
+            [
+              {
+                "node": "Fetch List of Existing Files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Globals",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Skip Unchanged Files": {
+          "main": [
+            [
+              {
+                "node": "Edit Existing File(s)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "File Exists in Gitlab?": {
+          "main": [
+            [
+              {
+                "node": "Fetch Existing File Content",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Create New File(s)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Backup Now - Manual Trigger": {
+          "main": [
+            [
+              {
+                "node": "Globals",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fetch Existing File Content": {
+          "main": [
+            [
+              {
+                "node": "Skip Unchanged Files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fetch List of Existing Files": {
+          "main": [
+            [
+              {
+                "node": "Combine Gitlab Existing Files as Single List Item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Derive Filename From Workflow Name": {
+          "main": [
+            [
+              {
+                "node": "File Exists in Gitlab?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine Gitlab Existing Files as Single List Item": {
+          "main": [
+            [
+              {
+                "node": "n8n",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.n8n": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.gitlab": {
+          "count": 4
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Hubschrauber",
+      "username": "hubschrauber",
+      "bio": "Software developer specializing in \"back-end plumbing\" to connect and sync data between large corporate systems, enabling application distribution/migration, scaling, and containerization.  Using n8n for various orchestration tasks both at home and \"on the job.\"",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/937647d994a5af6961d76103821d84448e970d74e6d0d303e8a76b56fd1da695?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 56,
+        "icon": "file:gitlab.svg",
+        "name": "n8n-nodes-base.gitlab",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gitlab/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/gitlab/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "GitLab"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNFMjQzMjkiIGQ9Im0zMC41IDU2Ljk2NyAxMC44NjMtMzMuMjAzSDE5LjYzN3oiLz48cGF0aCBmaWxsPSIjRkM2RDI2IiBkPSJNMzAuNSA1Ni45NjcgMTkuNjM3IDIzLjc2NEg0LjQxeiIvPjxwYXRoIGZpbGw9IiNGQ0EzMjYiIGQ9Ik00LjQxIDIzLjc2NCAxLjExIDMzLjg2Yy0uMy45Mi4wMyAxLjkyOC44MTcgMi40OTZMMzAuNSA1Ni45Njd6Ii8+PHBhdGggZmlsbD0iI0UyNDMyOSIgZD0iTTQuNDEgMjMuNzY0aDE1LjIyNkwxMy4wOTMgMy43ODFjLS4zMzYtMS4wMjktMS44MDItMS4wMjktMi4xMzkgMHoiLz48cGF0aCBmaWxsPSIjRkM2RDI2IiBkPSJtMzAuNSA1Ni45NjcgMTAuODYzLTMzLjIwM0g1Ni41OXoiLz48cGF0aCBmaWxsPSIjRkNBMzI2IiBkPSJtNTYuNTkgMjMuNzY0IDMuMyAxMC4wODZhMi4yMiAyLjIyIDAgMCAxLS44MTcgMi40OTdMMzAuNSA1Ni45Njd6Ii8+PHBhdGggZmlsbD0iI0UyNDMyOSIgZD0iTTU2LjU5IDIzLjc2NEg0MS4zNjJsNi41NDQtMTkuOTkyYy4zMzYtMS4wMyAxLjgwMi0xLjAzIDIuMTM5IDBsNi41NDMgMTkuOTkyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "GitLab",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 826,
+        "icon": "file:n8n.svg",
+        "name": "n8n-nodes-base.n8n",
+        "codex": {
+          "data": {
+            "alias": [
+              "Workflow",
+              "Execution"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.n8n/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/api/authentication/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "n8n"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCAyMzAgMTIwIj48cGF0aCBmaWxsPSIjRUE0QjcxIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yMDQgNDhjLTExLjE4MyAwLTIwLjU4LTcuNjQ5LTIzLjI0NC0xOGgtMjcuNTA4YTEyIDEyIDAgMCAwLTExLjgzNiAxMC4wMjdsLS45ODcgNS45MTlBMjMuOTQgMjMuOTQgMCAwIDEgMTMyLjYyNiA2MGEyMy45NCAyMy45NCAwIDAgMSA3Ljc5OSAxNC4wNTRsLjk4NyA1LjkxOUExMiAxMiAwIDAgMCAxNTMuMjQ4IDkwaDMuNTA4QzE1OS40MiA3OS42NDkgMTY4LjgxNyA3MiAxODAgNzJjMTMuMjU1IDAgMjQgMTAuNzQ1IDI0IDI0cy0xMC43NDUgMjQtMjQgMjRjLTExLjE4MyAwLTIwLjU4LTcuNjQ5LTIzLjI0NC0xOGgtMy41MDhjLTExLjczMiAwLTIxLjc0NC04LjQ4Mi0yMy42NzMtMjAuMDU0bC0uOTg3LTUuOTE5QTEyIDEyIDAgMCAwIDExNi43NTIgNjZoLTkuNTA4QzEwNC41OCA3Ni4zNTEgOTUuMTgzIDg0IDg0IDg0cy0yMC41OC03LjY0OS0yMy4yNDQtMThINDcuMjQ0QzQ0LjU4IDc2LjM1MSAzNS4xODMgODQgMjQgODQgMTAuNzQ1IDg0IDAgNzMuMjU1IDAgNjBzMTAuNzQ1LTI0IDI0LTI0YzExLjE4MyAwIDIwLjU4IDcuNjQ5IDIzLjI0NCAxOGgxMy41MTJDNjMuNDIgNDMuNjQ5IDcyLjgxNyAzNiA4NCAzNnMyMC41OCA3LjY0OSAyMy4yNDQgMThoOS41MDhhMTIgMTIgMCAwIDAgMTEuODM2LTEwLjAyN2wuOTg3LTUuOTE5QzEzMS41MDQgMjYuNDgyIDE0MS41MTYgMTggMTUzLjI0OCAxOGgyNy41MDhDMTgzLjQyIDcuNjQ5IDE5Mi44MTcgMCAyMDQgMGMxMy4yNTUgMCAyNCAxMC43NDUgMjQgMjRzLTEwLjc0NSAyNC0yNCAyNG0wLTEyYzYuNjI3IDAgMTItNS4zNzMgMTItMTJzLTUuMzczLTEyLTEyLTEyLTEyIDUuMzczLTEyIDEyIDUuMzczIDEyIDEyIDEyTTI0IDcyYzYuNjI3IDAgMTItNS4zNzMgMTItMTJzLTUuMzczLTEyLTEyLTEyLTEyIDUuMzczLTEyIDEyIDUuMzczIDEyIDEyIDEybTcyLTEyYzAgNi42MjctNS4zNzMgMTItMTIgMTJzLTEyLTUuMzczLTEyLTEyIDUuMzczLTEyIDEyLTEyIDEyIDUuMzczIDEyIDEybTk2IDM2YzAgNi42MjctNS4zNzMgMTItMTIgMTJzLTEyLTUuMzczLTEyLTEyIDUuMzczLTEyIDEyLTEyIDEyIDUuMzczIDEyIDEyIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "n8n",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 16,
+        "name": "DevOps"
+      }
+    ],
+    "image": []
+  }
+}

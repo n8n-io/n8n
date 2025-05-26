@@ -1,0 +1,35 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.notiontrigger/
+Scraped_At: 2025-05-20T19:07:21.879578
+
+Notion Trigger node
+#
+Notion
+is an all-in-one workspace for your notes, tasks, wikis, and databases.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Notion Trigger integrations
+page.
+Events
+#
+Page added to database
+Page updated in database
+Related resources
+#
+n8n provides an app node for Notion. You can find the node docs
+here
+.
+View
+example workflows and related content
+on n8n's website.
+Refer to
+Notion's documentation
+for details about their API.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

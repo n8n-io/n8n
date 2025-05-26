@@ -1,0 +1,1799 @@
+{
+  "workflow": {
+    "id": 3363,
+    "name": "Automated Interview Scheduling with GPT-4o and Google Calendar Chat Bot",
+    "views": 4145,
+    "recentViews": 53,
+    "totalViews": 4145,
+    "createdAt": "2025-03-30T03:22:28.201Z",
+    "description": "✨ Overview\n\nThis workflow allows candidates to schedule interviews through a conversational AI assistant. It integrates with your Google Calendar to check for existing events and generates a list of available 30-minute weekday slots between 9 AM and 5 PM Eastern Time. Once the candidate selects a suitable time and provides their contact information, the AI bot automatically books the meeting on your calendar and confirms the appointment.\n\n⚡ Prerequisites\n\nTo use this workflow, you need an OpenAI account with access to the GPT-4o model, a Google account with a calendar that can be accessed through the Google Calendar API, and an active instance of n8n—either self-hosted or via n8n cloud. Within n8n, you must have two credential configurations ready: one for Google Calendar using OAuth2 authentication, and another for your OpenAI API key.\n\n🔐 API Credentials Setup\n\nFor Google Calendar, go to the Google Cloud Console and create a new project. Enable the Google Calendar API, then create OAuth2 credentials by selecting “Web Application” as the application type. Add http://localhost:5678/rest/oauth2-credential/callback as the redirect URI if using local n8n. After that, go to n8n, navigate to the Credentials section, and create a new Google Calendar OAuth2 credential using your account. For OpenAI, visit platform.openai.com to retrieve your API key. Then go to the n8n Credentials page, create a new credential for OpenAI, paste your key, and name it for reference.\n\n🔧 How to Make This Workflow Yours\n\nTo customize the workflow for your use, start by replacing all instances of the calendar email rbreen.ynteractive@gmail.com with your own Google Calendar email. This email is referenced in multiple places, including Google Calendar nodes and the ToolWorkflow JSON for the node named \"Run Get Availability.\" Also update any instances where the Google Calendar credential is labeled as Google Calendar account to match your own credential name within n8n. Do the same for the OpenAI credential label, replacing OpenAi account with the name of your own credential.\n\nNext, go to the node labeled Candidate Chat and copy the webhook URL. This is the public chat interface where candidates will engage with the bot—share this URL with them through email, your website, or anywhere you want to allow access. Optionally, you can also tweak the system message in the Interview Scheduler node to modify the tone, language, or logic used during conversations. If you want to add branding, update the title, subtitle, and inputPlaceholder in the Candidate Chat node, and consider modifying the final confirmation message in Final Response to User to reflect your brand voice. You can also update the business rules such as time zone, working hours, or default duration by editing the logic in the Generate 30 Minute Timeslots code node.\n\n🧩 Workflow Explanation\n\nThis workflow begins with the Candidate Chat node, which triggers when a user visits the public chat URL. The Interview Scheduler node acts as an AI agent, guiding the user through providing their email, phone number, and preferred interview time. It checks availability using the Run Get Availability tool, which in turn reads your calendar and compares it with generated free time slots from the Generate 30 Minute Timeslots node. The check day names tool helps the AI interpret natural language date expressions like “next Tuesday.”\n\nThe schedule is only populated with 30-minute weekday slots from 9 AM to 5 PM Eastern Time, and no events are scheduled if they overlap with existing ones. When a suitable time is confirmed, the AI formats the result into structured JSON, creates an event on your Google Calendar, and sends a confirmation back to the user with all relevant meeting details.\n\n🚀 Deployment Steps\n\nTo deploy the interview scheduler, import the provided workflow JSON into your n8n instance. Update the Google Calendar email, OpenAI and Google credential labels, system prompts, and branding as needed. Test the connections to ensure the API credentials are working correctly. Once everything is configured, copy and share the public chat URL from the Candidate Chat node. When candidates engage with the chat, the workflow will walk them through the interview booking process, check your availability, and finalize the booking automatically.\n\n💡 Additional Tips\n\nBy default, the workflow avoids scheduling interviews on weekends and outside of 9–5 EST. Each interview lasts exactly 30 minutes, and overlapping with existing events is prevented. The assistant does not reveal details about other meetings. You can customize every part of this workflow to fit your use case, including subworkflows like Get Availability and check day names, or even white-label it for client use. This workflow is ready to become your AI-powered interview scheduling assistant.\n\n",
+    "workflow": {
+      "id": "bh3H2b654RSYgIm9",
+      "meta": {
+        "instanceId": "efb474b59b0341d7791932605bd9ff04a6c7ed9941fdd53dc4a2e4b99a6f9439",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Inverview Scheduler",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "cd5664f9-0b6b-491a-a0a0-1d8b3b2f2461",
+          "name": "OpenAI Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            320,
+            1480
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "ghJTvay8CvwXDsXz",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e8ca4a14-ee58-4be0-838b-5cbf8a802b6e",
+          "name": "Window Buffer Memory2",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            520,
+            1480
+          ],
+          "parameters": {
+            "sessionKey": "={{ $json.sessionId }}",
+            "sessionIdType": "customKey",
+            "contextWindowLength": 10
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "d2957530-acd1-4875-a75b-69b890f08065",
+          "name": "OpenAI Chat Model4",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            1220,
+            1440
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "ghJTvay8CvwXDsXz",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "897c8189-aaa9-45c7-99c6-95378a7a13f2",
+          "name": "Run Get Availability",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            720,
+            1520
+          ],
+          "parameters": {
+            "name": "get_availability",
+            "source": "parameter",
+            "description": "Call this tool to get my availability",
+            "workflowJson": "{\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"operation\": \"getAll\",\n        \"calendar\": {\n          \"__rl\": true,\n          \"value\": \"rbreen.ynteractive@gmail.com\",\n          \"mode\": \"list\",\n          \"cachedResultName\": \"rbreen.ynteractive@gmail.com\"\n        },\n        \"returnAll\": true,\n        \"options\": {\n          \"fields\": \"\"\n        }\n      },\n      \"type\": \"n8n-nodes-base.googleCalendar\",\n      \"typeVersion\": 1.3,\n      \"position\": [\n        -500,\n        220\n      ],\n      \"id\": \"a1017705-8866-469f-83e0-9f5d5f37af53\",\n      \"name\": \"Check My Calendar\",\n      \"credentials\": {\n        \"googleCalendarOAuth2Api\": {\n          \"id\": \"nc5M45R7LyFadByw\",\n          \"name\": \"Google Calendar account\"\n        }\n      }\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"const events = items.map(item => item.json);\\nconst intervalMinutes = 30;\\nconst timeZone = 'America/New_York';\\n\\nfunction formatToEastern(date) {\\n  const tzDate = new Intl.DateTimeFormat('en-US', {\\n    timeZone,\\n    year: 'numeric',\\n    month: '2-digit',\\n    day: '2-digit',\\n    hour: '2-digit',\\n    minute: '2-digit',\\n    second: '2-digit',\\n    hour12: false\\n  }).formatToParts(date).reduce((acc, part) => {\\n    if (part.type !== 'literal') acc[part.type] = part.value;\\n    return acc;\\n  }, {});\\n\\n  const offset = getEasternOffset(date);\\n  return `${tzDate.year}-${tzDate.month}-${tzDate.day}T${tzDate.hour}:${tzDate.minute}:${tzDate.second}${offset}`;\\n}\\n\\nfunction getEasternOffset(date) {\\n  const options = { timeZone, timeZoneName: 'short' };\\n  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);\\n  const tzName = parts.find(p => p.type === 'timeZoneName').value;\\n  return tzName.includes('EDT') ? '-04:00' : '-05:00';\\n}\\n\\nfunction alignToPreviousSlot(date) {\\n  const aligned = new Date(date);\\n  const minutes = aligned.getMinutes();\\n  aligned.setMinutes(minutes < 30 ? 0 : 30, 0, 0);\\n  return aligned;\\n}\\n\\nfunction alignToNextSlot(date) {\\n  const aligned = new Date(date);\\n  const minutes = aligned.getMinutes();\\n  if (minutes > 0 && minutes <= 30) {\\n    aligned.setMinutes(30, 0, 0);\\n  } else if (minutes > 30) {\\n    aligned.setHours(aligned.getHours() + 1);\\n    aligned.setMinutes(0, 0, 0);\\n  } else {\\n    aligned.setMinutes(0, 0, 0);\\n  }\\n  return aligned;\\n}\\n\\nconst splitEventIntoETBlocks = (event) => {\\n  const blocks = [];\\n\\n  let current = alignToPreviousSlot(new Date(event.start.dateTime));\\n  const eventEnd = alignToNextSlot(new Date(event.end.dateTime));\\n\\n  while (current < eventEnd) {\\n    const blockEnd = new Date(current);\\n    blockEnd.setMinutes(current.getMinutes() + intervalMinutes);\\n\\n    blocks.push({\\n      start: formatToEastern(current),\\n      end: formatToEastern(blockEnd)\\n    });\\n\\n    current = blockEnd;\\n  }\\n\\n  return blocks;\\n};\\n\\nlet allBlocks = [];\\nfor (const event of events) {\\n  if (event.start?.dateTime && event.end?.dateTime) {\\n    const blocks = splitEventIntoETBlocks(event);\\n    allBlocks = allBlocks.concat(blocks);\\n  }\\n}\\n\\nreturn allBlocks.map(block => ({ json: block }));\\n\"\n      },\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        -280,\n        240\n      ],\n      \"id\": \"fb9063c2-de6b-4513-8901-d12625f5d772\",\n      \"name\": \"Split Events into 30 min blocks\"\n    },\n    {\n      \"parameters\": {\n        \"assignments\": {\n          \"assignments\": [\n            {\n              \"id\": \"f1270be8-1d11-4086-8bc0-ae53c99507c1\",\n              \"name\": \"start\",\n              \"value\": \"={{ $json.start }}\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"1a5f24ff-7d0c-436d-bb0b-015fc0c85cb7\",\n              \"name\": \"end\",\n              \"value\": \"={{ $json.end }}\",\n              \"type\": \"string\"\n            },\n            {\n              \"id\": \"befe6645-c0c1-40eb-9ba6-eccf2a762247\",\n              \"name\": \"Blocked\",\n              \"value\": \"Blocked\",\n              \"type\": \"string\"\n            }\n          ]\n        },\n        \"options\": {}\n      },\n      \"type\": \"n8n-nodes-base.set\",\n      \"typeVersion\": 3.4,\n      \"position\": [\n        -80,\n        240\n      ],\n      \"id\": \"23d8ed50-131f-49ea-9ce8-72a0067fe828\",\n      \"name\": \"Add Blocked Field\"\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"const slots = [];\\nconst slotMinutes = 30;\\nconst timeZone = 'America/New_York';\\nconst businessStartHour = 9;\\nconst businessEndHour = 17;\\n\\n// Get offset like -04:00 or -05:00\\nfunction getEasternOffset(date) {\\n  const options = { timeZone, timeZoneName: 'short' };\\n  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);\\n  const tz = parts.find(p => p.type === 'timeZoneName')?.value || 'EST';\\n  return tz.includes('EDT') ? '-04:00' : '-05:00';\\n}\\n\\n// Format Date as ISO with Eastern offset\\nfunction formatToEasternISO(date) {\\n  const formatter = new Intl.DateTimeFormat('en-CA', {\\n    timeZone,\\n    year: 'numeric',\\n    month: '2-digit',\\n    day: '2-digit',\\n    hour: '2-digit',\\n    minute: '2-digit',\\n    second: '2-digit',\\n    hour12: false,\\n  });\\n\\n  const parts = formatter.formatToParts(date).reduce((acc, part) => {\\n    if (part.type !== 'literal') acc[part.type] = part.value;\\n    return acc;\\n  }, {});\\n\\n  const offset = getEasternOffset(date);\\n  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`;\\n}\\n\\n// Convert a Date to the hour/minute of its Eastern time\\nfunction getEasternTimeParts(date) {\\n  const formatter = new Intl.DateTimeFormat('en-US', {\\n    timeZone,\\n    hour: '2-digit',\\n    minute: '2-digit',\\n    hour12: false,\\n  });\\n  const [hourStr, minStr] = formatter.format(date).split(':');\\n  return { hour: parseInt(hourStr), minute: parseInt(minStr) };\\n}\\n\\nconst now = new Date();\\nconst endDate = new Date(now);\\nendDate.setDate(now.getDate() + 7);\\n\\n// Set current time to 24 hours in the future\\nconst current = new Date(now);\\ncurrent.setHours(current.getHours() + 24);\\n\\n// Round to the next 30-minute block in Eastern time\\nconst { minute } = getEasternTimeParts(current);\\nif (minute < 30) {\\n  current.setMinutes(30, 0, 0);\\n} else {\\n  current.setHours(current.getHours() + 1);\\n  current.setMinutes(0, 0, 0);\\n}\\n\\n// Generate 30-minute blocks only during business hours & weekdays\\nwhile (current < endDate) {\\n  const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday\\n\\n  // Skip weekends\\n  if (dayOfWeek !== 0 && dayOfWeek !== 6) {\\n    const { hour } = getEasternTimeParts(current);\\n\\n    if (hour >= businessStartHour && hour < businessEndHour) {\\n      const start = new Date(current);\\n      const end = new Date(start);\\n      end.setMinutes(start.getMinutes() + slotMinutes);\\n\\n      slots.push({\\n        start: formatToEasternISO(start),\\n        end: formatToEasternISO(end),\\n      });\\n    }\\n  }\\n\\n  current.setMinutes(current.getMinutes() + slotMinutes);\\n}\\n\\nreturn slots.map(slot => ({ json: slot }));\\n\"\n      },\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        -400,\n        460\n      ],\n      \"id\": \"01597a94-d94b-47e7-9488-adea3abb741c\",\n      \"name\": \"Generate 30 Minute Timeslots\"\n    },\n    {\n      \"parameters\": {\n        \"mode\": \"combine\",\n        \"fieldsToMatchString\": \"start, end\",\n        \"joinMode\": \"enrichInput2\",\n        \"options\": {}\n      },\n      \"type\": \"n8n-nodes-base.merge\",\n      \"typeVersion\": 3,\n      \"position\": [\n        180,\n        300\n      ],\n      \"id\": \"2d9f98a1-02ac-4332-a288-635a48ea3ee8\",\n      \"name\": \"Combine My Calendar with All Slots\"\n    },\n    {\n      \"parameters\": {\n        \"conditions\": {\n          \"options\": {\n            \"caseSensitive\": true,\n            \"leftValue\": \"\",\n            \"typeValidation\": \"strict\",\n            \"version\": 2\n          },\n          \"conditions\": [\n            {\n              \"id\": \"af65c6c8-31c7-4f27-a073-cf7f72079882\",\n              \"leftValue\": \"={{ $json.Blocked }}\",\n              \"rightValue\": \"Blocked\",\n              \"operator\": {\n                \"type\": \"string\",\n                \"operation\": \"notEquals\"\n              }\n            }\n          ],\n          \"combinator\": \"and\"\n        },\n        \"options\": {}\n      },\n      \"type\": \"n8n-nodes-base.if\",\n      \"typeVersion\": 2.2,\n      \"position\": [\n        420,\n        280\n      ],\n      \"id\": \"0438b5be-b3c4-4645-9604-303ace7bfead\",\n      \"name\": \"Check if Calendar Blocked\"\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"const formatted = items.map(item => {\\n  const start = item.json.start;\\n  const end = item.json.end;\\n  return `${start} - ${end}`;\\n});\\n\\nconst combined = formatted.join(', ');\\n\\nreturn [\\n  {\\n    json: {\\n      availableSlots: combined\\n    }\\n  }\\n];\\n\"\n      },\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        660,\n        300\n      ],\n      \"id\": \"4a6bfde4-7d9f-4837-bc6c-66bf968e782a\",\n      \"name\": \"Return string of all available times\"\n    },\n    {\n      \"parameters\": {\n        \"inputSource\": \"passthrough\"\n      },\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1.1,\n      \"position\": [\n        -760,\n        340\n      ],\n      \"id\": \"8bde95cb-7239-4b7d-aca1-0adacf2ea257\",\n      \"name\": \"Get Availability\"\n    }\n  ],\n  \"connections\": {\n    \"Check My Calendar\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Split Events into 30 min blocks\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Split Events into 30 min blocks\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Add Blocked Field\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Add Blocked Field\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Combine My Calendar with All Slots\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Generate 30 Minute Timeslots\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Combine My Calendar with All Slots\",\n            \"type\": \"main\",\n            \"index\": 1\n          }\n        ]\n      ]\n    },\n    \"Combine My Calendar with All Slots\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Check if Calendar Blocked\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Check if Calendar Blocked\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Return string of all available times\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Get Availability\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Check My Calendar\",\n            \"type\": \"main\",\n            \"index\": 0\n          },\n          {\n            \"node\": \"Generate 30 Minute Timeslots\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {},\n  \"meta\": {\n    \"instanceId\": \"efb474b59b0341d7791932605bd9ff04a6c7ed9941fdd53dc4a2e4b99a6f9439\"\n  }\n}"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "8892f883-aaae-4616-bb50-bbe0f9dacb23",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1440,
+            1660
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 520,
+            "height": 480,
+            "content": "Check Day Names Tool\n\n\n1. This part of the flow is just a copy of what is embedded in the \"Check Day Names Tool\". It does not run. \n\n2. If you update this part of the flow, copy it with ctrl-c and paste it into another workbook. Add a sub-workflow execution. Set the workflow to accept all data. Copy the flow. Paste the Workflow JSON field in the \"Check Day Names Tool\" tool node\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "234b89da-9003-43d5-842a-4ecf92522b51",
+          "name": "check day names",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            880,
+            1480
+          ],
+          "parameters": {
+            "name": "check_days",
+            "source": "parameter",
+            "workflowJson": "{\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"inputSource\": \"passthrough\"\n      },\n      \"type\": \"n8n-nodes-base.executeWorkflowTrigger\",\n      \"typeVersion\": 1.1,\n      \"position\": [\n        -400,\n        -120\n      ],\n      \"id\": \"dec37e15-3695-4911-91a6-1f97018ab982\",\n      \"name\": \"When Executed by Another Workflow\"\n    },\n    {\n      \"parameters\": {\n        \"jsCode\": \"function getWeekdaysNextTwoWeeks() {\\n  const items = [];\\n  const longDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\\n\\n  const today = new Date();\\n  const endDate = new Date();\\n  endDate.setDate(today.getDate() + 14); // 2 weeks ahead\\n\\n  const current = new Date(today);\\n\\n  while (current <= endDate) {\\n    const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday\\n\\n    // Only weekdays (Mon–Fri)\\n    if (dayOfWeek >= 1 && dayOfWeek <= 5) {\\n      const dateStr = current.toISOString().split('T')[0]; // YYYY-MM-DD\\n      const output = `${longDayNames[dayOfWeek]} - ${dateStr}`;\\n\\n      items.push({\\n        json: {\\n          day: output\\n        }\\n      });\\n    }\\n\\n    current.setDate(current.getDate() + 1); // Go to next day\\n  }\\n\\n  return items;\\n}\\n\\n// Example usage:\\nreturn getWeekdaysNextTwoWeeks();\\n\"\n      },\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [\n        -180,\n        -120\n      ],\n      \"id\": \"cbbe4248-d1cc-48e3-9ea8-67a844f3de29\",\n      \"name\": \"Check Day Names\"\n    }\n  ],\n  \"connections\": {\n    \"When Executed by Another Workflow\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Check Day Names\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  },\n  \"pinData\": {},\n  \"meta\": {\n    \"instanceId\": \"efb474b59b0341d7791932605bd9ff04a6c7ed9941fdd53dc4a2e4b99a6f9439\"\n  }\n}"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "c052c7e4-1587-4c7e-9a8e-043c8571338d",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            1660
+          ],
+          "parameters": {
+            "width": 1200,
+            "height": 500,
+            "content": "Get Availability Execution. \n\n1. This part of the flow is just a copy of what is embedded in the \"Run Get Availability Tool\". It does not run. \n\n2. If you update this part of the flow, copy it with ctrl-c and paste it into another workbook. Add a sub-workflow execution. Set the workflow to accept all data. Copy the flow. Paste the Workflow JSON field in the \"Run Get Availability\" tool node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b7c71153-fbd1-45ac-8dbf-d4beb241daaf",
+          "name": "Convert Output to JSON",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1240,
+            1260
+          ],
+          "parameters": {
+            "text": "={{ $json.output }}",
+            "options": {
+              "systemMessage": "=take in this message and output json"
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "1f902158-5885-46d6-8d7e-26ccf116ed0a",
+          "name": "Interview Scheduler",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            520,
+            1220
+          ],
+          "parameters": {
+            "text": "={{ $json.chatInput }}",
+            "options": {
+              "systemMessage": "=You are a friendly AI chatbot helping users schedule meetings. Ask for Phone, email, preferred date, and time. Confirm details before booking. Time zone: Eastern.\n\nToday's date is {{ $now }}\n\n1. Use the get_availability tool to find when I am available. it will return comma separated timeslots the interviewer can meet. check the proposed time against the results. Times are in 24 hour clock times in this format.  2025-03-31T09:00:00-04:00\n3. If I am not available, look at get_availability tool again and propose a similar time where I am available\n2. use the check_days tool if the user mentions something like next tuesday so you know what date they are talking about\n3. Once a time is aggreed upon, output json in this format \n2025-03-28T13:00:00-04:00. \n4. once you have the email, phone start and end time, output only the json and nothing else\n\n{\n  \"interview\": {\n    \"email\": \"applicant@example.com\",\n    \"phone\": \"814-882-1293\",\n    \"start_datetime\": \"2025-03-28T10:00:00\",\n    \"end_datetime\": \"2025-03-28T11:00:00\"\n  }\n}\n\n## Rules\n- If the calendar is not available at the time requested, do not double book. Send a new time.\n- Interviews are all 30 minutes long\n- Do not book over another meeting\n- do not give details about what is on the interviewers calendar\n- do not converse with the user about anything else",
+              "returnIntermediateSteps": true
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "ba0fb82e-a280-4392-833e-04f00a47170c",
+          "name": "If Final Output",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            960,
+            1160
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "e75b6a50-680f-4f5b-8dd3-fc93be1bc7f1",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.output }}",
+                  "rightValue": "start_datetime"
+                },
+                {
+                  "id": "cadd4bff-8d53-446c-8ad0-14b3fb9ab335",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.output }}",
+                  "rightValue": "end_datetime"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "c56bcba9-ac39-474b-a186-ceb67fa4008d",
+          "name": "Respond for More Info",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1040,
+            1400
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "efd03308-0da1-4797-b899-3d4446eba722",
+          "name": "Parse to JSON",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            1400,
+            1500
+          ],
+          "parameters": {
+            "jsonSchemaExample": "{\n  \"interview\": {\n    \"email\": \"applicant@example.com\",\n    \"phone\": \"814-882-1293\",\n    \"start_datetime\": \"2025-03-28T10:00:00\",\n    \"end_datetime\": \"2025-03-28T11:00:00\"\n  }\n}"
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "11abd142-d509-4459-bdf5-861dcf4263bf",
+          "name": "Set Meeting with Google",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            1640,
+            1280
+          ],
+          "parameters": {
+            "end": "={{ $json.output.interview.end_datetime }}",
+            "start": "={{ $json.output.interview.start_datetime }}",
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "rbreen.ynteractive@gmail.com",
+              "cachedResultName": "rbreen.ynteractive@gmail.com"
+            },
+            "additionalFields": {
+              "summary": "Interview",
+              "attendees": [
+                "={{ $json.output.interview.email }}"
+              ],
+              "description": "=I will call you at  {{ $json.output.interview.phone }}"
+            }
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "nc5M45R7LyFadByw",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "fef5ba53-4386-4e88-9f28-8a9b5d9c928f",
+          "name": "Final Response to User",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1640,
+            1500
+          ],
+          "parameters": {
+            "jsCode": "const email = $('Convert Output to JSON').first().json.output.interview.email;\nconst phone = $('Convert Output to JSON').first().json.output.interview.phone;\nconst start_datetime = $('Convert Output to JSON').first().json.output.interview.start_datetime;\nconst end_datetime = $('Convert Output to JSON').first().json.output.interview.end_datetime;\n\nlet text = `✅ Interview Confirmed!\\n\\n📧 Email: ${email}\\n📞 Phone: ${phone}\\n🕒 Start: ${start_datetime}\\n🕕 End: ${end_datetime}`;\n\nreturn { text };\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a06664e2-d5d2-40a7-98a5-a3de2d775b7c",
+          "name": "Generate Interview Times",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1620,
+            1920
+          ],
+          "parameters": {
+            "jsCode": "function getWeekdaysNextTwoWeeks() {\n  const items = [];\n  const longDayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];\n\n  const today = new Date();\n  const endDate = new Date();\n  endDate.setDate(today.getDate() + 14); // 2 weeks ahead\n\n  const current = new Date(today);\n\n  while (current <= endDate) {\n    const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday\n\n    // Only weekdays (Mon–Fri)\n    if (dayOfWeek >= 1 && dayOfWeek <= 5) {\n      const dateStr = current.toISOString().split('T')[0]; // YYYY-MM-DD\n      const output = `${longDayNames[dayOfWeek]} - ${dateStr}`;\n\n      items.push({\n        json: {\n          day: output\n        }\n      });\n    }\n\n    current.setDate(current.getDate() + 1); // Go to next day\n  }\n\n  return items;\n}\n\n// Example usage:\nreturn getWeekdaysNextTwoWeeks();\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f35d595e-6834-4898-bbcb-b17599d769b4",
+          "name": "Check My Calendar",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            420,
+            1820
+          ],
+          "parameters": {
+            "options": {
+              "fields": ""
+            },
+            "calendar": {
+              "__rl": true,
+              "mode": "list",
+              "value": "rbreen.ynteractive@gmail.com",
+              "cachedResultName": "rbreen.ynteractive@gmail.com"
+            },
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "googleCalendarOAuth2Api": {
+              "id": "nc5M45R7LyFadByw",
+              "name": "Google Calendar account"
+            }
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "29e3a097-b6f1-4a54-b943-d9ad9177b03b",
+          "name": "Split Events into 30 min blocks",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            620,
+            1820
+          ],
+          "parameters": {
+            "jsCode": "const events = items.map(item => item.json);\nconst intervalMinutes = 30;\nconst timeZone = 'America/New_York';\n\nfunction formatToEastern(date) {\n  const tzDate = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false\n  }).formatToParts(date).reduce((acc, part) => {\n    if (part.type !== 'literal') acc[part.type] = part.value;\n    return acc;\n  }, {});\n\n  const offset = getEasternOffset(date);\n  return `${tzDate.year}-${tzDate.month}-${tzDate.day}T${tzDate.hour}:${tzDate.minute}:${tzDate.second}${offset}`;\n}\n\nfunction getEasternOffset(date) {\n  const options = { timeZone, timeZoneName: 'short' };\n  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);\n  const tzName = parts.find(p => p.type === 'timeZoneName').value;\n  return tzName.includes('EDT') ? '-04:00' : '-05:00';\n}\n\nfunction alignToPreviousSlot(date) {\n  const aligned = new Date(date);\n  const minutes = aligned.getMinutes();\n  aligned.setMinutes(minutes < 30 ? 0 : 30, 0, 0);\n  return aligned;\n}\n\nfunction alignToNextSlot(date) {\n  const aligned = new Date(date);\n  const minutes = aligned.getMinutes();\n  if (minutes > 0 && minutes <= 30) {\n    aligned.setMinutes(30, 0, 0);\n  } else if (minutes > 30) {\n    aligned.setHours(aligned.getHours() + 1);\n    aligned.setMinutes(0, 0, 0);\n  } else {\n    aligned.setMinutes(0, 0, 0);\n  }\n  return aligned;\n}\n\nconst splitEventIntoETBlocks = (event) => {\n  const blocks = [];\n\n  let current = alignToPreviousSlot(new Date(event.start.dateTime));\n  const eventEnd = alignToNextSlot(new Date(event.end.dateTime));\n\n  while (current < eventEnd) {\n    const blockEnd = new Date(current);\n    blockEnd.setMinutes(current.getMinutes() + intervalMinutes);\n\n    blocks.push({\n      start: formatToEastern(current),\n      end: formatToEastern(blockEnd)\n    });\n\n    current = blockEnd;\n  }\n\n  return blocks;\n};\n\nlet allBlocks = [];\nfor (const event of events) {\n  if (event.start?.dateTime && event.end?.dateTime) {\n    const blocks = splitEventIntoETBlocks(event);\n    allBlocks = allBlocks.concat(blocks);\n  }\n}\n\nreturn allBlocks.map(block => ({ json: block }));\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f9297e8a-75dd-4f12-b0e1-d3fa372a7631",
+          "name": "Add Blocked Field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            800,
+            1840
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "f1270be8-1d11-4086-8bc0-ae53c99507c1",
+                  "name": "start",
+                  "type": "string",
+                  "value": "={{ $json.start }}"
+                },
+                {
+                  "id": "1a5f24ff-7d0c-436d-bb0b-015fc0c85cb7",
+                  "name": "end",
+                  "type": "string",
+                  "value": "={{ $json.end }}"
+                },
+                {
+                  "id": "befe6645-c0c1-40eb-9ba6-eccf2a762247",
+                  "name": "Blocked",
+                  "type": "string",
+                  "value": "Blocked"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "8ba70f94-e9e6-44aa-b0e7-9a5294634e0e",
+          "name": "Generate 30 Minute Timeslots",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            440,
+            2020
+          ],
+          "parameters": {
+            "jsCode": "const slots = [];\nconst slotMinutes = 30;\nconst timeZone = 'America/New_York';\nconst businessStartHour = 9;\nconst businessEndHour = 17;\n\n// Get offset like -04:00 or -05:00\nfunction getEasternOffset(date) {\n  const options = { timeZone, timeZoneName: 'short' };\n  const parts = new Intl.DateTimeFormat('en-US', options).formatToParts(date);\n  const tz = parts.find(p => p.type === 'timeZoneName')?.value || 'EST';\n  return tz.includes('EDT') ? '-04:00' : '-05:00';\n}\n\n// Format Date as ISO with Eastern offset\nfunction formatToEasternISO(date) {\n  const formatter = new Intl.DateTimeFormat('en-CA', {\n    timeZone,\n    year: 'numeric',\n    month: '2-digit',\n    day: '2-digit',\n    hour: '2-digit',\n    minute: '2-digit',\n    second: '2-digit',\n    hour12: false,\n  });\n\n  const parts = formatter.formatToParts(date).reduce((acc, part) => {\n    if (part.type !== 'literal') acc[part.type] = part.value;\n    return acc;\n  }, {});\n\n  const offset = getEasternOffset(date);\n  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}:${parts.second}${offset}`;\n}\n\n// Convert a Date to the hour/minute of its Eastern time\nfunction getEasternTimeParts(date) {\n  const formatter = new Intl.DateTimeFormat('en-US', {\n    timeZone,\n    hour: '2-digit',\n    minute: '2-digit',\n    hour12: false,\n  });\n  const [hourStr, minStr] = formatter.format(date).split(':');\n  return { hour: parseInt(hourStr), minute: parseInt(minStr) };\n}\n\nconst now = new Date();\nconst endDate = new Date(now);\nendDate.setDate(now.getDate() + 7);\n\n// Set current time to 24 hours in the future\nconst current = new Date(now);\ncurrent.setHours(current.getHours() + 24);\n\n// Round to the next 30-minute block in Eastern time\nconst { minute } = getEasternTimeParts(current);\nif (minute < 30) {\n  current.setMinutes(30, 0, 0);\n} else {\n  current.setHours(current.getHours() + 1);\n  current.setMinutes(0, 0, 0);\n}\n\n// Generate 30-minute blocks only during business hours & weekdays\nwhile (current < endDate) {\n  const dayOfWeek = current.getDay(); // 0 = Sunday, 6 = Saturday\n\n  // Skip weekends\n  if (dayOfWeek !== 0 && dayOfWeek !== 6) {\n    const { hour } = getEasternTimeParts(current);\n\n    if (hour >= businessStartHour && hour < businessEndHour) {\n      const start = new Date(current);\n      const end = new Date(start);\n      end.setMinutes(start.getMinutes() + slotMinutes);\n\n      slots.push({\n        start: formatToEasternISO(start),\n        end: formatToEasternISO(end),\n      });\n    }\n  }\n\n  current.setMinutes(current.getMinutes() + slotMinutes);\n}\n\nreturn slots.map(slot => ({ json: slot }));\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "3ea13a0a-d496-40b8-9321-6bc3df415191",
+          "name": "Combine My Calendar with All Slots",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            780,
+            2020
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "joinMode": "enrichInput2",
+            "fieldsToMatchString": "start, end"
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "ad57e0b4-43d0-4991-adc3-e325e2405e93",
+          "name": "Check if Calendar Blocked",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1100,
+            1820
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "af65c6c8-31c7-4f27-a073-cf7f72079882",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEquals"
+                  },
+                  "leftValue": "={{ $json.Blocked }}",
+                  "rightValue": "Blocked"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6e427266-1f64-4492-b4c0-30d03d6a20de",
+          "name": "Return string of all available times",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1160,
+            2000
+          ],
+          "parameters": {
+            "jsCode": "const formatted = items.map(item => {\n  const start = item.json.start;\n  const end = item.json.end;\n  return `${start} - ${end}`;\n});\n\nconst combined = formatted.join(', ');\n\nreturn [\n  {\n    json: {\n      availableSlots: combined\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "3f26c921-2d4c-4e8a-a551-801c2a94086a",
+          "name": "Get Availability",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            220,
+            1920
+          ],
+          "parameters": {
+            "inputSource": "passthrough"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "6d34f9e2-4c43-4e0b-a54d-2c8076ee6fe0",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -420,
+            1160
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 520,
+            "height": 1000,
+            "content": "How to Use the Interview Scheduler Workflow in n8n\n________________________________________\n✨ Overview\nThis workflow allows candidates to schedule interviews by chatting with an AI assistant. It checks your Google Calendar availability, identifies free 30-minute weekday slots between 9am-5pm EST, and automatically books a meeting once details are confirmed.\n________________________________________\n⚡ Prerequisites\n1.\tOpenAI Account\no\tAPI Key with GPT-4o model access\n2.\tGoogle Account with Calendar Access\no\tYour calendar must be accessible via Google Calendar\n3.\tOAuth2 Credentials for Google Calendar API configured in n8n\n4.\tOpenAI Credentials configured in n8n\n________________________________________\n🔐 API Credentials Setup\nGoogle Calendar OAuth2:\n•\tCreate a project called n8n in google cloud console\n•\tGo to n8n > Credentials\n•\tCreate new Google Calendar OAuth2 API credentials\n•\tAuthorize your Google account (e.g., yourname@gmail.com)\nOpenAI:\n•\tGo to Credentials\n•\tCreate new OpenAI API credentials\n•\tEnter your OpenAI API key and give it a label (e.g., \"My OpenAI Key\")\n________________________________________\n🔧 How to Make It Yours\n✅ Update These Workflow Fields:\n1.\tGoogle Calendar Email\no\tReplace all instances of rbreen.ynteractive@gmail.com with your own Google Calendar email.\no\tThis appears in:\n\tGoogle Calendar Nodes\n\tToolWorkflow JSON for \"Run Get Availability\"\n2.\tGoogle Calendar OAuth2 Credential Name\no\tReplace credential name Google Calendar account with your own credential name.\n3.\tOpenAI Credential Name\no\tReplace OpenAi account with your own OpenAI credential name.\n4.\tWebhook URL / Chat Interface\no\tGo to the Candidate Chat node\no\tCopy the webhook URL\no\tShare this public link with users to start the chatbot\n5.\tSystem Message Instructions (Optional)\no\tYou can tweak the system message in the Interview Scheduler agent node to change tone, questions, or rules.\n6.\tCustom Branding (Optional)\no\tUpdate the title and subtitle in the Candidate Chat node under options\no\tYou can also replace the final message in Final Response to User with your own branding/tone\n________________________________________\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "07ef21ee-c02a-4145-a0fb-3ecc260ff585",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            280,
+            1220
+          ],
+          "webhookId": "0c8f9f17-f5f3-4b5d-85e7-071ced0213ae",
+          "parameters": {
+            "public": true,
+            "options": {}
+          },
+          "typeVersion": 1.1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "69e8aa1b-e404-44ed-aedc-7d8480e2383e",
+      "connections": {
+        "Parse to JSON": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "Convert Output to JSON",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If Final Output": {
+          "main": [
+            [
+              {
+                "node": "Convert Output to JSON",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Respond for More Info",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "check day names": {
+          "ai_tool": [
+            [
+              {
+                "node": "Interview Scheduler",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Availability": {
+          "main": [
+            [
+              {
+                "node": "Check My Calendar",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Generate 30 Minute Timeslots",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add Blocked Field": {
+          "main": [
+            [
+              {
+                "node": "Combine My Calendar with All Slots",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check My Calendar": {
+          "main": [
+            [
+              {
+                "node": "Split Events into 30 min blocks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Interview Scheduler",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model4": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Convert Output to JSON",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Interview Scheduler": {
+          "main": [
+            [
+              {
+                "node": "If Final Output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Run Get Availability": {
+          "ai_tool": [
+            [
+              {
+                "node": "Interview Scheduler",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Respond for More Info": {
+          "main": [
+            []
+          ]
+        },
+        "Window Buffer Memory2": {
+          "ai_memory": [
+            [
+              {
+                "node": "Interview Scheduler",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert Output to JSON": {
+          "main": [
+            [
+              {
+                "node": "Set Meeting with Google",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final Response to User": {
+          "main": [
+            []
+          ]
+        },
+        "Set Meeting with Google": {
+          "main": [
+            [
+              {
+                "node": "Final Response to User",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if Calendar Blocked": {
+          "main": [
+            [
+              {
+                "node": "Return string of all available times",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Interview Scheduler",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate 30 Minute Timeslots": {
+          "main": [
+            [
+              {
+                "node": "Combine My Calendar with All Slots",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Split Events into 30 min blocks": {
+          "main": [
+            [
+              {
+                "node": "Add Blocked Field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine My Calendar with All Slots": {
+          "main": [
+            [
+              {
+                "node": "Check if Calendar Blocked",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 25,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 5
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.googleCalendar": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Robert Breen",
+      "username": "rbreen",
+      "bio": "Professional services consultant with over 10 years of experience solving complex business problems across industries. I specialize in n8n and process automation—designing custom workflows that integrate tools like Google Calendar, Airtable, GPT, and internal systems. Whether you need to automate scheduling, sync data, or streamline operations, I build solutions that save time and drive results.",
+      "verified": false,
+      "links": [
+        "https://ynteractive.com/"
+      ],
+      "avatar": "https://gravatar.com/avatar/15bb5ad97bad47ca2079e1fa123a8287000c72c86498c90043f70ec2adab05f3?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 317,
+        "icon": "file:googleCalendar.svg",
+        "name": "n8n-nodes-base.googleCalendar",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automation for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecalendar/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Calendar"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTYxLjA1MiAxOC45NDdIMTguOTQ3djQyLjEwNWg0Mi4xMDV6Ii8+PHBhdGggZmlsbD0iI2VhNDMzNSIgZD0iTTYxLjA1MyA4MCA4MCA2MS4wNTNINjEuMDUzeiIvPjxwYXRoIGZpbGw9IiNmYmJjMDQiIGQ9Ik04MCAxOC45NDdINjEuMDUzdjQyLjEwNUg4MHoiLz48cGF0aCBmaWxsPSIjMzRhODUzIiBkPSJNNjEuMDUyIDYxLjA1M0gxOC45NDdWODBoNDIuMTA1eiIvPjxwYXRoIGZpbGw9IiMxODgwMzgiIGQ9Ik0wIDYxLjA1M3YxMi42MzJBNi4zMTQgNi4zMTQgMCAwIDAgNi4zMTYgODBoMTIuNjMyVjYxLjA1M3oiLz48cGF0aCBmaWxsPSIjMTk2N2QyIiBkPSJNODAgMTguOTQ3VjYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDczLjY4NSAwSDYxLjA1M3YxOC45NDd6Ii8+PHBhdGggZmlsbD0iIzQyODVmNCIgZD0iTTYxLjA1MyAwSDYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDAgNi4zMTZ2NTQuNzM3aDE4Ljk0N1YxOC45NDdoNDIuMTA1VjB6TTI3LjU4NCA1MS42MTFjLTEuNTc0LTEuMDYzLTIuNjYzLTIuNjE2LTMuMjU4LTQuNjY4bDMuNjUzLTEuNTA1cS40OTggMS44OTQgMS43MzcgMi45MzdjMS4yMzkgMS4wNDMgMS44MjEgMS4wMzcgMi45ODkgMS4wMzdxMS43OTIgMCAzLjA3OS0xLjA4OWMxLjI4Ny0xLjA4OSAxLjI5LTEuNjUzIDEuMjktMi43NzRhMy40NCAzLjQ0IDAgMCAwLTEuMzU4LTIuODExYy0uOTA1LS43MjctMi4wNDItMS4wODktMy40LTEuMDg5aC0yLjExMXYtMy42MTZIMzIuMXExLjc1MiAwIDIuOTUzLS45NDdjMS4yMDEtLjk0NyAxLjItMS40OTUgMS4yLTIuNTk1cTAtMS40NjctMS4wNzQtMi4zNDJjLTEuMDc0LS44NzUtMS42MjEtLjg3OS0yLjcyMS0uODc5cS0xLjYxLS4wMDItMi41NTguODU4Yy0uOTQ4Ljg2LTEuMTA2IDEuMzAxLTEuMzc5IDIuMTExbC0zLjYxNi0xLjUwNWMuNDc5LTEuMzU4IDEuMzU4LTIuNTU4IDIuNjQ3LTMuNTk1czIuOTM3LTEuNTU4IDQuOTM3LTEuNTU4cTIuMjItLjAwMiAzLjk4OS44NThjMS43NjkuODYgMi4xMDUgMS4zNjggMi43NzQgMi4zNzlzMSAyLjE1MyAxIDMuNDE2cTAgMS45MzItLjkzMiAzLjI3NGMtLjkzMiAxLjM0Mi0xLjM4NCAxLjU3OS0yLjI4OSAyLjA1OHYuMjE2YTYuOTUgNi45NSAwIDAgMSAyLjkzNyAyLjI4OXExLjE0NiAxLjUzOCAxLjE0NyAzLjY4NGMuMDAxIDIuMTQ2LS4zNjMgMi43MTEtMS4wODkgMy44MzJzLTEuNzMyIDIuMDA1LTMuMDA1IDIuNjQ3Yy0xLjI3OS42NDItMi43MTYuOTY4LTQuMzExLjk2OC0xLjg0Ny4wMDUtMy41NTMtLjUyNi01LjEyNi0xLjU4OXptMjIuNDM3LTE4LjEyNi00LjAxIDIuOS0yLjAwNS0zLjA0MiA3LjE5NS01LjE4OWgyLjc1OHYyNC40NzloLTMuOTM3VjMzLjQ4NHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Calendar",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

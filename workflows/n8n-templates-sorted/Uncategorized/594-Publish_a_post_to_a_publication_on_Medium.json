@@ -1,0 +1,217 @@
+{
+  "workflow": {
+    "id": 594,
+    "name": "Publish a post to a publication on Medium",
+    "views": 950,
+    "recentViews": 0,
+    "totalViews": 950,
+    "createdAt": "2020-08-07T09:03:01.174Z",
+    "description": "![workflow-screenshot](fileId:183)",
+    "workflow": {
+      "id": "7",
+      "name": "Publish post to a publication",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            600,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Medium",
+          "type": "n8n-nodes-base.medium",
+          "position": [
+            800,
+            300
+          ],
+          "parameters": {
+            "title": "",
+            "content": "",
+            "publication": true,
+            "contentFormat": "",
+            "publicationId": "",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "mediumApi": "medium"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Medium",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.medium": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 351,
+        "icon": "file:medium.png",
+        "name": "n8n-nodes-base.medium",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.medium/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/medium/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Medium"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAAyVBMVEUSEA7///8AAAD9/f0QDQsOCwkqKSguLSwMCQckIyK1tbUTEQ+BgIDJyckfHh0VExH8/PwrKyocGxrS0tHCwsKrq6smJST5+fmwsK8iISDPz88aGRjz8/PY2Ni4uLjHx8fAwMBXV1YsKyooJyYYFhXv7+/o6Oicm5uJiYg4Nzb19fXg4ODMzMy8vLypqKigoJ+FhYV4eHdAPz40NDPq6urj4+Otra2Xl5eDgoJycXGop6d7e3pra2pkY2NMS0poaGdgX19TUlIFAgB0ugV+AAACqUlEQVRIx+2VaXOiQBCG6ZcZhEzkMqKI13rEaBI1Mcluzj3+/4/aGYFBI6nCL1u1VT5UQTHdL93TM/QYJ078K7idwW3+2cZsXmrTBDWNtW8R3C21aQTDDgnbyynEDt6B1rPddv8so79CYogiZxdvha0NIT6LXfSo4A3xTmALDdIMtakgAR6pZW5p0QBBkbiLby3Tl+PyRk8ID/NmDn4vyKSU1je4OjkLbW1owvJKCmaP8Eqpk7z3dWjhebgkMx0+Q01qy9Q1rLS4O8ckSynClR6+g8OMUjUL0NNuSx16jI4e/VEulvAAdfIztwewiVCfVOXS4vOvxRZuKMOk7xiz9IuqXNXE3Tz0dVpvMZHl6lYS16neyyu7RiQHVbm6dTIriQfr3LEnxUJEslz1ZkVxI1tUyTNiFqpynVcXv+SedVj2SJZrirPK4vl062qqPRqr3XWLfkVxBzqOVM3V7nquLG4AH4ssdPc+QUcW7oi0N7jIfZ/wq0WzY8Q1vOcbZarKtXGPEDsWOrnz7JqGmB8jdnBHGQtTrvbmCHEkIv1rktrio8riDiJj9/dfwbKOSdvzQjzq1cKkmniMgYzsCGZhlokHsHhQQaya2I2MPJI9j4uH1P8VjlFBLGTg9xb5dwhsFkD+SPJ6VF1ap/11D2MunEvyaXovHULcd8k06QUBZzXdiL7snhN14Pjb/sMTe4Rb+bL4QMiSuNg0TWxYed+9VS5SUkeU9ky6wZiFbr7XFTPU2OGEVYF9U+GrM0W+D0hNccIxJF9ZlEk1VafkpFqTRnnE+EkPslwhGrTH8mDaLMZ5e9lMWbav4BoJVmu4HubDi+GFZjh4QqhlpYc/Qm4wOeJyw/uDTyQlk3ZHVk4Qc6EOqe1DBLU9IiZK1pkXsHQkfdj7cOPEif+Bv4lHNkeJpcr4AAAAAElFTkSuQmCC"
+        },
+        "displayName": "Medium",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 183,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/964cacfca61d4d3fb90e2463f7fa9c31.png"
+      }
+    ]
+  }
+}

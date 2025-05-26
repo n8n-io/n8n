@@ -1,0 +1,1798 @@
+{
+  "workflow": {
+    "id": 1074,
+    "name": "Add liked songs to a Spotify monthly playlist",
+    "views": 3280,
+    "recentViews": 0,
+    "totalViews": 3280,
+    "createdAt": "2021-05-07T19:17:36.430Z",
+    "description": "# 🎶 Add liked songs to a monthly playlist\n&gt; This Workflow is a port of **Add saved songs to a monthly playlist** from IFTTT.\n\n![image.png](fileId:798)\n\nWhen you like a song, the workflow will save this song in a monthly playlist.\n\nE.g.: It's June 2024, I liked a song. The workflow will save this song in a playlist called `June '24`. If this playlist does not exist, the workflow will create it for me.\n\n## ⚙ How it works\nEach 5 minutes, the workflow will start automatically. He will do 3 things :\n1. Get the last 10 songs you saved in the \"Liked song\" playlist (by clicking on the heart in the app) and save them in a NocoDB table (of course, the workflow avoid to create duplicates).\n2. Check if the monthly playlist is already created. Otherwise, the playlist is created. The created playlist is also saved in NocoDB to avoid any problems.\n3. Check if the monthly playlist contains all the song liked this month by getting them from NocoDB. If they are not present, add them one by one in the playlist.\n\nYou may have a question regarding the need of NocoDB. Over the last few weeks/months, I've had duplication problems in my playlists and some playlists have been created twice because Spotify wasn't returning all the information but only partial information.\nHaving the database means I don't have to rely on Spotify's data but on my own, which is accurate and represents reality.\n\n## 📝 Prerequisites\nYou need to have :\n- Spotify API keys, which you can obtain by creating a Spotify application here: [https://developer.spotify.com/dashboard](https://developer.spotify.com/dashboard).\n- Create a NocoDB API token\n\n## 📚 Instructions\n1. Follow the [instructions below](https://n8n.io/workflows/1074#instructions)\n2. Create your Spotify API credential\n3. Create your NocoDB credential\n4. Populate all Spotify nodes with your credentials\n5. Populate all Spotify nodes with your credentials\n6. Enjoy !\n\nIf you need help, feel free to ping me on the N8N Discord server or send me a DM at \"LucasAlt\"\n\n## Show your support\n\n- Share your workflow on X and mention @LucasCtrlAlt\n- Consider buying me a coffee 😉\n\n[![yellowbutton.png](fileId:801)](https://www.buymeacoffee.com/lucasalt)\n\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "0c99324b4b0921a9febd4737c606882881f3ca11d9b1d7e22b0dad4784eb24c7"
+      },
+      "nodes": [
+        {
+          "id": "f418ae01-01ea-4794-8903-d5709a29c735",
+          "name": "Get current date",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            240,
+            2460
+          ],
+          "parameters": {
+            "jsCode": "const monthNames = [\n  'January',\n  'February',\n  'March',\n  'April',\n  'May',\n  'June',\n  'July',\n  'August',\n  'September',\n  'October',\n  'November',\n  'December',\n]\n\nconst date = new Date()\nconst year = date.getFullYear()\nconst month = date.getMonth()\n\nlet currentDate = {\n  month: month,\n  year: year,\n  text: `${monthNames[month]} '${year.toString().slice(-2)}`\n}\n\nitems[0].json.currentDate = currentDate\n\nreturn items\n\n// Month > Number e.g. July = 6, December = 11\n// Year > Text\n// Text > Playlist name\n\n// let currentDate = {\n//   month: 8, \n//   year: '2024',\n//   text: `September '23`\n// }\n\n// items[0].json.currentDate = currentDate\n\n// return items\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "855e493a-a232-45ef-8fdd-4a8225065c95",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            460,
+            2580
+          ],
+          "parameters": {
+            "width": 1290.936043660723,
+            "height": 407.6508589002549,
+            "content": "## Check if the song is present in the database"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "672ef06c-b812-41c8-8501-cde8b61a4aef",
+          "name": "Get last 10 liked tracks",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            500,
+            2680
+          ],
+          "parameters": {
+            "limit": 10,
+            "resource": "library"
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "zQrMRwwU6DLh4W77",
+              "name": "Spotify account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "da13c571-6af4-49bf-b8ff-2d54245f6d3e",
+          "name": "Check if track is saved",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            940,
+            2780
+          ],
+          "parameters": {
+            "table": "m0dm2y304t7vmuk",
+            "options": {
+              "where": "=(uri,eq,{{ $json.track.uri }})",
+              "fields": [
+                "uri"
+              ]
+            },
+            "operation": "getAll",
+            "projectId": "pepq760y5lwt5tm",
+            "returnAll": true,
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "9144cda9-f18f-46d9-be2d-9fca4b192dbb",
+          "name": "Is not saved",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1160,
+            2780
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "dbb259d9-e2ec-4a7b-b375-601346dc2571",
+                  "operator": {
+                    "type": "object",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "66b430e2-f46c-43b2-84e7-35c85d2b4403",
+          "name": "Create song entry",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            1380,
+            2700
+          ],
+          "parameters": {
+            "table": "m0dm2y304t7vmuk",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "uri",
+                  "fieldValue": "={{ $('For each tracks in liked song').item.json.track.uri }}"
+                },
+                {
+                  "fieldName": "added_at",
+                  "fieldValue": "={{ $('For each tracks in liked song').item.json.added_at }}"
+                },
+                {
+                  "fieldName": "playlistName",
+                  "fieldValue": "={{ $('Get current date').item.json.currentDate.text }}"
+                }
+              ]
+            },
+            "operation": "create",
+            "projectId": "pepq760y5lwt5tm",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "9bd883ea-2e87-45aa-b8a0-b361ba7c5d9f",
+          "name": "Get all user playlist",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            500,
+            2220
+          ],
+          "parameters": {
+            "resource": "playlist",
+            "operation": "getUserPlaylists",
+            "returnAll": true
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "zQrMRwwU6DLh4W77",
+              "name": "Spotify account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3a0dad98-4571-4fb7-b366-0060d35b65fe",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            460,
+            2080
+          ],
+          "parameters": {
+            "width": 1481.5336029736159,
+            "height": 416.7665808180022,
+            "content": "## Check if the playlist present in the database"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e793b97c-cc29-47b0-8aa7-015fa631bc37",
+          "name": "Get monthly playlist",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            720,
+            2220
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "56173299-d774-4cb4-b26f-4dca294dda1d",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.name }}",
+                  "rightValue": "={{ $('Get current date').item.json.currentDate.text }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "502ea9e2-7f03-4a8a-860e-90d63e42ee33",
+          "name": "Get playlist in DB",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            1160,
+            2120
+          ],
+          "parameters": {
+            "table": "mchan0xys9h7h7e",
+            "options": {
+              "where": "=(name,eq,{{ $('Get current date').item.json.currentDate.text }})"
+            },
+            "operation": "getAll",
+            "projectId": "pepq760y5lwt5tm",
+            "returnAll": true,
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "3d2bece0-8096-4ee1-a3b9-ae91b83f0957",
+          "name": "Monthly playlist exist in Spotify ?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            940,
+            2220
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a2d9e3e0-a906-4ed9-9e23-166f781c86b1",
+                  "operator": {
+                    "type": "object",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d983b940-2f8d-4823-aaaf-d1bfa4428b41",
+          "name": "Playlist exist  in DB ?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1380,
+            2120
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "9485c9d4-ecdc-4d0e-a576-c7db5787c069",
+                  "operator": {
+                    "type": "object",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "c694ab19-bca7-4dd4-8d10-cf8a1adab341",
+          "name": "Create playlist in Spotify",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            1160,
+            2320
+          ],
+          "parameters": {
+            "name": "={{ $('Get current date').item.json.currentDate.text }}",
+            "resource": "playlist",
+            "operation": "create",
+            "additionalFields": {
+              "description": "Monthly playlist"
+            }
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "zQrMRwwU6DLh4W77",
+              "name": "Spotify account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dc9dc3b5-cef7-412b-b3f8-5ec011c2746d",
+          "name": "Create playlist in DB1",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            1380,
+            2320
+          ],
+          "parameters": {
+            "table": "mchan0xys9h7h7e",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "uri",
+                  "fieldValue": "={{ $json.uri }}"
+                },
+                {
+                  "fieldName": "name",
+                  "fieldValue": "={{ $json.name }}"
+                },
+                {
+                  "fieldName": "description",
+                  "fieldValue": "={{ $json.description}}"
+                }
+              ]
+            },
+            "operation": "create",
+            "projectId": "pepq760y5lwt5tm",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "0356c3a4-dc20-42b0-b069-045048768939",
+          "name": "Create playlist in DB",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            1600,
+            2200
+          ],
+          "parameters": {
+            "table": "mchan0xys9h7h7e",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "uri",
+                  "fieldValue": "={{ $('Get monthly playlist').item.json.uri }}"
+                },
+                {
+                  "fieldName": "name",
+                  "fieldValue": "={{ $('Get monthly playlist').item.json.name }}"
+                },
+                {
+                  "fieldName": "description",
+                  "fieldValue": "={{ $('Get monthly playlist').item.json.description }}"
+                }
+              ]
+            },
+            "operation": "create",
+            "projectId": "pepq760y5lwt5tm",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "e2c86f04-725c-4af7-b3c2-9c22e2dc64bf",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2040,
+            2460
+          ],
+          "parameters": {
+            "mode": "chooseBranch",
+            "output": "empty"
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "036e0d74-3383-44e9-991d-7e062b982b51",
+          "name": "Clean op",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1820,
+            2200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "323c9746-f713-4a3d-9af5-9579ec767fca",
+          "name": "Clean op2",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1600,
+            2800
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "3b0be7ca-c47b-4524-b72a-c37f25c5e4d0",
+          "name": "Get this month playlist in DB",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            2260,
+            2460
+          ],
+          "parameters": {
+            "table": "mchan0xys9h7h7e",
+            "options": {
+              "where": "=(name,eq,{{ $('Get current date').item.json.currentDate.text }})"
+            },
+            "operation": "getAll",
+            "projectId": "pepq760y5lwt5tm",
+            "returnAll": true,
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "733077e4-c474-4c95-ba05-d0b2375475ad",
+          "name": "Get this month tracks in DB",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            2480,
+            2460
+          ],
+          "parameters": {
+            "table": "m0dm2y304t7vmuk",
+            "options": {
+              "where": "=(playlistName,eq,{{ $('Get current date').item.json.currentDate.text }})"
+            },
+            "operation": "getAll",
+            "projectId": "pepq760y5lwt5tm",
+            "returnAll": true,
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "9uSbSrDz8EL2OIL7",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "6c8ef70f-542d-4454-9ae6-8f4e9778beb0",
+          "name": "Add song to the playlist",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            3580,
+            2460
+          ],
+          "parameters": {
+            "id": "={{ $('Get this month playlist in DB').item.json.uri }}",
+            "trackID": "={{ $('For each monthly tracks in DB').item.json.uri }}",
+            "resource": "playlist",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "zQrMRwwU6DLh4W77",
+              "name": "Spotify account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "034cd38d-4800-4f9c-9b67-453fdb2afa3c",
+          "name": "For each tracks in liked song",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            720,
+            2680
+          ],
+          "parameters": {
+            "options": {
+              "reset": false
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "90ff5c0b-e842-437f-be85-a5938288c513",
+          "name": "For each monthly tracks in DB",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            2700,
+            2460
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "decf36a4-fb8c-41eb-ae15-7ba36d621ad7",
+          "name": "Get this month tracks in Spotify",
+          "type": "n8n-nodes-base.spotify",
+          "position": [
+            2920,
+            2560
+          ],
+          "parameters": {
+            "id": "={{ $('Get this month playlist in DB').item.json.uri }}",
+            "resource": "playlist",
+            "operation": "getTracks",
+            "returnAll": true
+          },
+          "credentials": {
+            "spotifyOAuth2Api": {
+              "id": "zQrMRwwU6DLh4W77",
+              "name": "Spotify account"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "d322a655-e80b-4277-87d9-93e927b2f372",
+          "name": "Filter1",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            3140,
+            2560
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "a11640e1-f22a-4ce9-abff-976efc57e1d3",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('For each monthly tracks in DB').item.json.uri }}",
+                  "rightValue": "={{ $json.track.uri }}"
+                }
+              ]
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 2,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "5027f98d-b973-405f-81cf-534df794325f",
+          "name": "Song is not present in the playlist ?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3360,
+            2560
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "1beb843e-53da-48ce-9717-d7797232e4ae",
+                  "operator": {
+                    "type": "object",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "cd2e3a28-24c1-47d7-ad30-c836e08ad40f",
+          "name": "Clean op1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            3800,
+            2560
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "56bbb0e9-3ee5-48e3-b0bf-48e8d026daa9",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2220,
+            2400
+          ],
+          "parameters": {
+            "width": 1733.785946789966,
+            "height": 351.94195615011336,
+            "content": "## Check if the song is in the Spotify playlist. If not, add it."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9834163b-0991-4910-bb4f-cf4557bfa0d5",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            20,
+            2460
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "minutes"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "72a3c48f-a759-4e0c-b7bb-9f69a5f4377e",
+          "name": "End",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            4100,
+            2260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Get this month playlist in DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter1": {
+          "main": [
+            [
+              {
+                "node": "Song is not present in the playlist ?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Clean op": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Clean op1": {
+          "main": [
+            [
+              {
+                "node": "For each monthly tracks in DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Clean op2": {
+          "main": [
+            [
+              {
+                "node": "For each tracks in liked song",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is not saved": {
+          "main": [
+            [
+              {
+                "node": "Create song entry",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Clean op2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get current date": {
+          "main": [
+            [
+              {
+                "node": "Get all user playlist",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get last 10 liked tracks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Get current date",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create song entry": {
+          "main": [
+            [
+              {
+                "node": "Clean op2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get playlist in DB": {
+          "main": [
+            [
+              {
+                "node": "Playlist exist  in DB ?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get monthly playlist": {
+          "main": [
+            [
+              {
+                "node": "Monthly playlist exist in Spotify ?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create playlist in DB": {
+          "main": [
+            [
+              {
+                "node": "Clean op",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all user playlist": {
+          "main": [
+            [
+              {
+                "node": "Get monthly playlist",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create playlist in DB1": {
+          "main": [
+            [
+              {
+                "node": "Clean op",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check if track is saved": {
+          "main": [
+            [
+              {
+                "node": "Is not saved",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Playlist exist  in DB ?": {
+          "main": [
+            [
+              {
+                "node": "Clean op",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Create playlist in DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add song to the playlist": {
+          "main": [
+            [
+              {
+                "node": "Clean op1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get last 10 liked tracks": {
+          "main": [
+            [
+              {
+                "node": "For each tracks in liked song",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create playlist in Spotify": {
+          "main": [
+            [
+              {
+                "node": "Create playlist in DB1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get this month tracks in DB": {
+          "main": [
+            [
+              {
+                "node": "For each monthly tracks in DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "For each monthly tracks in DB": {
+          "main": [
+            [
+              {
+                "node": "End",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get this month tracks in Spotify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "For each tracks in liked song": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ],
+            [
+              {
+                "node": "Check if track is saved",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get this month playlist in DB": {
+          "main": [
+            [
+              {
+                "node": "Get this month tracks in DB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get this month tracks in Spotify": {
+          "main": [
+            [
+              {
+                "node": "Filter1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Monthly playlist exist in Spotify ?": {
+          "main": [
+            [
+              {
+                "node": "Get playlist in DB",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Create playlist in Spotify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Song is not present in the playlist ?": {
+          "main": [
+            [
+              {
+                "node": "Add song to the playlist",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Clean op1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 30,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 4
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 4
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.nocoDb": {
+          "count": 7
+        },
+        "n8n-nodes-base.spotify": {
+          "count": 5
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 2
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Lucas",
+      "username": "lucasalt",
+      "bio": "CAD Designer / Maker / Web developer / Love to play games\nOptimization and minimalism are my creed",
+      "verified": false,
+      "links": [
+        "https://lucasalt.fr"
+      ],
+      "avatar": "https://gravatar.com/avatar/4860f7403a4cbfbddd0e42dc73939b314e3acb2771ff136cf9b416406eab9de4?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 335,
+        "icon": "file:spotify.svg",
+        "name": "n8n-nodes-base.spotify",
+        "codex": {
+          "data": {
+            "alias": [
+              "Music",
+              "Song"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.spotify/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/spotify/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Spotify"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMWVkNzYwIiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTMyIDBDMTQuMyAwIDAgMTQuMzM3IDAgMzJjMCAxNy43IDE0LjMzNyAzMiAzMiAzMiAxNy43IDAgMzItMTQuMzM3IDMyLTMyUzQ5LjY2MyAwIDMyIDBtMTQuNjggNDYuMTg0Yy0uNTczLjk1Ni0xLjc5NyAxLjIyMy0yLjc1My42NS03LjUzMi00LjU4OC0xNi45NzUtNS42Mi0yOC4xNC0zLjA5Ny0xLjA3LjIzLTIuMTQtLjQyLTIuMzctMS41cy40Mi0yLjE0IDEuNS0yLjM3YzEyLjE5Ni0yLjggMjIuNjctMS42MDYgMzEuMDgyIDMuNTU2YTIgMiAwIDAgMSAuNjg4IDIuNzUzem0zLjktOC43MTdjLS43MjYgMS4xODUtMi4yNTYgMS41My0zLjQ0Ljg0LTguNjAyLTUuMjc2LTIxLjcxNi02LjgwNS0zMS44ODUtMy43NDctMS4zMzguMzgyLTIuNzE0LS4zNDQtMy4wOTctMS42NDQtLjM4Mi0xLjMzOC4zNDQtMi43MTQgMS42ODItMy4wOTcgMTEuNjIyLTMuNTE3IDI2LjA3NC0xLjgzNSAzNS45NzYgNC4yNDQgMS4xNDcuNjg4IDEuNSAyLjIxNy43NjUgMy40MDN6bS4zNDQtOS4xYy0xMC4zMjMtNi4xMTctMjcuMzM2LTYuNy0zNy4yLTMuNzA4LTEuNTY4LjQ5Ny0zLjI1LS40Mi0zLjc0Ny0xLjk4OHMuNDItMy4yNSAxLjk4OC0zLjc0N2MxMS4zMTctMy40NCAzMC4xMjctMi43NTMgNDEuOTggNC4yODIgMS40MTUuODQgMS44NzMgMi42NzYgMS4wMzIgNC4xLS43NjUgMS40NTMtMi42MzggMS45MTItNC4wNTMgMS4wN3oiLz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Spotify",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 510,
+        "icon": "file:nocodb.svg",
+        "name": "n8n-nodes-base.nocoDb",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nocodb/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/nocoDb/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "NocoDB"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJub25lIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzNENDNENSIgcng9IjI1Ii8+PHBhdGggZmlsbD0iI2ZmZiIgZD0ibTM4IDkzLjkwNyAyOS43NiAyOS4wMDZ2NDUuOTJIMzh6bTEyNS02MS42NjV2MTI1LjQxN2MwIDguMDc4LTQuNDk4IDExLjM0MS0xMS43NDIgMTEuMzQxLTEuMzMzIDAtMy43MjUtLjUwMS01Ljc5My0yLjUwMkwzOCA2NS4zMjhWNDIuODRDMzggMzQuNzYzIDQxLjM2MyAzMS41IDQ5LjcyMyAzMS41YzEuMzMzIDAgNC4wMS41MiA2LjA2IDIuNTAybDc3LjQzOCA3MS45MjNWMzIuMjQyeiIvPjwvc3ZnPg=="
+        },
+        "displayName": "NocoDB",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 798,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_ebf3fdc07c.png"
+      },
+      {
+        "id": 801,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/yellow_button_0b0d2ee0e1.png"
+      }
+    ]
+  }
+}

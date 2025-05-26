@@ -1,0 +1,628 @@
+{
+  "workflow": {
+    "id": 3139,
+    "name": "🔐🦙Private & Local Ollama Self-Hosted + Dynamic LLM Router",
+    "views": 9892,
+    "recentViews": 41,
+    "totalViews": 9892,
+    "createdAt": "2025-03-12T03:04:44.720Z",
+    "description": "## Who is this for?\nThis workflow template is designed for **AI enthusiasts**, **developers**, and **privacy-conscious users** who want to leverage the power of local large language models (LLMs) without sending data to external services. It's particularly valuable for those running Ollama locally who want intelligent routing between different specialized models.\n\n## What problem is this workflow solving?\nWhen working with multiple local LLMs, each with different strengths and capabilities, it can be challenging to manually select the right model for each specific task. This workflow automatically analyzes user prompts and routes them to the most appropriate specialized Ollama model, ensuring optimal performance without requiring technical knowledge from the end user.\n\n## What this workflow does\nThis intelligent router:\n- Analyzes incoming user prompts to determine the nature of the request\n- Automatically selects the optimal Ollama model from your local collection based on task requirements\n- Routes requests between specialized models for different tasks:\n  - Text-only models (qwq, llama3.2, phi4) for various reasoning and conversation tasks\n  - Code-specific models (qwen2.5-coder) for programming assistance\n  - Vision-capable models (granite3.2-vision, llama3.2-vision) for image analysis\n- Maintains conversation memory for consistent interactions\n- Processes everything locally for complete privacy and data security\n\n## Setup\n1. Ensure you have [Ollama](https://ollama.ai/) installed and running locally\n2. Pull the required models mentioned in the workflow using Ollama CLI (e.g., `ollama pull phi4`)\n3. Configure the Ollama API credentials in n8n (default: http://127.0.0.1:11434)\n4. Activate the workflow and start interacting through the chat interface\n\n## How to customize this workflow to your needs\n- Add or remove models from the router's decision framework based on your specific Ollama collection\n- Adjust the system prompts in the LLM Router to prioritize different model selection criteria\n- Modify the decision tree logic to better suit your specific use cases\n- Add additional preprocessing steps for specialized inputs\n\n\nThis workflow demonstrates how n8n can be used to create sophisticated AI orchestration systems that respect user privacy by keeping everything local while still providing intelligent model selection capabilities.",
+    "workflow": {
+      "id": "Mub5RZI4PAs6TsSP",
+      "meta": {
+        "instanceId": "31e69f7f4a77bf465b805824e303232f0227212ae922d12133a0f96ffeab4fef",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "🔐🦙🤖 Private & Local Ollama Self-Hosted LLM Router",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "981e858a-cd2b-49cf-9740-a40ac29bba94",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            420,
+            860
+          ],
+          "webhookId": "3804aa1d-2193-4161-84a1-6f5d1059e092",
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "a164103c-66cb-44da-aae7-177231f517b4",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -160,
+            580
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 2360,
+            "height": 860,
+            "content": "# 🔐🦙🤖 Private & Local Ollama Self-Hosted + Dynamic LLM Router\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2ff955e7-c621-4bee-8baf-91769524f781",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            640,
+            1140
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 360,
+            "height": 260,
+            "content": "## Ollama LLM"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "40f42923-830d-44a9-a311-c006d91691b7",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            320,
+            760
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 280,
+            "height": 300,
+            "content": "## 👍Try Me!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c49f5ff5-92a7-4a2d-81b5-51272e7972b4",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            740,
+            720
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 540,
+            "height": 380,
+            "content": "## Ollama LLM Router Based on User Prompt\n\n💡This agent chooses the Ollama LLM for the next AI Agent Dynamically based on the users prompt\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "72ad69f4-a24f-4df2-978e-71c5d3a63733",
+          "name": "Ollama Dynamic LLM",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+          "position": [
+            1560,
+            1240
+          ],
+          "parameters": {
+            "model": "={{ $('LLM Router').item.json.output.parseJson().llm }}",
+            "options": {}
+          },
+          "credentials": {
+            "ollamaApi": {
+              "id": "7aPaLgwpfdMWFYm9",
+              "name": "Ollama account 127.0.0.1"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "efc2e47a-1d4b-4879-8670-35a34c946bb6",
+          "name": "LLM Router",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            880,
+            860
+          ],
+          "parameters": {
+            "text": "=Choose the most appropriate LLM model for the following user request. Analyze the task requirements carefully and select the model that will provide optimal performance.  Only choose from the provided list.\n\n<user_input>\n{{ $json.chatInput }}\n</user_input>\n",
+            "options": {
+              "systemMessage": "<role>\nYou are an expert LLM router that classifies user prompts and selects the most appropriate LLM model based on specific task requirements.\n</role>\n\n<purpose>\nYour task is to analyze user inputs, determine the nature of their request, and select the optimal LLM model that will provide the best performance for their specific needs.\n</purpose>\n\n<classification_rules>\nChoose one of the following LLMs based on their capabilities and the user prompt.  You must only select from the provided LLMs:\n\n## Text-Only Models\n- \"qwq\": Specialized in complex reasoning and solving hard problems. Best for: mathematical reasoning, logical puzzles, scientific explanations, and complex problem-solving tasks.\n\n- \"llama3.2\": Multilingual model (3B size) optimized for dialogue, retrieval, and summarization. Best for: conversations in multiple languages, information retrieval, and text summarization.\n\n- \"phi4\": Lightweight model designed for constrained environments. Best for: scenarios requiring low latency, limited computing resources, while maintaining good reasoning capabilities.\n\n## Coding Models\n- \"qwen2.5-coder:14b\": Code-Specific Qwen model, with significant improvements in code generation, code reasoning, and code fixing.\n\n## Vision-Language Models\n- \"granite3.2-vision\": Specialized in document understanding and data extraction. Best for: analyzing charts, tables, diagrams, infographics, and structured visual content.\n\n- \"llama3.2-vision\": General-purpose visual recognition and reasoning. Best for: image description, visual question answering, and general image understanding tasks.\n</classification_rules>\n\n<model_examples>\nExample tasks for each model:\n- qwq: \"Solve this math problem\", \"Explain quantum physics\", \"Debug this logical fallacy\"\n- llama3.2: \"Translate this text to Spanish\", \"Summarize this article\", \"Have a conversation about history\"\n- phi4: \"Generate a quick response\", \"Provide a concise answer\", \"Process this simple request efficiently\"\n- granite3.2-vision: \"Extract data from this chart\", \"Analyze this financial table\", \"Interpret this technical diagram\"\n- llama3.2-vision: \"Describe what's in this image\", \"What can you tell me about this picture?\", \"Answer questions about this photo\"\n</model_examples>\n\n<decision_tree>\n1. Does the prompt include an image?\n   - YES → Go to 2\n   - NO → Go to 3\n2. Is the image a document, chart, table, or diagram?\n   - YES → Use \"granite3.2-vision\"\n   - NO → Use \"llama3.2-vision\"\n3. Does the task require complex reasoning or solving difficult problems?\n   - YES → Use \"qwq\"\n   - NO → Go to 4\n4. Is the task multilingual or requires summarization/retrieval?\n   - YES → Use \"llama3.2\"\n   - NO → Use \"phi4\" (for efficiency in simple English tasks)\n</decision_tree>\n\n<decision_framework>\nWhen selecting a model, consider:\n1. Task complexity and reasoning requirements\n2. Visual or multimodal components in the request\n3. Language processing needs (summarization, translation, etc.)\n4. Performance constraints (latency, memory limitations)\n5. Required reasoning capabilities\n6. Coding requirements\n</decision_framework>\n\n<examples>\nExample 1:\nUser input: \"Explain quantum computing principles\"\nSelection: \"qwq\"\nReason: \"This request requires deep reasoning and explanation of complex scientific concepts, making QwQ's enhanced reasoning capabilities ideal.\"\n\nExample 2:\nUser input: \"Describe what's in this image of a chart showing quarterly sales\"\nSelection: \"granite3.2-vision\"\nReason: \"This request involves visual document understanding and data extraction from a chart, which is granite-vision's specialty.\"\n\nExample 3:\nUser input: \"Summarize this article about climate change in Spanish\"\nSelection: \"llama3.2\"\nReason: \"This request requires multilingual capabilities and summarization, which are strengths of Llama 3.2.\"\n\nExample 4:\nUser input: \"I need to create a FastAPI endpoint with Python\"\nSelection: \"qwen2.5-coder:14b\"\nReason: \"This request requires code generation, code reasoning, or code fixing.\"\n</examples>\n\n<error_handling>\nIf the user request is unclear or ambiguous, select the model that offers the most general capabilities while noting the uncertainty in your reasoning. If the request appears to contain harmful content or violates ethical guidelines, respond with an appropriate message about being unable to fulfill the request.\n</error_handling>\n\n<output_format>\nRespond with a single JSON object containing:\n{\n  \"llm\": \"the name of the selected LLM model\",\n  \"reason\": \"a brief, specific explanation of why this model is optimal for the task\"\n}\nAvoid any preamble or further explanation.  Remove all ``` or ``json from response.\n</output_format>\n\n\n"
+            },
+            "promptType": "define",
+            "hasOutputParser": true
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "d8b07c67-b177-496f-ba97-2b886c2b6f1e",
+          "name": "AI Agent with Dynamic LLM",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1660,
+            860
+          ],
+          "parameters": {
+            "text": "={{ $('When chat message received').item.json.chatInput }}",
+            "options": {
+              "systemMessage": ""
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "3f005c9c-dd92-4970-b4cf-e105ec75840f",
+          "name": "Ollama phi4",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+          "position": [
+            780,
+            1240
+          ],
+          "parameters": {
+            "model": "phi4:latest",
+            "options": {
+              "format": "json"
+            }
+          },
+          "credentials": {
+            "ollamaApi": {
+              "id": "7aPaLgwpfdMWFYm9",
+              "name": "Ollama account 127.0.0.1"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "47f6c3dd-1bad-458c-ade1-ec26f455a95d",
+          "name": "Router Chat Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            1160,
+            1240
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "06b77321-086a-42cf-808a-27d7064403e4",
+          "name": "Agent Chat Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            1940,
+            1240
+          ],
+          "parameters": {
+            "sessionKey": "={{ $('When chat message received').item.json.sessionId }}",
+            "sessionIdType": "customKey"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "073ae421-5bbf-4ff9-ae8d-1f515f0b8ed7",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1520,
+            720
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 540,
+            "height": 380,
+            "content": "## AI Agent using Dynamic Local Ollama LLM\n\n💡This agent uses the Ollama LLM based on previous Router agent choice and proceeds to answer the users prompt.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2e118ce5-bfa8-4661-99dd-5e72bc7534c6",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            1140
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 360,
+            "height": 260,
+            "content": "## Router Chat Memory"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "92fff699-0e96-4161-b4dd-bcac682d3dab",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1420,
+            1140
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 360,
+            "height": 260,
+            "content": "## Dynamic Ollama LLM"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6f8bc049-9440-4863-a8c6-c8cfafde3dda",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1800,
+            1140
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 360,
+            "height": 260,
+            "content": "## Agent Chat Memory"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "88e0d3ec-108b-4136-86ae-6714f4e4b63b",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -380,
+            700
+          ],
+          "parameters": {
+            "width": 640,
+            "height": 1020,
+            "content": "## Who is this for?\nThis workflow template is designed for **AI enthusiasts**, **developers**, and **privacy-conscious users** who want to leverage the power of local large language models (LLMs) without sending data to external services. It's particularly valuable for those running Ollama locally who want intelligent routing between different specialized models.\n\n## What problem is this workflow solving?\nWhen working with multiple local LLMs, each with different strengths and capabilities, it can be challenging to manually select the right model for each specific task. This workflow automatically analyzes user prompts and routes them to the most appropriate specialized Ollama model, ensuring optimal performance without requiring technical knowledge from the end user.\n\n## What this workflow does\nThis intelligent router:\n- Analyzes incoming user prompts to determine the nature of the request\n- Automatically selects the optimal Ollama model from your local collection based on task requirements\n- Routes requests between specialized models for different tasks:\n  - Text-only models (qwq, llama3.2, phi4) for various reasoning and conversation tasks\n  - Code-specific models (qwen2.5-coder) for programming assistance\n  - Vision-capable models (granite3.2-vision, llama3.2-vision) for image analysis\n- Maintains conversation memory for consistent interactions\n- Processes everything locally for complete privacy and data security\n\n## Setup\n1. Ensure you have [Ollama](https://ollama.ai/) installed and running locally\n2. Pull the required models mentioned in the workflow using Ollama CLI (e.g., `ollama pull phi4`)\n3. Configure the Ollama API credentials in n8n (default: http://127.0.0.1:11434)\n4. Activate the workflow and start interacting through the chat interface\n\n## How to customize this workflow to your needs\n- Add or remove models from the router's decision framework based on your specific Ollama collection\n- Adjust the system prompts in the LLM Router to prioritize different model selection criteria\n- Modify the decision tree logic to better suit your specific use cases\n- Add additional preprocessing steps for specialized inputs\n\n\nThis workflow demonstrates how n8n can be used to create sophisticated AI orchestration systems that respect user privacy by keeping everything local while still providing intelligent model selection capabilities.\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "c36ec004-11a3-4b0f-b2fd-f529ae6413a2",
+      "connections": {
+        "LLM Router": {
+          "main": [
+            [
+              {
+                "node": "AI Agent with Dynamic LLM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ollama phi4": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "LLM Router",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Agent Chat Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "AI Agent with Dynamic LLM",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ollama Dynamic LLM": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "AI Agent with Dynamic LLM",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Router Chat Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "LLM Router",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "LLM Router",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 16,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOllama": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Joseph LePage",
+      "username": "joe",
+      "bio": "As an AI Automation consultant based in Canada, I partner with forward-thinking organizations to implement AI solutions that streamline operations and drive growth.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/e7ca218dfc87b68344bbd66f40da01546d2f6fc1cf884267821e8a77e3e8410a?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1151,
+        "icon": "file:ollama.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOllama",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatollama/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Ollama Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDEuMzMzIiBoZWlnaHQ9IjM0MS4zMzMiIHZlcnNpb249IjEuMCIgdmlld0JveD0iMCAwIDE4MSAyNTYiPjxnIGZpbGw9IiM3RDdEODciPjxwYXRoIGQ9Ik0zNy43IDE5LjVjLTUuMiAxLjgtOC4zIDQuOS0xMS43IDExLjYtNC41IDguOS02LjIgMTkuMi01LjggMzUuNWwuMyAxNC4yLTUuOCA2LjFjLTE0LjggMTUuNS0xOC41IDM4LjctOS4yIDU3LjRsMy40IDYuOS0yIDQuNGMtMy40IDguMi01IDE2LjQtNSAyNi4zIDAgMTAuOCAxLjggMTkgNS44IDI2LjJsMi42IDQuOC0yLjEgNC45Yy0xLjIgMi43LTIuNiA3LjEtMy4yIDkuOC0xLjQgNi4yLTEuNSAyMi4xLS4xIDI1LjcgMSAyLjYgMS40IDIuNyA3LjYgMi43IDcuMyAwIDcgLjQgNS4zLTguNi0xLjUtOC4yLjItMTguOCA0LjItMjYuNiAzLjctNyAzLjgtMTAuNC41LTE0LjgtNC43LTYuNC02LjgtMTMuNi02LjktMjQtLjEtMTAuMyAxLjQtMTYgNi42LTI2LjEgMy4xLTYuMSAyLjktOC43LTEtMTIuMi0xLjEtMS0zLjEtNC4yLTQuMy03LTEuOS00LjItMi40LTYuOS0yLjMtMTQuMiAwLTExLjQgMi41LTE4LjMgOS41LTI2IDctNy42IDE0LjItMTEgMjMuOS0xMS4yIDQuMSAwIDcuOC0uMiA4LjItLjIuNC0uMSAxLjctMi4yIDIuOS00LjcgMy01LjkgOS42LTExLjkgMTYuNy0xNS4yIDQuOS0yLjMgNy0yLjcgMTQuNy0yLjcgNy45IDAgOS43LjQgMTQuOSAyLjkgNi44IDMuMyAxMy4zIDkuNCAxNS45IDE0LjggMSAyIDIuMyA0LjEgMyA0LjUuNi40IDQuNi44IDguNy44IDYuNy4xIDguMy41IDE0IDMuNiAxMi4zIDYuOCAxOS4zIDE4LjcgMTkuMyAzMy40LjEgNi43LS40IDktMi43IDE0LjItMS42IDMuNS0zLjUgNi44LTQuMyA3LjUtMy40IDIuOC0zLjUgNS44LS41IDExLjcgNS4yIDEwLjEgNi43IDE1LjggNi42IDI2LjEtLjEgMTAuNC0yLjIgMTcuNi02LjkgMjQtMy4zIDQuNC0zLjIgNy44LjUgMTQuOCA0IDcuOCA1LjcgMTguNCA0LjIgMjYuNi0xLjcgOS0yIDguNiA1LjMgOC42IDYuMiAwIDYuNi0uMSA3LjYtMi43IDEuNC0zLjYgMS4zLTE5LjUtLjEtMjUuNy0uNi0yLjctMi03LjEtMy4yLTkuOGwtMi4xLTQuOSAyLjYtNC44YzcuNi0xMy45IDcuOS0zNS45LjYtNTIuOGwtMi00LjcgMi41LTQuNmM5LjktMTguMyA2LjQtNDMuOS04LjEtNTkuMWwtNS44LTYuMS4zLTE0LjJjLjQtMTYuNC0xLjMtMjYuNi01LjgtMzUuNy02LjQtMTIuNi0xNy4yLTE1LjktMjYuMy03LjktNS40IDQuNy05LjIgMTMuOC0xMi4zIDI5LjgtLjMgMS40LTEgMi4yLTEuNyAxLjgtMTguMi04LTI5LjctOC41LTQ0LjMtMi4xTDY1IDU0LjlsLS40LTIuMkM2MSAzNC4yIDU2LjEgMjQuMiA0OSAyMC41Yy00LjMtMi4xLTcuNC0yLjQtMTEuMy0xbTcuNyAxNi44YzQuMiA3LjEgOC4xIDMwLjEgNS43IDMzLjYtLjUuOC0zLjEgMS42LTUuOCAxLjgtMi42LjItNi4yLjgtOCAxLjNsLTMuMS44LS43LTQuOWMtLjgtNS45LjItMTcuMiAyLjItMjQuOEMzNy4xIDM4LjQgNDAuNSAzMiA0MiAzMmMuNSAwIDIgMS45IDMuNCA0LjNtOTYuNS0xYzQgNi41IDYuOSAyMy45IDUuNiAzMy42bC0uNyA0LjktMy4xLS44Yy0xLjgtLjUtNS40LTEuMS04LTEuMy0yLjctLjItNS4zLTEtNS44LTEuOC0xLjItMS43LS4zLTE0LjEgMS43LTIyLjkgMS41LTYuNCA1LjctMTUgNy40LTE1IC40IDAgMS44IDEuNSAyLjkgMy4zIi8+PHBhdGggZD0iTTc3LjggMTE5LjljLTcuMyAyLjQtMTEuNiA1LjEtMTYuNSAxMC40LTUuNSA2LTcuNiAxMi03LjEgMjAuMS41IDcuNiAzLjUgMTIuOSAxMC42IDE4LjMgNi4yIDQuNyAxMi43IDYuMyAyNS43IDYuMyAxNy4yIDAgMjUuOC0zLjYgMzIuOS0xMy44IDQuMi01LjkgNC44LTE1LjUgMS42LTIzLTIuOS02LjgtMTEuMS0xNC4zLTE4LjgtMTcuMy04LTMuMS0yMC43LTMuNi0yOC40LTFtMjUuNyAxMGMxNi4xIDcuMSAxOS40IDIzLjIgNi42IDMxLjgtNC45IDMuMy05LjQgNC4zLTE5LjYgNC4zcy0xNC43LTEtMTkuNi00LjNjLTE3LjgtMTItMy4yLTM1LjYgMjEuMS0zNC4zIDMuOS4yIDguNiAxLjIgMTEuNSAyLjUiLz48cGF0aCBkPSJNODMuOCAxNDAuMWMtMi41IDEuNC0yLjIgNC40LjcgNi43IDIgMS42IDIuNCAyLjYgMS45IDQuOS0uNyAzLjYgMS41IDUuOCA1LjEgNC45IDIuMS0uNSAyLjUtMS4yIDIuNS00LjYgMC0yLjkuNS00LjIgMi01IDIuNy0xLjUgMi43LTYuNiAwLTcuNS0xLS4zLTIuOC0uMS00IC41LTEuNC43LTIuNi44LTMuOSAwLTIuMy0xLjItMi4yLTEuMi00LjMuMW0tNDQuMS0xOC45Yy0uOS43LTIuMyAzLTMuMiA1LTIuMSA1LjMtLjEgMTAuMyA0LjcgMTEuNiA0LjMgMS4xIDYgLjYgOS4yLTIuNyA0LTQuMSA0LjMtOC4xIDEuMS0xMS45LTIuMS0yLjUtMy40LTMuMi02LjQtMy4yLTIgMC00LjUuNi01LjQgMS4ybTg5LjggMmMtMy4yIDMuOC0yLjkgNy44IDEuMSAxMS45IDMuMiAzLjMgNC45IDMuOCA5LjIgMi43IDQuOS0xLjMgNi44LTYuMiA0LjYtMTEuOC0xLjktNC43LTMuOC02LTguNy02LTIuNyAwLTQuMS43LTYuMiAzLjIiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Ollama Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

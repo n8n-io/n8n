@@ -1,0 +1,144 @@
+URL: https://docs.n8n.io/code/builtin/n8n-metadata/
+Scraped_At: 2025-05-20T18:41:02.894355
+
+n8n metadata
+#
+Methods for working with n8n metadata.
+This includes:
+Access to n8n environment variables for self-hosted n8n.
+Metadata about workflows, executions, and nodes.
+Information about instance
+Variables
+and
+External secrets
+.
+Python support
+You can use Python in the Code node. It isn't available in expressions.
+JavaScript
+Python
+Method
+Description
+Available in Code node?
+$env
+Contains n8n instance configuration
+environment variables
+.
+$execution.customData
+Set and get custom execution data. Refer to
+Custom executions data
+for more information.
+$execution.id
+The unique ID of the current workflow execution.
+$execution.mode
+Whether the execution was triggered automatically, or by manually running the workflow. Possible values are
+test
+and
+production
+.
+$execution.resumeUrl
+The webhook URL to call to resume a workflow waiting at a
+Wait node
+.
+$getWorkflowStaticData(type)
+View an
+example
+. Static data doesn't persist when testing workflows. The workflow must be active and called by a trigger or webhook to save static data. This gives access to the static workflow data.
+$("<node-name>").isExecuted
+Check whether a node has already executed.
+$itemIndex
+The index of an item in a list of items.
+$nodeVersion
+Get the version of the current node.
+$prevNode.name
+The name of the node that the current input came from. When using the Merge node, note that
+$prevNode
+always uses the first input connector.
+$prevNode.outputIndex
+The index of the output connector that the current input came from. Use this when the previous node had multiple outputs (such as an If or Switch node).  When using the Merge node, note that
+$prevNode
+always uses the first input connector.
+$prevNode.runIndex
+The run of the previous node that generated the current input. When using the Merge node, note that
+$prevNode
+always uses the first input connector.
+$runIndex
+How many times n8n has executed the current node. Zero-based (the first run is 0, the second is 1, and so on).
+$secrets
+Contains information about your
+External secrets
+setup.
+$vars
+Contains the
+Variables
+available in the active environment.
+$version
+The node version.
+$workflow.active
+Whether the workflow is active (true) or not (false).
+$workflow.id
+The workflow ID.
+$workflow.name
+The workflow name.
+Method
+Description
+_env
+Contains n8n instance configuration
+environment variables
+.
+_execution.customData
+Set and get custom execution data. Refer to
+Custom executions data
+for more information.
+_execution.id
+The unique ID of the current workflow execution.
+_execution.mode
+Whether the execution was triggered automatically, or by manually running the workflow. Possible values are
+test
+and
+production
+.
+_execution.resumeUrl
+The webhook URL to call to resume a workflow waiting at a
+Wait node
+.
+_getWorkflowStaticData(type)
+View an
+example
+. Static data doesn't persist when testing workflows. The workflow must be active and called by a trigger or webhook to save static data. This gives access to the static workflow data.
+_("<node-name>").isExecuted
+Check whether a node has already executed.
+_nodeVersion
+Get the version of the current node.
+_prevNode.name
+The name of the node that the current input came from. When using the Merge node, note that
+_prevNode
+always uses the first input connector.
+_prevNode.outputIndex
+The index of the output connector that the current input came from. Use this when the previous node had multiple outputs (such as an If or Switch node).  When using the Merge node, note that
+_prevNode
+always uses the first input connector.
+_prevNode.runIndex
+The run of the previous node that generated the current input. When using the Merge node, note that
+_prevNode
+always uses the first input connector.
+_runIndex
+How many times n8n has executed the current node. Zero-based (the first run is 0, the second is 1, and so on).
+_secrets
+Contains information about your
+External secrets
+setup.
+_vars
+Contains the
+Variables
+available in the active environment.
+_workflow.active
+Whether the workflow is active (true) or not (false).
+_workflow.id
+The workflow ID.
+_workflow.name
+The workflow name.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

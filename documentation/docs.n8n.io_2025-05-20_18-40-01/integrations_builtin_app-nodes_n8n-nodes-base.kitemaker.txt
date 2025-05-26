@@ -1,0 +1,43 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.kitemaker/
+Scraped_At: 2025-05-20T18:48:54.478160
+
+Kitemaker node
+#
+Use the Kitemaker node to automate work in Kitemaker, and integrate Kitemaker with other applications. n8n has built-in support for a wide range of Kitemaker features, including retrieving data on organizations, spaces and users, as well as creating, getting, and updating work items.
+On this page, you'll find a list of operations the Kitemaker node supports and links to more resources.
+Credentials
+Refer to
+Kitemaker credentials
+for guidance on setting up authentication.
+Operations
+#
+Organization
+Retrieve data on the logged-in user's organization.
+Space
+Retrieve data on all the spaces in the logged-in user's organization.
+User
+Retrieve data on all the users in the logged-in user's organization.
+Work Item
+Create
+Get
+Get All
+Update
+Templates and examples
+#
+Create, update, and retrieve a record from FileMaker
+by Harshil Agrawal
+View template details
+Convert FileMaker Data API to Flat File Array
+by Dick
+View template details
+Integrate Xero with FileMaker using Webhooks
+by Stathis Askaridis
+View template details
+Browse Kitemaker integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

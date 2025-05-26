@@ -1,0 +1,422 @@
+{
+  "workflow": {
+    "id": 2074,
+    "name": "Send n8n automation errors to a Monday.com board",
+    "views": 1109,
+    "recentViews": 0,
+    "totalViews": 1109,
+    "createdAt": "2024-01-30T17:56:20.898Z",
+    "description": "This template is an error handler that will log n8n workflow errors to a Monday.com board for troubleshooting and tracking.\n\nPrerequisites\n- Monday account and Monday credential\n- Create a board on Monday for error logging, with the following columns and types:\n\t- Timestamp (text)\n\t- Error Message (text)\n\t- Stack Trace (long text)\n- Determine the column IDs using Monday's [instructions](https://support.monday.com/hc/en-us/articles/360000225709-Board-item-column-and-automation-or-integration-ID-s) \n\nSetup\n- Edit the Monday nodes to use your credential\n- Edit the node labeled **CREATE ERROR ITEM** to point to your error log board and group name\n- Edit the column IDs in the \"Column Values\" field of the **UPDATE** node to match the IDs of the fields on your error log board\n- To trigger error logging, select this automation as the error workflow on any automation\n\t- For more detailed logging, add **Stop and Error** nodes in your workflow to send specific error messages to your board.\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "257476b1ef58bf3cb6a46e65fac7ee34a53a5e1a8492d5c6e4da5f87c9b82833",
+        "templateId": "2074"
+      },
+      "nodes": [
+        {
+          "id": "25a95fba-9367-48ca-b7a3-5ab1fb701869",
+          "name": "Monday",
+          "type": "n8n-nodes-base.mondayCom",
+          "notes": "CREATE ERROR ITEM",
+          "position": [
+            620,
+            240
+          ],
+          "parameters": {
+            "name": "={{ \"\".concat($('Error Trigger').last().json.execution.id) }}",
+            "boardId": "1382091189",
+            "groupId": "topics",
+            "resource": "boardItem",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "mondayComApi": {
+              "id": "SP53wbPUCBNJRq1G",
+              "name": "Monday.com account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "5fb18856-cd59-4f57-9e72-c637a206fa41",
+          "name": "Date & Time",
+          "type": "n8n-nodes-base.dateTime",
+          "position": [
+            840,
+            240
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "66baa154-b421-4942-99e9-f00f6870b3fa",
+          "name": "Error Trigger",
+          "type": "n8n-nodes-base.errorTrigger",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "34347458-7509-4e08-a501-1cee4a307bb7",
+          "name": "Code",
+          "type": "n8n-nodes-base.code",
+          "notes": "GET STACKTRACE",
+          "position": [
+            1040,
+            240
+          ],
+          "parameters": {
+            "jsCode": "\nconsole.log($('Error Trigger').last().json.execution)\nstr = escape ($('Error Trigger').last().json.execution.error.stack )\nreturn { \"stack\": str}"
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "92b6e47b-1c34-40eb-9f9a-57e197528c86",
+          "name": "UPDATE",
+          "type": "n8n-nodes-base.mondayCom",
+          "notes": "POPULUATE MONDAY ITEM",
+          "position": [
+            1280,
+            240
+          ],
+          "parameters": {
+            "itemId": "={{ $('Monday').last().json.id }}",
+            "boardId": "1382091189",
+            "resource": "boardItem",
+            "operation": "changeMultipleColumnValues",
+            "columnValues": "={ \"column_id_for_workflow_name (text)\" : \"{{  $('Error Trigger').item.json.workflow.name }}\",\n\"column_id_for_error_stack (long text)\" : \"{{ $('Code').last().json.stack}}\",\n\"column_id_for_error_message (text)\": \"{{ $('Error Trigger').item.json.execution.error.message }}\",\n\"column_id_for_date (text)\": \"{{ $('Date & Time').last().json.currentDate }}\"\n}\n"
+          },
+          "credentials": {
+            "mondayComApi": {
+              "id": "SP53wbPUCBNJRq1G",
+              "name": "Monday.com account"
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {
+        "Error Trigger": [
+          {
+            "workflow": {
+              "name": "My WF"
+            },
+            "execution": {
+              "id": 1,
+              "error": {
+                "stack": "Some error here haha",
+                "message": "New error"
+              }
+            }
+          }
+        ]
+      },
+      "connections": {
+        "Code": {
+          "main": [
+            [
+              {
+                "node": "UPDATE",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Monday": {
+          "main": [
+            [
+              {
+                "node": "Date & Time",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Date & Time": {
+          "main": [
+            [
+              {
+                "node": "Code",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Error Trigger": {
+          "main": [
+            [
+              {
+                "node": "Monday",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.dateTime": {
+          "count": 1
+        },
+        "n8n-nodes-base.mondayCom": {
+          "count": 2
+        },
+        "n8n-nodes-base.errorTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Joey D’Anna",
+      "username": "jdana",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "https://twitter.com/joeydanna"
+      ],
+      "avatar": "https://gravatar.com/avatar/e72923eb7b6fddc64bafeb6b1911939d6047a6ec3cf4143054d6753df7d54e29?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 12,
+        "icon": "fa:bug",
+        "name": "n8n-nodes-base.errorTrigger",
+        "codex": {
+          "data": {
+            "details": "In n8n, when a workflow execution fails, it can start another workflow. This second workflow can be any arbitrary workflow on your n8n instance. Use the Error Trigger node as your Trigger in the Error workflow.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.errortrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Error Trigger",
+          "color": "#0000FF"
+        },
+        "iconData": {
+          "icon": "bug",
+          "type": "icon"
+        },
+        "displayName": "Error Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 221,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.dateTime",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datetime/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Date & Time",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Date & Time",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 309,
+        "icon": "file:mondayCom.svg",
+        "name": "n8n-nodes-base.mondayCom",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mondaycom/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mondayCom/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Monday.com"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNGRjNENTciIGQ9Ik04LjE4NCA0Ny4zOTNBNy4yIDcuMiAwIDAgMSAxLjkgNDMuNjc0YTcuMjIgNy4yMiAwIDAgMSAuMTk2LTcuMzA3bDEyLjk0NS0yMC43M2E3LjE4IDcuMTggMCAwIDEgNi4zNTYtMy4zNzYgNy4yIDcuMiAwIDAgMSA2LjA5NyAzLjgyNCA3LjIxIDcuMjEgMCAwIDEtLjI1OCA3LjJsLTEyLjk1IDIwLjcyN2E3LjE5IDcuMTkgMCAwIDEtNi4xMDMgMy4zNzl6Ii8+PHBhdGggZmlsbD0iI0ZGQ0IwMCIgZD0iTTMwLjQ5NCA0Ny4zOTNhNy4yIDcuMiAwIDAgMS02LjI5NS0zLjcxMyA3LjIxIDcuMjEgMCAwIDEgLjE5NC03LjMxM2wxMi45NTQtMjAuNzNhNy4xNyA3LjE3IDAgMCAxIDYuNDExLTMuNjM0QTcuMTkgNy4xOSAwIDAgMSA1MCAxNS45MjNhNy4yMSA3LjIxIDAgMCAxLS40NzYgNy4zNmwtMTIuOTMgMjAuNzNhNy4xOSA3LjE5IDAgMCAxLTYuMTAyIDMuMzc4bC4wMDMuMDAyeiIvPjxwYXRoIGZpbGw9IiMwMEQ2NDciIGQ9Ik00NS41OTEgNDAuMzU3YzAtMy44OTUgMy4yMTQtNy4wMzQgNy4yMDUtNy4wMzRTNjAgMzYuNDYgNjAgNDAuMzU3cy0zLjIxNCA3LjAzNC03LjIwNCA3LjAzNGMtMy45OTEgMC03LjIwNS0zLjEzNy03LjIwNS03LjAzNCIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Monday.com",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

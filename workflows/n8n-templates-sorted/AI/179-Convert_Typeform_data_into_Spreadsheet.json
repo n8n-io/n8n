@@ -1,0 +1,487 @@
+{
+  "workflow": {
+    "id": 179,
+    "name": "Convert Typeform data into Spreadsheet",
+    "views": 1359,
+    "recentViews": 0,
+    "totalViews": 1359,
+    "createdAt": "2019-11-14T09:29:09.549Z",
+    "description": "1. Trigger on new Typeform form submission\n1. Get existing spreadsheet-file from NextCloud\n1. Read data from file into flow\n1. Append a new row to flow-data\n1. Convert flow-data to a spreadsheet-file\n1. Save updated spreadsheet-file to NextCloud\n\n![workflow-screenshot](fileId:25)\n\n# Assumptions\n\n## Spreadsheet file\n\nNamed: Problems.xls in folder \"examples\".\n\nColumns Names:\n - Name\n - Email\n - Severity\n - Problem\n\n![spreadsheetexamplefile.png](fileId:24)\n\n# Typeform\n\nTypeform formular with questions named exactly like the columns of the Google Sheet.\n",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Typeform Trigger",
+          "type": "n8n-nodes-base.typeformTrigger",
+          "position": [
+            500,
+            520
+          ],
+          "parameters": {
+            "formId": ""
+          },
+          "credentials": {
+            "typeformApi": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "NextCloud",
+          "type": "n8n-nodes-base.nextCloud",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "path": "examples/Problems.xls",
+            "operation": "download"
+          },
+          "credentials": {
+            "nextCloudApi": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Spreadsheet File",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            800,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1000,
+            470
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Spreadsheet File1",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            1150,
+            470
+          ],
+          "parameters": {
+            "operation": "toFile"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "NextCloud1",
+          "type": "n8n-nodes-base.nextCloud",
+          "position": [
+            1300,
+            470
+          ],
+          "parameters": {
+            "path": "={{$node[\"NextCloud\"].parameter[\"path\"]}}",
+            "binaryDataUpload": true
+          },
+          "credentials": {
+            "nextCloudApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Spreadsheet File1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "NextCloud": {
+          "main": [
+            [
+              {
+                "node": "Spreadsheet File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Spreadsheet File": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Typeform Trigger": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Spreadsheet File1": {
+          "main": [
+            [
+              {
+                "node": "NextCloud1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.nextCloud": {
+          "count": 2
+        },
+        "n8n-nodes-base.spreadsheetFile": {
+          "count": 2
+        },
+        "n8n-nodes-base.typeformTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Jan Oberhauser",
+      "username": "jan",
+      "bio": "Founder/CEO of n8n",
+      "verified": true,
+      "links": [
+        "https://twitter.com/JanOberhauser"
+      ],
+      "avatar": "https://gravatar.com/avatar/457e4b99bfbbb2d3fb5b045a6d80165b3bc80dc3ff24306ac18fd1180e257786?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "icon": "file:nextcloud.svg",
+        "name": "n8n-nodes-base.nextCloud",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nextcloud/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/nextCloud/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Nextcloud"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNzYgNTEiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMDA4MmM5IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTM3LjUzMyAwYy03Ljc3IDAtMTQuMzU1IDUuMjY4LTE2LjM5NiAxMi4zNzktMS43NzgtMy44MTktNS41OTctNi40NTMtMTAuMDc1LTYuNDUzQzUuMDA0IDUuOTI2IDAgMTAuOTMxIDAgMTcuMDU0YTExLjE2IDExLjE2IDAgMCAwIDExLjEyOCAxMS4xMjhjNC40MTIgMCA4LjI5Ny0yLjYzNCAxMC4wNzUtNi40NTNhMTYuOTkgMTYuOTkgMCAwIDAgMTYuMzMgMTIuMzc5YzcuNzA0IDAgMTQuMjg5LTUuMjAyIDE2LjM5Ni0xMi4yNDggMS43NzggMy42ODcgNS41OTcgNi4yNTYgOS45NDMgNi4yNTZBMTEuMTYgMTEuMTYgMCAwIDAgNzUgMTYuOTg5YzAtNi4xMjQtNS4wMDQtMTEuMDYyLTExLjEyOC0xMS4wNjItNC4zNDYgMC04LjE2NSAyLjU2OC05Ljk0MyA2LjI1NkM1MS44MjIgNS4yMDIgNDUuMzAzIDAgMzcuNTMzIDBtMCA2LjUxOWExMC40OCAxMC40OCAwIDAgMSAxMC41MzUgMTAuNTM2QTEwLjQ4IDEwLjQ4IDAgMCAxIDM3LjUzMyAyNy41OWExMC40OCAxMC40OCAwIDAgMS0xMC41MzYtMTAuNTM1QTEwLjQ4IDEwLjQ4IDAgMCAxIDM3LjUzMyA2LjUxOW0tMjYuNDA1IDUuOTI2YTQuNTggNC41OCAwIDAgMSA0LjYwOSA0LjYwOSA0LjU4IDQuNTggMCAwIDEtNC42MDkgNC42MDkgNC41OCA0LjU4IDAgMCAxLTQuNjA5LTQuNjA5IDQuNTggNC41OCAwIDAgMSA0LjYwOS00LjYwOW01Mi43NDQgMGE0LjU4IDQuNTggMCAwIDEgNC42MDkgNC42MDkgNC42MDkgNC42MDkgMCAxIDEtOS4yMTggMGMuMDY2LTIuNTY4IDIuMDQxLTQuNjA5IDQuNjA5LTQuNjA5TTE5LjE3NiA0MS45NTdjMS44MjcgMCAyLjg1IDEuMzAxIDIuODUgMy4yNTJhLjM0NC4zNDQgMCAwIDEtLjM0MS4zNDFIMTYuNzZjLjAzMSAxLjczNCAxLjIzOSAyLjcyNiAyLjYzMyAyLjcyNmEyLjkgMi45IDAgMCAwIDEuNzk2LS42MTljLjE4Ni0uMTI0LjM0MS0uMDkzLjQzNC4wOTNsLjA5My4xNTVjLjA5My4xNTUuMDYyLjMxLS4wOTMuNDM0YTMuODQgMy44NCAwIDAgMS0yLjI2MS43NDNjLTIuMDEzIDAtMy41NjItMS40NTYtMy41NjItMy41NjIuMDMxLTIuMjMgMS41MTgtMy41NjIgMy4zNzYtMy41NjJ6bTEuODg5IDIuOTExYy0uMDYyLTEuNDI1LS45MjktMi4xMzctMS45Mi0yLjEzNy0xLjE0NiAwLTIuMTM3Ljc0My0yLjM1NCAyLjEzN3ptMTAuMjUzLTEuOTJ2LTIuMzg1YzAtLjIxNy4xMjQtLjM0MS4zNDEtLjM0MWguMjQ4Yy4yMTcgMCAuMzEuMTI0LjMxLjM0MXYxLjYxMWgxLjM5NGMuMjE3IDAgLjM0MS4xMjQuMzQxLjM0MXYuMDkzYzAgLjIxNy0uMTI0LjMxLS4zNDEuMzFoLTEuMzk0djMuNDA3YzAgMS41OC45NiAxLjc2NiAxLjQ4NyAxLjc5Ni4yNzkuMDMxLjM3Mi4wOTMuMzcyLjM0MXYuMTg2YzAgLjIxNy0uMDkzLjMxLS4zNzIuMzEtMS40ODcgMC0yLjM4NS0uODk4LTIuMzg1LTIuNTA5di0zLjV6bTcuMDkzLS45OTFjMS4xNzcgMCAxLjkyLjQ5NiAyLjI2MS43NzQuMTU1LjEyNC4xODYuMjc5LjAzMS40NjVsLS4wOTMuMTU1Yy0uMTI0LjE4Ni0uMjc5LjE4Ni0uNDY1LjA2Mi0uMzEtLjIxNy0uODk4LS42MTktMS43MDMtLjYxOS0xLjQ4NyAwLTIuNjY0IDEuMTE1LTIuNjY0IDIuNzU3IDAgMS42MTEgMS4xNzcgMi43MjYgMi42NjQgMi43MjYuOTYgMCAxLjYxMS0uNDM0IDEuOTItLjcxMi4xODYtLjEyNC4zMS0uMDkzLjQzNC4wOTNsLjA5My4xMjRjLjA5My4xODYuMDYyLjMxLS4wOTMuNDY1YTMuOCAzLjggMCAwIDEtMi40MTYuODY3Yy0yLjAxMyAwLTMuNTYyLTEuNDU2LTMuNTYyLTMuNTYyLjAzMS0yLjEwNiAxLjU4LTMuNTkzIDMuNTkzLTMuNTkzem00LjExOS0yLjE5OWMwLS4yMTctLjEyNC0uMzQxLjA5My0uMzQxaC4yNDhjLjIxNyAwIC41NTguMTI0LjU1OC4zNDF2Ny40MDNjMCAuODY3LjQwMy45Ni43MTIuOTkxLjE1NSAwIC4yNzkuMDkzLjI3OS4zMXYuMjE3YzAgLjIxNy0uMDkzLjM0MS0uMzQxLjM0MS0uNTU3IDAtMS41NDktLjE4Ni0xLjU0OS0xLjY3M3ptNi4zNSAyLjE5OWMxLjk4MiAwIDMuNTkzIDEuNTE4IDMuNTkzIDMuNTMxIDAgMi4wNDQtMS42MTEgMy41OTMtMy41OTMgMy41OTNzLTMuNTkzLTEuNTQ5LTMuNTkzLTMuNTkzYzAtMi4wMTMgMS42MTEtMy41MzEgMy41OTMtMy41MzFtMCA2LjMxOWMxLjQ1NiAwIDIuNjMzLTEuMTc3IDIuNjMzLTIuNzg4IDAtMS41NDktMS4xNzctMi42OTUtMi42MzMtMi42OTVhMi42NyAyLjY3IDAgMCAwLTIuNjY0IDIuNjk1Yy4wMzEgMS41OCAxLjIwOCAyLjc4OCAyLjY2NCAyLjc4OG0xNS40NTYtNi4zMTlhMi40NSAyLjQ1IDAgMCAxIDIuMjMgMS4zNjNoLjAzMXMtLjAzMS0uMjE3LS4wMzEtLjUyNnYtMy4wNjZjMC0uMjE3LS4wOTMtLjM0MS4xMjQtLjM0MWguMjQ4Yy4yMTcgMCAuNTU4LjEyNC41NTguMzQxdjguODI3YzAgLjIxNy0uMDkzLjM0MS0uMzEuMzQxaC0uMjE3Yy0uMjE3IDAtLjM0MS0uMDkzLS4zNDEtLjMxdi0uNTI3YzAtLjI0OC4wNjItLjQzNC4wNjItLjQzNGgtLjAzMXMtLjU4OSAxLjQyNS0yLjM1NCAxLjQyNWMtMS44MjcgMC0yLjk3My0xLjQ1Ni0yLjk3My0zLjU2Mi0uMDYyLTIuMTA2IDEuMjA4LTMuNTMxIDMuMDA0LTMuNTMxbS4wMzEgNi4zMTljMS4xNDYgMCAyLjE5OS0uODA1IDIuMTk5LTIuNzU3IDAtMS4zOTQtLjcxMi0yLjcyNi0yLjE2OC0yLjcyNi0xLjIwOCAwLTIuMTk5Ljk5MS0yLjE5OSAyLjcyNi4wMzEgMS42NzMuODk4IDIuNzU3IDIuMTY4IDIuNzU3bS01Ni41NTguNjVoLjI0OGMuMjE3IDAgLjM0MS0uMTI0LjM0MS0uMzQxdi02LjYyOGMwLTEuMDUzIDEuMTQ2LTEuNzk2IDIuNDQ3LTEuNzk2czIuNDQ3Ljc0MyAyLjQ0NyAxLjc5NnY2LjY1OWMwIC4yMTcuMTI0LjM0MS4zNDEuMzQxaC4yNDhjLjIxNyAwIC4zMS0uMTI0LjMxLS4zNDF2LTYuNzIxYzAtMS43NjYtMS43NjUtMi42MzMtMy4zNzYtMi42MzMtMS41NDkgMC0zLjMxNC44NjctMy4zMTQgMi42MzN2Ni42OWMwIC4yMTcuMDkzLjM0MS4zMS4zNDF6bTUxLjY5NS02LjgxNGgtLjI0OGMtLjIxNyAwLS4zNDEuMTI0LS4zNDEuMzQxdjMuNzQ4YzAgMS4wNTMtLjY4MSAyLjAxMy0yLjAxMyAyLjAxMy0xLjMwMSAwLTIuMDEzLS45Ni0yLjAxMy0yLjAxM3YtMy43NDhjMC0uMjE3LS4xMjQtLjM0MS0uMzQxLS4zNDFINTQuM2MtLjIxNyAwLS4zMS4xMjQtLjMxLjM0MXYzLjk5NmMwIDEuNzY1IDEuMzAxIDIuNjMzIDIuOTEyIDIuNjMzczIuOTExLS44NjcgMi45MTEtMi42MzN2LTMuOTk2Yy4wMzEtLjIxNy0uMDkzLS4zNDEtLjMxLS4zNDF6bS0zMC42NjQtLjAzMWMtLjA2MiAwLS4xNTUuMDYyLS4yMTcuMTU1bC0xLjIzOSAxLjQ4Ny0uOTI5IDEuMTE1LTEuNDI1LTEuNzA0LS43NzQtLjkyOWMtLjA2Mi0uMDkzLS4xNTUtLjEyNC0uMjE3LS4xMjRzLS4xNTUuMDMxLS4yNDguMDkzbC0uMTg2LjE1NWMtLjE1NS4xMjQtLjE1NS4yNzktLjAzMS40NjVsMS4yMzkgMS40ODcgMS4wNTMgMS4yMzktMS41MTggMS44MjctLjc3NC45MjljLS4xMjQuMTU1LS4xMjQuMzQxLjAzMS40OTZsLjE4Ni4xNTVjLjE1NS4xMjQuMzEuMDkzLjQ2NS0uMDYybDEuMjM5LTEuNDg3LjkyOS0xLjExNSAxLjQyNSAxLjcwNC43NzQuOTI5Yy4xMjQuMTU1LjMxLjE4Ni40NjUuMDMxbC4xODYtLjE1NWMuMTU1LS4xMjQuMTU1LS4yNzkuMDMxLS40NjVsLTEuMjM5LTEuNDg3LTEuMDUzLTEuMjM5IDEuNTE4LTEuODI3Ljc3NC0uOTI5Yy4xMjQtLjE1NS4xMjQtLjM0MS0uMDMxLS40OTVsLS4xODYtLjE4NmMtLjA5My0uMDYyLS4xNTUtLjA5My0uMjQ4LS4wNjJ6Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Nextcloud",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 41,
+        "icon": "fa:table",
+        "name": "n8n-nodes-base.spreadsheetFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "_Excel",
+              "Excel",
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "xls",
+              "xlsx",
+              "ods"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Spreadsheet File",
+          "color": "#2244FF"
+        },
+        "iconData": {
+          "icon": "table",
+          "type": "icon"
+        },
+        "displayName": "Spreadsheet File",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 51,
+        "icon": "file:typeform.svg",
+        "name": "n8n-nodes-base.typeformTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Form"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.typeformtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/typeform/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Typeform Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4Ljg4NzYgMC4wNzM4OTg0QzI0LjAzMTYgLTAuMzQ5NjE4IDI3LjcyNiAxLjAxNTY2IDMxLjcwMTIgNC45ODg0NkMzNS45OTMgOS4yNzc2NyAzOC44NDYzIDE0LjgzNjEgMzkuNjE1MiAyMC43NTdDNDAuNDcwOCAyNy4zNDE1IDM5LjI5NCAzMi4yNTUxIDM1LjY2OTcgMzUuODUyNUMzMi4yMDQgMzkuMjkyNCAyNy4xNDE5IDQwLjQyNyAyMC4zNzk3IDM5Ljg2MTdMMjAuMDk5OCAzOS44MzcxQzE0LjM0MTUgMzkuMzA3NyAxMC4yNjg2IDM3LjQxOTcgNi4zMjIzMyAzMy40MjMxQzIuMTA3MTEgMjkuMTU0IC0wLjExNDA5NCAyNC4zMDcgMC4wMDQ1MTUwMyAxOS4yMTk2QzAuMDYyNTI4MiAxNi43MjkgMC43NjgwNDYgMTQuNjA2MyAyLjEyODY3IDEyLjUyMzZDMy4wMjA2OCAxMS4xNTgyIDMuOTI2NTcgMTAuMDkzMSA1LjgyMTQ5IDguMTM5N0w2LjQ1Mzg5IDcuNDkxOTNMNy4xNTEgNi43ODUzNUMxMS42NDE4IDIuMjcxMjggMTQuNTk4NCAwLjQyNzA0MiAxOC44ODc2IDAuMDczODk4NFpNMzEuMzk1NSA1LjI5NDMyQzI3LjUwOTkgMS40MTEgMjMuOTQwMSAwLjA5MTc4OTggMTguOTIzMSAwLjUwNDg1M0MxNC42OTUgMC44NTI5NjYgMTEuNzkxMyAyLjcwMDEgNy4yNDcwNiA3LjMwMjcxTDYuOTE4MzIgNy42MzYyNUM0LjcwNDI2IDkuODg3MDQgMy42NjY2OSAxMS4wMzc4IDIuNzUyNzEgMTIuMzY4N0wyLjYxOTcyIDEyLjU2NDlMMi40OTA2OCAxMi43NjAxQzEuMTcyNjEgMTQuNzc3NyAwLjQ5Mjg3MyAxNi44MjI4IDAuNDM2ODEgMTkuMjI5NkMwLjMyMTE0MyAyNC4xOTA5IDIuNDkyMjggMjguOTI4NiA2LjYzMDAyIDMzLjExOTJDMTAuNTY2MyAzNy4xMDU4IDE0LjYxMDIgMzguOTQ1NiAyMC40MTU4IDM5LjQzMDhMMjAuNzAzOCAzOS40NTM5QzI3LjIwNzEgMzkuOTU0IDMyLjA1NTYgMzguODMwNCAzNS4zNjUgMzUuNTQ1NkMzOC44ODEyIDMyLjA1NTYgNDAuMDI2MSAyNy4yNzUxIDM5LjE4NjQgMjAuODEyN0MzOC40MzAxIDE0Ljk4OTEgMzUuNjIxNSA5LjUxNzczIDMxLjM5NTUgNS4yOTQzMlpNMjYuMDE0MSAxNC41NDlWMTYuNjYxNEgyMS41Mjc4VjI4Ljc2ODFIMTkuMjkzMVYxNi42NjE0SDE0LjgwNjhWMTQuNTQ5SDI2LjAxNDFaIiBmaWxsPSIjMjYyNjI3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Typeform Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 24,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/86d3081b895d4c3a95a311fba0805b90.png"
+      },
+      {
+        "id": 25,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/0982199784e04bf8bce1455edf14f147.png"
+      }
+    ]
+  }
+}

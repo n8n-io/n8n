@@ -1,0 +1,21 @@
+URL: https://docs.n8n.io/code/cookbook/expressions/
+Scraped_At: 2025-05-20T18:41:25.076463
+
+Expressions cookbook
+#
+This section contains examples and recipes for tasks you can do with
+expressions
+.
+Python support
+You can use Python in the Code node. It isn't available in expressions.
+Check incoming data
+Common issues
+Related resources
+#
+Built-in methods and variables reference
+Expressions
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

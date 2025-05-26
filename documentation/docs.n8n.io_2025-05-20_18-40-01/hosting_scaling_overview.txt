@@ -1,0 +1,21 @@
+URL: https://docs.n8n.io/hosting/scaling/overview/
+Scraped_At: 2025-05-20T18:45:00.737811
+
+Scaling n8n
+#
+When running n8n at scale, with a large number of users, workflows, or executions, you need to change your n8n configuration to ensure good performance.
+n8n can run in different
+modes
+depending on your needs. The
+queue
+mode provides the best scalability. Refer to
+Queue mode
+for configuration details.
+You can configure data saving and pruning to improve database performance. Refer to
+Execution data
+for details.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,307 @@
+{
+  "workflow": {
+    "id": 3002,
+    "name": " Dynamically Run SuiteQL Queries in NetSuite via HTTP Webhook in n8n",
+    "views": 403,
+    "recentViews": 1,
+    "totalViews": 403,
+    "createdAt": "2025-02-24T18:28:27.222Z",
+    "description": "![image.png](fileId:965)\n\n# Dynamically Run SuiteQL Queries in NetSuite via HTTP Webhook in n8n\n\n&gt; **Important:** This template uses a NetSuite community node, so it only works on **self-hosted n8n**. Cloud-based n8n instances currently do not support community nodes.  \n\n## Summary\n\nThis workflow template allows you to **dynamically run SuiteQL queries in NetSuite** by sending an HTTP request to an n8n Webhook node. Once triggered, the workflow uses token-based authentication to execute your SuiteQL query and returns the results as JSON. This makes it easy to integrate real-time NetSuite data into dashboards, reporting tools, or other applications.\n\n## Who Is This For?\n\n- **Developers & Integrators**: Easily embed NetSuite data retrieval into custom apps or internal tools.  \n- **Enterprises & Consultants**: Integrate dynamic reporting or data enrichment from NetSuite without manual exports.  \n- **System Administrators**: Automate routine queries and reduce manual intervention.\n\n## Use Cases & Benefits\n\n### 1. Dynamic Data Access\nSend any SuiteQL query on demand instead of hardcoding queries or manually running reports.\n\n### 2. Seamless Integration\nQuickly pull NetSuite data into front-end systems (like Excel dashboards, custom web apps, or internal tools) by calling the webhook endpoint.\n\n### 3. Simplified Reporting\nAutomate data extraction and formatting, reducing the need for manual exports and improving efficiency.\n\n## How It Works\n\n1. **Trigger**:  \n   - An HTTP request to the webhook node initiates the workflow.  \n\n2. **Input Processing**:  \n   - The workflow reads the SuiteQL query from the incoming request parameter (`suiteql`).  \n\n3. **Query Execution**:  \n   - The NetSuite node uses your token-based authentication credentials to run the SuiteQL query.  \n\n4. **Response**:  \n   - Results are returned as JSON in the HTTP response, ready for further processing or immediate consumption.\n\n## Prerequisites & Setup\n\n1. **NetSuite Community Node**  \n   - This workflow requires the NetSuite community node. Make sure your **self-hosted** n8n instance supports community nodes.\n\n2. **NetSuite Token-Based Authentication**  \n   - Enable TBA in NetSuite. Obtain the required consumer key, consumer secret, token ID, and token secret.\n\n3. **n8n Webhook**  \n   - Copy the auto-generated webhook URL (e.g. `http://&lt;your-n8n-domain&gt;/webhook/unique-id`) from the Webhook node.\n\n4. **Usage**  \n   - Send an HTTP GET or POST request to the webhook with your SuiteQL query. For example:  \n     ```sh\n     curl \"http://&lt;your-n8n-domain&gt;/webhook/unique-id?suiteql=SELECT%20*%20FROM%20account%20LIMIT%2010\"\n     ```  \n   - The workflow will execute the query and return JSON data.\n\n## Customization\n\n- **Change the Query**:  \n  Simply adjust the `suiteql` parameter in your HTTP request to run different SuiteQL statements.\n\n- **Data Transformation**:  \n  Insert nodes (e.g., Function, Set, or Format) to modify or reformat the data before returning it.\n\n- **Extend Integration**:  \n  Chain additional nodes to push the retrieved data to other services (Google Sheets, Slack, custom dashboards, etc.).\n\n## Additional Notes\n\n- Remember that this template is **only compatible with self-hosted n8n** because it uses a community node. - \n[netsuite community node](https://www.npmjs.com/package/n8n-nodes-netsuite\n)\n- If you have questions, suggestions, or need support, contact us at [support@dataants.org](mailto:support@dataants.org).\n\n---\n",
+    "workflow": {
+      "id": "FDl4Ho3KYiA7MIxR",
+      "meta": {
+        "instanceId": "f6d3344846b38f0c35c069a91b2450f6527b26bb735b6301a692ce1cca2b2682"
+      },
+      "name": "NetSuite Rest API workflow",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "f7f90fb4-e29f-4bbf-a99d-ee2fde45cd06",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -380,
+            -40
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9fcc1ce7-e9bf-4592-8bcd-7c77272a9c59",
+          "name": "NetSuite",
+          "type": "n8n-nodes-netsuite.netsuite",
+          "position": [
+            -40,
+            -180
+          ],
+          "parameters": {
+            "query": "={{ $json.query.suiteql }}",
+            "options": {},
+            "operation": "runSuiteQL"
+          },
+          "credentials": {
+            "netsuite": {
+              "id": "ro6Rl1oWY4KkFUYn",
+              "name": "NetSuite account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1d615309-2cb0-4383-9698-2f80da0d4bf5",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -380,
+            -280
+          ],
+          "webhookId": "249328cc-587a-4269-b266-96fe60cfaeb9",
+          "parameters": {
+            "path": "249328cc-587a-4269-b266-96fe60cfaeb9",
+            "options": {},
+            "responseData": "allEntries",
+            "responseMode": "lastNode"
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "d6823e59-8e07-44a6-b4af-b029da620523",
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "NetSuite",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "NetSuite": {
+          "main": [
+            []
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "NetSuite",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-netsuite.netsuite": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "DataAnts",
+      "username": "dataants",
+      "bio": "Data Analytics and Automation Consultant with more than 8 years of experience in the NetSuite, ERP and Financial reporting space",
+      "verified": false,
+      "links": [
+        "https://www.linkedin.com/company/35581985"
+      ],
+      "avatar": "https://gravatar.com/avatar/08ed50db1d4c1a045dcf08a66ed03b89a552e492860fafce317e84cab17b0613?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 965,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_2dedd5832a.png"
+      }
+    ]
+  }
+}

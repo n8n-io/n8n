@@ -1,0 +1,206 @@
+{
+  "workflow": {
+    "id": 500,
+    "name": "Create a company in Salesmate",
+    "views": 250,
+    "recentViews": 0,
+    "totalViews": 250,
+    "createdAt": "2020-07-13T15:33:30.595Z",
+    "description": "![workflow-screenshot](fileId:99)",
+    "workflow": {
+      "id": "128",
+      "name": "Create a company in Salesmate",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Salesmate",
+          "type": "n8n-nodes-base.salesmate",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "name": "",
+            "owner": "",
+            "resource": "company",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "salesmateApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Salesmate",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.salesmate": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 137,
+        "icon": "file:salesmate.png",
+        "name": "n8n-nodes-base.salesmate",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.salesmate/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/salesmate/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Salesmate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAAAn1BMVEUAAAAYRP4APP7b3/8AOP4eR/4nTP4ALv4AJ/4AI/5FX/4BP/4AK/4AD/7Hzf8AMv4AHv51hv9idf8kSv7Z3f/Y3f+8w/9QaP5KY/4vUf4PQf4MQP7k5v/O0/+utv/T2P/L0P+Vof9vgP/Jz/+krf+bpv9mef9kd/9ccf9Zbv8TQ/7Q1f/GzP+Rnf+fqf9WbP8AGv6Ekv9/jv8+W/43Vv6Y3JAlAAAAAXRSTlMAQObYZgAAAYRJREFUSMftlNlygjAYhbOShbC4IigqIIKo1da+/7MV0LZAKZ2pXnjBd0FmzuRjIJn/gJ6enp6Hsxjjcb5MMP7OxnhSPnG3GkiIdIWBaXuIOi9F9DKDyLNNgJWOoAx+VQ8e9whBIpcNnaC5cMcTV8wRQcYBYJGvHodRu7tWI89ykmS3ACtnOJwxqGuaDtks2TorsDgVUUaZ3yoroZx99WVScM7luhL5M2Vbbe5qEw8a0Vv8IxrEmwl4Ig7hbrBvZMd0uGlE+8EuNJvu0rAIs6e17N0mxNjWoumZEctYNmRCR1Sba9Xo1XYpdes78y35RlR3p0KDEI5Y9V6kTvPIqp53pIptGp/WZV7KKmrK1Arb5Ds+m9x1YP+8Kr+8qidiFR+3zcEIjs3BCIP2wbAEk2ZtJLngXPrVP5ZMWKANn1GoLmnqFGWQDCWD5OJey+D0ZxkAE/JMJ4jfaggJB9xq6Bxdayjj0OwoQO+rAEfp8rMA52JdFmAmg+7qxR3VuwA9PT09j+YDz6cfYkXa6FEAAAAASUVORK5CYII="
+        },
+        "displayName": "Salesmate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 99,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/740c7d1828664309957d26169ecd43be.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,70 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.reddit/
+Scraped_At: 2025-05-20T18:51:06.063075
+
+Reddit node
+#
+Use the Reddit node to automate work in Reddit, and integrate Reddit with other applications. n8n has built-in support for a wide range of Reddit features, including getting profiles, and users, retrieving post comments and subreddit, as well as submitting, getting, and deleting posts.
+On this page, you'll find a list of operations the Reddit node supports and links to more resources.
+Credentials
+Refer to
+Reddit credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Post
+Submit a post to a subreddit
+Delete a post from a subreddit
+Get a post from a subreddit
+Get all posts from a subreddit
+Search posts in a subreddit or in all of Reddit.
+Post Comment
+Create a top-level comment in a post
+Retrieve all comments in a post
+Remove a comment from a post
+Write a reply to a comment in a post
+Profile
+Get
+Subreddit
+Retrieve background information about a subreddit.
+Retrieve information about subreddits from all of Reddit.
+User
+Get
+Templates and examples
+#
+Extract Trends, Auto-Generate Social Content with AI, Reddit, Google & Post
+by Immanuel
+View template details
+Analyze Reddit Posts with AI to Identify Business Opportunities
+by Alex Huang
+View template details
+Reddit AI digest
+by n8n Team
+View template details
+Browse Reddit integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,89 @@
+URL: https://docs.n8n.io/data/data-editing/
+Scraped_At: 2025-05-20T18:42:26.688148
+
+Data editing
+#
+n8n allows you to edit
+pinned data
+. This means you can check different scenarios without setting up each scenario and sending the relevant data from your external system. It makes it easier to test edge cases.
+For development only
+Data editing isn't available for production workflow executions. It's a feature to help test workflows during development.
+Edit output data
+#
+To edit output data:
+Run the node to load data.
+In the
+OUTPUT
+view, select
+JSON
+to switch to JSON view.
+Select
+Edit
+.
+Edit your data.
+Select
+Save
+. n8n saves your data changes and pins your data.
+Use data from previous executions
+#
+You can copy data from nodes in previous workflow executions:
+Open the left menu.
+Select
+Executions
+.
+Browse the workflow executions list to find the one with the data you want to copy.
+Select
+Open Past Execution
+.
+Double click the node whose data you want to copy.
+If it's table layout, select
+JSON
+to switch to JSON view.
+There are two ways to copy the JSON:
+Select the JSON you want by highlighting it, like selecting text. Then use
+ctrl
++
+c
+to copy it.
+Select the JSON you want to copy by clicking on a parameter. Then:
+Hover over the JSON. n8n displays the
+Copy
+button.
+Select
+Copy
+.
+You can choose what to copy:
+Copy Item Path
+and
+Copy Parameter Path
+gives you expressions that access parts of the JSON.
+Copy Value
+: copies the entire selected JSON.
+Return to the workflow you're working on:
+Open the left menu.
+Select
+Workflows
+.
+Select
+Open
+.
+Select the workflow you want to open.
+Open the node where you want to use the copied data.
+If there is no data, run the node to load data.
+In the
+OUTPUT
+view, select
+JSON
+to switch to JSON view.
+Select
+Edit
+.
+Paste in the data from the previous execution.
+Select
+Save
+. n8n saves your data changes and pins your data.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

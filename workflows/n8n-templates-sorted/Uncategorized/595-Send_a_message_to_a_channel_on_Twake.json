@@ -1,0 +1,207 @@
+{
+  "workflow": {
+    "id": 595,
+    "name": "Send a message to a channel on Twake",
+    "views": 267,
+    "recentViews": 0,
+    "totalViews": 267,
+    "createdAt": "2020-08-07T19:40:58.117Z",
+    "description": "![workflow-screenshot](fileId:184)",
+    "workflow": {
+      "id": "1",
+      "name": "Send a message on Twake",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            600,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Twake",
+          "type": "n8n-nodes-base.twake",
+          "position": [
+            800,
+            300
+          ],
+          "parameters": {
+            "content": "",
+            "channelId": "",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "twakeCloudApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Twake",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.twake": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 354,
+        "icon": "file:twake.png",
+        "name": "n8n-nodes-base.twake",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.twake/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/twake/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Twake"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Twake",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 184,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/7048f882cec348d2958118e8125e7e5b.png"
+      }
+    ]
+  }
+}

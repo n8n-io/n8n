@@ -1,0 +1,1540 @@
+{
+  "workflow": {
+    "id": 2867,
+    "name": "Credit Card Payment Reminder & Tracking-For Taiwan Banks",
+    "views": 752,
+    "recentViews": 1,
+    "totalViews": 752,
+    "createdAt": "2025-02-08T08:38:52.038Z",
+    "description": "# Workflow Description\nThis workflow automates the processing of **credit card statement emails** from multiple banks. It extracts important payment details, stores them in **Google Sheets**, and creates calendar reminders in **Google Calendar**. Additionally, it allows users to update the payment status once the bill has been paid.\n\n---\n\n## Key Features\n1. **Email Processing**: Retrieves credit card statement emails from **eight Taiwanese banks**.\n2. **PDF Parsing**: Extracts payment due date and amount from email content or attached PDF files.\n3. **Google Sheets Integration**: Logs extracted data into a **Google Sheets** document for record-keeping.\n4. **Google Calendar Integration**: Creates **Google Calendar** events as reminders for due payments.\n5. **Webhook for Payment Updates**: Allows users to update the payment status via a webhook.\n\n---\n\n## Node Configurations\n\n### 1. Email Retrieval\n- **Purpose**: Fetches credit card statement emails from Gmail.\n- **Configuration**:\n  - **Email Filters**:\n    - **SinoPac Bank**: `from:(newebill.banksinopac.com.tw) SinoPac Bank Credit Card E-Statement Notification`\n    - **Cathay United Bank**: `from:(service@pxbillrc01.cathaybk.com.tw) Cathay United Bank Monthly E-Statement`\n    - **CTBC Bank**: `from:(ebill@estats.ctbcbank.com) CTBC Bank Credit Card E-Statement`\n    - **Taipei Fubon Bank**: `from:(rs@cf.taipeifubon.com.tw) Taipei Fubon Bank Credit Card Statement`\n    - **E.SUN Commercial Bank**: `from:(estatement@esunbank.com) E.SUN Commercial Bank Credit Card E-Statement`\n    - **DBS Bank**: `from:(eservicetw@dbs.com) DBS Bank Credit Card E-Statement`\n    - **Union Bank of Taiwan**: `from:(聯邦銀行信用卡) Union Bank of Taiwan Credit Card E-Statement (Year Month)`\n    - **Taishin International Bank**: `from:(webmaster@bhurecv.taishinbank.com.tw) Taishin International Bank Credit Card E-Statement`\n\n---\n\n### 2. Extract Payment Information\n- **Purpose**: Extracts payment due date, total amount, and minimum payment amount.\n- **Methods**:\n  - **Text-based Extraction**: Uses regex to parse email body.\n  - **PDF Parsing**: Extracts text from PDF attachments.\n\n---\n\n### 3. Data Processing and Storage\n#### 3.1. Consolidate Extracted Data\n- **Purpose**: Standardizes extracted payment details.\n- **Data Fields**:\n  - `payment_due_date`\n  - `payment_amount`\n  - `minimum_payment`\n  - `email_id`\n  - `bank`\n  - `email_subject`\n\n#### 3.2. Google Sheets Integration\n- **Purpose**: Stores the extracted data in a structured format.\n- **Configuration**:\n  - **Sheet Name**: `n8n-Credit Card Payment Reminder`\n  - **Columns**:\n    - `calendar_id`\n    - `Paid`\n    - `Billing Period`\n    - `Amount`\n    - `Minimum Payment`\n    - `Bank`\n    - `email_id`\n\n---\n\n### 4. Google Calendar Integration\n#### 4.1. Create Calendar Reminders\n- **Purpose**: Generates reminders for upcoming payments.\n- **Configuration**:\n  - **Event Title**: `Credit Card Payment - {{ bank }}`\n  - **Due Date**: `payment_due_date`\n  - **Reminders**:\n    - 30 minutes before\n    - 60 minutes before\n    - 1 day before\n\n#### 4.2. Update Payment Status\n- **Purpose**: Updates the calendar event once payment is made.\n- **Configuration**:\n  - **Webhook URL**: Automatically updates the **Google Calendar** event title and description.\n\n---\n\n### 5. Webhook for Payment Updates\n- **Purpose**: Users can mark a payment as **paid** via a webhook.\n- **Configuration**:\n  - **Webhook Path**: `darrell_demo_creditcard_pay_update_path`\n  - **Updates**:\n    - Marks the payment as `Paid`\n    - Updates **Google Calendar** and **Google Sheets**\n",
+    "workflow": {
+      "id": "rgucabdLVKaezGa6",
+      "meta": {
+        "instanceId": "fddb3e91967f1012c95dd02bf5ad21f279fc44715f47a7a96a33433621caa253"
+      },
+      "tags": [
+        {
+          "id": "IifyzA4m8rqIfnph",
+          "name": "public_template",
+          "createdAt": "2025-02-08T07:12:26.837Z",
+          "updatedAt": "2025-02-08T07:12:26.837Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "682ace62-1acf-4327-b24e-5d40382ad750",
+          "name": "When clicking 'Test workflow'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -980,
+            380
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6c3b6c00-a0ac-474f-92a1-fcdea66516d7",
+          "name": "Google Sheets",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            880,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 4.5
+        },
+        {
+          "id": "4b0ea74d-db59-4363-81b3-78eef942c841",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -200,
+            1280
+          ],
+          "webhookId": "3516a92a-a24a-42eb-be10-121b8c797846",
+          "parameters": {},
+          "typeVersion": 2
+        },
+        {
+          "id": "64259065-086a-4e5c-8936-193f36c4b71e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -280,
+            -320
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "aaeb32a5-5850-4f44-9869-fa0ed9233683",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -280,
+            1180
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "8df56f9c-d621-440a-b4b5-413f5dd800af",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -700,
+            -200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "50ddb4a9-e905-4c54-88a3-1080f4003aed",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9ec5ba91-6745-4a4e-8607-4987fd2cc50b",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e0a8ca70-1fee-4401-b03a-edd599de2fe9",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            600
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "b96c9572-3770-437b-9241-85adadc25f64",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            780
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "29caac66-9c6e-4ff6-80f4-3c28b841d66e",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -680,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "05026ee8-7b99-4ffd-9fda-cfa87b729633",
+          "name": "Gmail-SINOPAC",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "notes": "Email coming from sinopac creditcard email",
+          "position": [
+            -180,
+            -220
+          ],
+          "parameters": {},
+          "notesInFlow": true,
+          "typeVersion": 1.2
+        },
+        {
+          "id": "bf9c1bee-d8f0-4e9c-b13f-e2b3c7fbe32e",
+          "name": "SINOPAC_PDF",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            40,
+            -220
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6171ac4c-0172-4081-b3c4-b71d54cdd728",
+          "name": "SINOPAC_set field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            -220
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "4122913f-4fff-4401-b52d-3e5fef868baa",
+          "name": "Organize Data",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            480,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "26b44b81-539d-412b-8db5-009a62778fbe",
+          "name": "Create Google Calendar Event",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            680,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "7f0b3a85-ff72-413f-a0f2-43ed65d23d6c",
+          "name": "Update Google Calendar - change status",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            1100,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "b387f226-878b-47fe-8d0d-8be96073f1bc",
+          "name": "Cathay_set field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            -60
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1b737a0a-476a-4135-b92e-1062133849df",
+          "name": "Gmail-CTBC",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            120
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "33558faf-b386-4853-8482-e1f3a62eeddb",
+          "name": "CTBC _set field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            120
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2dc09bdc-1736-4209-adfb-2bcb384a3f0b",
+          "name": "Gmail-Cathay",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            -60
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "86e8f0de-a82a-4dd7-964d-5e6ebc8b98bb",
+          "name": "Gmail-Fubon",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e0c37b7e-3124-45c5-9eba-ea3cea3fde00",
+          "name": "Fubon_PDF",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            40,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9987b2e7-22a5-4d64-8732-287a50db7c94",
+          "name": "Fubon_set field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "541bb50b-5d1d-4b05-b15a-3d023494af5c",
+          "name": "Gmail-E.SUN",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            440
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "edeca715-2478-4501-9950-2954d59dce8e",
+          "name": "E.SUN_PDF",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            40,
+            440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "fcd79f66-68d8-4653-92f2-a2e88e4ce93b",
+          "name": "E.SUN_set field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            440
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "e1f97003-9422-4ce3-a43c-4263c052ba19",
+          "name": "Gmail-DBS",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            600
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "5414313b-d946-4c29-ba37-c2e638eccdf4",
+          "name": "DBS_PDF",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            40,
+            600
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "92035b9d-165e-4683-85f1-032f3fb6e024",
+          "name": "DBS_set field",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            600
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "25167f22-cfee-466e-af99-9598e98dd538",
+          "name": "Gmail-Union",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            780
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "c793972f-6b17-4de7-99eb-d17f3e9b83c9",
+          "name": "Union_PDF",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            40,
+            780
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "9a121b73-61fb-47d6-8164-9c8b4f85ddc9",
+          "name": "Union_set fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            780
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "355b16e1-e9bf-42ab-b288-44b3fe50efb8",
+          "name": "Gmail-Taishin",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -180,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "39b9103b-36a2-404c-818d-46a5b9fae9eb",
+          "name": "Taishin_PDF",
+          "type": "n8n-nodes-base.extractFromFile",
+          "position": [
+            40,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d64e3188-d6ab-45b0-9f9d-e9c2d999708f",
+          "name": "Taishin_set fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            240,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "d0f4865c-07d9-4291-9b16-c359d9593ec0",
+          "name": "Get Google Calendar Event by id",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            60,
+            1280
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "567a8341-4098-43d0-a109-ae4d2c5c6dfb",
+          "name": "Update Google Calendar event staus",
+          "type": "n8n-nodes-base.googleCalendar",
+          "position": [
+            260,
+            1280
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "99e6733b-d441-472f-80d3-034c3d658ea5",
+          "name": "Update Google Sheets pay status",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            480,
+            1280
+          ],
+          "parameters": {},
+          "typeVersion": 4.5
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "6c41c292-31dd-41cf-8ca6-9d6ceeb16b5a",
+      "connections": {
+        "DBS_PDF": {
+          "main": [
+            [
+              {
+                "node": "DBS_set field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Get Google Calendar Event by id",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "E.SUN_PDF": {
+          "main": [
+            [
+              {
+                "node": "E.SUN_set field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fubon_PDF": {
+          "main": [
+            [
+              {
+                "node": "Fubon_set field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-DBS": {
+          "main": [
+            [
+              {
+                "node": "DBS_PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Union_PDF": {
+          "main": [
+            [
+              {
+                "node": "Union_set fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-CTBC": {
+          "main": [
+            [
+              {
+                "node": "CTBC _set field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-E.SUN": {
+          "main": [
+            [
+              {
+                "node": "E.SUN_PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-Fubon": {
+          "main": [
+            [
+              {
+                "node": "Fubon_PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-Union": {
+          "main": [
+            [
+              {
+                "node": "Union_PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SINOPAC_PDF": {
+          "main": [
+            [
+              {
+                "node": "SINOPAC_set field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Taishin_PDF": {
+          "main": [
+            [
+              {
+                "node": "Taishin_set fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-Cathay": {
+          "main": [
+            [
+              {
+                "node": "Cathay_set field",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "DBS_set field": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-SINOPAC": {
+          "main": [
+            [
+              {
+                "node": "SINOPAC_PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gmail-Taishin": {
+          "main": [
+            [
+              {
+                "node": "Taishin_PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Sheets": {
+          "main": [
+            [
+              {
+                "node": "Update Google Calendar - change status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Organize Data": {
+          "main": [
+            [
+              {
+                "node": "Create Google Calendar Event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CTBC _set field": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "E.SUN_set field": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Fubon_set field": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Cathay_set field": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Union_set fields": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SINOPAC_set field": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Taishin_set fields": {
+          "main": [
+            [
+              {
+                "node": "Organize Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Google Calendar Event": {
+          "main": [
+            [
+              {
+                "node": "Google Sheets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Google Calendar Event by id": {
+          "main": [
+            [
+              {
+                "node": "Update Google Calendar event staus",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Google Calendar event staus": {
+          "main": [
+            [
+              {
+                "node": "Update Google Sheets pay status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 39,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 9
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 8
+        },
+        "n8n-nodes-base.gmailTrigger": {
+          "count": 8
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleCalendar": {
+          "count": 4
+        },
+        "n8n-nodes-base.extractFromFile": {
+          "count": 6
+        }
+      }
+    },
+    "user": {
+      "name": "darrell_tw",
+      "username": "darrelltw",
+      "bio": "Martech Engineer with automation.\nhere is my website: https://www.darrelltw.com/",
+      "verified": true,
+      "links": [
+        "https://x.com/DarrellMarTech"
+      ],
+      "avatar": "https://gravatar.com/avatar/4bf99603c608dc2e9a91e3d17bf47743b41153512a14098c8070213d7dccc199?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 317,
+        "icon": "file:googleCalendar.svg",
+        "name": "n8n-nodes-base.googleCalendar",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automation for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecalendar/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Calendar"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgODIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTYxLjA1MiAxOC45NDdIMTguOTQ3djQyLjEwNWg0Mi4xMDV6Ii8+PHBhdGggZmlsbD0iI2VhNDMzNSIgZD0iTTYxLjA1MyA4MCA4MCA2MS4wNTNINjEuMDUzeiIvPjxwYXRoIGZpbGw9IiNmYmJjMDQiIGQ9Ik04MCAxOC45NDdINjEuMDUzdjQyLjEwNUg4MHoiLz48cGF0aCBmaWxsPSIjMzRhODUzIiBkPSJNNjEuMDUyIDYxLjA1M0gxOC45NDdWODBoNDIuMTA1eiIvPjxwYXRoIGZpbGw9IiMxODgwMzgiIGQ9Ik0wIDYxLjA1M3YxMi42MzJBNi4zMTQgNi4zMTQgMCAwIDAgNi4zMTYgODBoMTIuNjMyVjYxLjA1M3oiLz48cGF0aCBmaWxsPSIjMTk2N2QyIiBkPSJNODAgMTguOTQ3VjYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDczLjY4NSAwSDYxLjA1M3YxOC45NDd6Ii8+PHBhdGggZmlsbD0iIzQyODVmNCIgZD0iTTYxLjA1MyAwSDYuMzE2QTYuMzE0IDYuMzE0IDAgMCAwIDAgNi4zMTZ2NTQuNzM3aDE4Ljk0N1YxOC45NDdoNDIuMTA1VjB6TTI3LjU4NCA1MS42MTFjLTEuNTc0LTEuMDYzLTIuNjYzLTIuNjE2LTMuMjU4LTQuNjY4bDMuNjUzLTEuNTA1cS40OTggMS44OTQgMS43MzcgMi45MzdjMS4yMzkgMS4wNDMgMS44MjEgMS4wMzcgMi45ODkgMS4wMzdxMS43OTIgMCAzLjA3OS0xLjA4OWMxLjI4Ny0xLjA4OSAxLjI5LTEuNjUzIDEuMjktMi43NzRhMy40NCAzLjQ0IDAgMCAwLTEuMzU4LTIuODExYy0uOTA1LS43MjctMi4wNDItMS4wODktMy40LTEuMDg5aC0yLjExMXYtMy42MTZIMzIuMXExLjc1MiAwIDIuOTUzLS45NDdjMS4yMDEtLjk0NyAxLjItMS40OTUgMS4yLTIuNTk1cTAtMS40NjctMS4wNzQtMi4zNDJjLTEuMDc0LS44NzUtMS42MjEtLjg3OS0yLjcyMS0uODc5cS0xLjYxLS4wMDItMi41NTguODU4Yy0uOTQ4Ljg2LTEuMTA2IDEuMzAxLTEuMzc5IDIuMTExbC0zLjYxNi0xLjUwNWMuNDc5LTEuMzU4IDEuMzU4LTIuNTU4IDIuNjQ3LTMuNTk1czIuOTM3LTEuNTU4IDQuOTM3LTEuNTU4cTIuMjItLjAwMiAzLjk4OS44NThjMS43NjkuODYgMi4xMDUgMS4zNjggMi43NzQgMi4zNzlzMSAyLjE1MyAxIDMuNDE2cTAgMS45MzItLjkzMiAzLjI3NGMtLjkzMiAxLjM0Mi0xLjM4NCAxLjU3OS0yLjI4OSAyLjA1OHYuMjE2YTYuOTUgNi45NSAwIDAgMSAyLjkzNyAyLjI4OXExLjE0NiAxLjUzOCAxLjE0NyAzLjY4NGMuMDAxIDIuMTQ2LS4zNjMgMi43MTEtMS4wODkgMy44MzJzLTEuNzMyIDIuMDA1LTMuMDA1IDIuNjQ3Yy0xLjI3OS42NDItMi43MTYuOTY4LTQuMzExLjk2OC0xLjg0Ny4wMDUtMy41NTMtLjUyNi01LjEyNi0xLjU4OXptMjIuNDM3LTE4LjEyNi00LjAxIDIuOS0yLjAwNS0zLjA0MiA3LjE5NS01LjE4OWgyLjc1OHYyNC40NzloLTMuOTM3VjMzLjQ4NHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Calendar",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 824,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmailTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gmailtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Gmail Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1235,
+        "icon": "file:extractFromFile.svg",
+        "name": "n8n-nodes-base.extractFromFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "decode",
+              "decoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "PDF",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "txt",
+              "Text",
+              "RTF",
+              "XML",
+              "64",
+              "Base64",
+              "Convert"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.extractfromfile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Extract from File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAuOTM3NSAyQzAuNDE5NzMzIDIgMCAyLjQxOTczIDAgMi45Mzc1VjM3LjMyMjFDMCAzNy44Mzk5IDAuNDE5NzMzIDM4LjI1OTYgMC45Mzc1IDM4LjI1OTZIMjYuMjE1NEMyNi43MzMyIDM4LjI1OTYgMjcuMTUyOSAzNy44Mzk5IDI3LjE1MjkgMzcuMzIyMUwyNy4xNTI5IDMwLjY3MTlMMTYuNzk2OSAzMC42NzE5QzE0Ljg5ODQgMzAuNjcxOSAxMy4zNTk0IDI5LjEzMjkgMTMuMzU5NCAyNy4yMzQ0VjI1LjM1OTRDMTMuMzU5NCAyMy40NjA5IDE0Ljg5ODQgMjEuOTIxOSAxNi43OTY5IDIxLjkyMTlIMjcuMTUyOUwyNy4xNTI5IDE1Ljc4MjFIMTQuMzA4M0MxMy43OTA2IDE1Ljc4MjEgMTMuMzcwOCAxNS4zNjI0IDEzLjM3MDggMTQuODQ0NlYySDAuOTM3NVoiIGZpbGw9IiMzNTNGNkUiLz4KPHBhdGggZD0iTTE2LjAyNzEgMkMxNS45NDA4IDIgMTUuODcwOCAyLjA2OTk2IDE1Ljg3MDggMi4xNTYyNVYxMi44MTM0QzE1Ljg3MDggMTMuMDcyMyAxNi4wODA3IDEzLjI4MjEgMTYuMzM5NiAxMy4yODIxSDI2Ljk5NjdDMjcuMDgzIDEzLjI4MjEgMjcuMTUyOSAxMy4yMTIyIDI3LjE1MjkgMTMuMTI1OUwyNy4xNTI5IDEyLjYxNzFDMjcuMTUyOSAxMi4zNjg4IDI3LjA1NDUgMTIuMTMwNyAyNi44NzkxIDExLjk1NUwxNy4yMjI1IDIuMjc1MzhDMTcuMDQ2NiAyLjA5OTA4IDE2LjgwNzkgMiAxNi41NTg4IDJIMTYuMDI3MVoiIGZpbGw9IiMzNTNGNkUiLz4KPHBhdGggZD0iTTI5Ljc2NDIgMzQuNjUwM0MyOS4wMzQgMzMuOTE2IDI5LjAzNzQgMzIuNzI4OCAyOS43NzE2IDMxLjk5ODZMMzMuNjE5NyAyOC4xNzE5TDE2Ljc5NjkgMjguMTcxOUMxNi4yNzkxIDI4LjE3MTkgMTUuODU5NCAyNy43NTIxIDE1Ljg1OTQgMjcuMjM0NFYyNS4zNTk0QzE1Ljg1OTQgMjQuODQxNiAxNi4yNzkxIDI0LjQyMTkgMTYuNzk2OSAyNC40MjE5TDMzLjU0MTIgMjQuNDIxOUwyOS43NzE2IDIwLjY3MzNDMjkuMDM3NCAxOS45NDMxIDI5LjAzNCAxOC43NTU5IDI5Ljc2NDIgMTguMDIxNkMzMC40OTQ0IDE3LjI4NzQgMzEuNjgxNiAxNy4yODQgMzIuNDE1OSAxOC4wMTQyTDM5LjQ0NzEgMjUuMDA2NEMzOS44MDEgMjUuMzU4MyA0MCAyNS44MzY4IDQwIDI2LjMzNTlDNDAgMjYuODM1IDM5LjgwMSAyNy4zMTM1IDM5LjQ0NzEgMjcuNjY1NUwzMi40MTU5IDM0LjY1NzZDMzEuNjgxNiAzNS4zODc4IDMwLjQ5NDQgMzUuMzg0NSAyOS43NjQyIDM0LjY1MDNaIiBmaWxsPSIjMzUzRjZFIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Extract from File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,56 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.rundeck/
+Scraped_At: 2025-05-20T18:51:10.612291
+
+Rundeck node
+#
+Use the Rundeck node to automate work in Rundeck, and integrate Rundeck with other applications. n8n has built-in support for executing jobs and getting metadata.
+On this page, you'll find a list of operations the Rundeck node supports and links to more resources.
+Credentials
+Refer to
+Rundeck credentials
+for guidance on setting up authentication.
+Operations
+#
+Job
+Execute a job
+Get metadata of a job
+Templates and examples
+#
+Browse Rundeck integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Find the job ID
+#
+Access your Rundeck dashboard.
+Open the project that contains the job you want to use with n8n.
+In the sidebar, select
+JOBS
+.
+Under
+All Jobs
+, select the name of the job you want to use with n8n.
+In the top left corner, under the name of the job, copy the string that's displayed in smaller font below the job name. This is your job ID.
+Paste this job ID in the
+Job Id
+field in n8n.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

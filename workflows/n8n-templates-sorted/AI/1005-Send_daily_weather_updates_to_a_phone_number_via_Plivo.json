@@ -1,0 +1,400 @@
+{
+  "workflow": {
+    "id": 1005,
+    "name": "Send daily weather updates to a phone number via Plivo",
+    "views": 747,
+    "recentViews": 0,
+    "totalViews": 747,
+    "createdAt": "2021-03-26T14:07:40.392Z",
+    "description": "This workflow allows you to send daily weather updates via an SMS message using the Plivo node.\n\n![workflow-screenshot](fileId:460)\n\n**Cron node:** The Cron node will trigger the workflow daily at 9 AM.\n\n**OpenWeatherMap node:** This node will return data about the current weather in Berlin. To get the weather updates for your city, you can enter the name of your city instead.\n\n**Plivo node:** This node will send an SMS with the weather update, which was sent by the previous node.\n",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Plivo",
+          "type": "n8n-nodes-base.plivo",
+          "position": [
+            1030,
+            400
+          ],
+          "parameters": {
+            "message": "=Hey! The temperature outside is {{$node[\"OpenWeatherMap\"].json[\"main\"][\"temp\"]}}°C."
+          },
+          "credentials": {
+            "plivoApi": "Plivo API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "OpenWeatherMap",
+          "type": "n8n-nodes-base.openWeatherMap",
+          "position": [
+            830,
+            400
+          ],
+          "parameters": {
+            "cityName": "berlin"
+          },
+          "credentials": {
+            "openWeatherMapApi": "owm"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Cron",
+          "type": "n8n-nodes-base.cron",
+          "position": [
+            630,
+            400
+          ],
+          "parameters": {
+            "triggerTimes": {
+              "item": [
+                {
+                  "hour": 9
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Cron": {
+          "main": [
+            [
+              {
+                "node": "OpenWeatherMap",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenWeatherMap": {
+          "main": [
+            [
+              {
+                "node": "Plivo",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.cron": {
+          "count": 1
+        },
+        "n8n-nodes-base.plivo": {
+          "count": 1
+        },
+        "n8n-nodes-base.openWeatherMap": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 7,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.cron",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "details": "The Cron node uses Cron under the hood - a time-based job scheduler in Unix-like computer operating systems. Use this node when you want to trigger workflows periodically, especially in more complex scenarios like \"every Tuesday at 9 am\" or \"Weekdays\".",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Cron",
+          "color": "#29a568"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Cron",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 27,
+        "icon": "file:openWeatherMap.svg",
+        "name": "n8n-nodes-base.openWeatherMap",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.openweathermap/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/openWeatherMap/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "OpenWeatherMap"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2LjA2OTUgMjIuODgzM0MzNS43NjM3IDIyLjg3MDggMzUuNDU2MiAyMi44NzUgMzUuMTQ4MSAyMi44NzkxQzM0Ljk5MzggMjIuODgxMiAzNC44Mzk1IDIyLjg4MzMgMzQuNjg1MSAyMi44ODMzQzMzLjc0OTYgMjIuODgzMyAzMy4yNzk0IDIyLjg4MzMgMzMuMDQ4MSAyMi42NDgyQzMyLjgxNDMgMjIuNDEwNiAzMi44MjQ3IDIxLjkzMjkgMzIuODQ1NSAyMC45NzIzQzMyLjkyNTkgMTguNzYyMSAzMi41Mjc4IDE2LjU2MDcgMzEuNjc4NSAxNC41MTg3QzMwLjgyOTMgMTIuNDc2NyAyOS41NDg4IDEwLjY0MjIgMjcuOTI0OCA5LjE0MDg5VjkuMTIyMDhMMjcuNTg2MyA4LjgyMTEyQzI1Ljg5NDggNy4zMzc0MSAyMy44OTg1IDYuMjQyNTIgMjEuNzM4MSA1LjYxMzU5QzE5LjU3NzcgNC45ODQ2NiAxNy4zMDU3IDQuODM2OTcgMTUuMDgyMSA1LjE4MDkxQzEyLjg1ODUgNS41MjQ4NiAxMC43MzczIDYuMzUyMDcgOC44Njc5MiA3LjYwNDMzQzYuOTk4NSA4Ljg1NjU1IDUuNDI2MzQgMTAuNTAzNCA0LjI2MjExIDEyLjQyODhMNC4yMzU3OCAxMi40NzAyQzQuMjA5NDUgMTIuNTE1NCA0LjE4MjcgMTIuNTYwNSA0LjE1NTk1IDEyLjYwNTdDNC4xMDI0NSAxMi42OTU5IDQuMDQ4OTMgMTIuNzg2MiAzLjk5ODc4IDEyLjg3NjVDMi41MDA1NiAxNS41MjYxIDEuODI2MDcgMTguNTYyMSAyLjA2MTM3IDIxLjU5NjdDMi4wNjY4IDIxLjY4NzYgMi4wODI1IDIxLjc4NjQgMi4wOTg2IDIxLjg4NzZDMi4xNzE3NiAyMi4zNDc2IDIuMjUzMDMgMjIuODU4NiAxLjQxNDMxIDIyLjkxNzJDMC41MzAyNTEgMjIuOTc3NCAtMC4xMzE4NTUgMjMuNDE3NSAwLjAyMjM4NTUgMjQuNDIyQzAuMTc2NjI2IDI1LjQyNjQgMC45NDc4MjggMjUuNTUwNiAxLjgwOTMyIDI1LjU1MDZDMi42OTk3OCAyNS41MzMgMy41OTE5MiAyNS41Mzg5IDQuNDgzNSAyNS41NDQ3QzQuOTI4OTQgMjUuNTQ3NiA1LjM3NDY4IDI1LjU1MDYgNS44MTk1NyAyNS41NTA2QzYuNjc3MjkgMjUuNTUwNiA3LjI5NDI2IDI1Ljg5NjcgNy4zMjQzNSAyNi44MDMzQzcuMzUwNjggMjcuNjIzNCA2LjgyNzc3IDI4LjA3ODYgNi4wMTg5NSAyOC4wODk5QzUuMDE0NTEgMjguMDg5OSA0LjM1OTkzIDI4LjU1MjYgNC40Mzg5MyAyOS41NjQ2QzQuNTE3OTMgMzAuNTc2NSA1LjM0NTU2IDMwLjY5MzIgNi4xOTk1MiAzMC42NzA2QzguNTk1ODkgMzAuNjUxOCAxMC45OTIzIDMwLjY0OCAxMy4zOTI0IDMwLjY3MDZDMTQuMjc2NSAzMC42NzA2IDE0LjkzMSAzMS4wNDY4IDE0Ljg3ODQgMzIuMDczOEMxNC44Mjk1IDMzLjAxMDUgMTQuMjIzOCAzMy4zMDc3IDEzLjM3MzYgMzMuMzA0SDguOTQ1NzVDOC4wMDkwMyAzMy4zMDQgNy4wOTExMSAzMy4zNTI5IDcuMDg3MzUgMzQuNTgzQzcuMDgzNTkgMzUuODEzMiA4LjAxMjc5IDM1Ljg1NDYgOC45NDU3NSAzNS44NTA4SDMwLjM4NTJDMzEuMjY1NSAzNS44NTA4IDMxLjk5NTMgMzUuNjg5IDMyLjAyMTYgMzQuNjM5NUMzMi4wNTE3IDMzLjUxMDkgMzEuMjY5MiAzMy4yODUxIDMwLjM1MTMgMzMuMzA3N0gyMi42MDU0QzIxLjczNjQgMzMuMzA3NyAyMS4xNjA4IDMyLjkzMTUgMjEuMTM0NSAzMi4wMjg3QzIxLjEwODIgMzEuMTI1OCAyMS43MDYzIDMwLjczNDUgMjIuNTQ5IDMwLjY3NDNDMjIuNzMyMiAzMC42NTkzIDIyLjkxNzEgMzAuNjY0MyAyMy4xMDE1IDMwLjY2OTNDMjMuMTkzNCAzMC42NzE4IDIzLjI4NTIgMzAuNjc0MyAyMy4zNzY2IDMwLjY3NDNDMjQuMjE5MyAzMC42NzQzIDI1LjAwNTYgMzAuNTgwMyAyNS4wNzMzIDI5LjUxNTdDMjUuMTQ4NSAyOC4zODcxIDI0LjM5NjEgMjguMTIgMjMuNDYzMiAyOC4xMTYyQzIyLjYxMyAyOC4wNzExIDIyLjEyMDEgMjcuNTc0NSAyMi4xMjAxIDI2LjgyMjFDMjIuMTIwMSAyNS45NjgxIDIyLjY4MDcgMjUuNTA1NCAyMy41Nzk4IDI1LjUzMTdIMzYuMDMxOUMzNi45Mzg1IDI1LjUzMTcgMzcuNTg5MyAyNS4yNDU4IDM3LjYxOTQgMjQuMjMzOUMzNy42NDk1IDIzLjIyMTkgMzYuOTM0NyAyMi45MjA5IDM2LjA2OTUgMjIuODgzM1oiIGZpbGw9IiNFQjZENEEiLz4KPHBhdGggZD0iTTM4LjgxMDUgMjguMTA3MlYyOC4xMDk2QzM5LjQ3NDMgMjguMTUwMyA0MCAyOC43MDE1IDQwIDI5LjM3NTVDNDAgMzAuMDQ5NSAzOS40NzQzIDMwLjYwMDcgMzguODEwNSAzMC42NDE1VjMwLjY0MzlIMzUuNDAzNFYzMC42MzczQzM0Ljc2NDEgMzAuNTcyMSAzNC4yNjUzIDMwLjAzMjEgMzQuMjY1MyAyOS4zNzU1QzM0LjI2NTMgMjguNzE5IDM0Ljc2NDEgMjguMTc5IDM1LjQwMzQgMjguMTEzOFYyOC4xMDcySDM4LjgxMDVaIiBmaWxsPSIjRUI2RDRBIi8+CjxwYXRoIGQ9Ik0zMS4zMzc4IDI4LjEwOTZWMjguMTA3MkgyNy45MzA3VjI4LjExMzhDMjcuMjkxMSAyOC4xNzg3IDI2Ljc5MiAyOC43MTg4IDI2Ljc5MiAyOS4zNzU1QzI2Ljc5MiAzMC4wMzIyIDI3LjI5MTEgMzAuNTcyNCAyNy45MzA3IDMwLjYzNzNWMzAuNjQzOUgzMS4zMzc4VjMwLjY0MTRDMzIuMDAxMyAzMC42MDA1IDMyLjUyNjggMzAuMDQ5NCAzMi41MjY4IDI5LjM3NTVDMzIuNTI2OCAyOC43MDE3IDMyLjAwMTMgMjguMTUwNiAzMS4zMzc4IDI4LjEwOTZaIiBmaWxsPSIjRUI2RDRBIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenWeatherMap",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      },
+      {
+        "id": 472,
+        "icon": "file:plivo.svg",
+        "name": "n8n-nodes-base.plivo",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.plivo/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/plivo/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Plivo"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSI0MCAzMCAxNzAgMTcwIj48ZGVmcz48cGF0aCBpZD0iYSIgZD0iTTAgLjU0OWgxNTJWMTE5SDB6Ii8+PC9kZWZzPjxnIGZpbGw9Im5vbmUiIGZpbGwtcnVsZT0iZXZlbm9kZCI+PHBhdGggZmlsbD0iI0ZGRiIgZmlsbC1vcGFjaXR5PSIuMDEiIGQ9Ik0wIDBoMjUwdjIxOEgweiIvPjxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDQ5IDQ5LjQ1MSkiPjxtYXNrIGlkPSJiIiBmaWxsPSIjZmZmIj48dXNlIHhsaW5rOmhyZWY9IiNhIi8+PC9tYXNrPjxwYXRoIGZpbGw9IiM0M0EwNDYiIGQ9Ik03NS43MzUuNTQ4QzYyLjgzMS41OTQgNTAuOTI3IDQuODQxIDQxLjMxMSAxMS45OWMtOS42MTYgNy4xNS0xNi45NDMgMTcuMjAyLTIwLjY5NSAyOC44NTNhNC4zIDQuMyAwIDAgMS0uNjg0IDEuMyA0LjQgNC40IDAgMCAxLTEuMDguOTk3IDQxLjY0IDQxLjY0IDAgMCAwLTE0LjE0IDE1LjQ5NkMxLjQwMiA2NC45My0uMzI4IDcyLjE4Mi4wNTIgNzkuODcyYy41NDggMTEuMTE3IDUuNjAxIDIwLjkxOSAxMy4zIDI3LjkzIDcuNjk3IDcuMDE0IDE4LjA0MSAxMS4yMzYgMjkuMTczIDExLjE5OGg2Ny4yMzNhNDIuOTQgNDIuOTQgMCAwIDAgMjkuMDk2LTExLjUxM2M3LjY1LTcuMTIyIDEyLjYzNS0xNy4wMTUgMTMuMTA4LTI4LjEzNy4zMjYtNy42OTMtMS40NTQtMTQuOTMyLTQuODA3LTIxLjIwM2E0MS42NCA0MS42NCAwIDAgMC0xNC4yNDQtMTUuNCA0LjQgNC40IDAgMCAxLTEuMDg5LS45ODggNC4zIDQuMyAwIDAgMS0uNjkyLTEuMjk2Yy0zLjgzMi0xMS42MjUtMTEuMjI4LTIxLjYyNi0yMC44OTQtMjguNzFDMTAwLjU3MiA0LjY3MiA4OC42NC41MDYgNzUuNzM2LjU0OW0uMDUgMTQuNzc4YzkuNTI2LS4wMzIgMTguNTcyIDMuMTI0IDI1LjkyIDguNTY4IDcuMzQ3IDUuNDQ0IDEyLjk5OCAxMy4xNzUgMTUuNzM0IDIyLjI5M2wuNTkyIDEuOTczLjU5MyAxLjk3NGE0LjI1IDQuMjUgMCAwIDAgMS45MTMgMi40NDFsMS43NzYgMS4wNDcgMS43NzUgMS4wNDZjNC4yNjEgMi41MTMgNy42MzQgNi4wMjQgOS44OTQgMTAuMTQzczMuNDA4IDguODQ3IDMuMjIgMTMuNzk0Yy0uMjc3IDcuMTgtMy41MDMgMTMuNTQ4LTguNDU4IDE4LjEyOGEyNy45IDI3LjkgMCAwIDEtMTguODI0IDcuMzkybC0zMy44My4xMTYtMzMuODMuMTE3YTI3LjkgMjcuOSAwIDAgMS0xOC44NzQtNy4yNjNjLTQuOTg2LTQuNTQ1LTguMjU3LTEwLjg5MS04LjU4LTE4LjA3LS4yMjUtNC45NDUuODktOS42OCAzLjEyMi0xMy44MTUgMi4yMzMtNC4xMzUgNS41ODItNy42NyA5LjgyNi0xMC4yMTFsMS43NjgtMS4wNTggMS43NjctMS4wNmE0LjI1IDQuMjUgMCAwIDAgMS44OTgtMi40NTRsLjU3OC0xLjk3OC41OC0xLjk3N2MyLjY3My05LjEzNiA4LjI3LTE2LjkwNiAxNS41OC0yMi40MDEgNy4zMS01LjQ5MyAxNi4zMzMtOC43MTEgMjUuODYtOC43NDUiIG1hc2s9InVybCgjYikiLz48L2c+PHBhdGggZmlsbD0iIzQzQTA0NiIgZD0iTTExMy4yODEgMTAwLjY1MWMwIC44Ny0uMzUgMS42NTgtLjkxOCAyLjIyOWEzLjE1IDMuMTUgMCAwIDEtMi4yMjQuOTM0bC0zLjE3NC4wMTItMy4xNzUuMDExYTMuMTUgMy4xNSAwIDAgMS0yLjIyOS0uOTE5IDMuMTYgMy4xNiAwIDAgMS0uOTM0LTIuMjIzbC0uMDEtMy4xNzUtLjAxLTMuMTc1YTMuMTYgMy4xNiAwIDAgMSAzLjE0MS0zLjE2M2wzLjE3NC0uMDEgMy4xNzQtLjAxMWMuODcgMCAxLjY1OC4zNSAyLjIzLjkxOGEzLjE1IDMuMTUgMCAwIDEgLjkzMyAyLjIyM2wuMDExIDMuMTc1em0xNy45NjEgMGMwIC44Ny0uMzUgMS42NTgtLjkxOCAyLjIyOWEzLjE1IDMuMTUgMCAwIDEtMi4yMjMuOTM0bC0zLjE3NS4wMTItMy4xNzQuMDExYy0uODcgMC0xLjY1OC0uMzUxLTIuMjMtLjkxOWEzLjE1IDMuMTUgMCAwIDEtLjkzMy0yLjIyM2wtLjAxMi0zLjE3NS0uMDEtMy4xNzVhMy4xNiAzLjE2IDAgMCAxIDMuMTQxLTMuMTYzbDMuMTc1LS4wMSAzLjE3NC0uMDExYy44NyAwIDEuNjU4LjM1IDIuMjMuOTE4cy45MjggMS4zNTQuOTM0IDIuMjIzbC4wMSAzLjE3NXptMTcuOTYyLjAwMmMwIC44NjktLjM1IDEuNjU3LS45MTggMi4yMjlhMy4xNiAzLjE2IDAgMCAxLTIuMjI1LjkzNGwtMy4xNzQuMDExLTMuMTc0LjAxMWEzLjE1IDMuMTUgMCAwIDEtMi4yMzItLjkxNiAzLjE1IDMuMTUgMCAwIDEtLjkzMS0yLjIyNmwtLjAxMi0zLjE3NS0uMDEtMy4xNzVhMy4xMyAzLjEzIDAgMCAxIC45MTYtMi4yMzEgMy4xNSAzLjE1IDAgMCAxIDIuMjI2LS45MzFsMy4xNzUtLjAxMSAzLjE3My0uMDExYTMuMTUgMy4xNSAwIDAgMSAyLjI2Ljg2N2MuNTg3LjU1Ny45NiAxLjMzOC45ODQgMi4yMXYuMDY0bC0uMDMgMy4xNzUtLjAyOSAzLjE3NXptLTM1LjkxNSAxNy45NTVjMCAuODY5LS4zNSAxLjY1Ny0uOTE4IDIuMjI5YTMuMTYgMy4xNiAwIDAgMS0yLjIyNC45MzRsLTMuMTc0LjAxMS0zLjE3NS4wMTFhMy4xNSAzLjE1IDAgMCAxLTIuMjMtLjkxOCAzLjE2IDMuMTYgMCAwIDEtLjkzMy0yLjIyNGwtLjAxMS0zLjE3NS0uMDEtMy4xNzRjLS4wMDEtLjg3LjM1LTEuNjU4LjkxOC0yLjIyOWEzLjE1IDMuMTUgMCAwIDEgMi4yMjMtLjkzNGwzLjE3NS0uMDEgMy4xNzQtLjAxMmMuODcgMCAxLjY1OC4zNSAyLjIyOS45MTkuNTczLjU2Ny45MjkgMS4zNTMuOTM0IDIuMjIybC4wMSAzLjE3NXptMTcuOTYgMGMwIC44NjktLjM1IDEuNjU3LS45MTcgMi4yMjlhMy4xNiAzLjE2IDAgMCAxLTIuMjIzLjkzNGwtMy4xNzUuMDExLTMuMTc0LjAxMWEzLjE1IDMuMTUgMCAwIDEtMi4yMy0uOTE4IDMuMTUgMy4xNSAwIDAgMS0uOTMzLTIuMjI0bC0uMDEyLTMuMTc1LS4wMS0zLjE3NGMtLjAwMS0uODcuMzUtMS42NTguOTE4LTIuMjI5YTMuMTUgMy4xNSAwIDAgMSAyLjIyMy0uOTM0bDMuMTc1LS4wMSAzLjE3NC0uMDEyYy44NyAwIDEuNjU4LjM1IDIuMjMuOTE5YTMuMTUgMy4xNSAwIDAgMSAuOTM0IDIuMjIybC4wMSAzLjE3NXptMTcuOTYyIDBjMCAuODY5LS4zNSAxLjY1Ny0uOTE4IDIuMjI5YTMuMTYgMy4xNiAwIDAgMS0yLjIyNC45MzRsLTMuMTc0LjAxMS0zLjE3NS4wMTFhMy4xNCAzLjE0IDAgMCAxLTIuMjMyLS45MTYgMy4xNSAzLjE1IDAgMCAxLS45My0yLjIyNmwtLjAxMi0zLjE3NS0uMDEtMy4xNzRhMy4xMyAzLjEzIDAgMCAxIC45MTUtMi4yMzIgMy4xNSAzLjE1IDAgMCAxIDIuMjI2LS45MzFsMy4xNzUtLjAxIDMuMTc0LS4wMTJjLjg3IDAgMS42NTguMzUgMi4yMy45MTkuNTcyLjU2Ny45MjggMS4zNTMuOTMzIDIuMjIybC4wMTEgMy4xNzV6bS0zNS45MTQgMTcuOTVhMy4xNCAzLjE0IDAgMCAxLS45MTYgMi4yMzIgMy4xNCAzLjE0IDAgMCAxLTIuMjI2LjkzMWwtMy4xNzQuMDExLTMuMTc1LjAxMWEzLjE1IDMuMTUgMCAwIDEtMi4yMzItLjkxNSAzLjE1IDMuMTUgMCAwIDEtLjkzMS0yLjIyNmwtLjAxMS0zLjE3NS0uMDEtMy4xNzVhMy4xNSAzLjE1IDAgMCAxIC45MTgtMi4yMjkgMy4xNiAzLjE2IDAgMCAxIDIuMjIzLS45MzRsMy4xNzUtLjAxIDMuMTc0LS4wMWEzLjE0IDMuMTQgMCAwIDEgMi4yMjkuOTE3Yy41NzMuNTY4LjkyOSAxLjM1My45MzQgMi4yMjJsLjAxIDMuMTc1em0xNy45NiAwYTMuMTQgMy4xNCAwIDAgMS0uOTE1IDIuMjMyIDMuMTQgMy4xNCAwIDAgMS0yLjIyNS45MzFsLTMuMTc1LjAxMS0zLjE3NC4wMTFhMy4xNDYgMy4xNDYgMCAwIDEtMy4xNjMtMy4xNGwtLjAxMi0zLjE3Ni0uMDEtMy4xNzVhMy4xNSAzLjE1IDAgMCAxIC45MTgtMi4yMjkgMy4xNiAzLjE2IDAgMCAxIDIuMjIzLS45MzRsMy4xNzUtLjAxIDMuMTc0LS4wMWEzLjE1IDMuMTUgMCAwIDEgMi4yMy45MTdjLjU3Mi41NjguOTI4IDEuMzUzLjkzNCAyLjIyMmwuMDEgMy4xNzV6bTE3Ljk2MiAwYTMuMTQgMy4xNCAwIDAgMS0uOTE2IDIuMjMyIDMuMTQgMy4xNCAwIDAgMS0yLjIyNi45MzFsLTMuMTc0LjAxMS0zLjE3NS4wMTFhMy4xNSAzLjE1IDAgMCAxLTIuMjMyLS45MTUgMy4xNSAzLjE1IDAgMCAxLS45My0yLjIyNmwtLjAxMi0zLjE3NS0uMDEtMy4xNzVjLS4wMDQtLjg3LjM0Ni0xLjY2LjkxNS0yLjIzMmEzLjE1IDMuMTUgMCAwIDEgMi4yMjYtLjkzbDMuMTc1LS4wMSAzLjE3NC0uMDEyYTMuMTQgMy4xNCAwIDAgMSAyLjIzLjkxOGMuNTcyLjU2OC45MjggMS4zNTMuOTMzIDIuMjIybC4wMTEgMy4xNzV6Ii8+PC9nPjwvc3ZnPg=="
+        },
+        "displayName": "Plivo",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 460,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/655d10964927442fb1efcb1ec0fe309a.png"
+      }
+    ]
+  }
+}

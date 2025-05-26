@@ -1,0 +1,187 @@
+{
+  "workflow": {
+    "id": 1547,
+    "name": "Create an Onfleet task when a file in Google Drive is updated",
+    "views": 522,
+    "recentViews": 0,
+    "totalViews": 522,
+    "createdAt": "2022-03-22T02:41:50.835Z",
+    "description": "**Summary**\n\nOnfleet is a last-mile delivery software that provides end-to-end route planning, dispatch, communication, and analytics to handle the heavy lifting while you can focus on your customers.\n\nThis workflow template **listens to a Google Drive update event** and **creates an Onfleet delivery task**. You can easily change which Onfleet entity to interact with.\n\n**Configurations**\n\n- Connect to Google Drive with your own Google credentials\n- Specify the `Poll Times` and `File URL or ID` to your own preference, the poll time determines the **frequency** of this check while the file URL/ID specifies which file to **monitor**\n- Update the Onfleet node with your own Onfleet credentials, to register for an **Onfleet API key**, please visit https://onfleet.com/signup to get started",
+    "workflow": {
+      "name": "Create an Onfleet task when a file in Google Drive is updated",
+      "nodes": [
+        {
+          "name": "Google Drive Trigger",
+          "type": "n8n-nodes-base.googleDriveTrigger",
+          "position": [
+            460,
+            300
+          ],
+          "parameters": {
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            },
+            "triggerOn": "specificFile",
+            "fileToWatch": "<some_id>"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Onfleet",
+          "type": "n8n-nodes-base.onfleet",
+          "position": [
+            680,
+            300
+          ],
+          "parameters": {
+            "operation": "create",
+            "additionalFields": {}
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Google Drive Trigger": {
+          "main": [
+            [
+              {
+                "node": "Onfleet",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.onfleet": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleDriveTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "James Li",
+      "username": "ilsemaj",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f2676b8a1c6bf7a2b2c9c4df054571d29662ea0dab6f11e7a423c01af7259574?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 531,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDriveTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.googledrivetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Google Drive Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 555,
+        "icon": "file:Onfleet.svg",
+        "name": "n8n-nodes-base.onfleet",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.onfleet/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/onfleet/"
+                }
+              ]
+            },
+            "categories": [
+              "Miscellaneous"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Onfleet"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSIjQUE4MUYzIiBkPSJNMCAwaDYwdjYwSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMyLjU1IDMyLjA2NmMuNDgyLjQ1NCAxLjIwNyAxLjA2NiAyLjE0NSAxLjgxMS45MzguNzIxIDIuMTY5IDEuNTQ1IDMuNjQzIDIuMTg4Ljc1LjI5IDEuNTUzLjUzMyAyLjQxMi41NTcuNDI3IDAgLjg2IDAgMS4yNjEtLjEzMy4yMTMtLjAyNC40MDItLjEzMy41OTEtLjIxMi4xODktLjExLjM3OC0uMTg4LjU2LS4zMjEuMzQ4LS4yNDMuNjk1LS41MzQuOTYzLS45MDMuMjY4LS4zNy41MTItLjc3LjcyNS0xLjIyNC4zNzgtLjkwMy42MTUtMS45Mi42Ny0yLjk4MWE4LjcgOC43IDAgMCAwLS40MjYtMy4yYy0uMzQ4LTEuMDExLS45MDgtMS45NDUtMS43MTItMi41MzItLjc3NC0uNTU4LTEuNzY3LS43Ny0yLjgzOS0uNjEyLS41MzYuMTA5LTEuMDk2LjI0Mi0xLjYzMi40NzgtLjI2OS4xMS0uNTM3LjI0My0uODI5LjM3Ni0uMjY4LjE1OC0uNTM2LjI5LS44MDQuNDU0LTEuMDcyLjY0My0yLjExNCAxLjQzNi0zLjEwNyAyLjI5LS40ODEuNDU1LS45OTMuODgtMS40NDQgMS4zNTgtLjI0My4yNDItLjQ4LjQ1NS0uNjk0LjcyMWwtLjcyNS43NDVhNDAgNDAgMCAwIDEtMy4wODMgMi45MzNjLTEuMDk2LjkzMy0yLjI0NyAxLjc4OC0zLjUzMyAyLjUzMy0xLjI2LjcyMS0yLjY4IDEuMzMzLTQuMjU4IDEuNTQ1YTYuNyA2LjcgMCAwIDEtMi40MzctLjEwOSA1LjcgNS43IDAgMCAxLTIuMjIzLTEuMDY2IDYuNCA2LjQgMCAwIDEtMS41My0xLjc1OCA4IDggMCAwIDEtLjg1OC0yIDEwLjcgMTAuNyAwIDAgMS0uMzQ4LTIuMDIzIDkuNyA5LjcgMCAwIDEgLjAyNS0xLjk3IDkuOSA5LjkgMCAwIDEgMS4wNi0zLjYzNSA3IDcgMCAwIDEgMS4wNzItMS41MiA1LjMgNS4zIDAgMCAxIDEuNDItMS4xNDZjLjUzNS0uMjkgMS4wOTYtLjUwOSAxLjY2Mi0uNTg4LjU2LS4xMDMgMS4xMjEtLjA3MiAxLjY1Ny0uMDI0IDEuMDQyLjEzMyAxLjk1Ni41MSAyLjczLjkwMyAxLjU1My44NTQgMi42OCAxLjgzNiAzLjU2MyAyLjY5Ljg2Ljg1NSAxLjQ3NSAxLjYgMS45MDEgMi4xMDNsLjYxNS43Ny0uNzI1LS42NjdjLS40OC0uNDU1LTEuMjA2LTEuMDY3LTIuMTQ0LTEuNzg4LS45MzgtLjcyLTIuMTY5LTEuNTQ1LTMuNjQzLTIuMTg3LS43NS0uMjktMS41NTMtLjUzMy0yLjQxMi0uNTU3LS44MjktLjAyNS0xLjY4OC4xNTctMi4zODIuNjY2LS4zNDcuMjQyLS42OTUuNTMzLS45NjMuOTAzcy0uNTM2Ljc3LS43MjUgMS4yMjRhNy45IDcuOSAwIDAgMC0uNjcgMy4wMTEgOC43IDguNyAwIDAgMCAuNDI3IDMuMmMuMzQ3IDEuMDExLjkwNyAxLjk0NSAxLjcxMSAyLjUwMi43NzQuNTU3IDEuNzY3Ljc3IDIuODQuNTg4LjEzMyAwIC4yNjctLjA1NS40MDEtLjA3OXMuMjY4LS4wNTUuNDAyLS4xMDlsLjQwMi0uMTMzLjQwMy0uMTU4Yy4xMzQtLjA1NC4yNjgtLjEwOS40MDItLjE4OGwuNDAyLS4xODhjLjI2OC0uMTU3LjUzNi0uMjkuODA0LS40NTQgMS4wNzItLjY0MiAyLjExNC0xLjQzNiAzLjEwNy0yLjI5Ljk5My0uODc5IDEuOS0xLjc1OCAyLjg5My0yLjhsLjcyNS0uNzQ1Yy4yNDQtLjI2Ny41MTItLjUxLjc1LS43NDVhMjUgMjUgMCAwIDEgMS41NzctMS40MzZjMS4wOTctLjkzNCAyLjI0OC0xLjc4OCAzLjUzNC0yLjUzMyAxLjI2LS43MjEgMi42OC0xLjMzMyA0LjI1OC0xLjU0NWE2LjggNi44IDAgMCAxIDIuNDM2LjEzMyA1LjYgNS42IDAgMCAxIDIuMiAxLjA5Yy42NDUuNTEgMS4xMjcgMS4xMjIgMS41MjkgMS43NThhOCA4IDAgMCAxIC44NTkgMmMuMTg4LjY2Ni4yOTIgMS4zNTcuMzQ3IDIuMDIzYTkuNyA5LjcgMCAwIDEtLjAyNSAxLjk3Yy0uMTM0IDEuMjc4LS40OCAyLjUzMi0xLjA0MSAzLjYyM2E3IDcgMCAwIDEtMS4wNzIgMS41MiA1IDUgMCAwIDEtMS40NDQgMS4xNDYgNSA1IDAgMCAxLS44MjkuMzc2Yy0uMjkyLjA3OC0uNTYuMTg3LS44NTkuMjEyLS41Ni4xMDktMS4xMjcuMDc5LTEuNjYzLjAyNC0xLjA0MS0uMTU4LTEuOTU1LS41MzMtMi43MjktLjkzMy0xLjU1My0uODU1LTIuNjgtMS44NjYtMy41NjQtMi43MTUtLjg1OS0uODU0LTEuNDc0LTEuNi0xLjktMi4xMDJsLS42MTUtLjc3Yy4wNzktLjAxMi44MDQuNjU1LjgwNC42NTUiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Onfleet",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 11,
+            "name": "Miscellaneous"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

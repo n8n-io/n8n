@@ -1,0 +1,954 @@
+{
+  "workflow": {
+    "id": 3017,
+    "name": "Extract and Normalize Facebook Lead Data for CRM Integration  ",
+    "views": 0,
+    "recentViews": 0,
+    "totalViews": 0,
+    "createdAt": "2025-02-26T02:20:49.240Z",
+    "description": "## Who Is This For?  \n- **Marketing teams** using Facebook Lead Ads.  \n- **Data analysts** needing structured lead data.  \n- **CRM administrators** automating lead imports.  \n\n### What Problem Does This Solve?  \nAutomates extraction of Facebook form leads, resolves inconsistent field naming (e.g., `\"programo\"` → `\"program\"`), and prepares data for seamless integration with CRMs like HubSpot, analytics tools, or databases.  \n\n### Key Features  \n- **Pagination Handling**: Limits of 10,000 records per API call to avoid complexity.  \n- **Field Standardization**: Renames and orders fields (e.g., `source`, `medium`, `email`) for consistency.  \n- **Data Simplification**: Extracts first values from multi-value fields.  \n- **Flexibility**: Easily extendable to send data to 100+ apps via n8n integrations.  \n\n### How It Works  \n1. **Trigger**: Start manually or schedule the workflow.  \n2. **Form Retrieval**: Fetch all leadgen forms from your Facebook Page.  \n3. **Data Preparation**:  \n   - Split bulk data into individual records.  \n   - Filter forms by name (case-insensitive).  \n4. **Lead Extraction**: Get raw lead data with metadata (ad campaigns, timestamps).  \n5. **Data Transformation**:  \n   - **Code Node**: Renames fields and enforces canonical order.  \n   - **Set Node**: Exposes normalized fields (e.g., `field_data.email`).  \n6. **Output**: Structured data ready for CRM/analytics tools.  \n\n### Setup Guide  \n1. **Facebook Configuration**:  \n   - Replace `xxxxxxxxxxxxxxx` with your Facebook Page ID.  \n   - Ensure `leadgen_forms` API access in [Meta Developer Portal](https://developers.facebook.com/).  \n2. **Customization**:  \n   - Adjust field mappings in the **Code - Order fields** node if needed.  \n   - Add nodes to send data to your CRM (e.g., HubSpot, Salesforce).  \n\n### Customization Tips  \n- **Add Error Handling**: Include an IF node to flag incomplete records.  \n- **Enrich Data**: Use nodes like Clearbit to append company info.  \n- **Automate**: Replace the manual trigger with a schedule or webhook.  \n\n### Why This Works  \n- **Time Savings**: Reduces manual data cleaning by 80%.  \n- **Scalability**: Processes 10,000+ leads per run.  \n- **Adaptability**: Handles multilingual or inconsistently named form fields.  \n\n---  \n**Tags**: Facebook Lead Ads, CRM Integration, Data Normalization, Marketing Automation",
+    "workflow": {
+      "id": "aZvc51dZMmMm4DfJ",
+      "meta": {
+        "instanceId": "0c44ac19f742366550ae3fb4ce4ae895e626b4763c2f514a7df6f7b600fedb8c"
+      },
+      "name": "Extract and Normalize Facebook Lead Data for CRM Integration",
+      "tags": [
+        {
+          "id": "1cFXzelWeSIdtIoE",
+          "name": "Marketing",
+          "createdAt": "2025-02-28T03:19:57.565Z",
+          "updatedAt": "2025-02-28T03:19:57.565Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "ff568d83-1457-462d-831b-ea9fe9efcfbb",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -1060,
+            280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "102a0506-fe9b-4323-ae8c-54b2b1279477",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -460,
+            120
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 180,
+            "height": 320,
+            "content": "## Filter\n\nIn this node, you can extract only the required data from a specific field."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8a73755e-a217-4c37-b5b9-b16163cac9f6",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -880,
+            40
+          ],
+          "parameters": {
+            "width": 180,
+            "height": 400,
+            "content": "## Record Limits\n\nA limit of 10,000 has been set to avoid pagination.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b389d03f-54df-4531-b2e8-2118942189ee",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            460,
+            260
+          ],
+          "parameters": {
+            "color": 4,
+            "content": "Here, you can now send the data wherever you need it."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7d010adb-156d-42c1-b353-0c5a4f43564e",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "height": 440,
+            "content": "## Order fields\n\nIn some cases, the form fields come unstructured. In this node, you can add variations of the fields and organize them for the next node."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ef3db052-459c-4db8-86f8-2bb22b799943",
+          "name": "Facebook Graph API get forms",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            -840,
+            280
+          ],
+          "parameters": {
+            "edge": "leadgen_forms",
+            "node": "xxxxxxxxxxxxxxx",
+            "options": {
+              "queryParameters": {
+                "parameter": [
+                  {
+                    "name": "limit",
+                    "value": "10000"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v21.0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "98f58de2-a630-4a7a-8071-bd723e1cc2e2",
+          "name": "Facebook Graph API get leads",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            -180,
+            280
+          ],
+          "parameters": {
+            "edge": "=leads",
+            "node": "={{ $json.id }}",
+            "options": {
+              "fields": {
+                "field": [
+                  {
+                    "name": "field_data"
+                  },
+                  {
+                    "name": "created_time"
+                  },
+                  {
+                    "name": "id"
+                  },
+                  {
+                    "name": "ad_id"
+                  },
+                  {
+                    "name": "ad_name"
+                  },
+                  {
+                    "name": "adset_id"
+                  },
+                  {
+                    "name": "adset_name"
+                  },
+                  {
+                    "name": "campaign_id"
+                  },
+                  {
+                    "name": "campaign_name"
+                  }
+                ]
+              },
+              "queryParameters": {
+                "parameter": [
+                  {
+                    "name": "limit",
+                    "value": "10000"
+                  }
+                ]
+              }
+            },
+            "graphApiVersion": "v21.0"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8f420c47-0d01-463d-b7ea-3943b314791e",
+          "name": "Code - Order fields",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            60,
+            280
+          ],
+          "parameters": {
+            "jsCode": "// This code can be used in an n8n Function node.\n// It assumes the input is an array of objects where each one follows  \n// the page structure with a \"data\" property, and each record includes  \n// \"field_data\" and other fields.\n\n// Canonical order of the field_data fields\nconst canonicalOrder = [\n\t\"source\",\n\t\"medium\",\n\t\"content\",\n\t\"campaign\",\n\t\"term\",\n\t\"program\",\n\t\"location\",\n\t\"education_level\",\n\t\"id_number\",\n\t\"name\",\n\t\"surname\",\n\t\"phone\",\n\t\"email\"\n];\n\n// Mapping for renaming fields (in case of different names in some records)\nconst fieldMapper = {\n\t\"number_id\": \"id_number\",\n\t\"programo\": \"program\",\n\t\"select_location\": \"location\"\n};\n\n// Function to process the field_data array, mapping and ordering its elements\nfunction processFieldData(field_data) {\n\tconst fieldObj = {};\n\t// Convert the array into an object using the first value of each \"values\" array\n\tfor (const field of field_data) {\n\t\tlet key = field.name;\n\t\t// If the field has a name that needs to be renamed, do it\n\t\tif (fieldMapper.hasOwnProperty(key)) {\n\t\t\tkey = fieldMapper[key];\n\t\t}\n\t\t// Take the first value from the values array\n\t\tfieldObj[key] = Array.isArray(field.values) ? field.values[0] : field.values;\n\t}\n\t\n\t// Create an ordered object according to the canonical array\n\tconst ordered = {};\n\tfor (const key of canonicalOrder) {\n\t\tif (Object.prototype.hasOwnProperty.call(fieldObj, key)) {\n\t\t\tordered[key] = fieldObj[key];\n\t\t}\n\t}\n\treturn ordered;\n}\n\nconst results = [];\n\n// The n8n input comes in the \"items\" array\n// Each item is assumed to have a \"json\" property with the full structure\nfor (const item of items) {\n\tconst page = item.json;\n\t// If there is no data, skip this item\n\tif (!page.data) continue;\n\t// Process each record within the data property\n\tfor (const record of page.data) {\n\t\tconst newRecord = {};\n\t\t// Copy all properties except field_data\n\t\tfor (const key in record) {\n\t\t\tif (key !== \"field_data\") {\n\t\t\t\tnewRecord[key] = record[key];\n\t\t\t}\n\t\t}\n\t\t// Process and rename field_data to get the desired order\n\t\tnewRecord.field_data = processFieldData(record.field_data || []);\n\t\t// Add the new record to the results\n\t\tresults.push({ json: newRecord });\n\t}\n}\n  \nreturn results;\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "1bf5e479-4f2a-4cc1-b03f-7caf0f223f36",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -480,
+            -720
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 1020,
+            "height": 700,
+            "content": "## How It Works  \n1. **Trigger**: Start manually or schedule the workflow.  \n2. **Form Retrieval**: Fetch all leadgen forms from your Facebook Page.  \n3. **Data Preparation**:  \n   - Split bulk data into individual records.  \n   - Filter forms by name (case-insensitive).  \n4. **Lead Extraction**: Get raw lead data with metadata (ad campaigns, timestamps).  \n5. **Data Transformation**:  \n   - **Code Node**: Renames fields and enforces canonical order.  \n   - **Set Node**: Exposes normalized fields (e.g., `field_data.email`).  \n6. **Output**: Structured data ready for CRM/analytics tools.  \n\n### Setup Guide  \n1. **Facebook Configuration**:  \n   - Replace `xxxxxxxxxxxxxxx` with your Facebook Page ID.  \n   - Ensure `leadgen_forms` API access in [Meta Developer Portal](https://developers.facebook.com/).  \n2. **Customization**:  \n   - Adjust field mappings in the **Code - Order fields** node if needed.  \n   - Add nodes to send data to your CRM (e.g., HubSpot, Salesforce).  \n\n### Customization Tips  \n- **Add Error Handling**: Include an IF node to flag incomplete records.  \n- **Enrich Data**: Use nodes like Clearbit to append company info.  \n- **Automate**: Replace the manual trigger with a schedule or webhook.  \n\n### Why This Works  \n- **Time Savings**: Reduces manual data cleaning by 80%.  \n- **Scalability**: Processes 10,000+ leads per run.  \n- **Adaptability**: Handles multilingual or inconsistently named form fields."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e6fd4734-33c6-4148-be94-9a5e6bc0edee",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1120,
+            -680
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 620,
+            "height": 340,
+            "content": "## Extract Leads from Facebook Forms  \n### Who Is This For?  \nMarketing teams using Facebook Lead Ads.  \n### What Problem Does This Solve?  \nAutomates lead extraction, normalizes inconsistent field names, and prepares data for CRMs.  \n### Setup Guide  \n1. Replace `xxxxxxxxxxxxxxx` with your Facebook Page ID.  \n2. Configure API permissions in Meta Developer Portal.  \n### Customization Tips  \nAdd nodes to send data to tools like HubSpot or Google Sheets.  "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f987bdef-5e7b-4f93-8f99-9cff229906f7",
+          "name": "Filter Forms by Name",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -420,
+            280
+          ],
+          "parameters": {
+            "options": {
+              "ignoreCase": true
+            },
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": false,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "f6617fde-48a5-4980-99eb-d11ef2410f23",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.name }}",
+                  "rightValue": "diplomados"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "d7a52552-e3d9-40c4-98e9-890c63132bc2",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            560,
+            -180
+          ],
+          "parameters": {
+            "color": 3,
+            "content": "Need help?  \n- [How manage leadgen Forms Facebook](https://developers.facebook.com/docs/graph-api/reference/page/leadgen_forms/)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a2ba65a9-af8c-4ed8-a4f8-b1674e11636b",
+          "name": "Split Data into Individual Records",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -640,
+            280
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "99698e03-5bde-4408-9968-005d2f4270b8",
+          "name": "Reorder and Expose Lead Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            300,
+            280
+          ],
+          "parameters": {
+            "include": "except",
+            "options": {
+              "dotNotation": false
+            },
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "fa532e09-bfdf-4626-88f6-dd6ca38a0f03",
+                  "name": "field_data.source",
+                  "type": "string",
+                  "value": "={{ $json.field_data.source }}"
+                },
+                {
+                  "id": "d37be1f3-7f2d-4617-8529-e943916f16db",
+                  "name": "field_data.medium",
+                  "type": "string",
+                  "value": "={{ $json.field_data.medium }}"
+                },
+                {
+                  "id": "093ca677-f70c-4ee8-ae18-25eb41f4f1df",
+                  "name": "field_data.content",
+                  "type": "string",
+                  "value": "={{ $json.field_data.content }}"
+                },
+                {
+                  "id": "1ca8d794-2a94-473a-b3e4-ab3c40f0c2eb",
+                  "name": "field_data.campaign",
+                  "type": "string",
+                  "value": "={{ $json.field_data.campaign }}"
+                },
+                {
+                  "id": "0b838696-06b3-46bf-be98-db237a3a6f16",
+                  "name": "field_data.term",
+                  "type": "string",
+                  "value": "={{ $json.field_data.term }}"
+                },
+                {
+                  "id": "03ef49b0-c7e9-4754-8046-e507f0e30a39",
+                  "name": "field_data.programa",
+                  "type": "string",
+                  "value": "={{ $json.field_data.programa }}"
+                },
+                {
+                  "id": "7942673c-e367-4c8f-b6c0-6f262ecf27de",
+                  "name": "field_data.ubicacion",
+                  "type": "string",
+                  "value": "={{ $json.field_data.ubicacion }}"
+                },
+                {
+                  "id": "6a7e1748-e803-4645-b68f-9b290ef2452d",
+                  "name": "field_data.nivel_formacion",
+                  "type": "string",
+                  "value": "={{ $json.field_data.nivel_formacion }}"
+                },
+                {
+                  "id": "6bb9922c-48a5-4ac1-b0e8-6a3084e863f9",
+                  "name": "field_data.numero_documento",
+                  "type": "string",
+                  "value": "={{ $json.field_data.numero_documento }}"
+                },
+                {
+                  "id": "1927ed09-97e2-4dd1-97df-1bb98100a743",
+                  "name": "field_data.nombres",
+                  "type": "string",
+                  "value": "={{ $json.field_data.nombres }}"
+                },
+                {
+                  "id": "e280c44a-f37a-4ee1-b9d4-28256cee36bc",
+                  "name": "field_data.apellidos",
+                  "type": "string",
+                  "value": "={{ $json.field_data.apellidos }}"
+                },
+                {
+                  "id": "5639c3fc-122c-476c-a9c2-9556cba469f8",
+                  "name": "field_data.telefono",
+                  "type": "string",
+                  "value": "={{ $json.field_data.telefono }}"
+                },
+                {
+                  "id": "fc4b2c94-ecd8-47cd-9ef6-90bbe51eb5bc",
+                  "name": "field_data.correo",
+                  "type": "string",
+                  "value": "={{ $json.field_data.correo }}"
+                }
+              ]
+            },
+            "excludeFields": "field_data",
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "0ad4c6c1-6c1c-440e-9450-fc821a45de35",
+      "connections": {
+        "Code - Order fields": {
+          "main": [
+            [
+              {
+                "node": "Reorder and Expose Lead Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Forms by Name": {
+          "main": [
+            [
+              {
+                "node": "Facebook Graph API get leads",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Facebook Graph API get forms": {
+          "main": [
+            [
+              {
+                "node": "Split Data into Individual Records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Facebook Graph API get leads": {
+          "main": [
+            [
+              {
+                "node": "Code - Order fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Facebook Graph API get forms",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Data into Individual Records": {
+          "main": [
+            [
+              {
+                "node": "Filter Forms by Name",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.facebookGraphApi": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Arturo Crespo",
+      "username": "lionasoler",
+      "bio": "Soy el coordinador de una fábrica de software en Colombia.\nPuedes buscarme en Telegram como LionaSoler si tienes dudas sobre los flujos aqui publicados.",
+      "verified": false,
+      "links": [
+        "https://mnml.top"
+      ],
+      "avatar": "https://gravatar.com/avatar/2fd42746b7d3b7905b57a965a400be352503dda32a94581135994544c6e92841?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 314,
+        "icon": "file:facebook.svg",
+        "name": "n8n-nodes-base.facebookGraphApi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.facebookgraphapi/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/facebookGraph/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Facebook Graph API"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MCA2MCI+PHBhdGggZmlsbD0iIzE4NzdmMiIgZD0iTTU5LjUgMzBDNTkuNSAxMy43MSA0Ni4yOS41IDMwIC41Uy41IDEzLjcxLjUgMzBjMCAxNC43MiAxMC43OSAyNi45MyAyNC44OSAyOS4xNFYzOC41M0gxNy45VjMwaDcuNDl2LTYuNWMwLTcuMzkgNC40LTExLjQ4IDExLjE0LTExLjQ4IDMuMjMgMCA2LjYuNTggNi42LjU4djcuMjZoLTMuNzJjLTMuNjYgMC00LjgxIDIuMjctNC44MSA0LjYxVjMwaDguMThsLTEuMzEgOC41M0gzNC42djIwLjYxQzQ4LjcxIDU2LjkzIDU5LjUgNDQuNzIgNTkuNSAzMCIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik00MS40OCAzOC41MyA0Mi43OSAzMGgtOC4xOHYtNS41M2MwLTIuMzMgMS4xNC00LjYxIDQuODEtNC42MWgzLjcyVjEyLjZzLTMuMzgtLjU4LTYuNi0uNThjLTYuNzQgMC0xMS4xNCA0LjA4LTExLjE0IDExLjQ4VjMwaC03LjV2OC41M2g3LjQ5djIwLjYxYzEuNS4yNCAzLjA0LjM2IDQuNjEuMzZzMy4xMS0uMTIgNC42MS0uMzZWMzguNTN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Facebook Graph API",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

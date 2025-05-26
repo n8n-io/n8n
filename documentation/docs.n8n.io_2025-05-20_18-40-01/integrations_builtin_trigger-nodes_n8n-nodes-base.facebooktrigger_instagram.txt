@@ -1,0 +1,69 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebooktrigger/instagram/
+Scraped_At: 2025-05-20T19:06:10.885918
+
+Facebook Trigger Instagram object
+#
+Use this object to receive updates when someone comments on the Media objects of your app users; @mentions your app users; or when Stories of your app users expire. Refer to
+Facebook Trigger
+for more information on the trigger itself.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Facebook Trigger integrations
+page.
+Trigger configuration
+#
+To configure the trigger with this Object:
+Select the
+Credential to connect with
+. Select an existing or create a new
+Facebook App credential
+.
+Enter the
+APP ID
+of the app connected to your credential. Refer to the
+Facebook App credential
+documentation for more information.
+Select
+Instagram
+as the
+Object
+.
+Field Names or IDs
+: By default, the node will trigger on all the available events using the
+*
+wildcard filter. If you'd like to limit the events, use the
+X
+to remove the star and use the dropdown or an expression to select the updates you're interested in. Options include:
+Comments
+: Notifies you when anyone comments on an IG Media owned by your app's Instagram user.
+Messaging Handover
+Mentions
+: Notifies you whenever an Instagram user @mentions an Instagram Business or Creator Account in a comment or caption.
+Messages
+: Notifies you when anyone messages your app's Instagram user.
+Messaging Seen
+: Notifies you when someone sees a message sent by your app's Instagram user.
+Standby
+Story Insights
+: Notifies you one hour after a story expires with metrics describing interactions on a story.
+In
+Options
+, turn on the toggle to
+Include Values
+. This Object type fails without the option enabled.
+Related resources
+#
+Refer to
+Webhooks for Instagram
+and Meta's
+Instagram
+Graph API reference for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

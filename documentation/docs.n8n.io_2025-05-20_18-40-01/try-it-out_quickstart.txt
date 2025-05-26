@@ -1,0 +1,120 @@
+URL: https://docs.n8n.io/try-it-out/quickstart/
+Scraped_At: 2025-05-20T19:10:13.049774
+
+The very quick quickstart
+#
+This quickstart gets you started using n8n as quickly as possible. Its allows you to try out the UI and introduces two key features:
+workflow templates
+and
+expressions
+. It doesn't include detailed explanations or explore concepts in-depth.
+In this tutorial, you will:
+Load a
+workflow
+from the workflow templates library
+Add a node and configure it using expressions
+Run your first workflow
+Step one: Sign up for n8n
+#
+This quickstart uses
+n8n Cloud
+. A free trial is available for new users. If you haven't already done so,
+sign up
+for an account now.
+Step two: Open a workflow template
+#
+n8n provides a quickstart template using training nodes. You can use this to work with fake data and avoid setting up
+credentials
+.
+Go to
+Templates | Very quick quickstart
+.
+Select
+Use workflow
+to view the options for using the template.
+Select
+Import template to
+cloud workspace
+to load the template into your Cloud instance.
+This workflow:
+Gets example data from the
+Customer Datastore
+node.
+Uses the
+Edit Fields
+node to extract only the desired data and assigns that data to variables. In this example, you map the customer name, ID, and description.
+The individual pieces in an n8n workflow are called
+nodes
+. Double click a node to explore its settings and how it processes data.
+Step three: Run the workflow
+#
+Select
+Test Workflow
+. This runs the workflow, loading the data from the Customer Datastore node, then transforming it with Edit Fields. You need this data available in the workflow so that you can work with it in the next step.
+Step four: Add a node
+#
+Add a third node to message each customer and tell them their description. Use the Customer Messenger node to send a message to fake recipients.
+Select the
+Add node
+connector on the Edit Fields node.
+Search for
+Customer Messenger
+. n8n shows a list of nodes that match the search.
+Select
+Customer Messenger (n8n training)
+to add the node to the
+canvas
+. n8n opens the node automatically.
+Use
+expressions
+to map in the
+Customer ID
+and create the
+Message
+:
+In the
+INPUT
+panel select the
+Schema
+tab.
+Drag
+Edit Fields1
+>
+customer_id
+into the
+Customer ID
+field in the node settings.
+Hover over
+Message
+. Select the
+Expression
+tab, then select the expand button
+to open the full expressions editor.
+Copy this expression into the editor:
+1
+Hi {{ $json.customer_name }}. Your description is: {{ $json.customer_description }}
+Close the expressions editor, then close the
+Customer Messenger
+node by clicking outside the node or selecting
+Back to canvas
+.
+Select
+Test Workflow
+. n8n runs the workflow.
+The complete workflow should look like this:
+View workflow file
+Next steps
+#
+Read n8n's
+longer try it out tutorial
+for a more complex workflow, and an introduction to more features and n8n concepts.
+Take the
+text courses
+or
+video courses
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,2680 @@
+{
+  "workflow": {
+    "id": 3655,
+    "name": "Create Animated Stories using GPT-4o-mini, Midjourney, Kling and Creatomate API",
+    "views": 20,
+    "recentViews": 100,
+    "totalViews": 20,
+    "createdAt": "2025-04-22T01:47:37.016Z",
+    "description": "### What does the workflow do? \nThis workflow is designed to generate high-quality short videos, primarily uses GPT-4o-mini (unofficial), Midjourney (unofficial) and Kling (unofficial) APIs from [**PiAPI**](https://piapi.ai) and [**Creatomate API**](https://creatomate.com) mainly for **content creator**, **social media bloggers** and **short-form video creators**. Through this short video workflow, users can quickly validate their creative ideas and focus more on enhancing the quality of their video concepts.\n\n### Who is the workflow for?\n1. **Social Media Influencers**: produce content videos based on inspiration efficiently.\n\n2. **Vloggers**: generate vlogs based on inspiration.\n\n3. **Educational Creators**: explain specific topics via animated short videos or demonstrate a specific imagined scenario to students for enhanced educational impact.\n\n4. **Advertising Agencies**: generate short videos based on specific products.\n\n5. **AI Tool Developers**: automatically generate product demo videos.\n\n### Step-by-step Instructions\n1. Fill in X-API-key of PiAPI account in Basic Params node.![image](https://i.ibb.co/RTwbVD8M/Frame-3429.png)\n2. Fill in the scenario of the image and video prompt.\n3. Set a video template on Creatomate and make an API call in the final node with core and processing modules provided in Creatomate. Before full video generation, you can first use basic assets in Creatomate for a prototype demo, then integrate with n8n after verifying the expected results.\n![Frame 3428](https://i.ibb.co/gM3GPX1c/Frame-3428.png)\n4. Fill in your Creatomate account settings following the image guildline.\n5. Click Test Workflow and wait for a generation (within 10~20min).\n\nIn this workflow, we've established a basic structure for image-to-video generation with subtitle integration. You can further enhance it by adding music nodes using either PiAPI's [audio models](https://piapi.ai/workspace/mmaudio) or your preferred music solution. All video elements will ultimately be composited through Creatomate. For best practice, please refer to **PiAPI**'s official [API documentation](https://piapi.ai/docs/overview) or **Creatomate**'s [API documentation](https://creatomate.com/docs/api/introduction) to comprehend more use cases.\n\n\n\n### Use Case\n**Params Settings**\n - style: a children’s book cover, ages 6-10. --s 500 --sref 4028286908  --niji 6\n\n- character: A gentle girl and a fluffy rabbit explore a sunlit forest together, playing by a sparkling stream\n- situational_keywords: Butterflies flutter around them as golden sunlight filters through green leaves. Warm and peaceful atmosphere\n\n**Output Video**\n![video](https://static.piapi.ai/n8n-instruction/short-video/example1.mp4)",
+    "workflow": {
+      "id": "MfKB97VVSuXMo3Fm",
+      "meta": {
+        "instanceId": "1e003a7ea4715b6b35e9947791386a7d07edf3b5bf8d4c9b7ee4fdcbec0447d7"
+      },
+      "name": "Create Animated Stories using GPT-4o-mini, Midjourney, Kling and Creatomate API",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "4e9ed246-e4d7-4a9f-9bb1-cf74e16c3c6f",
+          "name": "output1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3980,
+            260
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0107a930-1d7a-459c-a3ab-ceb28b43b8b8",
+                  "name": "video1",
+                  "type": "string",
+                  "value": "={{ $json.data.output.video_url }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "d696b66a-3726-4fe5-989e-9405b53c62e1",
+          "name": "output2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4680,
+            240
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0107a930-1d7a-459c-a3ab-ceb28b43b8b8",
+                  "name": "video2",
+                  "type": "string",
+                  "value": "={{ $json.data.output.video_url }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "33e054fb-b747-4227-9884-f020e78ef5d5",
+          "name": "Get Prompt",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            600,
+            -80
+          ],
+          "parameters": {
+            "jsCode": "const content = $input.first().json.choices[0].message.content;\n\nconst prompts = JSON.parse(content);\n\nreturn { prompts };"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "af4dee94-7bb0-4cb9-9372-a2a1e96d0b19",
+          "name": "Basic Params",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            220,
+            -80
+          ],
+          "parameters": {
+            "mode": "raw",
+            "options": {},
+            "jsonOutput": "{\n  \"x-api-key\":\"\",\n  \"style\": \"a children’s book cover, ages 6-10. --s 500 --sref 4028286908  --niji 6\",\n  \"character\": \"A gentle girl and a fluffy rabbit explore a sunlit forest together, playing by a sparkling stream\",\n  \"situational_keywords\": \"Butterflies flutter around them as golden sunlight filters through green leaves. Warm and peaceful atmosphere\"\n}\n"
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c0890cdd-642a-48cd-b770-05fbae86abb4",
+          "name": "Get Task ID of the First Image",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            380,
+            140
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d52d19d1-3a37-47bb-ad23-e809323c0c54",
+                  "name": "image1",
+                  "type": "string",
+                  "value": "={{ $('Midjourney Generator of the First Image').item.json.data.task_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a2d1e854-53c3-4115-a206-f55c2cff54f1",
+          "name": "Midjourney Generator of the First Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            160,
+            140
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/api/v1/task",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": \"midjourney\",\n  \"task_type\": \"imagine\",\n  \"input\": {\n    \"prompt\": \"{{ $('Basic Params').item.json.character }},{{ $json.prompts.prompt1 }},{{ $('Basic Params').item.json.style }}\",\n    \"aspect_ratio\": \"2:3\",\n    \"process_mode\": \"turbo\",\n    \"skip_prompt_check\": false\n  }\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').item.json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "ac342912-7d94-4019-a0c8-43b555d8566f",
+          "name": "Wait for the First Image Generation",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            220,
+            400
+          ],
+          "webhookId": "af79053d-1291-4dd2-889e-4593dbbb2512",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "cd774311-252a-43ec-aaea-28eb7d87ccc1",
+          "name": "Verify the first image generation status",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            600,
+            400
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "e97a02cc-8d1d-4500-bce5-0a296c792b76",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "completed"
+                },
+                {
+                  "id": "50b63a7a-52b5-4766-a859-96ac1ff949ec",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "failed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "a4b8ce31-0ffd-4c9a-b102-162139fa553b",
+          "name": "Get the First Image URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1000,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d52d19d1-3a37-47bb-ad23-e809323c0c54",
+                  "name": "image_urls1",
+                  "type": "array",
+                  "value": "={{ $json.data.output.temporary_image_urls }}"
+                },
+                {
+                  "id": "f519111b-5cb4-4562-bb8c-944a500e2df3",
+                  "name": "",
+                  "type": "string",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c28e46a7-999c-4a63-a3ae-aa813d7669cd",
+          "name": "Midjourney Generator of the Second Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1220,
+            200
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/api/v1/task",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": \"midjourney\",\n  \"task_type\": \"imagine\",\n  \"input\": {\n    \"prompt\": \"{{ $('Basic Params').item.json.character }},{{ $('Get Prompt').item.json.prompts.prompt2 }},{{ $('Basic Params').item.json.style }}\",\n    \"aspect_ratio\": \"2:3\",\n    \"process_mode\": \"turbo\",\n    \"skip_prompt_check\": false\n  }\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').item.json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "529f0561-d29f-4df2-b61d-0720d33bf6b9",
+          "name": "Midjourney Generator of the Third Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1920,
+            220
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/api/v1/task",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"model\": \"midjourney\",\n  \"task_type\": \"imagine\",\n  \"input\": {\n    \"prompt\": \"{{ $('Basic Params').item.json.character }},{{ $('Get Prompt').item.json.prompts.prompt3 }},{{ $('Basic Params').item.json.style }}\",\n    \"aspect_ratio\": \"2:3\",\n    \"process_mode\": \"turbo\",\n    \"skip_prompt_check\": false\n  }\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').item.json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "a1a0b0f4-ac4e-4eca-9aa4-52f815731875",
+          "name": "Get the First Image Generation Status",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            800,
+            200
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "5f61ee56-4ebe-411f-95e6-b47d9741e7a2",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.data.status }}",
+                        "rightValue": "completed"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "6f2b83a9-2557-461e-9d5b-9f96440182f0",
+          "name": "Get the Second Image Generation Status",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            1480,
+            220
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "5f61ee56-4ebe-411f-95e6-b47d9741e7a2",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.data.status }}",
+                        "rightValue": "completed"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "10802f7a-d262-4f6f-aa48-0dce95c6fa41",
+          "name": "Get the Third Image Generation Status",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            2380,
+            220
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "5f61ee56-4ebe-411f-95e6-b47d9741e7a2",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.data.status }}",
+                        "rightValue": "completed"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "c968472d-29e6-428d-99bc-1d3f79b3f0ac",
+          "name": "Get the Second Image URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1720,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d52d19d1-3a37-47bb-ad23-e809323c0c54",
+                  "name": "image_urls1",
+                  "type": "array",
+                  "value": "={{ $json.data.output.temporary_image_urls }}"
+                },
+                {
+                  "id": "f519111b-5cb4-4562-bb8c-944a500e2df3",
+                  "name": "",
+                  "type": "string",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "44fe09ee-b16a-4c00-b589-4634a5f795d2",
+          "name": "Get the Third Image URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2560,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d52d19d1-3a37-47bb-ad23-e809323c0c54",
+                  "name": "image_urls1",
+                  "type": "array",
+                  "value": "={{ $json.data.output.temporary_image_urls }}"
+                },
+                {
+                  "id": "f519111b-5cb4-4562-bb8c-944a500e2df3",
+                  "name": "",
+                  "type": "string",
+                  "value": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "472804c0-3f58-4ff3-aaca-b970bef425df",
+          "name": "Wait for the Second Image Generation",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            900,
+            440
+          ],
+          "webhookId": "af79053d-1291-4dd2-889e-4593dbbb2512",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f4004d5a-fd04-4d1c-9376-026d12d690d5",
+          "name": "Get Task of the First Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            420,
+            400
+          ],
+          "parameters": {
+            "url": "=https://api.piapi.ai/api/v1/task/{{ $('Get Task ID of the First Image').item.json.image1 }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').item.json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "ce09e4ec-97f7-4575-a133-a2c98a55b60e",
+          "name": "Get Task of the Second Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1100,
+            440
+          ],
+          "parameters": {
+            "url": "=https://api.piapi.ai/api/v1/task/{{ $json.data.task_id }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').item.json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "2fa361f8-d580-4aa8-ae76-ca336669b0e1",
+          "name": "Verify the second image generation status",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1300,
+            440
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "e97a02cc-8d1d-4500-bce5-0a296c792b76",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "completed"
+                },
+                {
+                  "id": "50b63a7a-52b5-4766-a859-96ac1ff949ec",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "failed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "a01d33a5-8419-4919-ae53-d90005244734",
+          "name": "Verify the third image generation status",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2100,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "e97a02cc-8d1d-4500-bce5-0a296c792b76",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "completed"
+                },
+                {
+                  "id": "50b63a7a-52b5-4766-a859-96ac1ff949ec",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "failed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "e2ed41b1-daf4-4da2-a320-b2c10d11e6b1",
+          "name": "Get Task of the Third Image",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1880,
+            460
+          ],
+          "parameters": {
+            "url": "=https://api.piapi.ai/api/v1/task/{{ $json.data.task_id }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').item.json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "1d9a3356-2f3e-4829-af75-cdb6f02d3375",
+          "name": "Wait for the Third Image Generation",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1680,
+            460
+          ],
+          "webhookId": "af79053d-1291-4dd2-889e-4593dbbb2512",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e7a4f69a-bf86-4469-8135-9fc5b18bf54d",
+          "name": "Get three Image URLs",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2740,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d52d19d1-3a37-47bb-ad23-e809323c0c54",
+                  "name": "image_output1",
+                  "type": "string",
+                  "value": "={{ $('Get the First Image URL').item.json.image_urls1[0] }}"
+                },
+                {
+                  "id": "333c0676-342a-40ea-bcc7-c13e9145818f",
+                  "name": "image_output2",
+                  "type": "string",
+                  "value": "={{ $('Get the Second Image URL').item.json.image_urls1[1] }}"
+                },
+                {
+                  "id": "cc21180a-d88a-40ed-b5d1-0abcfd86bf86",
+                  "name": "image_output3",
+                  "type": "string",
+                  "value": "={{ $json.image_urls1[2] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "83c07d12-31c5-4364-9fff-f82d30530925",
+          "name": "Generate the First Video",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2960,
+            40
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/api/v1/task",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"model\": \"kling\",\n    \"task_type\": \"video_generation\",\n    \"input\": {\n        \"version\": \"1.6\",\n        \"mode\": \"pro\",\n        \"image_url\": \"{{ $json.image_output1 }}\",\n        \"prompt\": \"Natural swing\"\n    }\n} ",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "5bd0161c-c217-4234-b36b-4826f2ffc0c9",
+          "name": "Generate the Second Video",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3160,
+            40
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/api/v1/task",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"model\": \"kling\",\n    \"task_type\": \"video_generation\",\n    \"input\": {\n        \"version\": \"1.6\",\n        \"mode\": \"pro\",\n        \"image_url\": \"{{ $('Get three Image URLs').item.json.image_output2 }}\",\n        \"prompt\": \"Natural swing\"\n    }\n} ",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "bf701aa9-ccdc-48d8-885f-193c2b1042f3",
+          "name": "Generate the Third Video",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3360,
+            40
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/api/v1/task",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"model\": \"kling\",\n    \"task_type\": \"video_generation\",\n    \"input\": {\n        \"version\": \"1.6\",\n        \"mode\": \"pro\",\n        \"image_url\": \"{{ $('Get three Image URLs').item.json.image_output3 }}\",\n        \"prompt\": \"Natural swing\"\n    }\n} ",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "ebf87efe-f5b6-4c96-8c12-5c7a37680851",
+          "name": "Final Video Combination",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            5700,
+            220
+          ],
+          "parameters": {
+            "url": "https://api.creatomate.com/v1/renders",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"template_id\": \"c10c62b6-d515-4f36-a730-f4646d1b7ee2\",\n\"modifications\": {\n    \"Video-1.source\": \"{{ $('output1').item.json.video1 }}\",\n    \"Video-2.source\": \"{{ $('output2').item.json.video2 }}\",\n    \"Video-3.source\": \"{{ $('Get the Third Video URL').item.json.video3 }}\",\n    \"Text-1.text\": \"{{ $('Get Prompt').item.json.prompts.title }}\"\n  }\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "Bearer "
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "executeOnce": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "d73069fa-f24d-4972-87cb-24c20112f251",
+          "name": "Get the Third Video URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            5480,
+            220
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0107a930-1d7a-459c-a3ab-ceb28b43b8b8",
+                  "name": "video3",
+                  "type": "string",
+                  "value": "={{ $json.data.output.video_url }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "cb26d84e-55aa-4de1-819e-7704dcc2b45d",
+          "name": "Get Video Task IDs",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3560,
+            40
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d20160df-8be0-4bd0-8960-f49ebb596a64",
+                  "name": "video_task1",
+                  "type": "string",
+                  "value": "={{ $('Generate the First Video').first().json.data.task_id }}"
+                },
+                {
+                  "id": "1be26a8b-1ba3-4de3-a458-778a33f99730",
+                  "name": "video_task2",
+                  "type": "string",
+                  "value": "={{ $('Generate the Second Video').first().json.data.task_id }}"
+                },
+                {
+                  "id": "9718a718-8e19-4001-a0c9-2d35710d904e",
+                  "name": "video_task3",
+                  "type": "string",
+                  "value": "={{ $json.data.task_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7b6def7e-2712-42c8-8e2b-ac5f70ef146f",
+          "name": "Get the First Video Task",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3380,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.piapi.ai/api/v1/task/{{ $('Get Video Task IDs').item.json.video_task1 }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "8c5a2fe8-75b1-42b5-b861-db3e11ba03d7",
+          "name": "Verify the First Video Generation",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3580,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "e97a02cc-8d1d-4500-bce5-0a296c792b76",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "completed"
+                },
+                {
+                  "id": "50b63a7a-52b5-4766-a859-96ac1ff949ec",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "failed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "9b6925e2-3f9a-46b9-acea-06abbce4033a",
+          "name": "Verify the Second Video Generation",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            4320,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "e97a02cc-8d1d-4500-bce5-0a296c792b76",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "completed"
+                },
+                {
+                  "id": "50b63a7a-52b5-4766-a859-96ac1ff949ec",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "failed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "a591a522-65d8-4a4d-a326-64bc2e6463c5",
+          "name": "Verify the Third Video Generation",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            5040,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "e97a02cc-8d1d-4500-bce5-0a296c792b76",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "completed"
+                },
+                {
+                  "id": "50b63a7a-52b5-4766-a859-96ac1ff949ec",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.data.status }}",
+                  "rightValue": "failed"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "376176c5-20c5-4a16-9fd5-10f9f2560575",
+          "name": "Wait for Video Generation for at Least 4 min",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            3780,
+            40
+          ],
+          "webhookId": "d7fc1084-fd2e-4aac-98aa-60c719d73c4c",
+          "parameters": {
+            "unit": "minutes",
+            "amount": 4
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "dba60967-840b-4c3e-8673-080eae901185",
+          "name": "Wait for the First Video Generation",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            3800,
+            440
+          ],
+          "webhookId": "db4734c5-f793-4b3b-a660-ae87c516dfc1",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "b337b044-7da8-494d-9d55-3685b2585e93",
+          "name": "Wait for the Second Video Generation",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            4480,
+            460
+          ],
+          "webhookId": "d9cde4b3-5755-4fde-b58e-9b5849a21c2b",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "372f89ed-b771-4c6f-9bc2-faa7e31bfc6d",
+          "name": "Wait for the Third Video Generation",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            5260,
+            460
+          ],
+          "webhookId": "d077385d-bd8f-4d14-b332-22a974f98ea7",
+          "parameters": {},
+          "typeVersion": 1.1
+        },
+        {
+          "id": "756d9cb7-da96-4515-a391-f152d3ca8ea9",
+          "name": "Get the First Video Generation",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            3800,
+            260
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "5f61ee56-4ebe-411f-95e6-b47d9741e7a2",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.data.status }}",
+                        "rightValue": "completed"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "7b96363c-55f3-4773-9d50-f2e71c7ac4eb",
+          "name": "Get the Second Video Generation",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            4520,
+            240
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "5f61ee56-4ebe-411f-95e6-b47d9741e7a2",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.data.status }}",
+                        "rightValue": "completed"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "eb19ddd9-1bd3-430b-997b-ad288a4731b9",
+          "name": "Get the Third Video Generation",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            5280,
+            220
+          ],
+          "parameters": {
+            "rules": {
+              "values": [
+                {
+                  "conditions": {
+                    "options": {
+                      "version": 2,
+                      "leftValue": "",
+                      "caseSensitive": true,
+                      "typeValidation": "strict"
+                    },
+                    "combinator": "and",
+                    "conditions": [
+                      {
+                        "id": "5f61ee56-4ebe-411f-95e6-b47d9741e7a2",
+                        "operator": {
+                          "type": "string",
+                          "operation": "equals"
+                        },
+                        "leftValue": "={{ $json.data.status }}",
+                        "rightValue": "completed"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "4a1468b4-d183-423f-8360-93044bcf323a",
+          "name": "Get the Second Video Task",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4160,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.piapi.ai/api/v1/task/{{ $('Get Video Task IDs').item.json.video_task2 }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "ff51a9b2-f17a-494d-afa7-a4fc0137d239",
+          "name": "Get the Third Video Task",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4840,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.piapi.ai/api/v1/task/{{ $('Get Video Task IDs').item.json.video_task3 }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "x-api-key",
+                  "value": "={{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "3db3e156-67ca-41cd-b9f2-5a03330ab33c",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            20,
+            -280
+          ],
+          "parameters": {
+            "width": 360,
+            "content": "## Basic Setting Instruction\nFill in **Basic Params** based on user's need. \nThe node concludes three section: style, character and situation_keyword.\nGPT-4o-mini will generate image description based on basic params mentioned above."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "31419df4-39d4-4393-8e80-7cdceb24778e",
+          "name": "When clicking Test workflow",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            20,
+            -80
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e0510fc2-4570-4cd6-8438-42a7acd26414",
+          "name": "GPT-4o-mini Generate Image Scenario Prompt",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            420,
+            -80
+          ],
+          "parameters": {
+            "url": "https://api.piapi.ai/v1/chat/completions",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n    \"model\": \"gpt-4o-mini\",\n    \"messages\": [\n       {\n          \"role\": \"system\",\n          \"content\": \"You are a helpful assistant.\"\n        },\n        {\n          \"role\": \"user\",\n          \"content\": \"Character is {{ $json.character }}, style is {{ $json.style }}, context keywords are {{ $json.situational_keywords }}, please generate a short story containing relevant elements and styles based on Character and context keywords. It should be concise and clear and divided into three sections. The return format is {'title':'','prompt1':'','prompt2':'','prompt3':''}, directly return json data format, not markdo2t include unusual characters such as hyphens,The key and value are enclosed in double quotes, but if you need to use quotes in the value string, please use single quotes.\"\n        }\n      ]\n  }",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Basic Params').first().json['x-api-key'] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "f94354e2-066d-4bf0-ada1-edade772852d",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            660
+          ],
+          "parameters": {
+            "height": 120,
+            "content": "### Generate the first image\nThis workflow section is uesd to generate the first Midjourney image. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "86e4d54d-8046-4400-a327-b04e8f12a09c",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            880,
+            660
+          ],
+          "parameters": {
+            "height": 120,
+            "content": "### Generate the second image\nThis workflow section is uesd to generate the second Midjourney image. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "950a3dcb-83dc-4ee1-abb1-b33927edf1c2",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1660,
+            680
+          ],
+          "parameters": {
+            "height": 120,
+            "content": "### Generate the third image\nThis workflow section is uesd to generate the third Midjourney image. "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0a179107-17a4-4e38-998d-5845104199d0",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2960,
+            -120
+          ],
+          "parameters": {
+            "height": 120,
+            "content": "### Generate three Kling videos\nThis section is used to generate three Kliong videos."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dc589738-4130-4686-a4e2-cf07d9d22013",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            5640,
+            400
+          ],
+          "parameters": {
+            "content": "### Combine Videos in Creatomate\nSet a video template in Creatomate, then set the node with instruction."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "d16d0b20-c14e-4d0e-83ea-467e0d7c8280",
+      "connections": {
+        "output1": {
+          "main": [
+            [
+              {
+                "node": "Get the Second Video Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "output2": {
+          "main": [
+            [
+              {
+                "node": "Get the Third Video Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Prompt": {
+          "main": [
+            [
+              {
+                "node": "Midjourney Generator of the First Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Basic Params": {
+          "main": [
+            [
+              {
+                "node": "GPT-4o-mini Generate Image Scenario Prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Video Task IDs": {
+          "main": [
+            [
+              {
+                "node": "Wait for Video Generation for at Least 4 min",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get three Image URLs": {
+          "main": [
+            [
+              {
+                "node": "Generate the First Video",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the First Image URL": {
+          "main": [
+            [
+              {
+                "node": "Midjourney Generator of the Second Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Third Image URL": {
+          "main": [
+            [
+              {
+                "node": "Get three Image URLs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Third Video URL": {
+          "main": [
+            [
+              {
+                "node": "Final Video Combination",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate the First Video": {
+          "main": [
+            [
+              {
+                "node": "Generate the Second Video",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate the Third Video": {
+          "main": [
+            [
+              {
+                "node": "Get Video Task IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the First Video Task": {
+          "main": [
+            [
+              {
+                "node": "Verify the First Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Second Image URL": {
+          "main": [
+            [
+              {
+                "node": "Midjourney Generator of the Third Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Third Video Task": {
+          "main": [
+            [
+              {
+                "node": "Verify the Third Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate the Second Video": {
+          "main": [
+            [
+              {
+                "node": "Generate the Third Video",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Second Video Task": {
+          "main": [
+            [
+              {
+                "node": "Verify the Second Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Task of the First Image": {
+          "main": [
+            [
+              {
+                "node": "Verify the first image generation status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Task of the Third Image": {
+          "main": [
+            [
+              {
+                "node": "Verify the third image generation status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking Test workflow": {
+          "main": [
+            [
+              {
+                "node": "Basic Params",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Task of the Second Image": {
+          "main": [
+            [
+              {
+                "node": "Verify the second image generation status",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Task ID of the First Image": {
+          "main": [
+            [
+              {
+                "node": "Wait for the First Image Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the First Video Generation": {
+          "main": [
+            [
+              {
+                "node": "output1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Third Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the Third Video URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Second Video Generation": {
+          "main": [
+            [
+              {
+                "node": "output2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify the First Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the First Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait for the First Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify the Third Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the Third Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait for the Third Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify the Second Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the Second Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait for the Second Video Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for the First Image Generation": {
+          "main": [
+            [
+              {
+                "node": "Get Task of the First Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for the First Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the First Video Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for the Third Image Generation": {
+          "main": [
+            [
+              {
+                "node": "Get Task of the Third Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for the Third Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the Third Video Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for the Second Image Generation": {
+          "main": [
+            [
+              {
+                "node": "Get Task of the Second Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for the Second Video Generation": {
+          "main": [
+            [
+              {
+                "node": "Get the Second Video Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the First Image Generation Status": {
+          "main": [
+            [
+              {
+                "node": "Get the First Image URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Third Image Generation Status": {
+          "main": [
+            [
+              {
+                "node": "Get the Third Image URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get the Second Image Generation Status": {
+          "main": [
+            [
+              {
+                "node": "Get the Second Image URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Midjourney Generator of the First Image": {
+          "main": [
+            [
+              {
+                "node": "Get Task ID of the First Image",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Midjourney Generator of the Third Image": {
+          "main": [
+            [
+              {
+                "node": "Wait for the Third Image Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Midjourney Generator of the Second Image": {
+          "main": [
+            [
+              {
+                "node": "Wait for the Second Image Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify the first image generation status": {
+          "main": [
+            [
+              {
+                "node": "Get the First Image Generation Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait for the First Image Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify the third image generation status": {
+          "main": [
+            [
+              {
+                "node": "Get the Third Image Generation Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait for the Third Image Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Verify the second image generation status": {
+          "main": [
+            [
+              {
+                "node": "Get the Second Image Generation Status",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Wait for the Second Image Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GPT-4o-mini Generate Image Scenario Prompt": {
+          "main": [
+            [
+              {
+                "node": "Get Prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait for Video Generation for at Least 4 min": {
+          "main": [
+            [
+              {
+                "node": "Get the First Video Task",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 51,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 6
+        },
+        "n8n-nodes-base.set": {
+          "count": 10
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.wait": {
+          "count": 7
+        },
+        "n8n-nodes-base.switch": {
+          "count": 6
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 14
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "PiAPI",
+      "username": "piapi",
+      "bio": "",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/4e47cc9f6664191e5fd06db7f9bafc58d224c50104b09e70e20e18a5e94721b7?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 15,
+        "name": "Design"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

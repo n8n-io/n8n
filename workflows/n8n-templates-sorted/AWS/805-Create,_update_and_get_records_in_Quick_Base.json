@@ -1,0 +1,502 @@
+{
+  "workflow": {
+    "id": 805,
+    "name": "Create, update and get records in Quick Base",
+    "views": 336,
+    "recentViews": 0,
+    "totalViews": 336,
+    "createdAt": "2020-12-02T09:35:15.295Z",
+    "description": "![workflow-screenshot](fileId:324)",
+    "workflow": {
+      "id": "156",
+      "name": "Create, update and get records in Quick Base",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Quick Base",
+          "type": "n8n-nodes-base.quickbase",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "columns": "name,age",
+            "options": {},
+            "tableId": ""
+          },
+          "credentials": {
+            "quickbaseApi": "Quick Base Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "age",
+                  "value": 8
+                }
+              ],
+              "string": [
+                {
+                  "name": "name",
+                  "value": "n8n"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "age",
+                  "value": 10
+                },
+                {
+                  "name": "Record ID#",
+                  "value": "={{$node[\"Quick Base\"].json[\"Record ID#\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Quick Base1",
+          "type": "n8n-nodes-base.quickbase",
+          "position": [
+            1050,
+            300
+          ],
+          "parameters": {
+            "columns": "age",
+            "options": {},
+            "tableId": "={{$node[\"Quick Base\"].parameter[\"tableId\"]}}",
+            "operation": "update",
+            "updateKey": "Record ID#"
+          },
+          "credentials": {
+            "quickbaseApi": "Quick Base Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Quick Base2",
+          "type": "n8n-nodes-base.quickbase",
+          "position": [
+            1250,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "tableId": "={{$node[\"Quick Base\"].parameter[\"tableId\"]}}",
+            "operation": "getAll"
+          },
+          "credentials": {
+            "quickbaseApi": "Quick Base Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Set": {
+          "main": [
+            [
+              {
+                "node": "Quick Base",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set1": {
+          "main": [
+            [
+              {
+                "node": "Quick Base1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Quick Base": {
+          "main": [
+            [
+              {
+                "node": "Set1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Quick Base1": {
+          "main": [
+            [
+              {
+                "node": "Quick Base2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Set",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 2
+        },
+        "n8n-nodes-base.quickbase": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 412,
+        "icon": "file:quickbase.png",
+        "name": "n8n-nodes-base.quickbase",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.quickbase/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/quickbase/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Quick Base"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABVlBMVEUAAAB0SJ1xS55zSZ10SJ51SppyTJlzS6F0SJ50SJ10SJ11SZtvUpt1SJ50SJ11SaB0SJt0SaB0R510SJ10SJ11SZ51R510R510Rp50R51zSJ50R55zSJ10R55zSJ10R510Spx0R511SZ1zSJ50SJ50SJ1yRp51R513S6B1TJt0SJ11SJ10SJ5zSJ1zR5t0SJ11SJ50SZ5zSZ5zSZ1ySaB0SJ1zR511R511SZxzRp1yTqJ0RaB1RJ51SJ14RpxzQ6B3S6B2UZh2R551Qp50SJ5nP6d0SaFxRJtrTKFxQ5x0UJaEUo98TpBJLcA4I9B4SpltQ6NzQp96RpyEU496TJd2R5yFUpFsS6B3RpR4V5VRMrt5SJmEUY9mP6hfUaZ9b4l2Rpt2RZplTqR6Yo+BUpBAKMp7aI10SJ10SJ50R5x0R511SJ11SZ5zR512R5xyRp9zQaB/T5OkXyALAAAAZ3RSTlMA/DC+AyEJEHn147cNBu05KSXp2s6lXUAU4Ni7qJ1/dmzmxLexkodHGhj43NKalYxQRCzw5snIwHxyZmI0IP77tbKtop+EhG5rZWNOJBsK/dTUyse6tbCskYmGhXp3W1pXS0ZENS4nx7vcbwAAAtxJREFUSMftlFdf2zAUxW+os1wTx5kmIYtsIAHCLKOsAmV27z0VOwnQ7//SEkVXtuzwK+/5v/n4HuvK50owYsRd8Sn+2tmW7lfG4c5oiUp85/6rUiNXvaPbn0/PBAkx2uQfkVgjCZzEYYCylnRtOBudJjYiuwvAaHY9FDLbAgffYh4ichUq60AZk5nYa4LAeDZIXFnZBMq7ayYVkkLLTVxWZKJKS+rPUJqUbOtmyHDkwUIPUAnOg4U5chszYdpdDJWiJcaEIZQbdmFKoWV8awn0emXC6cqre5n4Tmz7inAOaeEUCs8Vl6bb0Yra1/STXZPLS7TxBVz68jFQwpaQJluAbBTQ3n5LpSJmPVPrC1KWIGVbBqrMtm4saX1lE0fQCNCBnuDrgh11EV/lqbKPQkjrV+BztAYCHzvsXZyG85tvce6mywB2sg4iF08v2YfD4s8NjgHAJM6hBg4OnhDKw++DWAvofuQDiOGDBA42g8z8GcQh9SQBZBZHDpwoIVMItjaL7rQCITZaJ+DEFzUtnxaHdB7NxrqrmRWiuc6HdBkw5gA48bOkzTxKaTTPwrI1ShGV/bDrL0z6SpAEj6oQBgcVtsHtH6xrfqpXfZAjvDMRJcVGLKW5RqXy28oLAh9wPDMSVbYihEu2g1ESxmQBJ7m3AZQyfm4xLBzJjM/m5auk6lT6xUPO0stgmiBFFZB8iFgqKa9RGdwGUCYcuVntr+49ShNOVKeVVVS6x0DRIoTTDS0X3+ylU90O1zyDHUsr/ELFDa63iZXOZY9Y6bHxOeYav/alBrkFc8VPy/QUcZtGvXSLORVm44ZSQQUL9eHuLrsWWzJeWBXh+GSmO8SdyCktiRt4mjQQyC8Nc7+46MeEsXuOwIF3X3Y3/3kPAD6e+6oCLrTKsZvITcHc85wCrF21KaYxD+5IyVyjVLwnMPUJ4ODl/QFrMAxJ8evamMDPc4DzMy9lyw8jRvw/fwH2bvNdHxiWPwAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Quick Base",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 324,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/38692d3b12bb43fd9ea64c1dc65b9c9a.png"
+      }
+    ]
+  }
+}

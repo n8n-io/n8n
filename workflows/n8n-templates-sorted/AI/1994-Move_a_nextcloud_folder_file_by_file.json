@@ -1,0 +1,1757 @@
+{
+  "workflow": {
+    "id": 1994,
+    "name": "Move a nextcloud folder file by file",
+    "views": 2398,
+    "recentViews": 0,
+    "totalViews": 2398,
+    "createdAt": "2023-11-27T13:16:04.414Z",
+    "description": "## Description:\nThis template facilitates the transfer of a folder, along with all its files and subfolders, within a Nextcloud instance. The Nextcloud user must have access to both the source and destination folders. While Nextcloud allows folder movement, complications may arise when dealing with external storage that has rate limits. This workflow ensures the individual transfer of each file to avoid exceeding rate limits, particularly useful for setups involving external storage with rate limitations.\n\n## How it works:\n\n- Identify all files and subfolders within the specified source folder.\n- Recursive search within subfolders for additional files.\n- Replicate the folder structure in the target folder.\n- Individually move each identified file to the corresponding location in the target folder.\n\n## Set up steps:\n\n- Set Nextcloud credentials for all Nextcloud nodes involved in the process.\n-Edit the trigger settings. Detailed instructions can be found within the respective trigger configuration.\n- Initiate the workflow to commence the folder transfer process.\n\n\n## Help\nIf you need assistance with applying this template, feel free to reach out to me. You can find additional information about me and my services here. =&gt; https://nicokowalczyk.de/links\n\nI have also produced a video where I explain the workflow and provide an example. You can find this video over here. https://youtu.be/K1kmG_Q_jRk\n\nCheers.\nNico Kowalczyk",
+    "workflow": {
+      "meta": {
+        "instanceId": "9ca813d4011eeb6a3cfcfbfac1efbb98641b1341a64a5cad70c430777ffd407e"
+      },
+      "nodes": [
+        {
+          "id": "38cd304e-e260-4bbd-ace1-57b5fd0e6344",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -1300,
+            360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "087994ba-3b40-4337-b17a-e2ab4aa39963",
+          "name": "Whether type is file",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            940,
+            780
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.type }}",
+                  "value2": "file"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ab2ec609-2c7a-4976-9ce0-57f6961578e1",
+          "name": "Set new path for subfolder",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1240,
+            900
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "from",
+                  "stringValue": "={{ decodeURIComponent($json.path) }}"
+                },
+                {
+                  "name": "to",
+                  "stringValue": "={{ decodeURIComponent($('Set folder-paths for from and to').item.json.to + '/' + $json.path.split('/').filter(Boolean).pop() + '/') }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "98099141-0e7f-49f0-bfc9-67eef67b13aa",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            540,
+            474.3406813627256
+          ],
+          "parameters": {
+            "width": 1861.9238476953906,
+            "height": 665.3466933867735,
+            "content": "## Get all files of subfolders\nIn this segment of the workflow, all files located within subfolders are collected. This includes the exploration of subfolders within subfolders, ensuring the identification of every file throughout the entire folder structure. Additionally, a corresponding folder is created in the destination structure for each identified subfolder."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8284d632-f0a0-437e-9f75-6995c72400c2",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2440,
+            478.85370741482984
+          ],
+          "parameters": {
+            "width": 695.2464929859717,
+            "height": 660.1721006751914,
+            "content": "## Enrich the files\nIn this phase of the workflow, all identified files are processed and enriched with the correct path within the destination structure."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f8b151e4-f9c9-474c-94f3-1c0d340d8e36",
+          "name": "Set new path for file",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            2900,
+            860
+          ],
+          "parameters": {
+            "jsCode": "for (const item of $input.all()) {\n  const toPath = $('Set folder-paths for from and to').item.json.to;\n  const fromPath = $('Set folder-paths for from and to').item.json.from;\n\n   // Remove leading and trailing slashes\n  path = fromPath.replace(/^\\/|\\/$/g, '');\n  // Split the path into an array of folders\n  const folders = path.split('/');\n  // Remove empty strings (resulting from leading, trailing, or consecutive slashes)\n  const nonEmptyFoldersCount = folders.filter(folder => folder !== '').length;\n\n  newFilePathArray = item.json.path.replace(/^\\/|\\/$/g, '').split('/');\n  \n  item.json.newPath = toPath.replace(/^\\/|\\/$/g, '') + '/' + newFilePathArray.slice(nonEmptyFoldersCount).join(\"/\")\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "638426c9-c736-4ba9-91a2-383049f15ee5",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3180,
+            480
+          ],
+          "parameters": {
+            "width": 695.2464929859717,
+            "height": 658.7966837968969,
+            "content": "## Move files \nIn this stage of the workflow, the files are moved into the destination structure.\n\nIf the batch size remains at 1 in the Loop Over node, each file will be moved sequentially. If the batch size is increased, multiple files will be moved simultaneously."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "96d83360-21ed-49f1-b273-47ee609f52fa",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3920,
+            480
+          ],
+          "parameters": {
+            "width": 695.2464929859717,
+            "height": 658.7966837968969,
+            "content": "## (Optional) Delete *from*-folder\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cd5dbcf2-378e-4102-9db2-0627c829e2f2",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -380,
+            480
+          ],
+          "parameters": {
+            "width": 871.7450543093198,
+            "height": 665.3466933867735,
+            "content": "## Get the files and subfolders to move\nIn this segment of the workflow, all files and subfolders to be relocated are gathered. Additionally, the destination folder is created if it does not already exist."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "91894912-7f54-447b-947b-4040fc92f094",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1340,
+            60
+          ],
+          "parameters": {
+            "width": 723.2756594453772,
+            "height": 463.596247600301,
+            "content": "## Manual Start\nTo manually initiate the workflow, the Set Paths node requires the specification of the folder path to be moved and the destination folder path. Subfolders can be indicated using '/'.\n\nEnsure that the other workflow triggers are deactivated before initiating the workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c1e7754f-6efa-4967-9b8d-6c1bcdb55355",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "disabled": true,
+          "position": [
+            -1320,
+            880
+          ],
+          "webhookId": "285b2cba-587b-4131-82a8-cdd35a8d49e1",
+          "parameters": {
+            "path": "285b2cba-587b-4131-82a8-cdd35a8d49e1",
+            "options": {},
+            "httpMethod": "POST",
+            "responseData": "noData",
+            "responseMode": "lastNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb3e0c28-afa4-4847-b95e-5c7523f18df6",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1340,
+            580
+          ],
+          "parameters": {
+            "width": 723.2756594453772,
+            "height": 500.9028666051119,
+            "content": "## Webhook trigger\nYou can also automate the workflow by configuring a webhook to trigger it. It is crucial that each request contains a JSON body with at least the two attributes 'from-path' and 'to-path' set. Here is an example:\n\n```\n{\n \"from\": \"Folder/to/move\",\n \"to\": \"New-Folder\"\n}\n```\n\nThe workflow will respond with an error, if the request is not valid.\n\nEnsure that the other workflow triggers are deactivated before initiating the workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3c85f4a4-28b3-4315-b689-033e4af3f888",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1340,
+            1140
+          ],
+          "parameters": {
+            "width": 723.2756594453772,
+            "height": 498.6039613328509,
+            "content": "## Trigger by other workflow\nIt is also possible to initiate this workflow from within another workflow. It is important to ensure that at least the 'from-path' and 'to-path' are passed as parameters when starting this workflow.\n\nThe workflow will respond with an error, if the request is not valid.\n\nEnsure that the other workflow triggers are deactivated before initiating the workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "88e63d18-7c68-4d4f-bfe6-5780115d3ed0",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "disabled": true,
+          "position": [
+            -1320,
+            1440
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "82d7182e-3aca-4407-8faa-3704429974dc",
+          "name": "Set folder-paths for from and to",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -280,
+            880
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "from",
+                  "stringValue": "={{ $json.from }}"
+                },
+                {
+                  "name": "to",
+                  "stringValue": "={{ $json.to }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "e9edad54-d5f2-481e-b5be-b43a15b74233",
+          "name": "Create to folder if necessary",
+          "type": "n8n-nodes-base.nextCloud",
+          "onError": "continueRegularOutput",
+          "position": [
+            -40,
+            880
+          ],
+          "parameters": {
+            "path": "={{ $json.to }}",
+            "resource": "folder"
+          },
+          "credentials": {
+            "nextCloudApi": {
+              "id": "kd8dB6PqsIKQhB6O",
+              "name": "NextCloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4283f069-ea26-499d-928c-5f0f3898cdc4",
+          "name": "Get all folders/files in from-folder",
+          "type": "n8n-nodes-base.nextCloud",
+          "position": [
+            240,
+            880
+          ],
+          "parameters": {
+            "path": "={{ $('Set folder-paths for from and to').item.json.from }}",
+            "resource": "folder",
+            "operation": "list"
+          },
+          "credentials": {
+            "nextCloudApi": {
+              "id": "kd8dB6PqsIKQhB6O",
+              "name": "NextCloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "06c77d03-d79b-4435-9f7f-eef919b7b6af",
+          "name": "Loop over files and folders",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            660,
+            880
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "56cc28ea-d934-4d9c-9e28-968c2e1fa4da",
+          "name": "Consolidate all files and folders found",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2000,
+            760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "57883a8f-7989-4706-808a-595376ebaf47",
+          "name": "Create subfolder in to-folder",
+          "type": "n8n-nodes-base.nextCloud",
+          "onError": "continueRegularOutput",
+          "position": [
+            1440,
+            900
+          ],
+          "parameters": {
+            "path": "={{$('Set new path for subfolder').item.json.to }}",
+            "resource": "folder"
+          },
+          "credentials": {
+            "nextCloudApi": {
+              "id": "kd8dB6PqsIKQhB6O",
+              "name": "NextCloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0a173b88-53c5-44b1-ae04-f68b343025ce",
+          "name": "Get all folders/files in found subfolder",
+          "type": "n8n-nodes-base.nextCloud",
+          "position": [
+            1680,
+            900
+          ],
+          "parameters": {
+            "path": "={{$('Set new path for subfolder').item.json.from }}",
+            "resource": "folder",
+            "operation": "list"
+          },
+          "credentials": {
+            "nextCloudApi": {
+              "id": "kd8dB6PqsIKQhB6O",
+              "name": "NextCloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3c17b67c-e815-4e27-9b63-19346cb8b966",
+          "name": "Whether there is are more files or subfolders found",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            2200,
+            880
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{$node[\"Loop over files and folders\"].context[\"noItemsLeft\"]}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "94c4e926-eb92-4b10-8d35-2b3483cc4819",
+          "name": "Consolidate all found files",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            2580,
+            860
+          ],
+          "parameters": {
+            "jsCode": "let results = [],\n  i = 0;\n\ndo {\n  try {\n    results = results.concat($(\"Consolidate all files and folders found\").all(0, i));\n  } catch (error) {\n    return results;\n  }\n  i++;\n} while (true);"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "b40e30ff-793c-46e6-b5a0-5498ee27a3c9",
+          "name": "Loop Over all files",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            3300,
+            860
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "034c66f7-c184-438d-96de-1d20f8f7adc5",
+          "name": "Move file to destination",
+          "type": "n8n-nodes-base.nextCloud",
+          "position": [
+            3660,
+            940
+          ],
+          "parameters": {
+            "path": "={{ decodeURIComponent($json.path) }}",
+            "toPath": "={{ decodeURIComponent($json.newPath) }}",
+            "operation": "move"
+          },
+          "credentials": {
+            "nextCloudApi": {
+              "id": "kd8dB6PqsIKQhB6O",
+              "name": "NextCloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "34c8521f-cb17-479f-842b-38cbb5970403",
+          "name": "Delete from-folder",
+          "type": "n8n-nodes-base.nextCloud",
+          "onError": "continueRegularOutput",
+          "position": [
+            4200,
+            840
+          ],
+          "parameters": {
+            "path": "={{ $('Set folder-paths for from and to').item.json.from }}",
+            "resource": "folder",
+            "operation": "delete"
+          },
+          "credentials": {
+            "nextCloudApi": {
+              "id": "kd8dB6PqsIKQhB6O",
+              "name": "NextCloud account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "eeda26a3-f5e6-4e6d-aeca-ebe2dbc2cb9e",
+          "name": "Set paths",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -780,
+            360
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "from",
+                  "stringValue": "Old-Folder"
+                },
+                {
+                  "name": "to",
+                  "stringValue": "Destination"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "id": "ba2e352a-4911-470b-a3bb-f63e3470e228",
+          "name": "Whether the request is valid",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -1100,
+            880
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ $json.hasOwnProperty('body') && $json.body.hasOwnProperty('to') && $json.body.hasOwnProperty('from')}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ed4ddbf1-becf-4944-abd4-0b4cdf6d3b85",
+          "name": "Stop and Error: request not valid",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            -760,
+            920
+          ],
+          "parameters": {
+            "errorMessage": "The Request is not valid!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2b5d67ac-983b-486d-99f1-e05995383878",
+          "name": "Whether the request is valid1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -1120,
+            1440
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ $json.hasOwnProperty('to') && $json.hasOwnProperty('from')}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b57309cf-2a69-4879-a7d4-5499f8278e3b",
+          "name": "Stop and Error: request not valid1",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            -760,
+            1480
+          ],
+          "parameters": {
+            "errorMessage": "The Request is not valid!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f109308f-0b48-4395-9f2d-c8b4e8d936d2",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2440,
+            60
+          ],
+          "parameters": {
+            "width": 770.5015081009478,
+            "height": 1247.9320267653952,
+            "content": "# Template Description\n\n\n## Description:\nThis template facilitates the transfer of a folder, along with all its files and subfolders, within a Nextcloud instance. The Nextcloud user must have access to both the source and destination folders. While Nextcloud allows folder movement, complications may arise when dealing with external storage that has rate limits. This workflow ensures the individual transfer of each file to avoid exceeding rate limits, particularly useful for setups involving external storage with rate limitations.\n\n## How it works:\n\n- Identify all files and subfolders within the specified source folder.\n- Recursive search within subfolders for additional files.\n- Replicate the folder structure in the target folder.\n- Individually move each identified file to the corresponding location in the target folder.\n\n## Set up steps:\n\n- Set Nextcloud credentials for all Nextcloud nodes involved in the process.\n-Edit the trigger settings. Detailed instructions can be found within the respective trigger configuration.\n- Initiate the workflow to commence the folder transfer process.\n\n\n## Help\nIf you need assistance with applying this template, feel free to reach out to me. You can find additional information about me and my services here. => https://nicokowalczyk.de/links\n\nI have also produced a video where I explain the workflow and provide an example. You can find this video over here. https://youtu.be/K1kmG_Q_jRk\n\nCheers.\nNico Kowalczyk"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Whether the request is valid",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set paths": {
+          "main": [
+            [
+              {
+                "node": "Set folder-paths for from and to",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over all files": {
+          "main": [
+            [
+              {
+                "node": "Delete from-folder",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Move file to destination",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Whether type is file": {
+          "main": [
+            [
+              {
+                "node": "Consolidate all files and folders found",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Set new path for subfolder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set new path for file": {
+          "main": [
+            [
+              {
+                "node": "Loop Over all files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Whether the request is valid1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Move file to destination": {
+          "main": [
+            [
+              {
+                "node": "Loop Over all files",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set new path for subfolder": {
+          "main": [
+            [
+              {
+                "node": "Create subfolder in to-folder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Consolidate all found files": {
+          "main": [
+            [
+              {
+                "node": "Set new path for file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop over files and folders": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Whether type is file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Whether the request is valid": {
+          "main": [
+            [
+              {
+                "node": "Set folder-paths for from and to",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop and Error: request not valid",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create subfolder in to-folder": {
+          "main": [
+            [
+              {
+                "node": "Get all folders/files in found subfolder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create to folder if necessary": {
+          "main": [
+            [
+              {
+                "node": "Get all folders/files in from-folder",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Whether the request is valid1": {
+          "main": [
+            [
+              {
+                "node": "Set folder-paths for from and to",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop and Error: request not valid1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set folder-paths for from and to": {
+          "main": [
+            [
+              {
+                "node": "Create to folder if necessary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Set paths",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all folders/files in from-folder": {
+          "main": [
+            [
+              {
+                "node": "Loop over files and folders",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Consolidate all files and folders found": {
+          "main": [
+            [
+              {
+                "node": "Whether there is are more files or subfolders found",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all folders/files in found subfolder": {
+          "main": [
+            [
+              {
+                "node": "Consolidate all files and folders found",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Whether there is are more files or subfolders found": {
+          "main": [
+            [
+              {
+                "node": "Consolidate all found files",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Loop over files and folders",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 32,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 4
+        },
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.code": {
+          "count": 2
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.nextCloud": {
+          "count": 6
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.stopAndError": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 2
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Nico Kowalczyk",
+      "username": "nico-kow",
+      "bio": "",
+      "verified": false,
+      "links": [
+        "https://nicokow.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/8ff849e5b4d4ef8a4eb6732c4f005e1fe14b98fefe14fd4860f7b675e0c35466?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 25,
+        "icon": "file:nextcloud.svg",
+        "name": "n8n-nodes-base.nextCloud",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nextcloud/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/nextCloud/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Nextcloud"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNzYgNTEiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48cGF0aCBmaWxsPSIjMDA4MmM5IiBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSIgZD0iTTM3LjUzMyAwYy03Ljc3IDAtMTQuMzU1IDUuMjY4LTE2LjM5NiAxMi4zNzktMS43NzgtMy44MTktNS41OTctNi40NTMtMTAuMDc1LTYuNDUzQzUuMDA0IDUuOTI2IDAgMTAuOTMxIDAgMTcuMDU0YTExLjE2IDExLjE2IDAgMCAwIDExLjEyOCAxMS4xMjhjNC40MTIgMCA4LjI5Ny0yLjYzNCAxMC4wNzUtNi40NTNhMTYuOTkgMTYuOTkgMCAwIDAgMTYuMzMgMTIuMzc5YzcuNzA0IDAgMTQuMjg5LTUuMjAyIDE2LjM5Ni0xMi4yNDggMS43NzggMy42ODcgNS41OTcgNi4yNTYgOS45NDMgNi4yNTZBMTEuMTYgMTEuMTYgMCAwIDAgNzUgMTYuOTg5YzAtNi4xMjQtNS4wMDQtMTEuMDYyLTExLjEyOC0xMS4wNjItNC4zNDYgMC04LjE2NSAyLjU2OC05Ljk0MyA2LjI1NkM1MS44MjIgNS4yMDIgNDUuMzAzIDAgMzcuNTMzIDBtMCA2LjUxOWExMC40OCAxMC40OCAwIDAgMSAxMC41MzUgMTAuNTM2QTEwLjQ4IDEwLjQ4IDAgMCAxIDM3LjUzMyAyNy41OWExMC40OCAxMC40OCAwIDAgMS0xMC41MzYtMTAuNTM1QTEwLjQ4IDEwLjQ4IDAgMCAxIDM3LjUzMyA2LjUxOW0tMjYuNDA1IDUuOTI2YTQuNTggNC41OCAwIDAgMSA0LjYwOSA0LjYwOSA0LjU4IDQuNTggMCAwIDEtNC42MDkgNC42MDkgNC41OCA0LjU4IDAgMCAxLTQuNjA5LTQuNjA5IDQuNTggNC41OCAwIDAgMSA0LjYwOS00LjYwOW01Mi43NDQgMGE0LjU4IDQuNTggMCAwIDEgNC42MDkgNC42MDkgNC42MDkgNC42MDkgMCAxIDEtOS4yMTggMGMuMDY2LTIuNTY4IDIuMDQxLTQuNjA5IDQuNjA5LTQuNjA5TTE5LjE3NiA0MS45NTdjMS44MjcgMCAyLjg1IDEuMzAxIDIuODUgMy4yNTJhLjM0NC4zNDQgMCAwIDEtLjM0MS4zNDFIMTYuNzZjLjAzMSAxLjczNCAxLjIzOSAyLjcyNiAyLjYzMyAyLjcyNmEyLjkgMi45IDAgMCAwIDEuNzk2LS42MTljLjE4Ni0uMTI0LjM0MS0uMDkzLjQzNC4wOTNsLjA5My4xNTVjLjA5My4xNTUuMDYyLjMxLS4wOTMuNDM0YTMuODQgMy44NCAwIDAgMS0yLjI2MS43NDNjLTIuMDEzIDAtMy41NjItMS40NTYtMy41NjItMy41NjIuMDMxLTIuMjMgMS41MTgtMy41NjIgMy4zNzYtMy41NjJ6bTEuODg5IDIuOTExYy0uMDYyLTEuNDI1LS45MjktMi4xMzctMS45Mi0yLjEzNy0xLjE0NiAwLTIuMTM3Ljc0My0yLjM1NCAyLjEzN3ptMTAuMjUzLTEuOTJ2LTIuMzg1YzAtLjIxNy4xMjQtLjM0MS4zNDEtLjM0MWguMjQ4Yy4yMTcgMCAuMzEuMTI0LjMxLjM0MXYxLjYxMWgxLjM5NGMuMjE3IDAgLjM0MS4xMjQuMzQxLjM0MXYuMDkzYzAgLjIxNy0uMTI0LjMxLS4zNDEuMzFoLTEuMzk0djMuNDA3YzAgMS41OC45NiAxLjc2NiAxLjQ4NyAxLjc5Ni4yNzkuMDMxLjM3Mi4wOTMuMzcyLjM0MXYuMTg2YzAgLjIxNy0uMDkzLjMxLS4zNzIuMzEtMS40ODcgMC0yLjM4NS0uODk4LTIuMzg1LTIuNTA5di0zLjV6bTcuMDkzLS45OTFjMS4xNzcgMCAxLjkyLjQ5NiAyLjI2MS43NzQuMTU1LjEyNC4xODYuMjc5LjAzMS40NjVsLS4wOTMuMTU1Yy0uMTI0LjE4Ni0uMjc5LjE4Ni0uNDY1LjA2Mi0uMzEtLjIxNy0uODk4LS42MTktMS43MDMtLjYxOS0xLjQ4NyAwLTIuNjY0IDEuMTE1LTIuNjY0IDIuNzU3IDAgMS42MTEgMS4xNzcgMi43MjYgMi42NjQgMi43MjYuOTYgMCAxLjYxMS0uNDM0IDEuOTItLjcxMi4xODYtLjEyNC4zMS0uMDkzLjQzNC4wOTNsLjA5My4xMjRjLjA5My4xODYuMDYyLjMxLS4wOTMuNDY1YTMuOCAzLjggMCAwIDEtMi40MTYuODY3Yy0yLjAxMyAwLTMuNTYyLTEuNDU2LTMuNTYyLTMuNTYyLjAzMS0yLjEwNiAxLjU4LTMuNTkzIDMuNTkzLTMuNTkzem00LjExOS0yLjE5OWMwLS4yMTctLjEyNC0uMzQxLjA5My0uMzQxaC4yNDhjLjIxNyAwIC41NTguMTI0LjU1OC4zNDF2Ny40MDNjMCAuODY3LjQwMy45Ni43MTIuOTkxLjE1NSAwIC4yNzkuMDkzLjI3OS4zMXYuMjE3YzAgLjIxNy0uMDkzLjM0MS0uMzQxLjM0MS0uNTU3IDAtMS41NDktLjE4Ni0xLjU0OS0xLjY3M3ptNi4zNSAyLjE5OWMxLjk4MiAwIDMuNTkzIDEuNTE4IDMuNTkzIDMuNTMxIDAgMi4wNDQtMS42MTEgMy41OTMtMy41OTMgMy41OTNzLTMuNTkzLTEuNTQ5LTMuNTkzLTMuNTkzYzAtMi4wMTMgMS42MTEtMy41MzEgMy41OTMtMy41MzFtMCA2LjMxOWMxLjQ1NiAwIDIuNjMzLTEuMTc3IDIuNjMzLTIuNzg4IDAtMS41NDktMS4xNzctMi42OTUtMi42MzMtMi42OTVhMi42NyAyLjY3IDAgMCAwLTIuNjY0IDIuNjk1Yy4wMzEgMS41OCAxLjIwOCAyLjc4OCAyLjY2NCAyLjc4OG0xNS40NTYtNi4zMTlhMi40NSAyLjQ1IDAgMCAxIDIuMjMgMS4zNjNoLjAzMXMtLjAzMS0uMjE3LS4wMzEtLjUyNnYtMy4wNjZjMC0uMjE3LS4wOTMtLjM0MS4xMjQtLjM0MWguMjQ4Yy4yMTcgMCAuNTU4LjEyNC41NTguMzQxdjguODI3YzAgLjIxNy0uMDkzLjM0MS0uMzEuMzQxaC0uMjE3Yy0uMjE3IDAtLjM0MS0uMDkzLS4zNDEtLjMxdi0uNTI3YzAtLjI0OC4wNjItLjQzNC4wNjItLjQzNGgtLjAzMXMtLjU4OSAxLjQyNS0yLjM1NCAxLjQyNWMtMS44MjcgMC0yLjk3My0xLjQ1Ni0yLjk3My0zLjU2Mi0uMDYyLTIuMTA2IDEuMjA4LTMuNTMxIDMuMDA0LTMuNTMxbS4wMzEgNi4zMTljMS4xNDYgMCAyLjE5OS0uODA1IDIuMTk5LTIuNzU3IDAtMS4zOTQtLjcxMi0yLjcyNi0yLjE2OC0yLjcyNi0xLjIwOCAwLTIuMTk5Ljk5MS0yLjE5OSAyLjcyNi4wMzEgMS42NzMuODk4IDIuNzU3IDIuMTY4IDIuNzU3bS01Ni41NTguNjVoLjI0OGMuMjE3IDAgLjM0MS0uMTI0LjM0MS0uMzQxdi02LjYyOGMwLTEuMDUzIDEuMTQ2LTEuNzk2IDIuNDQ3LTEuNzk2czIuNDQ3Ljc0MyAyLjQ0NyAxLjc5NnY2LjY1OWMwIC4yMTcuMTI0LjM0MS4zNDEuMzQxaC4yNDhjLjIxNyAwIC4zMS0uMTI0LjMxLS4zNDF2LTYuNzIxYzAtMS43NjYtMS43NjUtMi42MzMtMy4zNzYtMi42MzMtMS41NDkgMC0zLjMxNC44NjctMy4zMTQgMi42MzN2Ni42OWMwIC4yMTcuMDkzLjM0MS4zMS4zNDF6bTUxLjY5NS02LjgxNGgtLjI0OGMtLjIxNyAwLS4zNDEuMTI0LS4zNDEuMzQxdjMuNzQ4YzAgMS4wNTMtLjY4MSAyLjAxMy0yLjAxMyAyLjAxMy0xLjMwMSAwLTIuMDEzLS45Ni0yLjAxMy0yLjAxM3YtMy43NDhjMC0uMjE3LS4xMjQtLjM0MS0uMzQxLS4zNDFINTQuM2MtLjIxNyAwLS4zMS4xMjQtLjMxLjM0MXYzLjk5NmMwIDEuNzY1IDEuMzAxIDIuNjMzIDIuOTEyIDIuNjMzczIuOTExLS44NjcgMi45MTEtMi42MzN2LTMuOTk2Yy4wMzEtLjIxNy0uMDkzLS4zNDEtLjMxLS4zNDF6bS0zMC42NjQtLjAzMWMtLjA2MiAwLS4xNTUuMDYyLS4yMTcuMTU1bC0xLjIzOSAxLjQ4Ny0uOTI5IDEuMTE1LTEuNDI1LTEuNzA0LS43NzQtLjkyOWMtLjA2Mi0uMDkzLS4xNTUtLjEyNC0uMjE3LS4xMjRzLS4xNTUuMDMxLS4yNDguMDkzbC0uMTg2LjE1NWMtLjE1NS4xMjQtLjE1NS4yNzktLjAzMS40NjVsMS4yMzkgMS40ODcgMS4wNTMgMS4yMzktMS41MTggMS44MjctLjc3NC45MjljLS4xMjQuMTU1LS4xMjQuMzQxLjAzMS40OTZsLjE4Ni4xNTVjLjE1NS4xMjQuMzEuMDkzLjQ2NS0uMDYybDEuMjM5LTEuNDg3LjkyOS0xLjExNSAxLjQyNSAxLjcwNC43NzQuOTI5Yy4xMjQuMTU1LjMxLjE4Ni40NjUuMDMxbC4xODYtLjE1NWMuMTU1LS4xMjQuMTU1LS4yNzkuMDMxLS40NjVsLTEuMjM5LTEuNDg3LTEuMDUzLTEuMjM5IDEuNTE4LTEuODI3Ljc3NC0uOTI5Yy4xMjQtLjE1NS4xMjQtLjM0MS0uMDMxLS40OTVsLS4xODYtLjE4NmMtLjA5My0uMDYyLS4xNTUtLjA5My0uMjQ4LS4wNjJ6Ii8+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Nextcloud",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 528,
+        "icon": "fa:exclamation-triangle",
+        "name": "n8n-nodes-base.stopAndError",
+        "codex": {
+          "data": {
+            "alias": [
+              "Throw error",
+              "Error",
+              "Exception"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Stop and Error",
+          "color": "#ff0000"
+        },
+        "iconData": {
+          "icon": "exclamation-triangle",
+          "type": "icon"
+        },
+        "displayName": "Stop and Error",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

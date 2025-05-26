@@ -1,0 +1,62 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.metabase/
+Scraped_At: 2025-05-20T18:49:28.277747
+
+Metabase node
+#
+Use the Metabase node to automate work in Metabase, and integrate Metabase with other applications. n8n has built-in support for a wide range of Metabase features, including adding, and getting alerts, databases, metrics, and questions.
+On this page, you'll find a list of operations the Metabase node supports and links to more resources.
+Credentials
+Refer to
+Metabase credentials
+for guidance on setting up authentication.
+Operations
+#
+Alert
+Get
+Get All
+Database
+Add
+Get All
+Get Fields
+Metric
+Get
+Get All
+Question
+Get
+Get All
+Result Data
+Templates and examples
+#
+Chat with Postgresql Database
+by KumoHQ
+View template details
+Talk to your SQLite database with a LangChain AI Agent 🧠💬
+by Yulia
+View template details
+Chat with a database using AI
+by David Roberts
+View template details
+Browse Metabase integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

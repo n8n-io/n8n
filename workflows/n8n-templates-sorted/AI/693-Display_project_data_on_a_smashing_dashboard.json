@@ -1,0 +1,1635 @@
+{
+  "workflow": {
+    "id": 693,
+    "name": "Display project data on a smashing dashboard",
+    "views": 2658,
+    "recentViews": 0,
+    "totalViews": 2658,
+    "createdAt": "2020-09-29T11:06:04.367Z",
+    "description": "This workflow will gather data every minute from the GitHub (https://github.com), Docker (https://www.docker.com/), npm (https://www.npmjs.com/) and Product Hunt (https://www.producthunt.com/) website APIs and display select information on a Smashing (https://smashing.github.io/) dashboard.\n\nFor convenience sake, the dashboard piece can be easily downloaded as a docker container (https://hub.docker.com/r/tephlon/n8n_dashboard) and installed into your docker environment.",
+    "workflow": {
+      "id": "6",
+      "name": "Dashboard",
+      "nodes": [
+        {
+          "name": "Cron",
+          "type": "n8n-nodes-base.cron",
+          "position": [
+            -290,
+            180
+          ],
+          "parameters": {
+            "triggerTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Dashboard Configuration",
+          "type": "n8n-nodes-base.set",
+          "color": "#FF0000",
+          "notes": "Update project settings",
+          "position": [
+            -10,
+            180
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "dashboardHostname",
+                  "value": "http://192.168.0.14:8080"
+                },
+                {
+                  "name": "dashboardAuthToken",
+                  "value": "n8n-rocks!"
+                },
+                {
+                  "name": "product_hunt_post_id",
+                  "value": "170391"
+                },
+                {
+                  "name": "npm_package",
+                  "value": "n8n"
+                },
+                {
+                  "name": "docker_name",
+                  "value": "n8nio"
+                },
+                {
+                  "name": "docker_repository",
+                  "value": "n8n"
+                },
+                {
+                  "name": "github_owner",
+                  "value": "n8n-io"
+                },
+                {
+                  "name": "github_repo",
+                  "value": "n8n"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "name": "Retrieve Docker Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            260,
+            300
+          ],
+          "parameters": {
+            "url": "=https://hub.docker.com/v2/repositories/{{$node[\"Dashboard Configuration\"].json[\"docker_name\"]}}/{{$node[\"Dashboard Configuration\"].json[\"docker_repository\"]}}",
+            "options": {},
+            "queryParametersUi": {
+              "parameter": []
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "User-Agent",
+                  "value": "n8n"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Docker Pulls",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            630,
+            220
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/docker_pulls",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage Docker Data\"].json[\"pull_count\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Docker Stars",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            630,
+            400
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/docker_stars",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage Docker Data\"].json[\"star_count\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Retrieve npm Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            250,
+            50
+          ],
+          "parameters": {
+            "url": "=https://api.npms.io/v2/package/{{$node[\"Dashboard Configuration\"].json[\"npm_package\"]}}",
+            "options": {},
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "User-Agent",
+                  "value": "n8n"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "GitHub Watchers",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            820,
+            640
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/github_watchers",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage GitHub Data\"].json[\"subscribers_count\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "GitHub Forks",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            820,
+            800
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/github_forks",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage GitHub Data\"].json[\"forks_count\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "GitHub Open Issues ",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            620,
+            860
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/github_open_issues",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage GitHub Data\"].json[\"open_issues_count\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "GitHub Stars",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            620,
+            560
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/github_stars",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage GitHub Data\"].json[\"stargazers_count\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "npm Maintenance",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            830,
+            -90
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/npm_maintenance",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "value",
+                  "value": "={{$node[\"Massage npm Data\"].json[\"score\"][\"detail\"][\"maintenance\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "npm Popularity",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1030,
+            0
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/npm_popularity",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "value",
+                  "value": "={{$node[\"Massage npm Data\"].json[\"score\"][\"detail\"][\"popularity\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "npm Quality",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1030,
+            150
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/npm_quality",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "value",
+                  "value": "={{$node[\"Massage npm Data\"].json[\"score\"][\"detail\"][\"quality\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "npm Final",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            830,
+            190
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/npm_final",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "value",
+                  "value": "={{$node[\"Massage npm Data\"].json[\"score\"][\"final\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Product Hunt Rating",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            630,
+            -510
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/prod_hunt_rating",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "value",
+                  "value": "={{$node[\"Retrieve Product Hunt Data\"].json[\"data\"][\"post\"][\"reviewsRating\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Product Hunt Reviews",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            830,
+            -410
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/prod_hunt_reviews",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage Product Hunt Data\"].json[\"data\"][\"post\"][\"reviewsCount\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Product Hunt Votes",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            830,
+            -260
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/prod_hunt_votes",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage Product Hunt Data\"].json[\"data\"][\"post\"][\"votesCount\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Product Hunt Comments",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            630,
+            -210
+          ],
+          "parameters": {
+            "url": "={{$node[\"Dashboard Configuration\"].json[\"dashboardHostname\"]}}/widgets/prod_hunt_comments",
+            "options": {},
+            "requestMethod": "POST",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "auth_token",
+                  "value": "={{$node[\"Dashboard Configuration\"].json[\"dashboardAuthToken\"]}}"
+                },
+                {
+                  "name": "current",
+                  "value": "={{$node[\"Massage Product Hunt Data\"].json[\"data\"][\"post\"][\"commentsCount\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "GitHub",
+          "type": "n8n-nodes-base.github",
+          "color": "#FF0000",
+          "position": [
+            250,
+            710
+          ],
+          "parameters": {
+            "owner": "={{$node[\"Dashboard Configuration\"].json[\"github_owner\"]}}",
+            "resource": "repository",
+            "operation": "get",
+            "repository": "={{$node[\"Dashboard Configuration\"].json[\"github_repo\"]}}"
+          },
+          "credentials": {
+            "githubApi": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Retrieve Product Hunt Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "color": "#FF0000",
+          "notes": "Update authorization token",
+          "position": [
+            250,
+            -360
+          ],
+          "parameters": {
+            "url": "https://api.producthunt.com/v2/api/graphql",
+            "options": {},
+            "requestMethod": "POST",
+            "queryParametersUi": {
+              "parameter": [
+                {
+                  "name": "query",
+                  "value": "={\n  post(id: {{$node[\"Dashboard Configuration\"].json[\"product_hunt_post_id\"]}}) {\n    commentsCount\n    votesCount\n    reviewsCount\n    reviewsRating\n    name\n  }\n}"
+                }
+              ]
+            },
+            "headerParametersUi": {
+              "parameter": [
+                {
+                  "name": "User-Agent",
+                  "value": "n8n"
+                },
+                {
+                  "name": "authorization",
+                  "value": "Bearer <Enter Product Hunt token here>"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 1
+        },
+        {
+          "name": "Massage npm Data",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            440,
+            50
+          ],
+          "parameters": {
+            "functionCode": "items[0].json.score.detail.maintenance = parseFloat(items[0].json.score.detail.maintenance.toFixed(2));\nitems[0].json.score.detail.popularity= parseFloat(items[0].json.score.detail.popularity.toFixed(2));\nitems[0].json.score.detail.quality= parseFloat(items[0].json.score.detail.quality.toFixed(2));\nitems[0].json.score.final= parseFloat(items[0].json.score.final.toFixed(2));\n\nreturn items;"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Massage Product Hunt Data",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            440,
+            -360
+          ],
+          "parameters": {
+            "functionCode": "items[0].json.data.post.commentsCount = items[0].json.data.post.commentsCount.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\nitems[0].json.data.post.votesCount= items[0].json.data.post.votesCount.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\nitems[0].json.data.post.reviewsCount= items[0].json.data.post.reviewsCount.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\n\nreturn items;\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Massage Docker Data",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            460,
+            300
+          ],
+          "parameters": {
+            "functionCode": "items[0].json.star_count = items[0].json.star_count.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\nitems[0].json.pull_count = items[0].json.pull_count.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\n\nreturn items;\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Massage GitHub Data",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            450,
+            710
+          ],
+          "parameters": {
+            "functionCode": "items[0].json.stargazers_count = items[0].json.stargazers_count.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\nitems[0].json.subscribers_count = items[0].json.subscribers_count.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\nitems[0].json.forks_count = items[0].json.forks_count.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\nitems[0].json.open_issues_count = items[0].json.open_issues_count.toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, \",\");\n\nreturn items;"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "settings": {},
+      "connections": {
+        "Cron": {
+          "main": [
+            [
+              {
+                "node": "Dashboard Configuration",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "GitHub": {
+          "main": [
+            [
+              {
+                "node": "Massage GitHub Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Massage npm Data": {
+          "main": [
+            [
+              {
+                "node": "npm Maintenance",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "npm Quality",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "npm Popularity",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "npm Final",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Retrieve npm Data": {
+          "main": [
+            [
+              {
+                "node": "Massage npm Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Massage Docker Data": {
+          "main": [
+            [
+              {
+                "node": "Docker Stars",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Docker Pulls",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Massage GitHub Data": {
+          "main": [
+            [
+              {
+                "node": "GitHub Stars",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "GitHub Watchers",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "GitHub Forks",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "GitHub Open Issues ",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Retrieve Docker Data": {
+          "main": [
+            [
+              {
+                "node": "Massage Docker Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Dashboard Configuration": {
+          "main": [
+            [
+              {
+                "node": "Retrieve Product Hunt Data",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Retrieve npm Data",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Retrieve Docker Data",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "GitHub",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Massage Product Hunt Data": {
+          "main": [
+            [
+              {
+                "node": "Product Hunt Rating",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Product Hunt Reviews",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Product Hunt Votes",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Product Hunt Comments",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Retrieve Product Hunt Data": {
+          "main": [
+            [
+              {
+                "node": "Massage Product Hunt Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 25,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.cron": {
+          "count": 1
+        },
+        "n8n-nodes-base.github": {
+          "count": 1
+        },
+        "n8n-nodes-base.function": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 17
+        }
+      }
+    },
+    "user": {
+      "name": "jason",
+      "username": "tephlon",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/ee7788870e9ab8d34c979c940727f579ecc3c3e8f60069d1297d51eb30af831e?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 7,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.cron",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "details": "The Cron node uses Cron under the hood - a time-based job scheduler in Unix-like computer operating systems. Use this node when you want to trigger workflows periodically, especially in more complex scenarios like \"every Tuesday at 9 am\" or \"Weekdays\".",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Cron",
+          "color": "#29a568"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Cron",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.function",
+        "codex": {
+          "data": {
+            "alias": [
+              "Code",
+              "Javascript",
+              "Custom Code",
+              "Script",
+              "cpde"
+            ],
+            "details": "The Function node allows you to execute JavaScript in your workflow. Unlike the Function Item node, this node does not operate on incoming node data per-item. Instead, you must iterate over multiple items of incoming data yourself. This can be useful if you're performing data transformation where you want to manipulate the number of items being outputted by the node (i.e. 1 item is inputted in with nested object, 10 items are outputted without any nested objects)",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function",
+          "color": "#FF9922"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 16,
+        "icon": "file:github.svg",
+        "name": "n8n-nodes-base.github",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.github/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/github/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "GitHub"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yMC4wMTY1IDBDOC45NDc5MSAwIDAgOS4wMTM4OCAwIDIwLjE2NTNDMCAyOS4wNzkyIDUuNzMzMjQgMzYuNjI0NiAxMy42ODY4IDM5LjI5NTJDMTQuNjgxMiAzOS40OTYgMTUuMDQ1NCAzOC44NjEzIDE1LjA0NTQgMzguMzI3NEMxNS4wNDU0IDM3Ljg1OTkgMTUuMDEyNiAzNi4yNTc1IDE1LjAxMjYgMzQuNTg3OUM5LjQ0NDUgMzUuNzkgOC4yODQ5OCAzMi4xODQxIDguMjg0OTggMzIuMTg0MUM3LjM5MDE1IDI5Ljg0NyA2LjA2NDI5IDI5LjI0NjMgNi4wNjQyOSAyOS4yNDYzQzQuMjQxODUgMjguMDExIDYuMTk3MDQgMjguMDExIDYuMTk3MDQgMjguMDExQzguMjE4NjEgMjguMTQ0NiA5LjI3OTM4IDMwLjA4MSA5LjI3OTM4IDMwLjA4MUMxMS4wNjg2IDMzLjE1MjIgMTMuOTUxOCAzMi4yODQ0IDE1LjExMTggMzEuNzUwMkMxNS4yNzczIDMwLjQ0ODEgMTUuODA3OSAyOS41NDY3IDE2LjM3MTMgMjkuMDQ2QzExLjkzMDMgMjguNTc4NSA3LjI1NzgxIDI2Ljg0MjUgNy4yNTc4MSAxOS4wOTY3QzcuMjU3ODEgMTYuODkzMiA4LjA1MjY3IDE1LjA5MDUgOS4zMTIxNiAxMy42ODg0QzkuMTEzNDQgMTMuMTg3NyA4LjQxNzMyIDExLjExNzQgOS41MTEyOCA4LjM0NjQ0QzkuNTExMjggOC4zNDY0NCAxMS4yMDE0IDcuODEyMTcgMTUuMDEyMiAxMC40MTY0QzE2LjY0MzggOS45NzQ5NSAxOC4zMjYzIDkuNzUwNCAyMC4wMTY1IDkuNzQ4NTFDMjEuNzA2NyA5Ljc0ODUxIDIzLjQyOTUgOS45ODI0NiAyNS4wMjA1IDEwLjQxNjRDMjguODMxNyA3LjgxMjE3IDMwLjUyMTggOC4zNDY0NCAzMC41MjE4IDguMzQ2NDRDMzEuNjE1OCAxMS4xMTc0IDMwLjkxOTIgMTMuMTg3NyAzMC43MjA1IDEzLjY4ODRDMzIuMDEzMiAxNS4wOTA1IDMyLjc3NTMgMTYuODkzMiAzMi43NzUzIDE5LjA5NjdDMzIuNzc1MyAyNi44NDI1IDI4LjEwMjggMjguNTQ0OSAyMy42Mjg3IDI5LjA0NkMyNC4zNTggMjkuNjgwMiAyNC45ODczIDMwLjg4MiAyNC45ODczIDMyLjc4NTFDMjQuOTg3MyAzNS40ODkzIDI0Ljk1NDUgMzcuNjU5NiAyNC45NTQ1IDM4LjMyN0MyNC45NTQ1IDM4Ljg2MTMgMjUuMzE5MiAzOS40OTYgMjYuMzEzMiAzOS4yOTU2QzM0LjI2NjcgMzYuNjI0MiAzOS45OTk5IDI5LjA3OTIgMzkuOTk5OSAyMC4xNjUzQzQwLjAzMjcgOS4wMTM4OCAzMS4wNTIgMCAyMC4wMTY1IDBaIiBmaWxsPSIjMjQyOTJGIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "GitHub",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": []
+  }
+}

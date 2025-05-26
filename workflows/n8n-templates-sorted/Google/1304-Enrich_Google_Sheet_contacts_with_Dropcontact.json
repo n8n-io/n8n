@@ -1,0 +1,470 @@
+{
+  "workflow": {
+    "id": 1304,
+    "name": "Enrich Google Sheet contacts with Dropcontact",
+    "views": 1089,
+    "recentViews": 0,
+    "totalViews": 1089,
+    "createdAt": "2021-11-08T14:55:33.455Z",
+    "description": "This workflow allows you to find and verify emails and enrich your contact from a Google Sheet with Dropacontact and add them to Lemlist. \n\n![workflow-screenshot](fileId:557)\n\n**Start node**: The start node exists by default when you create a new workflow.\n\n**Google Sheet node**: This node will list all the records from Google Sheet.\n\n**Dropcontact node**: This node will find the verified email of the contact and enrich it to be able to contact him\n\n**lemlist node**: This node will add a contact to an existing campaign ",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Dropcontact",
+          "type": "n8n-nodes-base.dropcontact",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {
+            "email": "={{$json[\"email\"]}}",
+            "options": {
+              "siren": true,
+              "language": "fr"
+            },
+            "additionalFields": {
+              "company": "={{$json[\"companyName\"]}}",
+              "website": "={{$json[\"website\"]}}",
+              "linkedin": "={{$json[\"LinkedIn\"]}}",
+              "full_name": "={{$json[\"fullName\"]}}",
+              "last_name": "={{$json[\"lastName\"]}}",
+              "first_name": "={{$json[\"firstName\"]}}"
+            }
+          },
+          "credentials": {
+            "dropcontactApi": {
+              "id": "6",
+              "name": ""
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Sheets",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "range": "A:K",
+            "options": {
+              "continue": false
+            },
+            "sheetId": "",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "7",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Lemlist",
+          "type": "n8n-nodes-base.lemlist",
+          "position": [
+            850,
+            300
+          ],
+          "parameters": {
+            "email": "={{$node[\"Dropcontact\"].json[\"email\"][0][\"email\"]}}",
+            "resource": "lead",
+            "campaignId": "",
+            "additionalFields": {
+              "lastName": "={{$node[\"Dropcontact\"].json[\"last_name\"]}}",
+              "firstName": "={{$node[\"Dropcontact\"].json[\"first_name\"]}}",
+              "companyName": "={{$node[\"Dropcontact\"].json[\"company\"]}}"
+            }
+          },
+          "credentials": {
+            "lemlistApi": {
+              "id": "9",
+              "name": "Lemlist account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Dropcontact": {
+          "main": [
+            [
+              {
+                "node": "Lemlist",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Sheets": {
+          "main": [
+            [
+              {
+                "node": "Dropcontact",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Google Sheets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.lemlist": {
+          "count": 1
+        },
+        "n8n-nodes-base.dropcontact": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Pauline",
+      "username": "pauline",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/26b6f126594978870012d6649d3dc58b45104fa9632566cb9919c311ee57b674?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 463,
+        "icon": "file:lemlist.svg",
+        "name": "n8n-nodes-base.lemlist",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.lemlist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/lemlist/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Lemlist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjEyMjc1IDBIMzIuODc3MkMzNi44MTEgMCA0MCAzLjE4ODk2IDQwIDcuMTIyNzRWMzIuODc3MkM0MCAzNi44MTA5IDM2LjgxMSAzOS45OTk5IDMyLjg3NzIgMzkuOTk5OUg3LjEyMjc1QzMuMTg4OTYgMzkuOTk5OSAwIDM2LjgxMDkgMCAzMi44NzcyVjcuMTIyNzRDMCAzLjE4ODk2IDMuMTg4OTYgMCA3LjEyMjc1IDBaTTI4LjIzNTYgMTAuNzE0NEgxOC45MDczQzE4LjMyNzMgMTAuNzE0NCAxNy44NTczIDExLjE4NDQgMTcuODU3MyAxMS43NjQzVjEzLjIzNThDMTcuODU3MyAxMy44MTU3IDE4LjMyNzMgMTQuMjg1OCAxOC45MDczIDE0LjI4NThIMjguMjM1NkMyOC44MTU1IDE0LjI4NTggMjkuMjg1NiAxMy44MTU3IDI5LjI4NTYgMTMuMjM1OFYxMS43NjQzQzI5LjI4NTYgMTEuMTg0NCAyOC44MTU1IDEwLjcxNDQgMjguMjM1NiAxMC43MTQ0Wk0xOC45MDczIDE4LjIxNTFIMjYuNTY5M0MyNy4xNDkxIDE4LjIxNTEgMjcuNjE5MSAxOC42ODUxIDI3LjYxOTEgMTkuMjY0OVYyMC43MzY2QzI3LjYxOTEgMjEuMzE2NSAyNy4xNDkxIDIxLjc4NjUgMjYuNTY5MyAyMS43ODY1SDE4LjkwNzNDMTguMzI3MyAyMS43ODY1IDE3Ljg1NzMgMjEuMzE2NSAxNy44NTczIDIwLjczNjZWMTkuMjY0OUMxNy44NTczIDE4LjY4NTEgMTguMzI3MyAxOC4yMTUxIDE4LjkwNzMgMTguMjE1MVpNMjkuMjg1NiAyOC4yMzU3VjI2Ljc2NEMyOS4yODU2IDI2LjE4NDUgMjguODE1MiAyNS43MTQxIDI4LjIzNTYgMjUuNzE0MUgxNy4wMTU2QzE1LjUwNzIgMjUuNzE0MSAxNC4yODU4IDI0LjQ5MjggMTQuMjg1OCAyMi45ODQzVjExLjc2NDNDMTQuMjg1OCAxMS4xODQ3IDEzLjgxNTQgMTAuNzE0NCAxMy4yMzU5IDEwLjcxNDRIMTEuNzY0M0MxMS4xODQ3IDEwLjcxNDQgMTAuNzE0NCAxMS4xODQ3IDEwLjcxNDQgMTEuNzY0M1YyNS4xNzMyQzEwLjg1NTUgMjcuMzgwNSAxMi42MTk0IDI5LjE0NDQgMTQuODI2NyAyOS4yODU1SDI4LjIzNTZDMjguODE1MiAyOS4yODU1IDI5LjI4NTYgMjguODE1MSAyOS4yODU2IDI4LjIzNTdaIiBmaWxsPSIjMzE2QkZGIi8+CjxwYXRoIGQ9Ik0xOC45MDY5IDEwLjcxNDFIMjguMjM1M0MyOC44MTUxIDEwLjcxNDEgMjkuMjg1MyAxMS4xODQyIDI5LjI4NTMgMTEuNzY0VjEzLjIzNTZDMjkuMjg1MyAxMy44MTU1IDI4LjgxNTEgMTQuMjg1NiAyOC4yMzUzIDE0LjI4NTZIMTguOTA2OUMxOC4zMjY5IDE0LjI4NTYgMTcuODU2OSAxMy44MTU1IDE3Ljg1NjkgMTMuMjM1NlYxMS43NjRDMTcuODU2OSAxMS4xODQyIDE4LjMyNjkgMTAuNzE0MSAxOC45MDY5IDEwLjcxNDFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMTguOTA2OSAxOC4yMTUxSDI2LjU2ODlDMjcuMTQ4OCAxOC4yMTUxIDI3LjYxODggMTguNjg1MSAyNy42MTg4IDE5LjI2NDlWMjAuNzM2NkMyNy42MTg4IDIxLjMxNjUgMjcuMTQ4OCAyMS43ODY1IDI2LjU2ODkgMjEuNzg2NUgxOC45MDY5QzE4LjMyNjkgMjEuNzg2NSAxNy44NTY5IDIxLjMxNjUgMTcuODU2OSAyMC43MzY2VjE5LjI2NDlDMTcuODU2OSAxOC42ODUxIDE4LjMyNjkgMTguMjE1MSAxOC45MDY5IDE4LjIxNTFaIiBmaWxsPSJ3aGl0ZSIvPgo8cGF0aCBkPSJNMjkuMjg1NiAyNi43NjM4VjI4LjIzNTRDMjkuMjg1NiAyOC44MTQ5IDI4LjgxNTIgMjkuMjg1MyAyOC4yMzU2IDI5LjI4NTNIMTQuODI2N0MxMi42MTk0IDI5LjE0NDIgMTAuODU1NSAyNy4zODAzIDEwLjcxNDQgMjUuMTczVjExLjc2NEMxMC43MTQ0IDExLjE4NDUgMTEuMTg0NyAxMC43MTQxIDExLjc2NDMgMTAuNzE0MUgxMy4yMzU5QzEzLjgxNTQgMTAuNzE0MSAxNC4yODU4IDExLjE4NDUgMTQuMjg1OCAxMS43NjRWMjIuOTg0MUMxNC4yODU4IDI0LjQ5MjUgMTUuNTA3MiAyNS43MTM5IDE3LjAxNTYgMjUuNzEzOUgyOC4yMzU2QzI4LjgxNTIgMjUuNzEzOSAyOS4yODU2IDI2LjE4NDMgMjkuMjg1NiAyNi43NjM4WiIgZmlsbD0id2hpdGUiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Lemlist",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 534,
+        "icon": "file:dropcontact.svg",
+        "name": "n8n-nodes-base.dropcontact",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.dropcontact/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/dropcontact/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Dropcontact"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZpbGw9Im5vbmUiIHZpZXdCb3g9IjAgMCA1MCA1MCI+PHBhdGggZmlsbD0iIzBBQkE5RiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMjkuNTcgMTYuMjE5YTEwLjggMTAuOCAwIDAgMC00LjctMS4wNjRjLTYuMDA5IDAtMTAuODggNC44NzItMTAuODggMTAuODgxczQuODcxIDEwLjg4MSAxMC44OCAxMC44ODFjNC4wOTIgMCA3LjY1Ni0yLjI1OCA5LjUxNC01LjU5NmwtMi42MjMtMS40NTdhNy44OCA3Ljg4IDAgMSAxLTMuNDg4LTEwLjkzOXptNS4yMDgtMTQuMjM1djI1Ljc2MmgtMy4xMDlWLjlDMjkuNTQ2LjMxMyAyNy4zMDkgMCAyNSAwIDExLjE5MyAwIDAgMTEuMTkzIDAgMjVzMTEuMTkzIDI1IDI1IDI1IDI1LTExLjE5MyAyNS0yNWMwLTEwLjMzNy02LjI3NC0xOS4yMS0xNS4yMjItMjMuMDE2IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "Dropcontact",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 557,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/f26ad5269f9c4228b399b18065830327.png"
+      }
+    ]
+  }
+}

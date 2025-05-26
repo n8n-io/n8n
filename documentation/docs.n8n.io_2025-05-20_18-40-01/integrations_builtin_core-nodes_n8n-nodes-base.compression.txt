@@ -1,0 +1,61 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.compression/
+Scraped_At: 2025-05-20T18:55:34.125916
+
+Compression
+#
+Use the Compression node to compress and decompress files. Supports Zip and Gzip formats.
+Node parameters
+#
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+The node parameters depend on which
+Operation
+you select. Choose to:
+Compress
+: Create a compressed file from your input data.
+Decompress
+: Decompress an existing compressed file.
+Refer to the sections below for parameters specific to each
+Operation
+.
+Compress
+#
+Input Binary Field(s)
+: Enter the name of the fields in the input data that contain the binary files you want to compress. To compress more than one file, use a comma-separated list.
+Output Format
+: Choose whether to format the compressed output as
+Zip
+or
+Gzip
+.
+File Name
+: Enter the name of the zip file the node creates.
+Put Output File in Field
+: Enter the name of the field in the output data to contain the file.
+Decompress
+#
+Put Output File in Field
+: Enter the name of the fields in the input data that contain the binary files you want to decompress. To decompress more than one file, use a comma-separated list.
+Output Prefix
+: Enter a prefix to add to the output file name.
+Templates and examples
+#
+Talk to your SQLite database with a LangChain AI Agent 🧠💬
+by Yulia
+View template details
+Transcribing Bank Statements To Markdown Using Gemini Vision AI
+by Jimleuk
+View template details
+Build a Tax Code Assistant with Qdrant, Mistral.ai and OpenAI
+by Jimleuk
+View template details
+Browse Compression integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

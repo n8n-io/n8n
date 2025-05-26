@@ -1,0 +1,1225 @@
+{
+  "workflow": {
+    "id": 3663,
+    "name": "Business Model Canvas AI-Powered Generator (LLM Flexible)",
+    "views": 49,
+    "recentViews": 245,
+    "totalViews": 49,
+    "createdAt": "2025-04-22T20:10:18.366Z",
+    "description": "### 👥 Who is this for?\n\n- Startup founders validating or pitching new ideas  \n- Business consultants running strategy sessions  \n- Product teams defining business logic visually  \n- Agencies offering planning frameworks to clients  \n\n---\n\n### ❓ What problem does this workflow solve?\n\nCreating a Business Model Canvas manually is time-consuming and often scattered across tools. This workflow solves that by allowing users to generate a **fully populated, formatted, and printable Business Model Canvas** in seconds using the power of AI, all structured in a professional A4 landscape layout.\n\n---\n\n### ⚙️ What this workflow does\n\n- Starts with a **chat input** asking for your business idea  \n- Sends it to **9 separate AI agents**, each focused on one section:\n  - Key Partners  \n  - Key Activities  \n  - Value Proposition  \n  - Customer Relationships  \n  - Customer Segments  \n  - Key Resources  \n  - Channels  \n  - Cost Structure  \n  - Revenue Streams  \n- Uses your preferred LLM (see below) to generate meaningful bullet points  \n- Converts output into a specific format  \n- Merges all sections into a clean, A4-styled HTML canvas  \n- Exports the result as a downloadable `.html` file\n\n---\n\n### 🛠️ Setup\n\n1. Import the workflow into your n8n instance  \n2. Start the flow from the **“When chat message received”** node  \n3. Describe your business idea when prompted (e.g., “Online bookshop with rare Persian literature”)  \n4. Wait for AI processing to complete  \n5. Visit the last node **“HTML code to HTML file”**  \n6. Click **Download** to get your final canvas in `.html` format  \n\n---\n\n### 🤖 LLM Flexibility (Choose Your Model)\n\nThis template supports any AI model with a chat interface:\n\n- Ollama (self-hosted models like LLaMA, etc.)  \n- OpenAI (GPT-4, GPT-3.5)  \n- Anything with a compatible node\n\nYou can easily change the LLM by updating the **Language Model Node**.  \nNo need to modify any other logic or formatting.\n\n---\n\n### 🧪 How to customize this workflow\n\n- **Change the LLM** model from the Ollama node to OpenAI, etc.  \n- Modify the final HTML layout in the **“Turn to HTML”** node  \n- Add a **PDF export**, **email delivery**, or **Google Drive sync**  \n- Replace the chat trigger with a webform, CRM hook, etc.\n\n---\n\n### ✅ Requirements\n\n- A working LLM integration (Ollama or OpenAI recommended)\n- n8n (self-hosted or cloud)\n\n---\n\n### 📌 Notes\n\n- Sticky notes included for setup and instructions  \n- Each node clearly named by function (e.g. \"Customer Segments Generator\")  \n- Designed for speed, structure, and professional presentation  \n\n---\n\n### 📩 Need help?\n\nFor setup questions, custom features, or LLM integration support, contact:  \n**sinamirshafiee@gmail.com**\n",
+    "workflow": {
+      "id": "lStrENIdqN2WyGqW",
+      "meta": {
+        "instanceId": "7dad74485e3e05b018ebcb1de30d0069d50b5085ff62446e7e84ef96b35d0508",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Business Canvas Generator",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "f9083875-e460-46ba-8f86-f2c66402e161",
+          "name": "When chat message received",
+          "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+          "position": [
+            -300,
+            -1280
+          ],
+          "webhookId": "5ac01b33-5538-4c54-b1a1-33ecc9c40a29",
+          "parameters": {
+            "public": true,
+            "options": {},
+            "initialMessages": "Hi there! 👋\nPlease tell me everything about your business, and I will help you create the business canvas."
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "ff613255-761e-472f-a09b-58e6181571f1",
+          "name": "Key Partners Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            -500
+          ],
+          "parameters": {
+            "text": "=Act as a strategic business analyst. Based on the idea and goals I give you, list 10 key insights for the \"Key Partners\" section of the Business Model Canvas. Be sure to cover the following questions:\n\n- Who are our key partners?\n- Who are our key suppliers?\n- Which key resources are we acquiring from partners?\n- Which key activities do our partners perform?\n- Motivation for partnerships: Optimization, risk reduction, resource access\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title \n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "97ffa849-cdaf-492e-a978-425d6a50f0d0",
+          "name": "Key Activities Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            -160
+          ],
+          "parameters": {
+            "text": "=Act as a strategic business analyst. Based on the business idea I gave you, generate 6-7 insights for the \"Key Activities\" section of the Business Model Canvas. Consider the following questions:\n\n- What key activities do our value propositions require?\n- What key activities are needed for our distribution channels?\n- What activities support customer relationships?\n- What activities support our revenue streams?\n\nAlso include examples based on activity type:\n- Production\n- Problem Solving\n- Platform/Network\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "64c94d6a-9ed1-4335-ac4d-03a69a434245",
+          "name": "Value Proposition Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            140
+          ],
+          "parameters": {
+            "text": "=You're a value-driven strategist. Based on the provided business idea, write 6-7 concise bullet points that define the \"Value Proposition\" section of the Business Model Canvas. Address these key questions:\n\n- What value do we deliver to the customer?\n- What customer problems are we solving?\n- What bundles of products/services are we offering?\n- What needs are we satisfying?\n\nUse these attributes to shape your ideas:\n- Newness, Performance, Customization, Job completion, Design, Brand/Status\n- Price, Cost reduction, Risk reduction, Accessibility, Convenience\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "abcc2cd2-a87d-443a-90b1-5d107016bb0f",
+          "name": "Customer Relationship Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            440
+          ],
+          "parameters": {
+            "text": "=As a customer relationship strategist, provide 6-7 key approaches for the \"Customer Relationship\" section of the Business Model Canvas, based on the business idea. Reflect on these questions:\n\n- What type of relationship does each customer segment expect?\n- What relationships have we already established?\n- How are these relationships integrated with the rest of our business model?\n- What is the cost of maintaining these relationships?\n\nYou may use formats like:\n- Personal assistance, Self-service, Automated services, Communities, Co-creation\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "d3fa4f7f-0184-43bb-a3d8-62bd04d3b620",
+          "name": "Customer Segments Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            740
+          ],
+          "parameters": {
+            "text": "=Act as a segmentation expert. Based on the business idea provided, define 6-7 customer segments for the \"Customer Segments\" section of the Business Model Canvas. Make sure your suggestions address:\n\n- For whom are we creating value?\n- Who are our most important customers?\n\nIncorporate examples like:\n- Mass market, Niche market, Segmented, Diversified, Multi-sided platforms\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "1772d38c-e464-4b05-9276-67a982520ab1",
+          "name": "Ollama Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+          "position": [
+            -260,
+            2560
+          ],
+          "parameters": {
+            "model": "llama3.1:latest",
+            "options": {}
+          },
+          "credentials": {
+            "ollamaApi": {
+              "id": "FQ4BFsQ96rFv3C4V",
+              "name": "Ollama account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8b9e484a-7710-4447-b007-93ea3a7af39d",
+          "name": "Key Resources Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            1040
+          ],
+          "parameters": {
+            "text": "=You're an operational strategist. Based on the business idea, generate 6-7 bullet points for the \"Key Resources\" section of the Business Model Canvas. Answer:\n\n- What key resources does our value proposition require?\n- What resources are needed for our distribution channels, customer relationships, revenue streams?\n\nConsider:\n- Physical, Intellectual (e.g. patents, data), Human, Financial\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title \n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "89f21f63-0f82-4cef-b6ac-231dc0262406",
+          "name": "Channels Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            1380
+          ],
+          "parameters": {
+            "text": "=You're a marketing strategist. Provide 6-7 channel strategies for the \"Channels\" section of the Business Model Canvas, using the business idea. Answer:\n\n- Through which channels do customers want to be reached?\n- How are we reaching them now?\n- How are channels integrated?\n- Which channels work best?\n- Which are most cost-efficient?\n- How are we integrating them with customer routines?\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "b1617750-2264-4199-8ded-277dae92ae2b",
+          "name": "Cost Structure Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            1680
+          ],
+          "parameters": {
+            "text": "=You're a finance strategist. Based on the business idea, provide 6-7 main cost drivers for the \"Cost Structure\" section of the Business Model Canvas. Include insights related to:\n\n- Most important costs in our business model\n- Most expensive key resources\n- Most expensive key activities\n\n\n\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\n\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "3b7d55d4-3f50-428b-a018-620765e530fb",
+          "name": "Title Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            -820
+          ],
+          "parameters": {
+            "text": "=Make a simple business name with this idea (maximum 5 words)\n{{ $json.chatInput }}\n\nonly write the name, do not add anything to the output.",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "134a828c-ae3a-49b8-b337-52d3cf5f35d7",
+          "name": "Revenue Streams Generator",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            400,
+            1980
+          ],
+          "parameters": {
+            "text": "=Act as a monetization expert. Based on the business idea, generate 6-7 revenue strategies for the \"Revenue Streams\" section of the Business Model Canvas. Reflect on:\n\n- What value are customers willing to pay for?\n- What are they paying for now?\n- How do they pay?\n- How would they prefer to pay?\n- What is the contribution of each stream?\n\nFormat your answer as bullet points, separated by a pipe symbol. Write only the points without numbering or explanations or titling, just body bullet points, and each item of bullet points should be less than 10 words, preferably 4-5 words (each of the should be meaningfull.\n\nthe only acceptable output structure is like this:\npoint1 | point2 | point3 ...\n\ndo not include header or title, do not use any enter (\\n)\nThis is the goal and idea of the project : \n{{ $json.chatInput }}",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "8b2f5b1a-32fa-4fbd-a6b1-4147e3b64ed5",
+          "name": "Key Partners HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            -500
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"key_partners\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "64e98d28-ef36-433d-b114-4fa33ad646d4",
+          "name": "Key Activities HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            -160
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"key_activities\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "2f929221-7e20-4ceb-b715-79b434d6357e",
+          "name": "Values proposition HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            140
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"value_proposition\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "4befcdf5-0fd1-44fa-8d68-9b82e50d1f57",
+          "name": "Customer Relationship HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            440
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"customer_relationship\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "6700656b-0946-497c-9fe5-a55f75455e4e",
+          "name": "Customer Segments HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            740
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"customer_segments\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "3e0797c8-6fa3-40d8-b895-6250f952abfa",
+          "name": "Key Resources HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            1040
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"key_resources\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "16542342-8a05-40c9-b5e7-5b0824da7850",
+          "name": "Channels HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            1380
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"channels\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "2513f7c3-57da-4d1c-a492-230e3124d5d9",
+          "name": "Revenue streams HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            1980
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"revenue_streams\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e79ac1ac-fac8-43a9-9e7a-41f92f40df26",
+          "name": "Code1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            -820
+          ],
+          "parameters": {
+            "jsCode": "\nconst input = $input.first().json.output.replaceAll(\"\\n\",\"\")\nreturn {\n  \"title\":input\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "4ba8158c-44f5-4dbb-a143-cd227fadb08e",
+          "name": "Cost Structure HTML Transformer",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            760,
+            1680
+          ],
+          "parameters": {
+            "jsCode": "function formatToHtmlList(inputString) {\n  const items = inputString.split('|').map(item => item.trim());\n\n  let htmlOutput = '';\n  for (let i = 0; i < items.length; i++) {\n    if (items[i]) {\n      htmlOutput += `<p>• ${items[i]}</p>`;\n    }\n  }\n\n  return htmlOutput;\n}\n\nconst input = $input.first().json.output\n\nconst result = formatToHtmlList(input);\nreturn {\n  \"cost_structure\":result\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f80c65a9-5f1d-4979-9228-fdb8f3e6bc71",
+          "name": "Turn to HTML",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1740,
+            620
+          ],
+          "parameters": {
+            "jsCode": "const input = $input.all()\n// Simple merge\n\nconst output = {\n  title: input[0].json.title,\n  key_partners: input[1].json.key_partners,\n  key_activities: input[2].json.key_activities, // combining both\n  value_proposition: input[3].json.value_proposition,\n  customer_relationship: input[4].json.customer_relationship,\n  customer_segments: input[5].json.customer_segments,\n  key_resources: input[6].json.key_resources,\n  channels: input[7].json.channels,\n  cost_structure : input[8].json.cost_structure,\n  revenue_streams: input[9].json.revenue_streams\n};\n\n\nconsole.log(output);\nreturn {\n  \"final_html\": `<!DOCTYPE html> <html lang=\"en\"> <head> <meta charset=\"utf-8\" /> <title>Business Model Canvas</title> <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" /> <link href=\"https://fonts.googleapis.com/css?family=Headland+One\" rel=\"stylesheet\" /> <style> body { font-family: sans-serif; margin-top: 2.5vh; padding: 10px; background-color: #f4f4f4; display: flex; justify-content: center; align-items: center; height: 95vh; /* Full viewport height */ overflow: hidden; } .container { height: 100%; /* Fit the height of the screen */ aspect-ratio: 297 / 210; /* Maintain A4 aspect ratio (landscape) */ background: #fff; margin-bottom: 20px; padding: 10px 10px 80px; /* Added extra padding at the bottom */ box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); border-radius: 8px; box-sizing: border-box; overflow: hidden; } h1 { text-align: center; font-size: 24px; /* Reduced font size */ margin-bottom: 20px; color: #333; } p { padding-top: 2px; } table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; } table td { border: 1px solid #ddd; padding: 5px; /* Reduced padding */ vertical-align: top; font-size: 14px; /* Reduced font size */ word-wrap: break-word; background-color: transparent; /* No background color */ } table td h4 { padding: 5px; margin: 0 0 5px; /* Reduced margin */ font-size: 17px; /* Reduced font size */ color: #1b1b1b; } table td p { margin: 3px 0; /* Reduced margin */ line-height: 1.2; /* Reduced line height */ color: #555; } table td p strong { color: #000; } /* Adjust row heights */ #business-model-canvas tr:first-child { height: 30%; /* Reduced height for the upper part */ } #business-model-canvas tr:nth-child(2) { height: 25%; /* Reduced height for the second row */ } #business-model-canvas tr:last-child { height: 25%; /* Increased height for the bottom part */ } /* Print-specific styles */ @media print { body { background: none; margin: 0; } .container { box-shadow: none; margin: 0; padding: 0; } table td { font-size: 11px; /* Further reduced font size for print */ } } </style> </head> <body> <div class=\"container\"> <h1>`+output.title+` Business Model Canvas</h1> <!-- Canvas --> <table id=\"business-model-canvas\" cellspacing=\"0\"> <!-- Upper part --> <tr> <td id=\"key-partners\" colspan=\"2\" rowspan=\"2\"> <h4>Key Partners</h4> `+output.key_partners+` </td> <td id=\"key-activities\" colspan=\"2\"> <h4>Key Activities</h4> `+output.key_activities+` </td> <td id=\"value-propositions\" colspan=\"2\" rowspan=\"2\"> <h4>Value Proposition</h4> `+output.value_proposition+` </td> <td id=\"customer-relationships\" colspan=\"2\"> <h4>Customer Relationships</h4> `+output.customer_relationship+` </td> <td id=\"customer-segments\" colspan=\"2\" rowspan=\"2\"> <h4>Customer Segments</h4> `+output.customer_segments+` </td> </tr> <!-- Lower part --> <tr> <td id=\"key-resources\" colspan=\"2\"> <h4>Key Resources</h4> `+output.key_resources+` </td> <td id=\"channels\" colspan=\"2\"> <h4>Channels</h4> `+output.channels+` </td> </tr> <tr> <td id=\"cost-structure\" colspan=\"5\"> <h4>Cost Structure</h4> `+output.cost_structure+` </td> <td id=\"revenue-streams\" colspan=\"5\"> <h4>Revenue Streams</h4> `+output.revenue_streams+` </td> </tr> </table> <!-- /Canvas --> </div> </body> </html>`,\n  \"title\" : $input.first().json.title\n}"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7a5b2b06-75fc-4c27-971d-df3817100000",
+          "name": "HTML code to HTML file",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            2020,
+            620
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "={{ $json.title }} BMC.html"
+            },
+            "operation": "toText",
+            "sourceProperty": "final_html",
+            "binaryPropertyName": "="
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f565cf6a-ebd5-45ee-8e62-9aa6e1585e36",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -740,
+            2500
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 420,
+            "height": 220,
+            "content": "## 🔁 Changeable LLM Model\n\nThis template is powered by **Ollama LLM (LLaMA 3.1)** by default — but it’s fully flexible.\n\nYou can easily swap in any other LLM (like OpenAI, Claude, etc.) by updating the AI Agent nodes. No changes are required in the logic or formatting nodes — the system will work seamlessly."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "218ca6c2-8524-4f16-b23c-a744067b717f",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1840,
+            240
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 500,
+            "height": 320,
+            "content": "## How to get the output? \n\nOnce all nodes have finished processing, your complete Business Model Canvas will be available as a downloadable HTML file.\n\nSimply navigate to the final node titled **“HTML code to HTML file”** (at the end of the workflow). There, you’ll see two options:\n\n• **View** : to preview the HTML output directly in your browser\n\n• **Download** : to save the file locally for printing or sharing\n\n👉 Click on the **“Download”** button to retrieve your fully generated canvas file."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "361cf369-647e-4b89-9452-a822725f74cb",
+          "name": "Merge All Data",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1520,
+            460
+          ],
+          "parameters": {
+            "numberInputs": 10
+          },
+          "executeOnce": false,
+          "typeVersion": 3.1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "717d59b3-8986-4193-b8fb-7125c9cbb10a",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -760,
+            2780
+          ],
+          "parameters": {
+            "width": 460,
+            "height": 200,
+            "content": "## I'm here to help!\n\nIf you need assistance customizing the model or have feedback to share, please don’t hesitate to reach out. Your thoughts are important to me, and I'm eager to support you in any way I can. \n\n**📩 sinamirshafiee@gmail.com**"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "782619e6-0ab1-4a22-b224-98b080614647",
+      "connections": {
+        "Code1": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Turn to HTML": {
+          "main": [
+            [
+              {
+                "node": "HTML code to HTML file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge All Data": {
+          "main": [
+            [
+              {
+                "node": "Turn to HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Title Generator": {
+          "main": [
+            [
+              {
+                "node": "Code1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ollama Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Key Partners Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Key Activities Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Value Proposition Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Customer Relationship Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Customer Segments Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Key Resources Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Channels Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Cost Structure Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Title Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Revenue Streams Generator",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Channels Generator": {
+          "main": [
+            [
+              {
+                "node": "Channels HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HTML code to HTML file": {
+          "main": [
+            []
+          ]
+        },
+        "Key Partners Generator": {
+          "main": [
+            [
+              {
+                "node": "Key Partners HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Key Resources Generator": {
+          "main": [
+            [
+              {
+                "node": "Key Resources HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Cost Structure Generator": {
+          "main": [
+            [
+              {
+                "node": "Cost Structure HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Key Activities Generator": {
+          "main": [
+            [
+              {
+                "node": "Key Activities HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Channels HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 7
+              }
+            ]
+          ]
+        },
+        "Revenue Streams Generator": {
+          "main": [
+            [
+              {
+                "node": "Revenue streams HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When chat message received": {
+          "main": [
+            [
+              {
+                "node": "Key Partners Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Value Proposition Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Customer Relationship Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Customer Segments Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Key Resources Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Channels Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Cost Structure Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Revenue Streams Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Title Generator",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Key Activities Generator",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Segments Generator": {
+          "main": [
+            [
+              {
+                "node": "Customer Segments HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Value Proposition Generator": {
+          "main": [
+            [
+              {
+                "node": "Values proposition HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Key Partners HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Key Resources HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 6
+              }
+            ]
+          ]
+        },
+        "Cost Structure HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 8
+              }
+            ]
+          ]
+        },
+        "Customer Relationship Generator": {
+          "main": [
+            [
+              {
+                "node": "Customer Relationship HTML Transformer",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Key Activities HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 2
+              }
+            ]
+          ]
+        },
+        "Revenue streams HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 9
+              }
+            ]
+          ]
+        },
+        "Customer Segments HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 5
+              }
+            ]
+          ]
+        },
+        "Values proposition HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 3
+              }
+            ]
+          ]
+        },
+        "Customer Relationship HTML Transformer": {
+          "main": [
+            [
+              {
+                "node": "Merge All Data",
+                "type": "main",
+                "index": 4
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 51,
+    "workflowInfo": {
+      "nodeCount": 28,
+      "nodeTypes": {
+        "n8n-nodes-base.code": {
+          "count": 11
+        },
+        "n8n-nodes-base.merge": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "n8n-nodes-base.convertToFile": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 10
+        },
+        "@n8n/n8n-nodes-langchain.chatTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOllama": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Sina2266",
+      "username": "sina2266",
+      "bio": "Once upon a time (about 11 years ago), I started my coding journey, from Android & iOS apps to backend and even some blockchain magic. I’ve worked with many startups, worn many hats. (I’m also getting my Doctorate degree because… why not?)\n\nI’m new to n8n, but not new to building smart stuff that works.\n\nIf you see something weird in my templates or just want to chat, feel free to message me on LinkedIn or email me at sinamirshafiee@gmail.com.\n\nLet’s automate some chaos! ",
+      "verified": false,
+      "links": [
+        "https://www.linkedin.com/in/sina-mirshafiei/"
+      ],
+      "avatar": "https://gravatar.com/avatar/17c462c1ef539c71d9ef8b9cdfe5535a4e68e71618bac63b0dd9b6048f38ab42?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1151,
+        "icon": "file:ollama.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOllama",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatollama/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Ollama Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNDEuMzMzIiBoZWlnaHQ9IjM0MS4zMzMiIHZlcnNpb249IjEuMCIgdmlld0JveD0iMCAwIDE4MSAyNTYiPjxnIGZpbGw9IiM3RDdEODciPjxwYXRoIGQ9Ik0zNy43IDE5LjVjLTUuMiAxLjgtOC4zIDQuOS0xMS43IDExLjYtNC41IDguOS02LjIgMTkuMi01LjggMzUuNWwuMyAxNC4yLTUuOCA2LjFjLTE0LjggMTUuNS0xOC41IDM4LjctOS4yIDU3LjRsMy40IDYuOS0yIDQuNGMtMy40IDguMi01IDE2LjQtNSAyNi4zIDAgMTAuOCAxLjggMTkgNS44IDI2LjJsMi42IDQuOC0yLjEgNC45Yy0xLjIgMi43LTIuNiA3LjEtMy4yIDkuOC0xLjQgNi4yLTEuNSAyMi4xLS4xIDI1LjcgMSAyLjYgMS40IDIuNyA3LjYgMi43IDcuMyAwIDcgLjQgNS4zLTguNi0xLjUtOC4yLjItMTguOCA0LjItMjYuNiAzLjctNyAzLjgtMTAuNC41LTE0LjgtNC43LTYuNC02LjgtMTMuNi02LjktMjQtLjEtMTAuMyAxLjQtMTYgNi42LTI2LjEgMy4xLTYuMSAyLjktOC43LTEtMTIuMi0xLjEtMS0zLjEtNC4yLTQuMy03LTEuOS00LjItMi40LTYuOS0yLjMtMTQuMiAwLTExLjQgMi41LTE4LjMgOS41LTI2IDctNy42IDE0LjItMTEgMjMuOS0xMS4yIDQuMSAwIDcuOC0uMiA4LjItLjIuNC0uMSAxLjctMi4yIDIuOS00LjcgMy01LjkgOS42LTExLjkgMTYuNy0xNS4yIDQuOS0yLjMgNy0yLjcgMTQuNy0yLjcgNy45IDAgOS43LjQgMTQuOSAyLjkgNi44IDMuMyAxMy4zIDkuNCAxNS45IDE0LjggMSAyIDIuMyA0LjEgMyA0LjUuNi40IDQuNi44IDguNy44IDYuNy4xIDguMy41IDE0IDMuNiAxMi4zIDYuOCAxOS4zIDE4LjcgMTkuMyAzMy40LjEgNi43LS40IDktMi43IDE0LjItMS42IDMuNS0zLjUgNi44LTQuMyA3LjUtMy40IDIuOC0zLjUgNS44LS41IDExLjcgNS4yIDEwLjEgNi43IDE1LjggNi42IDI2LjEtLjEgMTAuNC0yLjIgMTcuNi02LjkgMjQtMy4zIDQuNC0zLjIgNy44LjUgMTQuOCA0IDcuOCA1LjcgMTguNCA0LjIgMjYuNi0xLjcgOS0yIDguNiA1LjMgOC42IDYuMiAwIDYuNi0uMSA3LjYtMi43IDEuNC0zLjYgMS4zLTE5LjUtLjEtMjUuNy0uNi0yLjctMi03LjEtMy4yLTkuOGwtMi4xLTQuOSAyLjYtNC44YzcuNi0xMy45IDcuOS0zNS45LjYtNTIuOGwtMi00LjcgMi41LTQuNmM5LjktMTguMyA2LjQtNDMuOS04LjEtNTkuMWwtNS44LTYuMS4zLTE0LjJjLjQtMTYuNC0xLjMtMjYuNi01LjgtMzUuNy02LjQtMTIuNi0xNy4yLTE1LjktMjYuMy03LjktNS40IDQuNy05LjIgMTMuOC0xMi4zIDI5LjgtLjMgMS40LTEgMi4yLTEuNyAxLjgtMTguMi04LTI5LjctOC41LTQ0LjMtMi4xTDY1IDU0LjlsLS40LTIuMkM2MSAzNC4yIDU2LjEgMjQuMiA0OSAyMC41Yy00LjMtMi4xLTcuNC0yLjQtMTEuMy0xbTcuNyAxNi44YzQuMiA3LjEgOC4xIDMwLjEgNS43IDMzLjYtLjUuOC0zLjEgMS42LTUuOCAxLjgtMi42LjItNi4yLjgtOCAxLjNsLTMuMS44LS43LTQuOWMtLjgtNS45LjItMTcuMiAyLjItMjQuOEMzNy4xIDM4LjQgNDAuNSAzMiA0MiAzMmMuNSAwIDIgMS45IDMuNCA0LjNtOTYuNS0xYzQgNi41IDYuOSAyMy45IDUuNiAzMy42bC0uNyA0LjktMy4xLS44Yy0xLjgtLjUtNS40LTEuMS04LTEuMy0yLjctLjItNS4zLTEtNS44LTEuOC0xLjItMS43LS4zLTE0LjEgMS43LTIyLjkgMS41LTYuNCA1LjctMTUgNy40LTE1IC40IDAgMS44IDEuNSAyLjkgMy4zIi8+PHBhdGggZD0iTTc3LjggMTE5LjljLTcuMyAyLjQtMTEuNiA1LjEtMTYuNSAxMC40LTUuNSA2LTcuNiAxMi03LjEgMjAuMS41IDcuNiAzLjUgMTIuOSAxMC42IDE4LjMgNi4yIDQuNyAxMi43IDYuMyAyNS43IDYuMyAxNy4yIDAgMjUuOC0zLjYgMzIuOS0xMy44IDQuMi01LjkgNC44LTE1LjUgMS42LTIzLTIuOS02LjgtMTEuMS0xNC4zLTE4LjgtMTcuMy04LTMuMS0yMC43LTMuNi0yOC40LTFtMjUuNyAxMGMxNi4xIDcuMSAxOS40IDIzLjIgNi42IDMxLjgtNC45IDMuMy05LjQgNC4zLTE5LjYgNC4zcy0xNC43LTEtMTkuNi00LjNjLTE3LjgtMTItMy4yLTM1LjYgMjEuMS0zNC4zIDMuOS4yIDguNiAxLjIgMTEuNSAyLjUiLz48cGF0aCBkPSJNODMuOCAxNDAuMWMtMi41IDEuNC0yLjIgNC40LjcgNi43IDIgMS42IDIuNCAyLjYgMS45IDQuOS0uNyAzLjYgMS41IDUuOCA1LjEgNC45IDIuMS0uNSAyLjUtMS4yIDIuNS00LjYgMC0yLjkuNS00LjIgMi01IDIuNy0xLjUgMi43LTYuNiAwLTcuNS0xLS4zLTIuOC0uMS00IC41LTEuNC43LTIuNi44LTMuOSAwLTIuMy0xLjItMi4yLTEuMi00LjMuMW0tNDQuMS0xOC45Yy0uOS43LTIuMyAzLTMuMiA1LTIuMSA1LjMtLjEgMTAuMyA0LjcgMTEuNiA0LjMgMS4xIDYgLjYgOS4yLTIuNyA0LTQuMSA0LjMtOC4xIDEuMS0xMS45LTIuMS0yLjUtMy40LTMuMi02LjQtMy4yLTIgMC00LjUuNi01LjQgMS4ybTg5LjggMmMtMy4yIDMuOC0yLjkgNy44IDEuMSAxMS45IDMuMiAzLjMgNC45IDMuOCA5LjIgMi43IDQuOS0xLjMgNi44LTYuMiA0LjYtMTEuOC0xLjktNC43LTMuOC02LTguNy02LTIuNyAwLTQuMS43LTYuMiAzLjIiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Ollama Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1234,
+        "icon": "file:convertToFile.svg",
+        "name": "n8n-nodes-base.convertToFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "encode",
+              "encoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "RTF",
+              "64",
+              "Base64"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Convert to File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjc2MTkgMkMxMy4yNDM3IDIgMTIuODIzNiAyLjQyMDA5IDEyLjgyMzYgMi45MzgzMVYxNS4yNTI2QzEzLjMxOTkgMTUuNDY0MyAxMy43ODUxIDE1Ljc3MiAxNC4xOTEgMTYuMTc1N0wyMS4yMjgzIDIzLjE3MzlDMjIuMDU0OCAyMy45OTU4IDIyLjUxOTUgMjUuMTEzMiAyMi41MTk1IDI2LjI3ODhDMjIuNTE5NSAyNy40NDQzIDIyLjA1NDggMjguNTYxOCAyMS4yMjgzIDI5LjM4MzdMMTQuMTkxIDM2LjM4MTlDMTMuNzg1IDM2Ljc4NTYgMTMuMzE5OSAzNy4wOTMyIDEyLjgyMzYgMzcuMzA1VjM3LjM1MjdDMTIuODIzNiAzNy44NzA5IDEzLjI0MzcgMzguMjkxIDEzLjc2MTkgMzguMjkxSDM5LjA2MTdDMzkuNTc5OSAzOC4yOTEgNDAgMzcuODcwOSA0MCAzNy4zNTI3TDQwIDE1Ljc5NEgyNy4xNDQzQzI2LjYyNjEgMTUuNzk0IDI2LjIwNiAxNS4zNzM5IDI2LjIwNiAxNC44NTU3VjJIMTMuNzYxOVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTI4Ljg2NDUgMkMyOC43NzgxIDIgMjguNzA4MSAyLjA3MDAyIDI4LjcwODEgMi4xNTYzOVYxMi44MjI3QzI4LjcwODEgMTMuMDgxOCAyOC45MTgyIDEzLjI5MTkgMjkuMTc3MyAxMy4yOTE5SDM5Ljg0MzZDMzkuOTMgMTMuMjkxOSA0MCAxMy4yMjE5IDQwIDEzLjEzNTVMNDAgMTIuNjI2M0M0MCAxMi4zNzc4IDM5LjkwMTQgMTIuMTM5NSAzOS43MjYgMTEuOTYzNkwzMC4wNjEgMi4yNzU2MUMyOS44ODUgMi4wOTkxNiAyOS42NDYgMiAyOS4zOTY3IDJIMjguODY0NVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTkuNzcyNjggMzQuNjAwM0M5LjA0MTg2IDMzLjg2NTQgOS4wNDUxNyAzMi42NzcyIDkuNzgwMDcgMzEuOTQ2NEwxMy42MzE1IDI4LjExNjNMMC45MzgzMTEgMjguMTE2M0MwLjQyMDA5NiAyOC4xMTYzIC0yLjI2NTE5ZS0wOCAyNy42OTYyIDAgMjcuMTc4TDguMjAyOTdlLTA4IDI1LjMwMTRDMS4wNDY4MmUtMDcgMjQuNzgzMiAwLjQyMDA5NSAyNC4zNjMxIDAuOTM4MzExIDI0LjM2MzFIMTMuNTUyOUw5Ljc4MDA3IDIwLjYxMTJDOS4wNDUxNyAxOS44ODA0IDkuMDQxODYgMTguNjkyMiA5Ljc3MjY4IDE3Ljk1NzNDMTAuNTAzNSAxNy4yMjI0IDExLjY5MTcgMTcuMjE5MSAxMi40MjY2IDE3Ljk0OTlMMTkuNDYzOSAyNC45NDgxQzE5LjgxODEgMjUuMzAwNCAyMC4wMTczIDI1Ljc3OTMgMjAuMDE3MyAyNi4yNzg4QzIwLjAxNzMgMjYuNzc4MyAxOS44MTgxIDI3LjI1NzIgMTkuNDYzOSAyNy42MDk1TDEyLjQyNjYgMzQuNjA3N0MxMS42OTE3IDM1LjMzODUgMTAuNTAzNSAzNS4zMzUyIDkuNzcyNjggMzQuNjAwM1oiIGZpbGw9IiMzQTQyRTkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Convert to File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1247,
+        "icon": "fa:comments",
+        "name": "@n8n/n8n-nodes-langchain.chatTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-langchain.chattrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Langchain"
+            ]
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When chat message received"
+        },
+        "iconData": {
+          "icon": "comments",
+          "type": "icon"
+        },
+        "displayName": "Chat Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": []
+  }
+}

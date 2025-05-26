@@ -1,0 +1,2165 @@
+{
+  "workflow": {
+    "id": 2884,
+    "name": "Find Top Keywords for Youtube And Google and Store them in NocoDB",
+    "views": 2750,
+    "recentViews": 5,
+    "totalViews": 2750,
+    "createdAt": "2025-02-12T01:32:32.725Z",
+    "description": "**Template Description**  \n**WDF Top Keywords**: This workflow is designed to streamline keyword research by automating the process of generating, filtering, and analyzing Google and YouTube keyword data. Ensure compliance with local regulations and API terms of service when using this workflow.\n\n---\n\n📌 **Purpose**  \nThe WDF Top Keywords workflow automates collecting, processing, and managing keyword data for both Google and YouTube platforms. Leveraging multiple data sources and APIs ensures an efficient and scalable approach to identifying high-impact keywords for SEO, content creation, and marketing campaigns.\n\n### **Key Features**\n- Automates the generation of keyword suggestions using autocomplete APIs.\n- Integrates with NocoDB to store and manage keyword data.\n- Filters keywords based on monthly search volume and cost-per-click (CPC).\n- Supports bulk import of keyword data into structured databases.\n- Outputs both Google and YouTube keyword insights, enabling informed decision-making.\n\n---\n\n🎯 **Target Audience**  \nThis workflow is ideal for:\n- Digital marketers aiming to optimize ad campaigns with data-driven insights.\n- SEO specialists looking to identify high-potential keywords efficiently.\n- Content creators seeking trending and relevant topics for their platforms.\n- Agencies managing keyword research for multiple clients.\n\n---\n\n⚙️ **How It Works**  \n1. **Trigger**: The workflow runs on-demand or at scheduled intervals.  \n2. **Keyword Generation**:  \n   - Retrieves base keywords from NocoDB.  \n   - Generates autocomplete suggestions for Google and YouTube.  \n3. **Data Processing**:  \n   - Filters and formats keyword data based on specific criteria (e.g., search volume, CPC).  \n   - Consolidates results for efficient storage and analysis.  \n4. **Storage and Output**:  \n   - Saves data into structured NocoDB tables for tracking and reuse.  \n   - Bulk imports monthly search volume statistics for detailed analysis.\n\n---\n\n🛠️ **Key APIs and Tools Used**  \n- **NocoDB**: Stores and organizes base and processed keyword data.  \n- **DataForSEO API**: Provides search volume and keyword performance metrics.  \n- **Google Autocomplete API**: Suggests relevant Google search terms.  \n- **YouTube Autocomplete API**: Suggests trending YouTube keywords.  \n- **Social Flood Docker Instance**: Serves as the local integration hub.  \n\n---\n\n**Setup Instructions**  \n1. Required Tools:\n   - [NocoDB](https://www.nocodb.com/)  \n   - [n8n](https://n8n.io/)  \n   - [DataForSEO Account](https://app.dataforseo.com/?aff=184401)  \n   - [Social Flood Docker Instance](https://github.com/rainmanjam/social-flood)  \n2. Create the following NocoDB tables:  \n   - Base Keyword Search  \n   - Second Order Google Keywords  \n   - Second Order YouTube Keywords  \n   - Search Volume  \n\nThis template empowers users to handle complex keyword research tasks effortlessly, saving time and providing actionable insights. Share this template to enhance your workflow efficiency!\n\n",
+    "workflow": {
+      "id": "SHgOqN3ednIo5gNu",
+      "meta": {
+        "instanceId": "5fdeff34cb31eeba72e9ea7f1100a8cb9dfce8edcd1fd736c5a33060890e9b77",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Find Top Keywords",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "386c7972-34c2-4f51-9329-dee7f6a7511b",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -3440,
+            760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "3ebf40fd-acfd-4424-99c9-95ddaac74de3",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -3440,
+            1040
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "expression": "0 */4 * * *"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a24af92b-849d-48ee-aedd-6c7e75d9c902",
+          "name": "Gen Time",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -3160,
+            940
+          ],
+          "parameters": {
+            "jsCode": "// Get today's date\nconst today = new Date();\n\n// Subtract one day to get the previous day\nconst yesterday = new Date(today);\nyesterday.setDate(today.getDate() - 1);\n\n// Format the date as yyyy-mm-dd\nconst year = yesterday.getFullYear();\nconst month = String(yesterday.getMonth() + 1).padStart(2, '0'); // Month is zero-indexed\nconst day = String(yesterday.getDate()).padStart(2, '0');\n\nconst formattedDate = `${year}-${month}-${day}`;\n\n// Set the formatted date to be used in a later node\nreturn [{ json: { previousDay: formattedDate } }];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f0807e09-1f8f-45ba-a6d3-d14ee3f96a9f",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -3540,
+            600
+          ],
+          "parameters": {
+            "width": 520,
+            "height": 780,
+            "content": "## Create time for yesterday and today. This will be used to gather and search for news articles within a specific range."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c97b391b-1da1-4c62-9394-e83a49dae788",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -3020,
+            600
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 280,
+            "height": 780,
+            "content": "## Grab a list of base keywords from NocoDB"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "21e89f1c-7101-490a-89aa-a5a52e10d88a",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2740,
+            600
+          ],
+          "parameters": {
+            "width": 380,
+            "height": 780,
+            "content": "## Generate YouTube and Google Keywords from base keywords"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3b6e8b0e-dfdc-41d0-a387-00872c92faa1",
+          "name": "NocoDB",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            -2940,
+            940
+          ],
+          "parameters": {
+            "table": "mztryza8davdl48",
+            "options": {
+              "fields": [
+                "keyword"
+              ]
+            },
+            "operation": "getAll",
+            "projectId": "pbwiwe87uf1cpgc",
+            "returnAll": true,
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "fef9283e-886a-486b-a51f-0f459f4b18e0",
+          "name": "Second Order Google Autocomplete Keywords",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -2620,
+            800
+          ],
+          "parameters": {
+            "url": "http://192.168.1.110:8000/google-search/autocomplete-keywords",
+            "options": {},
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "input_keyword",
+                  "value": "={{ $('NocoDB').item.json.keyword }}"
+                },
+                {
+                  "name": "input_country",
+                  "value": "US"
+                },
+                {
+                  "name": "use_proxy",
+                  "value": "true"
+                },
+                {
+                  "name": "output",
+                  "value": "toolbar"
+                },
+                {
+                  "name": "spell",
+                  "value": "1"
+                },
+                {
+                  "name": "hl",
+                  "value": "en"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "accept",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "eNOOug9ODsbtfjBk",
+              "name": "Social Flood API Key Local"
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "fad88d1e-a14e-4cc1-9ac1-dcc6126355c4",
+          "name": "Google Search Volume",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -2020,
+            800
+          ],
+          "parameters": {
+            "url": "https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "=[\n    {\n        \"location_code\": 2840,\n        \"language_code\": \"en\",\n        \"keywords\": [{{ $json.keywords }}],\n        \"date_from\": \"2021-08-01\",\n        \"search_partners\": false \n    }\n]",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth"
+          },
+          "credentials": {
+            "httpBasicAuth": {
+              "id": "7k7huetjBCcDO7uR",
+              "name": "Data for SEO Basic Auth"
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "dac54baa-6166-4fb6-a705-a45a91b993ed",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2360,
+            600
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 500,
+            "height": 780,
+            "content": "## Query YouTube and Google Keyword search volume."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "753401aa-c78e-4dd1-b47f-b774bed8a6ce",
+          "name": "Split Out Google Search",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -1740,
+            800
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "tasks[0].result"
+          },
+          "executeOnce": false,
+          "typeVersion": 1
+        },
+        {
+          "id": "12f53197-a03e-4862-a6cf-d4feffd49b29",
+          "name": "YouTube Search Volume",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -2020,
+            1120
+          ],
+          "parameters": {
+            "url": "https://api.dataforseo.com/v3/keywords_data/google_ads/search_volume/live",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "=[\n    {\n        \"location_code\": 2840,\n        \"language_code\": \"en\",\n        \"keywords\": [{{ $json.keywords }}],\n        \"date_from\": \"2021-08-01\",\n        \"search_partners\": true,\n        \"sort_by\": \"search_volume\"\n    }\n]",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpBasicAuth"
+          },
+          "credentials": {
+            "httpBasicAuth": {
+              "id": "7k7huetjBCcDO7uR",
+              "name": "Data for SEO Basic Auth"
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "d0173c03-c803-4c64-9c87-48a47952085f",
+          "name": "Second Order YouTube Autocomplete Keywords",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -2620,
+            1120
+          ],
+          "parameters": {
+            "url": "http://192.168.1.110:8000/google-search/autocomplete-keywords",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "input_keyword",
+                  "value": "={{ $json.keyword }}"
+                },
+                {
+                  "name": "input_country",
+                  "value": "US"
+                },
+                {
+                  "name": "use_proxy",
+                  "value": "true"
+                },
+                {
+                  "name": "output",
+                  "value": "toolbar"
+                },
+                {
+                  "name": "spell",
+                  "value": "1"
+                },
+                {
+                  "name": "hl",
+                  "value": "en"
+                },
+                {
+                  "name": "ds",
+                  "value": "yt"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "accept",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "eNOOug9ODsbtfjBk",
+              "name": "Social Flood API Key Local"
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "dfa987d0-c18c-44c4-9796-942404f49630",
+          "name": "Split Out YT Search",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            -1740,
+            1120
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "tasks[0].result"
+          },
+          "executeOnce": false,
+          "typeVersion": 1
+        },
+        {
+          "id": "29196a5b-c46e-46f7-99ff-781a0d97c551",
+          "name": "Google Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -1520,
+            800
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "6e46fa28-2adf-47a0-bbf3-7a9b8b8413f7",
+                  "operator": {
+                    "type": "array",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.monthly_searches }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "45bca7c3-eac2-44e8-9993-b53200174003",
+                  "operator": {
+                    "type": "number",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.cpc }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6b11b8e2-d6fb-45d7-817e-3e1038068696",
+          "name": "YT Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            -1520,
+            1120
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "6e46fa28-2adf-47a0-bbf3-7a9b8b8413f7",
+                  "operator": {
+                    "type": "array",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.monthly_searches }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "45bca7c3-eac2-44e8-9993-b53200174003",
+                  "operator": {
+                    "type": "number",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.cpc }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "6d52836b-ce37-46c0-aa4b-7c2b917b9f1d",
+          "name": "Add Second Tier YT Keyword Data",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            -440,
+            980
+          ],
+          "parameters": {
+            "table": "m8bp2fnwtqsd2m7",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "=keyword",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.keyword }}"
+                },
+                {
+                  "fieldName": "location_code",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.location_code }}"
+                },
+                {
+                  "fieldName": "language_code",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.language_code }}"
+                },
+                {
+                  "fieldName": "search_partners",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.search_partners }}"
+                },
+                {
+                  "fieldName": "competition",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.competition }}"
+                },
+                {
+                  "fieldName": "competition_index",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.competition_index }}"
+                },
+                {
+                  "fieldName": "cpc",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.cpc }}"
+                },
+                {
+                  "fieldName": "low_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.low_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "high_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.high_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "search_volume",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.search_volume }}"
+                }
+              ]
+            },
+            "operation": "create",
+            "projectId": "pbwiwe87uf1cpgc",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "d4a72c2b-8c16-4f3e-80ad-1564ec8b33d4",
+          "name": "Add Second Tier G Keyword Data",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            -440,
+            400
+          ],
+          "parameters": {
+            "table": "mjmbcomto18scyi",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "=keyword",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.keyword }}"
+                },
+                {
+                  "fieldName": "location_code",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.location_code }}"
+                },
+                {
+                  "fieldName": "language_code",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.language_code }}"
+                },
+                {
+                  "fieldName": "search_partners",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.search_partners }}"
+                },
+                {
+                  "fieldName": "competition",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.competition }}"
+                },
+                {
+                  "fieldName": "competition_index",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.competition_index }}"
+                },
+                {
+                  "fieldName": "cpc",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.cpc }}"
+                },
+                {
+                  "fieldName": "low_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.low_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "high_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.high_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "search_volume",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.search_volume }}"
+                }
+              ]
+            },
+            "operation": "create",
+            "projectId": "pbwiwe87uf1cpgc",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "1fdaf0fc-5c11-406f-93fb-b4a7fd3b6eed",
+          "name": "Format G Data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -240,
+            400
+          ],
+          "parameters": {
+            "jsCode": "// Get the monthly search data from the \"Loop Over Google Keywords\" node\nconst loopData = $node[\"Loop Over Google Keywords\"].json;\nif (!loopData || !loopData.monthly_searches || !Array.isArray(loopData.monthly_searches)) {\n  throw new Error(\"monthly_searches data is missing or not an array from Loop Over Google Keywords node.\");\n}\nconst monthlySearches = loopData.monthly_searches;\n\n// Get all items from the \"Add Second Tier G Keyword Data\" node\nconst secondTierItems = $items(\"Add Second Tier G Keyword Data\");\n\nif (!secondTierItems || secondTierItems.length === 0) {\n  throw new Error(\"No data found in Add Second Tier G Keyword Data node.\");\n}\n\nconst results = [];\n\n// Loop through each second-tier item\nsecondTierItems.forEach(itemWrapper => {\n  const item = itemWrapper.json;\n  // Validate that the required properties exist on the second-tier item.\n  if (!item.keyword || item.Id === undefined) {\n    throw new Error(\"A second tier item is missing 'keyword' or 'Id'.\");\n  }\n  \n  // For each monthly search record, combine with the second-tier data\n  monthlySearches.forEach(record => {\n    // Validate that each monthly record has the required properties.\n    if (record.year === undefined || record.month === undefined || record.search_volume === undefined) {\n      throw new Error(\"A monthly search record is missing 'year', 'month', or 'search_volume'.\");\n    }\n    \n    results.push({\n      json: {\n        keyword: item.keyword,\n        google_keyword_id: item.Id,\n        year: record.year,\n        month: record.month,\n        search_volume: record.search_volume,\n        unique_id: `${record.year}-${record.month}-${item.keyword}`\n      }\n    });\n  });\n});\n\n// Chunk the results into batches of 1000 items each\nconst batchSize = 1000;\nconst batchedResults = [];\n\nfor (let i = 0; i < results.length; i += batchSize) {\n  // Create a batch containing up to batchSize items\n  const batchItems = results.slice(i, i + batchSize).map(item => item.json);\n  batchedResults.push({\n    json: {\n      batch: batchItems\n    }\n  });\n}\n\nreturn batchedResults;\n"
+          },
+          "typeVersion": 2,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "7d654cf7-1223-4f10-8026-997f5418402e",
+          "name": "Format YT Data",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -220,
+            980
+          ],
+          "parameters": {
+            "jsCode": "// Get the monthly search data from the \"Loop Over Google Keywords\" node\nconst loopData = $node[\"Loop Over YT Keywords\"].json;\nif (!loopData || !loopData.monthly_searches || !Array.isArray(loopData.monthly_searches)) {\n  throw new Error(\"monthly_searches data is missing or not an array from Loop Over YT Keywords node.\");\n}\nconst monthlySearches = loopData.monthly_searches;\n\n// Get all items from the \"Add Second Tier G Keyword Data\" node\nconst secondTierItems = $items(\"Add Second Tier YT Keyword Data\");\n\nif (!secondTierItems || secondTierItems.length === 0) {\n  throw new Error(\"No data found in Add Second Tier YT Keyword Data node.\");\n}\n\nconst results = [];\n\n// Loop through each second-tier item\nsecondTierItems.forEach(itemWrapper => {\n  const item = itemWrapper.json;\n  // Validate that the required properties exist on the second-tier item.\n  if (!item.keyword || item.Id === undefined) {\n    throw new Error(\"A second tier item is missing 'keyword' or 'Id'.\");\n  }\n  \n  // For each monthly search record, combine with the second-tier data\n  monthlySearches.forEach(record => {\n    // Validate that each monthly record has the required properties.\n    if (record.year === undefined || record.month === undefined || record.search_volume === undefined) {\n      throw new Error(\"A monthly search record is missing 'year', 'month', or 'search_volume'.\");\n    }\n    \n    results.push({\n      json: {\n        keyword: item.keyword,\n        google_keyword_id: item.Id,\n        year: record.year,\n        month: record.month,\n        search_volume: record.search_volume,\n        unique_id: `${record.year}-${record.month}-${item.keyword}`\n      }\n    });\n  });\n});\n\n// Chunk the results into batches of 1000 items each\nconst batchSize = 1000;\nconst batchedResults = [];\n\nfor (let i = 0; i < results.length; i += batchSize) {\n  // Create a batch containing up to batchSize items\n  const batchItems = results.slice(i, i + batchSize).map(item => item.json);\n  batchedResults.push({\n    json: {\n      batch: batchItems\n    }\n  });\n}\n\nreturn batchedResults;\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "67848762-a140-4c63-b8ca-e20331135741",
+          "name": "Bulk Import G Monthly Search Volume",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            0,
+            400
+          ],
+          "parameters": {
+            "url": "http://192.168.1.186:8080/api/v2/tables/ma51kvf78diz0sg/records",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 1000
+                }
+              }
+            },
+            "jsonBody": "={{ $json.batch }}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "nocoDbApiToken"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "eNOOug9ODsbtfjBk",
+              "name": "Social Flood API Key Local"
+            },
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "377b5470-9d9f-42e5-9528-fbf9fd3a1d77",
+          "name": "Bulk Import YT Monthly Search Volume",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            40,
+            980
+          ],
+          "parameters": {
+            "url": "http://192.168.1.186:8080/api/v2/tables/ma51kvf78diz0sg/records",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 1000
+                }
+              }
+            },
+            "jsonBody": "={{ $json.batch }}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "nocoDbApiToken"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "eNOOug9ODsbtfjBk",
+              "name": "Social Flood API Key Local"
+            },
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "6939afbf-b463-44fb-ab0b-45cbe81648eb",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1860,
+            600
+          ],
+          "parameters": {
+            "width": 540,
+            "height": 780,
+            "content": "## Process and filter Keywords for monthly traffic and CPC"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6fdbd7c3-75ca-4ed4-a5aa-3718bee0786f",
+          "name": "Is Google Keyword Available",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -680,
+            640
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "c4c4ed58-b14d-4973-93b2-4426fe314a2a",
+                  "operator": {
+                    "type": "number",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.pageInfo.totalRows }}",
+                  "rightValue": 0
+                }
+              ]
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "f10d1313-fdfb-4f58-921d-65f307afab4e",
+          "name": "Is YT Keyword Avaliable",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -700,
+            1260
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "c4c4ed58-b14d-4973-93b2-4426fe314a2a",
+                  "operator": {
+                    "type": "number",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.pageInfo.totalRows }}",
+                  "rightValue": 0
+                }
+              ]
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 2.2
+        },
+        {
+          "id": "c6c26129-fce0-4d98-a72a-662dcbc06ae0",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1320,
+            320
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 1560,
+            "height": 1280,
+            "content": "## Add or update YouTube or Google Tables in NocoDB\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a3c0ed20-f696-4ca6-a6fb-872cab8fbba5",
+          "name": "Check for Google Keyword",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -900,
+            640
+          ],
+          "parameters": {
+            "url": "=http://192.168.1.186:8080/api/v2/tables/mjmbcomto18scyi/records?where=(keyword,eq,{{ $json.keyword }})",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 1,
+                  "batchInterval": 1
+                }
+              }
+            },
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "bb7cae83-8ff0-45d0-abca-d8d99efcfead",
+          "name": "Check for YT Keyword",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -940,
+            1260
+          ],
+          "parameters": {
+            "url": "=http://192.168.1.186:8080/api/v2/tables/m8bp2fnwtqsd2m7/records/?where=(keyword,eq,{{ $json.keyword }})",
+            "options": {},
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "e04d2f1c-45b6-4994-91a7-dc9f54a3fba8",
+          "name": "Loop Over YT Keywords",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            -1180,
+            1240
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 1000
+          },
+          "executeOnce": false,
+          "typeVersion": 3
+        },
+        {
+          "id": "452a67b4-d30c-4732-abc4-8b3513ec31f6",
+          "name": "Update Second Tier G Keyword Data",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            -220,
+            660
+          ],
+          "parameters": {
+            "table": "mjmbcomto18scyi",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "=keyword",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.keyword }}"
+                },
+                {
+                  "fieldName": "location_code",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.location_code }}"
+                },
+                {
+                  "fieldName": "language_code",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.language_code }}"
+                },
+                {
+                  "fieldName": "search_partners",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.search_partners }}"
+                },
+                {
+                  "fieldName": "competition",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.competition }}"
+                },
+                {
+                  "fieldName": "competition_index",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.competition_index }}"
+                },
+                {
+                  "fieldName": "cpc",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.cpc }}"
+                },
+                {
+                  "fieldName": "low_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.low_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "high_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.high_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "search_volume",
+                  "fieldValue": "={{ $('Split Out Google Search').item.json.search_volume }}"
+                },
+                {
+                  "fieldName": "id",
+                  "fieldValue": "={{ $json.list[0].Id }}"
+                }
+              ]
+            },
+            "operation": "update",
+            "projectId": "pbwiwe87uf1cpgc",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "e50cc116-3b5b-4908-b0b6-8781360cb5f2",
+          "name": "Update Second Tier YT Keyword Data",
+          "type": "n8n-nodes-base.nocoDb",
+          "position": [
+            -440,
+            1280
+          ],
+          "parameters": {
+            "table": "m8bp2fnwtqsd2m7",
+            "fieldsUi": {
+              "fieldValues": [
+                {
+                  "fieldName": "=keyword",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.keyword }}"
+                },
+                {
+                  "fieldName": "location_code",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.location_code }}"
+                },
+                {
+                  "fieldName": "language_code",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.language_code }}"
+                },
+                {
+                  "fieldName": "search_partners",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.search_partners }}"
+                },
+                {
+                  "fieldName": "competition",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.competition }}"
+                },
+                {
+                  "fieldName": "competition_index",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.competition_index }}"
+                },
+                {
+                  "fieldName": "cpc",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.cpc }}"
+                },
+                {
+                  "fieldName": "low_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.low_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "high_top_of_page_bid",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.high_top_of_page_bid }}"
+                },
+                {
+                  "fieldName": "search_volume",
+                  "fieldValue": "={{ $('Split Out YT Search').item.json.search_volume }}"
+                },
+                {
+                  "fieldName": "id",
+                  "fieldValue": "={{ $json.list[0].Id }}"
+                }
+              ]
+            },
+            "operation": "update",
+            "projectId": "pbwiwe87uf1cpgc",
+            "authentication": "nocoDbApiToken"
+          },
+          "credentials": {
+            "nocoDbApiToken": {
+              "id": "LAbGsn1RMARiq5Gy",
+              "name": "NocoDB Token account"
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 3
+        },
+        {
+          "id": "4ef57b89-913c-4e0e-8e60-675807ad6a5d",
+          "name": "Loop Over Google Keywords",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            -1160,
+            620
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 1000
+          },
+          "executeOnce": false,
+          "typeVersion": 3
+        },
+        {
+          "id": "94fbe48b-22bf-4a15-9ef0-423b1dab586a",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -3540,
+            1560
+          ],
+          "parameters": {
+            "width": 1060,
+            "height": 380,
+            "content": "## Setup Instuctions: \n### Required: NocoDB, N8N, [DataforSEO Account *aff*](https://app.dataforseo.com/?aff=184401), and [Social Flood Docker Instance](https://github.com/rainmanjam/social-flood)\n### Tables for NocoDB\n-- Base Keyword Search (Keyword)\n-- Second Order Google Keywords( keyword, location_code, language_code, search_partners, competition, competition_index, search_volume, cpc, low_top_of_page, high_top_of_page)\n-- Second Order YouTube Keywords( keyword, location_code, language_code, search_partners, competition, competition_index, search_volume, cpc, low_top_of_page, high_top_of_page)\n-- Search Volume( unique_id, year, month, search_volume, youtube_keyword_id, google_keyword_id)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8429c63d-09e7-47ac-a11b-e5132d5ac832",
+          "name": "Combine G Keywords and Filter",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -2300,
+            800
+          ],
+          "parameters": {
+            "jsCode": "// Gather all keywords from all items\nlet allKeywords = [];\n\nfor (const item of items) {\n  const keywordData = item.json.keyword_data;\n  const keywords = Object.values(keywordData)\n    .flatMap(section => Object.values(section))\n    .flat();\n\n  allKeywords = allKeywords.concat(keywords);\n}\n\n// Clean and transform the combined keywords\nconst cleanedKeywords = allKeywords\n  .filter(keyword => keyword.length <= 80)\n  .filter(keyword => keyword.split(\" \").length <= 10)\n  .map(keyword => keyword.replace(/[^a-zA-Z0-9\\s]/g, \"\"))\n  .map(keyword => keyword.trim())\n  .filter(keyword => keyword.length > 0)\n  .map(keyword => `\"${keyword}\"`);\n\n// Remove duplicates\nconst uniqueKeywords = Array.from(new Set(cleanedKeywords));\n\n// Split into batches of 1000\nconst batchSize = 1000;\nconst result = [];\n\nfor (let i = 0; i < uniqueKeywords.length; i += batchSize) {\n  result.push({\n    json: {\n      keywords: uniqueKeywords.slice(i, i + batchSize).join(\", \")\n    }\n  });\n}\n\n// Return as an array of objects\nreturn result;\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5aa39111-c1c1-440e-b0e8-ba5c54909a0d",
+          "name": "Combine YT Keywords and Filter",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -2300,
+            1120
+          ],
+          "parameters": {
+            "jsCode": "// Gather all keywords from all items\nlet allKeywords = [];\n\nfor (const item of items) {\n  const keywordData = item.json.keyword_data;\n  const keywords = Object.values(keywordData)\n    .flatMap(section => Object.values(section))\n    .flat();\n\n  allKeywords = allKeywords.concat(keywords);\n}\n\n// Clean and transform the combined keywords\nconst cleanedKeywords = allKeywords\n  .filter(keyword => keyword.length <= 80)\n  .filter(keyword => keyword.split(\" \").length <= 10)\n  .map(keyword => keyword.replace(/[^a-zA-Z0-9\\s]/g, \"\"))\n  .map(keyword => keyword.trim())\n  .filter(keyword => keyword.length > 0)\n  .map(keyword => `\"${keyword}\"`);\n\n// Remove duplicates\nconst uniqueKeywords = Array.from(new Set(cleanedKeywords));\n\n// Split into batches of 1000\nconst batchSize = 1000;\nconst result = [];\n\nfor (let i = 0; i < uniqueKeywords.length; i += batchSize) {\n  result.push({\n    json: {\n      keywords: uniqueKeywords.slice(i, i + batchSize).join(\", \")\n    }\n  });\n}\n\n// Return as an array of objects\nreturn result;\n"
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "2712313f-4b1e-4f5b-8c6b-1f456896d981",
+      "connections": {
+        "NocoDB": {
+          "main": [
+            [
+              {
+                "node": "Second Order YouTube Autocomplete Keywords",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Second Order Google Autocomplete Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Gen Time": {
+          "main": [
+            [
+              {
+                "node": "NocoDB",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "YT Filter": {
+          "main": [
+            [
+              {
+                "node": "Loop Over YT Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format G Data": {
+          "main": [
+            [
+              {
+                "node": "Bulk Import G Monthly Search Volume",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Filter": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Google Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format YT Data": {
+          "main": [
+            [
+              {
+                "node": "Bulk Import YT Monthly Search Volume",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Gen Time",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out YT Search": {
+          "main": [
+            [
+              {
+                "node": "YT Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check for YT Keyword": {
+          "main": [
+            [
+              {
+                "node": "Is YT Keyword Avaliable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Search Volume": {
+          "main": [
+            [
+              {
+                "node": "Split Out Google Search",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over YT Keywords": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Check for YT Keyword",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "YouTube Search Volume": {
+          "main": [
+            [
+              {
+                "node": "Split Out YT Search",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is YT Keyword Avaliable": {
+          "main": [
+            [
+              {
+                "node": "Add Second Tier YT Keyword Data",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Second Tier YT Keyword Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Google Search": {
+          "main": [
+            [
+              {
+                "node": "Google Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check for Google Keyword": {
+          "main": [
+            [
+              {
+                "node": "Is Google Keyword Available",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Google Keywords": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Check for Google Keyword",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is Google Keyword Available": {
+          "main": [
+            [
+              {
+                "node": "Add Second Tier G Keyword Data",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Second Tier G Keyword Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine G Keywords and Filter": {
+          "main": [
+            [
+              {
+                "node": "Google Search Volume",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add Second Tier G Keyword Data": {
+          "main": [
+            [
+              {
+                "node": "Format G Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Combine YT Keywords and Filter": {
+          "main": [
+            [
+              {
+                "node": "YouTube Search Volume",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add Second Tier YT Keyword Data": {
+          "main": [
+            [
+              {
+                "node": "Format YT Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Second Tier G Keyword Data": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Google Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Gen Time",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Second Tier YT Keyword Data": {
+          "main": [
+            [
+              {
+                "node": "Loop Over YT Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bulk Import G Monthly Search Volume": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Google Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Bulk Import YT Monthly Search Volume": {
+          "main": [
+            [
+              {
+                "node": "Loop Over YT Keywords",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Second Order Google Autocomplete Keywords": {
+          "main": [
+            [
+              {
+                "node": "Combine G Keywords and Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Second Order YouTube Autocomplete Keywords": {
+          "main": [
+            [
+              {
+                "node": "Combine YT Keywords and Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 35,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.code": {
+          "count": 5
+        },
+        "n8n-nodes-base.filter": {
+          "count": 2
+        },
+        "n8n-nodes-base.nocoDb": {
+          "count": 5
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 8
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 2
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Shannon Atkinson",
+      "username": "rainmanjam",
+      "bio": "I build and break stuff.",
+      "verified": false,
+      "links": [
+        "https://www.x.com/rainmanjam"
+      ],
+      "avatar": "https://gravatar.com/avatar/3d08eaa01038a2b44c54567dd27b86f900d4b9aaf815373ff8d596e1df464d9f?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 510,
+        "icon": "file:nocodb.svg",
+        "name": "n8n-nodes-base.nocoDb",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nocodb/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/nocoDb/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "NocoDB"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSJub25lIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iIzNENDNENSIgcng9IjI1Ii8+PHBhdGggZmlsbD0iI2ZmZiIgZD0ibTM4IDkzLjkwNyAyOS43NiAyOS4wMDZ2NDUuOTJIMzh6bTEyNS02MS42NjV2MTI1LjQxN2MwIDguMDc4LTQuNDk4IDExLjM0MS0xMS43NDIgMTEuMzQxLTEuMzMzIDAtMy43MjUtLjUwMS01Ljc5My0yLjUwMkwzOCA2NS4zMjhWNDIuODRDMzggMzQuNzYzIDQxLjM2MyAzMS41IDQ5LjcyMyAzMS41YzEuMzMzIDAgNC4wMS41MiA2LjA2IDIuNTAybDc3LjQzOCA3MS45MjNWMzIuMjQyeiIvPjwvc3ZnPg=="
+        },
+        "displayName": "NocoDB",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

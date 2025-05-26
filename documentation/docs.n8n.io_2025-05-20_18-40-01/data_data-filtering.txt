@@ -1,0 +1,28 @@
+URL: https://docs.n8n.io/data/data-filtering/
+Scraped_At: 2025-05-20T18:42:28.136873
+
+Data filtering
+#
+Feature availability
+Available on Cloud Pro and Enterprise plans.
+Search and filter data in the node
+INPUT
+and
+OUTPUT
+panels. Use this to check your node's data.
+To search:
+In a node, select
+Search
+in the
+INPUT
+or
+OUTPUT
+panel.
+Enter your search term.
+n8n filters as you type your search, displaying the objects or rows containing the term.
+Filtering is purely visual: n8n doesn't change or delete data. The filter resets when you close and reopen the node.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

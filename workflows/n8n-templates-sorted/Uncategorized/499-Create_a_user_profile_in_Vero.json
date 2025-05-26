@@ -1,0 +1,204 @@
+{
+  "workflow": {
+    "id": 499,
+    "name": "Create a user profile in Vero",
+    "views": 200,
+    "recentViews": 0,
+    "totalViews": 200,
+    "createdAt": "2020-07-13T14:56:17.315Z",
+    "description": "![workflow-screenshot](fileId:98)",
+    "workflow": {
+      "id": "127",
+      "name": "Create a user profile in Vero",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Vero",
+          "type": "n8n-nodes-base.vero",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "id": "",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "veroApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Vero",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.vero": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 113,
+        "icon": "file:vero.svg",
+        "name": "n8n-nodes-base.vero",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.vero/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/vero/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Vero"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMjUiIGhlaWdodD0iMjI1IiBmaWxsPSJub25lIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImEiIHgxPSIxLjA0NyIgeDI9Ii0uMTU5IiB5MT0iLjQ1NCIgeTI9Ii41MzUiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzI5MzZhMyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzE2MjI4NiIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iLS4xOTIiIHgyPSIuOTU4IiB5MT0iLjY3NSIgeTI9Ii4xNTYiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzIyOTdmNCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzMxYTBmOSIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9InVybCgjYSkiIHN0cm9rZT0ibnVsbCIgZD0iTTIxMS4xNDUgMTIxLjM5YzE4LjE4LTE4LjE2MiAxOC4xOC00Ny42MDggMC02NS43NjlzLTQ3LjY1Ni0xOC4xNjEtNjUuODM2IDBMMTEyLjM5IDg4LjUwNWwzMi44MTcgMzIuNzgzLjEwMS4xMDFjMTguMTYxIDE4LjE0MiA0Ny41OTQgMTguMTYyIDY1Ljc3OS4wNTh6Ii8+PHBhdGggZmlsbD0iIzE3ZGE4OCIgc3Ryb2tlPSJudWxsIiBkPSJtNDYuNTU1IDE1NC4yNzUtMzIuOTItMzIuODg1Yy0xOC4xOC0xOC4xNjItMTguMTgtNDcuNjA3IDAtNjUuNzY4czQ3LjY1Ny0xOC4xNjIgNjUuODM3IDBsMzIuOTIgMzIuODg2eiIvPjxwYXRoIGZpbGw9InVybCgjYikiIHN0cm9rZT0ibnVsbCIgZD0iTTIxMS4xNDUgMTIxLjM5Yy0xOC4xOCAxOC4xNi00Ny42NTYgMTguMTYtNjUuODM2IDBsLS4xMDEtLjEwMi0zMi44MTYtMzIuNzgtNjUuODM2IDY1Ljc2NyAxOC44MDggMTguNzg5YzI1Ljk3MiAyNS45NDUgNjguMDgxIDI1Ljk0NSA5NC4wNTMgMHoiLz48L3N2Zz4="
+        },
+        "displayName": "Vero",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 98,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/288731722e6c4cbbbb4f50bba4604875.png"
+      }
+    ]
+  }
+}

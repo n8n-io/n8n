@@ -1,0 +1,37 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.trellotrigger/
+Scraped_At: 2025-05-20T19:07:56.339758
+
+Trello Trigger node
+#
+Trello
+is a web-based Kanban-style list-making application which is a subsidiary of Atlassian. Users can create their task boards with different columns and move the tasks between them.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Trello Trigger integrations
+page.
+Find the Model ID
+#
+The model ID is the ID of any model in Trello. Depending on the use-case, it could be the User ID, List ID, and so on.
+For this specific example, the List ID would be the Model ID:
+Open the Trello board that contains the list.
+If the list doesn't have any cards, add a card to the list.
+Open the card, add
+.json
+at the end of the URL, and press enter.
+In the JSON file, you will see a field called
+idList
+.
+Copy
+idList
+and paste it in the
+Model ID
+field in n8n.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,276 @@
+{
+  "workflow": {
+    "id": 813,
+    "name": "Create, update and get a user from Iterable",
+    "views": 270,
+    "recentViews": 0,
+    "totalViews": 270,
+    "createdAt": "2020-12-08T07:18:48.963Z",
+    "description": "![workflow-screenshot](fileId:332)",
+    "workflow": {
+      "id": "165",
+      "name": "Create, update and get a user from Iterable",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            310,
+            340
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Iterable",
+          "type": "n8n-nodes-base.iterable",
+          "position": [
+            510,
+            340
+          ],
+          "parameters": {
+            "value": "",
+            "identifier": "email",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "iterableApi": "Iterable"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Iterable1",
+          "type": "n8n-nodes-base.iterable",
+          "position": [
+            710,
+            340
+          ],
+          "parameters": {
+            "value": "={{$node[\"Iterable\"].parameter[\"value\"]}}",
+            "identifier": "email",
+            "additionalFields": {
+              "dataFieldsUi": {
+                "dataFieldValues": [
+                  {
+                    "key": "Name",
+                    "value": ""
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "iterableApi": "Iterable"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Iterable2",
+          "type": "n8n-nodes-base.iterable",
+          "position": [
+            910,
+            340
+          ],
+          "parameters": {
+            "email": "={{$node[\"Iterable\"].parameter[\"value\"]}}",
+            "operation": "get"
+          },
+          "credentials": {
+            "iterableApi": "Iterable"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Iterable": {
+          "main": [
+            [
+              {
+                "node": "Iterable1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Iterable1": {
+          "main": [
+            [
+              {
+                "node": "Iterable2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Iterable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.iterable": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 415,
+        "icon": "file:iterable.png",
+        "name": "n8n-nodes-base.iterable",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.iterable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/iterable/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Iterable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Iterable",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 332,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/6a7fd3011a4b4d529c5aba5332c40437.png"
+      }
+    ]
+  }
+}

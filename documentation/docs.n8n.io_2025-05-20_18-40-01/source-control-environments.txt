@@ -1,0 +1,40 @@
+URL: https://docs.n8n.io/source-control-environments/
+Scraped_At: 2025-05-20T19:09:53.842855
+
+Source control and environments
+#
+Feature availability
+Available on Enterprise.
+You need to be an n8n instance owner, admin, or project owner to set up source control, and to send work to and from Git.
+n8n uses Git-based source control to support environments. Linking your n8n instances to a Git repository lets you create multiple n8n environments, backed by Git branches.
+In this section:
+Understand
+:
+Environments in n8n
+: The purpose of environments, and how they work in n8n.
+Git and n8n
+: How n8n uses Git.
+Branch patterns
+: The possible relationships between n8n instances and Git branches.
+Set up source control for environments
+: How to connect your n8n instance to Git.
+Using
+:
+Push and pull
+: Send work to Git, and fetch work from Git to your instance.
+Copy work between environments
+: How to copy work between different n8n instances.
+Tutorial: Create environments with source control
+: An end-to-end tutorial, setting up environments using n8n's recommended configurations.
+Related sections:
+Variables
+: reusable values.
+External secrets
+: manage
+credentials
+with an external secrets vault.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

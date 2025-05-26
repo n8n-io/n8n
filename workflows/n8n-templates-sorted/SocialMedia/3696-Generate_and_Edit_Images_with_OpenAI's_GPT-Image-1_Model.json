@@ -1,0 +1,668 @@
+{
+  "workflow": {
+    "id": 3696,
+    "name": "Generate and Edit Images with OpenAI's GPT-Image-1 Model",
+    "views": 364,
+    "recentViews": 140,
+    "totalViews": 364,
+    "createdAt": "2025-04-24T16:48:26.102Z",
+    "description": "This template integrates OpenAI's image generation and editing endpoints via the GPT-Image-1 model to visually create and manipulate images based on prompts. It features base64 conversion, binary handling, and prompt chaining.\n\nPerfect for marketing, design, product visuals and creative workflows.\n\n**🛠️ Requirements**\nOpenAI account with access to gpt-image-1(probably you need organizations verifications for access to that model)\n\nOpenAI API credentials configured in n8n\n\nA self-hosted or cloud n8n instance\n\nBasic familiarity with the n8n UI (no programming required)\n\n**🔧 Step-by-step Instructions**\n\nStep 1: Manual Trigger\nStarts the workflow on click. Ideal for testing the generation and edit logic.\n\nStep 2: Generate Image\nThe Create image call node sends a prompt to OpenAI and returns a base64 image.\n\n**Example prompt:**\n\nA cyberpunk city at night with flying cars and neon lights\n\n**Step 3: Convert to Binary**\nThe base64 image is converted into a usable binary PNG file with the Convert json binary to File node.\n\n**Step 4: Edit the Image**\nThe binary file is passed to OpenAI’s /images/edits endpoint. A new prompt applies changes to the image.\n\n**Example:**\n\nAdd a glowing robot in the foreground with a neon sword\n\n✅ Supports model: gpt-image-1\n⚠️ Requires binary file (not base64)\n\n**Step 5: Final Conversion**\nConverts the final edited image from base64 to file so it can be downloaded or used in other nodes.\n\n**🎯 Real-World Use Cases**\n🎨 Artists & Creators: concept art and illustration variations\n\n🛍️ E-commerce: auto-generate product mockups\n\n📰 Marketing: create eye-catching blog or social visuals\n\n**💡 Bonus Ideas**\nAdd a Telegram or Slack node to generate or edit images via chat\n\nUse a Webhook to feed prompts from a form or frontend\n\nAdd a mask to restrict edits to specific areas (e.g., background only)\n\n\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "96b96d0aa1e4ff5d5b6779332b149e3ef3364191562d79083d0309cf3ddfa53e"
+      },
+      "nodes": [
+        {
+          "id": "0e78a29e-87ba-4665-84c1-a413c45e25dc",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            -420,
+            -40
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "fe7b054a-e0c9-4642-a97f-6bec60a1ec55",
+          "name": "Edit Image (OpenAI)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            500,
+            -40
+          ],
+          "parameters": {
+            "url": "https://api.openai.com/v1/images/edits",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "contentType": "multipart-form-data",
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "image",
+                  "parameterType": "formBinaryData",
+                  "inputDataFieldName": "data"
+                },
+                {
+                  "name": "prompt",
+                  "value": "add a mask with horns"
+                },
+                {
+                  "name": "model",
+                  "value": "gpt-image-1"
+                },
+                {
+                  "name": "n",
+                  "value": "1"
+                },
+                {
+                  "name": "size",
+                  "value": "1024x1024"
+                },
+                {
+                  "name": "quality",
+                  "value": "high"
+                }
+              ]
+            },
+            "nodeCredentialType": "openAiApi"
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "JyI0PkPec1FrpMkt",
+              "name": "OpenAi AIFB account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "1e1df05c-d8f9-4033-87ee-70be344ab961",
+          "name": "Create image call",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -120,
+            -40
+          ],
+          "parameters": {
+            "url": "https://api.openai.com/v1/images/generations",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "model",
+                  "value": "gpt-image-1"
+                },
+                {
+                  "name": "prompt",
+                  "value": "A cute red panda like dark super hero"
+                },
+                {
+                  "name": "n",
+                  "value": "={{Number(1)}}"
+                },
+                {
+                  "name": "size",
+                  "value": "1024x1024"
+                },
+                {
+                  "name": "moderation",
+                  "value": "low"
+                },
+                {
+                  "name": "background",
+                  "value": "auto"
+                }
+              ]
+            },
+            "nodeCredentialType": "openAiApi"
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "JyI0PkPec1FrpMkt",
+              "name": "OpenAi AIFB account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "4c44da91-0d12-4e7f-bc89-5accddd837d7",
+          "name": "Convert json binary to File",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            200,
+            -40
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "name_example",
+              "mimeType": "image/png"
+            },
+            "operation": "toBinary",
+            "sourceProperty": "data[0].b64_json"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3b8936b7-f0a2-4776-b10a-f06ceb9af31d",
+          "name": "Convert json binary to File final",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            820,
+            -40
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "",
+              "mimeType": "image/png"
+            },
+            "operation": "toBinary",
+            "sourceProperty": "data[0].b64_json"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "3d3238d5-6040-4b74-8e6a-9e1e64198099",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -500,
+            -200
+          ],
+          "parameters": {
+            "height": 320,
+            "content": "### 🧪 Manual Trigger\nStarts the workflow manually. Ideal for testing and debugging purposes.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c3378100-f688-4199-a038-83b9220afa91",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -200,
+            -320
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 280,
+            "height": 440,
+            "content": "### 🎨 Image Generation (OpenAI)\nSends a POST request to the OpenAI `/v1/images/generations` endpoint.\n\n- Uses `gpt-image-1` model\n- Generates an image from a given prompt\n- Returns a base64-encoded image (`b64_json`)\n\n📌 Output: `data[0].b64_json`\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "82a880de-74de-44e5-8448-f487c9376d0e",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            100,
+            -200
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 280,
+            "height": 320,
+            "content": "### 🧾 Convert base64 to File\nConverts the `b64_json` field into a binary PNG file to use in the next step.\n\n📤 Output: Binary image under the `data` field\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "42ccb29f-b820-4791-9683-4eb0f00ff2d3",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            -320
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 280,
+            "height": 440,
+            "content": "### ✏️ Image Editing (OpenAI)\nSends the binary image to OpenAI’s `/v1/images/edits` endpoint with a descriptive prompt.\n\n- Model: `gpt-image-1`\n- Format: `multipart/form-data`\n- Requires a real file (not base64)\n- Supports optional `mask` input\n\n📥 Input: Binary image from `data`\n📤 Output: Edited image in `b64_json`\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4c8846ab-b3f2-4c7c-9283-5a40a55b816d",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            740,
+            -240
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 280,
+            "height": 360,
+            "content": "### 🧾 Final Conversion (base64 → File)\nConverts the edited image (`b64_json`) into a downloadable or previewable PNG file.\n\n📤 Output: Final binary image\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2b2533f8-b7aa-4499-970e-9b0546b73c0e",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1240,
+            -860
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 700,
+            "height": 980,
+            "content": "## 🧠 Image AI Workflow Overview\n\nThis workflow uses OpenAI's image generation and editing APIs with the `gpt-image-1` model.\n\n### 🔑 Requirements:\n- You **must use your own OpenAI API key** from https://platform.openai.com/account/api-keys\n- Create a credential in n8n called `OpenAi AIFB account` (or use your own name)\n\n---\n\n### 💰 Cost Warning:\n- This model is **powerful but expensive**.\n- Each image costs **$0.020 to $0.190** depending on resolution and type.\n- Always monitor your usage via the [OpenAI dashboard](https://platform.openai.com/account/usage)\n\n---\n\n### 🔍 Why use `gpt-image-1`?\n- Unmatched **semantic control**: you can edit specific parts of images with detailed prompts.\n- Supports **multiple input images**, coherent edits, and future multi-modal tasks.\n- Editing works with or without a transparency `mask`.\n\n---\n\n### 🔧 Suggested Nodes to Expand Workflow:\n- **Webhook** (trigger via your frontend or app)\n- **Telegram / Slack** (prompt image generation from chat)\n- **Set node** (inject dynamic prompts or user context)\n- **IF / Switch** (change behavior depending on prompt type)\n- **Merge** (combine multiple image generations)\n- **HTTP Request** (send generated images to external APIs or CMS)\n\n---\n\n### 💡 Example Use Cases:\n- Marketing teams: generate product visuals on demand\n- Designers: edit and re-style illustrations without Photoshop\n- E-commerce: dynamic generation of themed mockups\n- Content creators: create blog and social thumbnails in bulk\n\n---\n\n> ⚠️ Don't forget to add rate limiting or batch controls if generating large volumes!\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Create image call": {
+          "main": [
+            [
+              {
+                "node": "Convert json binary to File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Image (OpenAI)": {
+          "main": [
+            [
+              {
+                "node": "Convert json binary to File final",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert json binary to File": {
+          "main": [
+            [
+              {
+                "node": "Edit Image (OpenAI)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "Create image call",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 11,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 6
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.convertToFile": {
+          "count": 2
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Edoardo Guzzi",
+      "username": "mredodos",
+      "bio": "Automation expert with 10+ years in programming, AI, Chrome extensions, and mobile apps. Specializing in PHP, JS, and Python, I design custom n8n workflows to streamline processes and boost productivity. Explore my templates or contact me for tailored solutions.",
+      "verified": false,
+      "links": [
+        "https://www.youtube.com/@edoardododoguzzi"
+      ],
+      "avatar": "https://gravatar.com/avatar/a21b05da374078b706406431d629d2020336978b83edffe55ae4c36a8f77cd0c?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1234,
+        "icon": "file:convertToFile.svg",
+        "name": "n8n-nodes-base.convertToFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "encode",
+              "encoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "RTF",
+              "64",
+              "Base64"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Convert to File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjc2MTkgMkMxMy4yNDM3IDIgMTIuODIzNiAyLjQyMDA5IDEyLjgyMzYgMi45MzgzMVYxNS4yNTI2QzEzLjMxOTkgMTUuNDY0MyAxMy43ODUxIDE1Ljc3MiAxNC4xOTEgMTYuMTc1N0wyMS4yMjgzIDIzLjE3MzlDMjIuMDU0OCAyMy45OTU4IDIyLjUxOTUgMjUuMTEzMiAyMi41MTk1IDI2LjI3ODhDMjIuNTE5NSAyNy40NDQzIDIyLjA1NDggMjguNTYxOCAyMS4yMjgzIDI5LjM4MzdMMTQuMTkxIDM2LjM4MTlDMTMuNzg1IDM2Ljc4NTYgMTMuMzE5OSAzNy4wOTMyIDEyLjgyMzYgMzcuMzA1VjM3LjM1MjdDMTIuODIzNiAzNy44NzA5IDEzLjI0MzcgMzguMjkxIDEzLjc2MTkgMzguMjkxSDM5LjA2MTdDMzkuNTc5OSAzOC4yOTEgNDAgMzcuODcwOSA0MCAzNy4zNTI3TDQwIDE1Ljc5NEgyNy4xNDQzQzI2LjYyNjEgMTUuNzk0IDI2LjIwNiAxNS4zNzM5IDI2LjIwNiAxNC44NTU3VjJIMTMuNzYxOVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTI4Ljg2NDUgMkMyOC43NzgxIDIgMjguNzA4MSAyLjA3MDAyIDI4LjcwODEgMi4xNTYzOVYxMi44MjI3QzI4LjcwODEgMTMuMDgxOCAyOC45MTgyIDEzLjI5MTkgMjkuMTc3MyAxMy4yOTE5SDM5Ljg0MzZDMzkuOTMgMTMuMjkxOSA0MCAxMy4yMjE5IDQwIDEzLjEzNTVMNDAgMTIuNjI2M0M0MCAxMi4zNzc4IDM5LjkwMTQgMTIuMTM5NSAzOS43MjYgMTEuOTYzNkwzMC4wNjEgMi4yNzU2MUMyOS44ODUgMi4wOTkxNiAyOS42NDYgMiAyOS4zOTY3IDJIMjguODY0NVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTkuNzcyNjggMzQuNjAwM0M5LjA0MTg2IDMzLjg2NTQgOS4wNDUxNyAzMi42NzcyIDkuNzgwMDcgMzEuOTQ2NEwxMy42MzE1IDI4LjExNjNMMC45MzgzMTEgMjguMTE2M0MwLjQyMDA5NiAyOC4xMTYzIC0yLjI2NTE5ZS0wOCAyNy42OTYyIDAgMjcuMTc4TDguMjAyOTdlLTA4IDI1LjMwMTRDMS4wNDY4MmUtMDcgMjQuNzgzMiAwLjQyMDA5NSAyNC4zNjMxIDAuOTM4MzExIDI0LjM2MzFIMTMuNTUyOUw5Ljc4MDA3IDIwLjYxMTJDOS4wNDUxNyAxOS44ODA0IDkuMDQxODYgMTguNjkyMiA5Ljc3MjY4IDE3Ljk1NzNDMTAuNTAzNSAxNy4yMjI0IDExLjY5MTcgMTcuMjE5MSAxMi40MjY2IDE3Ljk0OTlMMTkuNDYzOSAyNC45NDgxQzE5LjgxODEgMjUuMzAwNCAyMC4wMTczIDI1Ljc3OTMgMjAuMDE3MyAyNi4yNzg4QzIwLjAxNzMgMjYuNzc4MyAxOS44MTgxIDI3LjI1NzIgMTkuNDYzOSAyNy42MDk1TDEyLjQyNjYgMzQuNjA3N0MxMS42OTE3IDM1LjMzODUgMTAuNTAzNSAzNS4zMzUyIDkuNzcyNjggMzQuNjAwM1oiIGZpbGw9IiMzQTQyRTkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Convert to File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 15,
+        "name": "Design"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

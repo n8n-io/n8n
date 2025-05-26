@@ -1,0 +1,92 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssh/
+Scraped_At: 2025-05-20T18:56:47.132190
+
+SSH
+#
+The SSH node is useful for executing commands using the Secure Shell Protocol.
+Credentials
+You can find authentication information for this node
+here
+.
+Operations
+#
+Execute
+a command
+Download
+a file
+Upload
+a file
+Uploading files
+To attach a file for upload, you will need to use an extra node such as the
+Read/Write Files from Disk
+node or the
+HTTP Request
+node to pass the file as a data property.
+Execute Command
+#
+Configure this operation with these parameters:
+Credential to connect with
+: Select an existing or create a new
+SSH credential
+to connect with.
+Command
+: Enter the command to execute on the remote device.
+Working Directory
+: Enter the directory where n8n should execute the command.
+Download File
+#
+Credential to connect with
+: Select an existing or create a new
+SSH credential
+to connect with.
+Path
+: Enter the path for the file you want to download. This path must include the file name. The downloaded file will use this file name. To use a different name, use the
+File Name
+option. Refer to
+Download File options
+for more information.
+File Property
+: Enter the name of the object property that holds the binary data you want to download.
+Download File options
+#
+You can further configure this operation with the
+File Name
+option. Use this option to override the binary data file name to a name of your choice.
+Upload File
+#
+Credential to connect with
+: Select an existing or create a new
+SSH credential
+to connect with.
+Input Binary Field
+: Enter the name of the input binary field that contains the file you want to upload.
+Target Directory
+: The directory to upload the file to. The name of the file is taken from the binary data file name. To enter a different name, use the
+File Name
+option. Refer to
+Upload File options
+for more information.
+Upload File options
+#
+You can further configure this operation with the
+File Name
+option. Use this option to override the binary data file name to a name of your choice.
+Templates and examples
+#
+Send Email if server has upgradable packages
+by Hostinger
+View template details
+Docker Registry Cleanup Workflow
+by Muzaffer AKYIL
+View template details
+Check VPS resource usage every 15 minutes
+by Hostinger
+View template details
+Browse SSH integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

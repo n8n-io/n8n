@@ -1,0 +1,66 @@
+URL: https://docs.n8n.io/advanced-ai/
+Scraped_At: 2025-05-20T18:40:06.017245
+
+Advanced AI
+#
+Build AI functionality using n8n: from creating your own chat bot, to using AI to process documents and data from other sources.
+Feature availability
+This feature is available on Cloud and self-hosted n8n, in version 1.19.4 and above.
+Get started
+Work through the short tutorial to learn the basics of building AI workflows in n8n.
+Tutorial
+Use a Starter Kit
+Try n8n's Self-hosted AI Starter Kit to quickly start building AI workflows.
+Self-hosted AI Starter Kit
+Explore examples and concepts
+Browse examples and workflow templates to help you build. Includes explanations of important AI concepts.
+Examples
+How n8n uses LangChain
+Learn more about how n8n builds on LangChain.
+LangChain in n8n
+Browse AI templates
+Explore a wide range of AI workflow templates on the n8n website.
+AI workflows on n8n.io
+Related resources
+#
+Related documentation and tools.
+Node types
+#
+This feature uses
+Cluster nodes
+: groups of
+root
+and
+sub
+nodes that work together.
+Cluster nodes
+are node groups that work together to provide functionality in an n8n workflow. Instead of using a single node, you use a
+root node
+and one or more
+sub-nodes
+that extend the functionality of the node.
+Workflow templates
+#
+You can browse
+workflow templates
+in-app or on the n8n website
+Workflows
+page.
+Refer to
+Templates
+for information on accessing templates in-app.
+Chat trigger
+#
+Use the
+n8n Chat Trigger
+to trigger a workflow based on chat interactions.
+Chatbot widget
+#
+n8n provides a chatbot widget that you can use as a frontend for AI-powered chat workflows. Refer to the
+@n8n/chat npm page
+for usage information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

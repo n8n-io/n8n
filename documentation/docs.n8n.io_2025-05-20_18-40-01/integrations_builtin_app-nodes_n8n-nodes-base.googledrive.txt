@@ -1,0 +1,90 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/
+Scraped_At: 2025-05-20T18:48:00.789991
+
+Google Drive node
+#
+Use the Google Drive node to automate work in Google Drive, and integrate Google Drive with other applications. n8n has built-in support for a wide range of Google Drive features, including creating, updating, listing, deleting, and getting drives, files, and folders.
+On this page, you'll find a list of operations the Google Drive node supports and links to more resources.
+Credentials
+Refer to
+Google Drive credentials
+for guidance on setting up authentication.
+Operations
+#
+File
+Copy
+a file
+Create from text
+Delete
+a file
+Download
+a file
+Move
+a file
+Share
+a file
+Update
+a file
+Upload
+a file
+File/Folder
+Search
+files and folders
+Folder
+Create
+a folder
+Delete
+a folder
+Share
+a folder
+Shared Drive
+Create
+a shared drive
+Delete
+a shared drive
+Get
+a shared drive
+Get Many
+shared drives
+Update
+a shared drive
+Templates and examples
+#
+Ask questions about a PDF using AI
+by David Roberts
+View template details
+Chat with PDF docs using AI (quoting sources)
+by David Roberts
+View template details
+RAG Chatbot for Company Documents using Google Drive and Gemini
+by Mihai Farcas
+View template details
+Browse Google Drive integration templates
+, or
+search all templates
+Common issues
+#
+For common questions or issues and suggested solutions, refer to
+Common issues
+.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

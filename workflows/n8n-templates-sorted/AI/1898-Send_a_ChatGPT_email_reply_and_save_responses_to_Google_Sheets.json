@@ -1,0 +1,2634 @@
+{
+  "workflow": {
+    "id": 1898,
+    "name": "Send a ChatGPT email reply and save responses to Google Sheets",
+    "views": 14081,
+    "recentViews": 0,
+    "totalViews": 14081,
+    "createdAt": "2023-03-10T15:30:33.270Z",
+    "description": "This workflow sends a OpenAI GPT reply when an email is received from specific email recipients. It then saves the initial email and the GPT response to an automatically generated Google spreadsheet. Subsequent GPT responses will be added to the same spreadsheet.\n\nAdditionally, when feedback is given for any of the GPT responses, it will be recorded to the spreasheet, which can then be used later to fine-tune the GPT model.\n\n## Prerequisites\n\n- [OpenAI credentials](https://docs.n8n.io/integrations/builtin/credentials/openai/)\n- [Google credentials](https://docs.n8n.io/integrations/builtin/credentials/google/)\n\n## How it works\n\nThis workflow is essentially a two-in-one workflow. It triggers off from two different nodes and have very different functionality from each trigger.\n\nThe flow triggered from `On email received` node is as follows:\n\n1. Triggers off on the `On email received` node.\n2. Extract the email body from the email.\n3. Generate a response from the email body using the `OpenAI` node.\n4. Reply to the email sender using the `Send reply to recipient` node. A feedback link is also included in the email body which will trigger the `On feedback given` node. This is used to fine-tune the GPT model.\n5. Save the email body and OpenAI response to a Google Sheet. If a sheet does not exist, it will be created.\n\nThe flow triggered from `On feedback given` node is as follows:\n\n1. Triggers off when a feedback link is clicked in the emailed GPT response.\n2. The feedback, either positive or negative, for that specific GPT response is then recorded to the Google Sheet.",
+    "workflow": {
+      "meta": {
+        "instanceId": "a2434c94d549548a685cca39cc4614698e94f527bcea84eefa363f1037ae14cd"
+      },
+      "nodes": [
+        {
+          "id": "88c0f64c-a7cd-4f35-96dd-9eee4b1d6a1a",
+          "name": "Generate reply",
+          "type": "n8n-nodes-base.openAi",
+          "position": [
+            -480,
+            2260
+          ],
+          "parameters": {
+            "prompt": "=From: {{ $json.from.value }}\nTo: {{ $json.to.value }}\nSubject: {{ $json.subject }}\nBody: {{ $json.reply }}\n\n\nReply: ",
+            "options": {
+              "maxTokens": "={{ $('Configure').first().json.replyTokenSize }}"
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "27",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7105b689-9f9c-4354-aad9-8f1abb6c0a06",
+          "name": "On email received",
+          "type": "n8n-nodes-base.gmailTrigger",
+          "position": [
+            -2460,
+            2680
+          ],
+          "parameters": {
+            "simple": false,
+            "filters": {},
+            "options": {},
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyMinute"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "26",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ea18ed9a-0158-45e1-ac1b-1993ace4ff2c",
+          "name": "Only continue for specific emails",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -1360,
+            2460
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $('Configure').first().json.recipients.split(',') }}",
+                  "value2": "*",
+                  "operation": "contains"
+                },
+                {
+                  "value1": "={{ $('Configure').first().json.recipients.split(',') }}",
+                  "value2": "={{ $json.from.value[0].address }}",
+                  "operation": "contains"
+                }
+              ]
+            },
+            "combineOperation": "any"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d1425dff-0fc1-4a4b-9202-418ce30d7cd9",
+          "name": "Configure",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1940,
+            2800
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "maxTokenSize",
+                  "value": 4000
+                },
+                {
+                  "name": "replyTokenSize",
+                  "value": 300
+                }
+              ],
+              "string": [
+                {
+                  "name": "spreadsheetId"
+                },
+                {
+                  "name": "worksheetId"
+                },
+                {
+                  "name": "spreadsheetName",
+                  "value": "ChatGPT responses"
+                },
+                {
+                  "name": "worksheetName",
+                  "value": "Database"
+                },
+                {
+                  "name": "recipients",
+                  "value": "[UPDATE ME]"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "594f77e6-9e7e-4e93-b6e0-95fad57e42f0",
+          "name": "Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2060,
+            2480
+          ],
+          "parameters": {
+            "width": 330.0279884670691,
+            "height": 929.4540475960038,
+            "content": "### Configuration\nIf you decide to use your own spreadsheet, it is up to you to ensure all columns are present before running this workflow. A good way to do this is to run this workflow once with **empty** `spreadsheetid` and `worksheetId` variables (see the `Configure` node). Then map the output from `Store spreadsheet ID` to this node.\n\nIt is recommended that you specify the `spreadsheetId` and `worksheetId`, since relying solely on a workflow's static data is considered bad practice.\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n__`spreadsheetId`__: The ID of the spreadsheet where Pipedrive deals will be stored.\n__`worksheetId`__: The ID of the worksheet where Pipedrive deals will be stored.\n__`spreadsheetName`(required)__: The human readable name of the spreadsheet where Pipedrive deals will be stored.\n__`worksheetName`(required)__: The human readable name of the worksheet in the spreadsheet where Pipedrive deals will be stored.\n__`recipients`(required)__: Comma-separated list of email recipients to send ChatGPT emails to. Use `*` to send ChatGPT response to every email address.\n__`maxTokenSize`(required)__: The maximum token size for the model you choose. See possible models from OpenAI [here](https://platform.openai.com/docs/models/gpt-3).\n__`replyTokenSize`(required)__: The reply's maximum token size. Default is 300. This determines how much text the AI will reply with."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2dc3e403-f2a0-43c2-a1e4-187d901d692f",
+          "name": "Send reply to recipient",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            360,
+            1860
+          ],
+          "parameters": {
+            "message": "={{ $json.html }}",
+            "options": {},
+            "emailType": "html",
+            "messageId": "={{ $node[\"On email received\"].json.id }}",
+            "operation": "reply"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "26",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f845aa4d-5542-4126-a42d-4e5afa1893d1",
+          "name": "Generate UUID",
+          "type": "n8n-nodes-base.crypto",
+          "position": [
+            -1140,
+            2360
+          ],
+          "parameters": {
+            "action": "generate",
+            "dataPropertyName": "uuid"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3c468585-4546-439b-9e8a-efb7231277d8",
+          "name": "Thanks for your response!",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            -1140,
+            2980
+          ],
+          "parameters": {
+            "html": "<!DOCTYPE html>\n\n<html>\n<head>\n  <meta charset=\"UTF-8\" />\n  <title>Thanks for your response!</title>\n</head>\n<body>\n  <div class=\"container\">\n    <h1>Thanks for your response!</h1>\n    <h2>You can safely close this window.</h2>\n  </div>\n</body>\n</html>\n\n<style>\n.container {\n  background-color: #ffffff;\n  text-align: center;\n  padding: 16px;\n  border-radius: 8px;\n}\n\nh1 {\n  color: #ff6d5a;\n  font-size: 24px;\n  font-weight: bold;\n  padding: 8px;\n}\n\nh2 {\n  color: #909399;\n  font-size: 18px;\n  font-weight: bold;\n  padding: 8px;\n}\n</style>\n\n<script>\nconsole.log(\"Hello World!\");\n</script>"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6b0bfa33-84ca-4b9c-98ec-c1bc08a1230d",
+          "name": "Extract message content (advanced)",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -920,
+            2360
+          ],
+          "parameters": {
+            "jsCode": "// source: https://gist.github.com/ikbelkirasan/2462073f6c7c760faa6fad7c6a0c4dc3\nvar EmailParser=function(t){var r={};function n(e){if(r[e])return r[e].exports;var o=r[e]={i:e,l:!1,exports:{}};return t[e].call(o.exports,o,o.exports,n),o.l=!0,o.exports}return n.m=t,n.c=r,n.d=function(t,r,e){n.o(t,r)||Object.defineProperty(t,r,{enumerable:!0,get:e})},n.r=function(t){\"undefined\"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(t,Symbol.toStringTag,{value:\"Module\"}),Object.defineProperty(t,\"__esModule\",{value:!0})},n.t=function(t,r){if(1&r&&(t=n(t)),8&r)return t;if(4&r&&\"object\"==typeof t&&t&&t.__esModule)return t;var e=Object.create(null);if(n.r(e),Object.defineProperty(e,\"default\",{enumerable:!0,value:t}),2&r&&\"string\"!=typeof t)for(var o in t)n.d(e,o,function(r){return t[r]}.bind(null,o));return e},n.n=function(t){var r=t&&t.__esModule?function(){return t.default}:function(){return t};return n.d(r,\"a\",r),r},n.o=function(t,r){return Object.prototype.hasOwnProperty.call(t,r)},n.p=\"\",n(n.s=59)}([function(t,r){var n=Array.isArray;t.exports=n},function(t,r,n){var e=n(31),o=\"object\"==typeof self&&self&&self.Object===Object&&self,u=e||o||Function(\"return this\")();t.exports=u},function(t,r,n){var e=n(74),o=n(79);t.exports=function(t,r){var n=o(t,r);return e(n)?n:void 0}},function(t,r){t.exports=function(t){return null!=t&&\"object\"==typeof t}},function(t,r){t.exports=function(t){var r=typeof t;return null!=t&&(\"object\"==r||\"function\"==r)}},function(t,r,n){var e=n(6),o=n(75),u=n(76),i=e?e.toStringTag:void 0;t.exports=function(t){return null==t?void 0===t?\"[object Undefined]\":\"[object Null]\":i&&i in Object(t)?o(t):u(t)}},function(t,r,n){var e=n(1).Symbol;t.exports=e},function(t,r,n){var e=n(35),o=n(99),u=n(14);t.exports=function(t){return u(t)?e(t):o(t)}},function(t,r,n){var e=n(64),o=n(65),u=n(66),i=n(67),c=n(68);function a(t){var r=-1,n=null==t?0:t.length;for(this.clear();++r<n;){var e=t[r];this.set(e[0],e[1])}}a.prototype.clear=e,a.prototype.delete=o,a.prototype.get=u,a.prototype.has=i,a.prototype.set=c,t.exports=a},function(t,r,n){var e=n(18);t.exports=function(t,r){for(var n=t.length;n--;)if(e(t[n][0],r))return n;return-1}},function(t,r,n){var e=n(2)(Object,\"create\");t.exports=e},function(t,r,n){var e=n(88);t.exports=function(t,r){var n=t.__data__;return e(r)?n[\"string\"==typeof r?\"string\":\"hash\"]:n.map}},function(t,r,n){var e=n(33),o=n(34);t.exports=function(t,r,n,u){var i=!n;n||(n={});for(var c=-1,a=r.length;++c<a;){var s=r[c],f=u?u(n[s],t[s],s,n,t):void 0;void 0===f&&(f=t[s]),i?o(n,s,f):e(n,s,f)}return n}},function(t,r){t.exports=function(t){return t.webpackPolyfill||(t.deprecate=function(){},t.paths=[],t.children||(t.children=[]),Object.defineProperty(t,\"loaded\",{enumerable:!0,get:function(){return t.l}}),Object.defineProperty(t,\"id\",{enumerable:!0,get:function(){return t.i}}),t.webpackPolyfill=1),t}},function(t,r,n){var e=n(30),o=n(22);t.exports=function(t){return null!=t&&o(t.length)&&!e(t)}},function(t,r,n){var e=n(109),o=n(19),u=n(110),i=n(111),c=n(112),a=n(5),s=n(32),f=s(e),p=s(o),l=s(u),v=s(i),b=s(c),h=a;(e&&\"[object DataView]\"!=h(new e(new ArrayBuffer(1)))||o&&\"[object Map]\"!=h(new o)||u&&\"[object Promise]\"!=h(u.resolve())||i&&\"[object Set]\"!=h(new i)||c&&\"[object WeakMap]\"!=h(new c))&&(h=function(t){var r=a(t),n=\"[object Object]\"==r?t.constructor:void 0,e=n?s(n):\"\";if(e)switch(e){case f:return\"[object DataView]\";case p:return\"[object Map]\";case l:return\"[object Promise]\";case v:return\"[object Set]\";case b:return\"[object WeakMap]\"}return r}),t.exports=h},function(t,r,n){var e=n(29);t.exports=function(t){if(\"string\"==typeof t||e(t))return t;var r=t+\"\";return\"0\"==r&&1/t==-1/0?\"-0\":r}},function(t,r,n){var e=n(8),o=n(69),u=n(70),i=n(71),c=n(72),a=n(73);function s(t){var r=this.__data__=new e(t);this.size=r.size}s.prototype.clear=o,s.prototype.delete=u,s.prototype.get=i,s.prototype.has=c,s.prototype.set=a,t.exports=s},function(t,r){t.exports=function(t,r){return t===r||t!=t&&r!=r}},function(t,r,n){var e=n(2)(n(1),\"Map\");t.exports=e},function(t,r,n){var e=n(80),o=n(87),u=n(89),i=n(90),c=n(91);function a(t){var r=-1,n=null==t?0:t.length;for(this.clear();++r<n;){var e=t[r];this.set(e[0],e[1])}}a.prototype.clear=e,a.prototype.delete=o,a.prototype.get=u,a.prototype.has=i,a.prototype.set=c,t.exports=a},function(t,r,n){(function(t){var e=n(1),o=n(97),u=r&&!r.nodeType&&r,i=u&&\"object\"==typeof t&&t&&!t.nodeType&&t,c=i&&i.exports===u?e.Buffer:void 0,a=(c?c.isBuffer:void 0)||o;t.exports=a}).call(this,n(13)(t))},function(t,r){t.exports=function(t){return\"number\"==typeof t&&t>-1&&t%1==0&&t<=9007199254740991}},function(t,r){t.exports=function(t){return function(r){return t(r)}}},function(t,r,n){(function(t){var e=n(31),o=r&&!r.nodeType&&r,u=o&&\"object\"==typeof t&&t&&!t.nodeType&&t,i=u&&u.exports===o&&e.process,c=function(){try{var t=u&&u.require&&u.require(\"util\").types;return t||i&&i.binding&&i.binding(\"util\")}catch(t){}}();t.exports=c}).call(this,n(13)(t))},function(t,r){var n=Object.prototype;t.exports=function(t){var r=t&&t.constructor;return t===(\"function\"==typeof r&&r.prototype||n)}},function(t,r,n){var e=n(41),o=n(42),u=Object.prototype.propertyIsEnumerable,i=Object.getOwnPropertySymbols,c=i?function(t){return null==t?[]:(t=Object(t),e(i(t),(function(r){return u.call(t,r)})))}:o;t.exports=c},function(t,r,n){var e=n(48);t.exports=function(t){var r=new t.constructor(t.byteLength);return new e(r).set(new e(t)),r}},function(t,r,n){var e=n(0),o=n(29),u=/\\.|\\[(?:[^[\\]]*|([\"'])(?:(?!\\1)[^\\\\]|\\\\.)*?\\1)\\]/,i=/^\\w*$/;t.exports=function(t,r){if(e(t))return!1;var n=typeof t;return!(\"number\"!=n&&\"symbol\"!=n&&\"boolean\"!=n&&null!=t&&!o(t))||(i.test(t)||!u.test(t)||null!=r&&t in Object(r))}},function(t,r,n){var e=n(5),o=n(3);t.exports=function(t){return\"symbol\"==typeof t||o(t)&&\"[object Symbol]\"==e(t)}},function(t,r,n){var e=n(5),o=n(4);t.exports=function(t){if(!o(t))return!1;var r=e(t);return\"[object Function]\"==r||\"[object GeneratorFunction]\"==r||\"[object AsyncFunction]\"==r||\"[object Proxy]\"==r}},function(t,r){var n=\"object\"==typeof global&&global&&global.Object===Object&&global;t.exports=n},function(t,r){var n=Function.prototype.toString;t.exports=function(t){if(null!=t){try{return n.call(t)}catch(t){}try{return t+\"\"}catch(t){}}return\"\"}},function(t,r,n){var e=n(34),o=n(18),u=Object.prototype.hasOwnProperty;t.exports=function(t,r,n){var i=t[r];u.call(t,r)&&o(i,n)&&(void 0!==n||r in t)||e(t,r,n)}},function(t,r,n){var e=n(93);t.exports=function(t,r,n){\"__proto__\"==r&&e?e(t,r,{configurable:!0,enumerable:!0,value:n,writable:!0}):t[r]=n}},function(t,r,n){var e=n(95),o=n(36),u=n(0),i=n(21),c=n(37),a=n(38),s=Object.prototype.hasOwnProperty;t.exports=function(t,r){var n=u(t),f=!n&&o(t),p=!n&&!f&&i(t),l=!n&&!f&&!p&&a(t),v=n||f||p||l,b=v?e(t.length,String):[],h=b.length;for(var y in t)!r&&!s.call(t,y)||v&&(\"length\"==y||p&&(\"offset\"==y||\"parent\"==y)||l&&(\"buffer\"==y||\"byteLength\"==y||\"byteOffset\"==y)||c(y,h))||b.push(y);return b}},function(t,r,n){var e=n(96),o=n(3),u=Object.prototype,i=u.hasOwnProperty,c=u.propertyIsEnumerable,a=e(function(){return arguments}())?e:function(t){return o(t)&&i.call(t,\"callee\")&&!c.call(t,\"callee\")};t.exports=a},function(t,r){var n=/^(?:0|[1-9]\\d*)$/;t.exports=function(t,r){var e=typeof t;return!!(r=null==r?9007199254740991:r)&&(\"number\"==e||\"symbol\"!=e&&n.test(t))&&t>-1&&t%1==0&&t<r}},function(t,r,n){var e=n(98),o=n(23),u=n(24),i=u&&u.isTypedArray,c=i?o(i):e;t.exports=c},function(t,r){t.exports=function(t,r){return function(n){return t(r(n))}}},function(t,r,n){var e=n(35),o=n(102),u=n(14);t.exports=function(t){return u(t)?e(t,!0):o(t)}},function(t,r){t.exports=function(t,r){for(var n=-1,e=null==t?0:t.length,o=0,u=[];++n<e;){var i=t[n];r(i,n,t)&&(u[o++]=i)}return u}},function(t,r){t.exports=function(){return[]}},function(t,r,n){var e=n(44),o=n(45),u=n(26),i=n(42),c=Object.getOwnPropertySymbols?function(t){for(var r=[];t;)e(r,u(t)),t=o(t);return r}:i;t.exports=c},function(t,r){t.exports=function(t,r){for(var n=-1,e=r.length,o=t.length;++n<e;)t[o+n]=r[n];return t}},function(t,r,n){var e=n(39)(Object.getPrototypeOf,Object);t.exports=e},function(t,r,n){var e=n(47),o=n(26),u=n(7);t.exports=function(t){return e(t,u,o)}},function(t,r,n){var e=n(44),o=n(0);t.exports=function(t,r,n){var u=r(t);return o(t)?u:e(u,n(t))}},function(t,r,n){var e=n(1).Uint8Array;t.exports=e},function(t,r,n){var e=n(41),o=n(125),u=n(51),i=n(0);t.exports=function(t,r){return(i(t)?e:o)(t,u(r,3))}},function(t,r,n){var e=n(126),o=n(129)(e);t.exports=o},function(t,r,n){var e=n(130),o=n(143),u=n(153),i=n(0),c=n(154);t.exports=function(t){return\"function\"==typeof t?t:null==t?u:\"object\"==typeof t?i(t)?o(t[0],t[1]):e(t):c(t)}},function(t,r,n){var e=n(132),o=n(3);t.exports=function t(r,n,u,i,c){return r===n||(null==r||null==n||!o(r)&&!o(n)?r!=r&&n!=n:e(r,n,u,i,t,c))}},function(t,r,n){var e=n(133),o=n(136),u=n(137);t.exports=function(t,r,n,i,c,a){var s=1&n,f=t.length,p=r.length;if(f!=p&&!(s&&p>f))return!1;var l=a.get(t);if(l&&a.get(r))return l==r;var v=-1,b=!0,h=2&n?new e:void 0;for(a.set(t,r),a.set(r,t);++v<f;){var y=t[v],x=r[v];if(i)var d=s?i(x,y,v,r,t,a):i(y,x,v,t,r,a);if(void 0!==d){if(d)continue;b=!1;break}if(h){if(!o(r,(function(t,r){if(!u(h,r)&&(y===t||c(y,t,n,i,a)))return h.push(r)}))){b=!1;break}}else if(y!==x&&!c(y,x,n,i,a)){b=!1;break}}return a.delete(t),a.delete(r),b}},function(t,r,n){var e=n(4);t.exports=function(t){return t==t&&!e(t)}},function(t,r){t.exports=function(t,r){return function(n){return null!=n&&(n[t]===r&&(void 0!==r||t in Object(n)))}}},function(t,r,n){var e=n(57),o=n(16);t.exports=function(t,r){for(var n=0,u=(r=e(r,t)).length;null!=t&&n<u;)t=t[o(r[n++])];return n&&n==u?t:void 0}},function(t,r,n){var e=n(0),o=n(28),u=n(145),i=n(148);t.exports=function(t,r){return e(t)?t:o(t,r)?[t]:u(i(t))}},function(t,r){t.exports=function(t,r){for(var n=-1,e=null==t?0:t.length,o=Array(e);++n<e;)o[n]=r(t[n],n,t);return o}},function(t,r,n){var e=n(60);t.exports=function(t,r){var n=(new e).parse(t);return r?n?n.getVisibleText():\"\":n}},function(t,r,n){var e=n(61),o=n(159),u=n(160),i=n(49),c=n(161);const a=/(?:^\\s*--|^\\s*__|^-\\w|^-- $)|(?:^Sent from my (?:\\s*\\w+){1,4}$)|(?:^={30,}$)$/,s=/>+$/,f=[/^\\s*(On(?:(?!.*On\\b|\\bwrote:)[\\s\\S])+wrote:)$/m,/^\\s*(Le(?:(?!.*Le\\b|\\bécrit:)[\\s\\S])+écrit :)$/m,/^\\s*(El(?:(?!.*El\\b|\\bescribió:)[\\s\\S])+escribió:)$/m,/^\\s*(Il(?:(?!.*Il\\b|\\bscritto:)[\\s\\S])+scritto:)$/m,/^\\s*(Op\\s[\\S\\s]+?schreef[\\S\\s]+:)$/m,/^\\s*((W\\sdniu|Dnia)\\s[\\S\\s]+?(pisze|napisał(\\(a\\))?):)$/mu,/^\\s*(Den\\s.+\\sskrev\\s.+:)$/m,/^\\s*(Am\\s.+\\sum\\s.+\\sschrieb\\s.+:)$/m,/^(在[\\S\\s]+写道：)$/m,/^(20[0-9]{2}\\..+\\s작성:)$/m,/^(20[0-9]{2}\\/.+のメッセージ:)$/m,/^(.+\\s<.+>\\sschrieb:)$/m,/^\\s*(From\\s?:.+\\s?(\\[|<).+(\\]|>))/mu,/^\\s*(De\\s?:.+\\s?(\\[|<).+(\\]|>))/mu,/^\\s*(Van\\s?:.+\\s?(\\[|<).+(\\]|>))/mu,/^\\s*(Da\\s?:.+\\s?(\\[|<).+(\\]|>))/mu,/^(20[0-9]{2}-(?:0?[1-9]|1[012])-(?:0?[0-9]|[1-2][0-9]|3[01]|[1-9])\\s[0-2]?[0-9]:\\d{2}\\s[\\S\\s]+?:)$/m,/^\\s*([a-z]{3,4}\\.[\\s\\S]+\\sskrev[\\s\\S]+:)$/m];\n/**\n * Represents a fragment that hasn't been constructed (yet)\n * @license MIT License\n */\nclass p{constructor(){this.lines=[],this.isHidden=!1,this.isSignature=!1,this.isQuoted=!1}toFragment(){var t=c.reverse(this.lines.join(\"\\n\")).replace(/^\\n/,\"\");return new o(t,this.isHidden,this.isSignature,this.isQuoted)}}t.exports=class{constructor(t,r,n){this._signatureRegex=t||a,this._quotedLineRegex=r||s,this._quoteHeadersRegex=n||f}parse(t){if(\"string\"!=typeof t)return new e([]);var r=[];for(var n of(t=t.replace(\"\\r\\n\",\"\\n\"),this._quoteHeadersRegex)){var o=t.match(n);o&&o.length>=2&&(t=t.replace(o[1],o[1].replace(/\\n/g,\" \")))}var i=null;for(var a of c.reverse(t).split(\"\\n\")){if(a=a.replace(/\\n+$/,\"\"),this._isSignature(a)||(a=a.replace(/^\\s+/,\"\")),i){var s=i.lines[i.lines.length-1];this._isSignature(s)?(i.isSignature=!0,this._addFragment(i,r),i=null):0===a.length&&this._isQuoteHeader(s)&&(i.isQuoted=!0,this._addFragment(i,r),i=null)}var f=this._isQuote(a);null!==i&&this._isFragmentLine(i,a,f)||(i&&this._addFragment(i,r),(i=new p).isQuoted=f),i.lines.push(a)}i&&this._addFragment(i,r);var l=[];for(var v of r)l.push(v.toFragment());return new e(u(l))}_addFragment(t,r){(t.isQuoted||t.isSignature||0===t.lines.join(\"\").length)&&(t.isHidden=!0),r.push(t)}_isFragmentLine(t,r,n){return t.isQuoted===n||!!t.isQuoted&&(this._isQuoteHeader(r)||0===r.length)}_isSignature(t){return this._signatureRegex.test(c.reverse(t))}_isQuote(t){return this._quotedLineRegex.test(t)}_isQuoteHeader(t){return i(this._quoteHeadersRegex,r=>r.test(c.reverse(t))).length>0}}},function(t,r,n){var e=n(62),o=n(49),u=n(157);t.exports=class{constructor(t){this._fragments=t}getFragments(){return e(this._fragments)}getVisibleText(){var t=o(this._fragments,t=>!t.isHidden());return u(t,t=>t.getContent()).join(\"\\n\")}}},function(t,r,n){var e=n(63);t.exports=function(t){return e(t,5)}},function(t,r,n){var e=n(17),o=n(92),u=n(33),i=n(94),c=n(101),a=n(104),s=n(105),f=n(106),p=n(107),l=n(46),v=n(108),b=n(15),h=n(113),y=n(114),x=n(119),d=n(0),j=n(21),_=n(121),g=n(4),m=n(123),O=n(7),w={};w[\"[object Arguments]\"]=w[\"[object Array]\"]=w[\"[object ArrayBuffer]\"]=w[\"[object DataView]\"]=w[\"[object Boolean]\"]=w[\"[object Date]\"]=w[\"[object Float32Array]\"]=w[\"[object Float64Array]\"]=w[\"[object Int8Array]\"]=w[\"[object Int16Array]\"]=w[\"[object Int32Array]\"]=w[\"[object Map]\"]=w[\"[object Number]\"]=w[\"[object Object]\"]=w[\"[object RegExp]\"]=w[\"[object Set]\"]=w[\"[object String]\"]=w[\"[object Symbol]\"]=w[\"[object Uint8Array]\"]=w[\"[object Uint8ClampedArray]\"]=w[\"[object Uint16Array]\"]=w[\"[object Uint32Array]\"]=!0,w[\"[object Error]\"]=w[\"[object Function]\"]=w[\"[object WeakMap]\"]=!1,t.exports=function t(r,n,F,A,S,D){var $,P=1&n,z=2&n,E=4&n;if(F&&($=S?F(r,A,S,D):F(r)),void 0!==$)return $;if(!g(r))return r;var k=d(r);if(k){if($=h(r),!P)return s(r,$)}else{var B=b(r),M=\"[object Function]\"==B||\"[object GeneratorFunction]\"==B;if(j(r))return a(r,P);if(\"[object Object]\"==B||\"[object Arguments]\"==B||M&&!S){if($=z||M?{}:x(r),!P)return z?p(r,c($,r)):f(r,i($,r))}else{if(!w[B])return S?r:{};$=y(r,B,P)}}D||(D=new e);var I=D.get(r);if(I)return I;D.set(r,$),m(r)?r.forEach((function(e){$.add(t(e,n,F,e,r,D))})):_(r)&&r.forEach((function(e,o){$.set(o,t(e,n,F,o,r,D))}));var C=E?z?v:l:z?keysIn:O,Q=k?void 0:C(r);return o(Q||r,(function(e,o){Q&&(e=r[o=e]),u($,o,t(e,n,F,o,r,D))})),$}},function(t,r){t.exports=function(){this.__data__=[],this.size=0}},function(t,r,n){var e=n(9),o=Array.prototype.splice;t.exports=function(t){var r=this.__data__,n=e(r,t);return!(n<0)&&(n==r.length-1?r.pop():o.call(r,n,1),--this.size,!0)}},function(t,r,n){var e=n(9);t.exports=function(t){var r=this.__data__,n=e(r,t);return n<0?void 0:r[n][1]}},function(t,r,n){var e=n(9);t.exports=function(t){return e(this.__data__,t)>-1}},function(t,r,n){var e=n(9);t.exports=function(t,r){var n=this.__data__,o=e(n,t);return o<0?(++this.size,n.push([t,r])):n[o][1]=r,this}},function(t,r,n){var e=n(8);t.exports=function(){this.__data__=new e,this.size=0}},function(t,r){t.exports=function(t){var r=this.__data__,n=r.delete(t);return this.size=r.size,n}},function(t,r){t.exports=function(t){return this.__data__.get(t)}},function(t,r){t.exports=function(t){return this.__data__.has(t)}},function(t,r,n){var e=n(8),o=n(19),u=n(20);t.exports=function(t,r){var n=this.__data__;if(n instanceof e){var i=n.__data__;if(!o||i.length<199)return i.push([t,r]),this.size=++n.size,this;n=this.__data__=new u(i)}return n.set(t,r),this.size=n.size,this}},function(t,r,n){var e=n(30),o=n(77),u=n(4),i=n(32),c=/^\\[object .+?Constructor\\]$/,a=Function.prototype,s=Object.prototype,f=a.toString,p=s.hasOwnProperty,l=RegExp(\"^\"+f.call(p).replace(/[\\\\^$.*+?()[\\]{}|]/g,\"\\\\$&\").replace(/hasOwnProperty|(function).*?(?=\\\\\\()| for .+?(?=\\\\\\])/g,\"$1.*?\")+\"$\");t.exports=function(t){return!(!u(t)||o(t))&&(e(t)?l:c).test(i(t))}},function(t,r,n){var e=n(6),o=Object.prototype,u=o.hasOwnProperty,i=o.toString,c=e?e.toStringTag:void 0;t.exports=function(t){var r=u.call(t,c),n=t[c];try{t[c]=void 0;var e=!0}catch(t){}var o=i.call(t);return e&&(r?t[c]=n:delete t[c]),o}},function(t,r){var n=Object.prototype.toString;t.exports=function(t){return n.call(t)}},function(t,r,n){var e,o=n(78),u=(e=/[^.]+$/.exec(o&&o.keys&&o.keys.IE_PROTO||\"\"))?\"Symbol(src)_1.\"+e:\"\";t.exports=function(t){return!!u&&u in t}},function(t,r,n){var e=n(1)[\"__core-js_shared__\"];t.exports=e},function(t,r){t.exports=function(t,r){return null==t?void 0:t[r]}},function(t,r,n){var e=n(81),o=n(8),u=n(19);t.exports=function(){this.size=0,this.__data__={hash:new e,map:new(u||o),string:new e}}},function(t,r,n){var e=n(82),o=n(83),u=n(84),i=n(85),c=n(86);function a(t){var r=-1,n=null==t?0:t.length;for(this.clear();++r<n;){var e=t[r];this.set(e[0],e[1])}}a.prototype.clear=e,a.prototype.delete=o,a.prototype.get=u,a.prototype.has=i,a.prototype.set=c,t.exports=a},function(t,r,n){var e=n(10);t.exports=function(){this.__data__=e?e(null):{},this.size=0}},function(t,r){t.exports=function(t){var r=this.has(t)&&delete this.__data__[t];return this.size-=r?1:0,r}},function(t,r,n){var e=n(10),o=Object.prototype.hasOwnProperty;t.exports=function(t){var r=this.__data__;if(e){var n=r[t];return\"__lodash_hash_undefined__\"===n?void 0:n}return o.call(r,t)?r[t]:void 0}},function(t,r,n){var e=n(10),o=Object.prototype.hasOwnProperty;t.exports=function(t){var r=this.__data__;return e?void 0!==r[t]:o.call(r,t)}},function(t,r,n){var e=n(10);t.exports=function(t,r){var n=this.__data__;return this.size+=this.has(t)?0:1,n[t]=e&&void 0===r?\"__lodash_hash_undefined__\":r,this}},function(t,r,n){var e=n(11);t.exports=function(t){var r=e(this,t).delete(t);return this.size-=r?1:0,r}},function(t,r){t.exports=function(t){var r=typeof t;return\"string\"==r||\"number\"==r||\"symbol\"==r||\"boolean\"==r?\"__proto__\"!==t:null===t}},function(t,r,n){var e=n(11);t.exports=function(t){return e(this,t).get(t)}},function(t,r,n){var e=n(11);t.exports=function(t){return e(this,t).has(t)}},function(t,r,n){var e=n(11);t.exports=function(t,r){var n=e(this,t),o=n.size;return n.set(t,r),this.size+=n.size==o?0:1,this}},function(t,r){t.exports=function(t,r){for(var n=-1,e=null==t?0:t.length;++n<e&&!1!==r(t[n],n,t););return t}},function(t,r,n){var e=n(2),o=function(){try{var t=e(Object,\"defineProperty\");return t({},\"\",{}),t}catch(t){}}();t.exports=o},function(t,r,n){var e=n(12),o=n(7);t.exports=function(t,r){return t&&e(r,o(r),t)}},function(t,r){t.exports=function(t,r){for(var n=-1,e=Array(t);++n<t;)e[n]=r(n);return e}},function(t,r,n){var e=n(5),o=n(3);t.exports=function(t){return o(t)&&\"[object Arguments]\"==e(t)}},function(t,r){t.exports=function(){return!1}},function(t,r,n){var e=n(5),o=n(22),u=n(3),i={};i[\"[object Float32Array]\"]=i[\"[object Float64Array]\"]=i[\"[object Int8Array]\"]=i[\"[object Int16Array]\"]=i[\"[object Int32Array]\"]=i[\"[object Uint8Array]\"]=i[\"[object Uint8ClampedArray]\"]=i[\"[object Uint16Array]\"]=i[\"[object Uint32Array]\"]=!0,i[\"[object Arguments]\"]=i[\"[object Array]\"]=i[\"[object ArrayBuffer]\"]=i[\"[object Boolean]\"]=i[\"[object DataView]\"]=i[\"[object Date]\"]=i[\"[object Error]\"]=i[\"[object Function]\"]=i[\"[object Map]\"]=i[\"[object Number]\"]=i[\"[object Object]\"]=i[\"[object RegExp]\"]=i[\"[object Set]\"]=i[\"[object String]\"]=i[\"[object WeakMap]\"]=!1,t.exports=function(t){return u(t)&&o(t.length)&&!!i[e(t)]}},function(t,r,n){var e=n(25),o=n(100),u=Object.prototype.hasOwnProperty;t.exports=function(t){if(!e(t))return o(t);var r=[];for(var n in Object(t))u.call(t,n)&&\"constructor\"!=n&&r.push(n);return r}},function(t,r,n){var e=n(39)(Object.keys,Object);t.exports=e},function(t,r,n){var e=n(12),o=n(40);t.exports=function(t,r){return t&&e(r,o(r),t)}},function(t,r,n){var e=n(4),o=n(25),u=n(103),i=Object.prototype.hasOwnProperty;t.exports=function(t){if(!e(t))return u(t);var r=o(t),n=[];for(var c in t)(\"constructor\"!=c||!r&&i.call(t,c))&&n.push(c);return n}},function(t,r){t.exports=function(t){var r=[];if(null!=t)for(var n in Object(t))r.push(n);return r}},function(t,r,n){(function(t){var e=n(1),o=r&&!r.nodeType&&r,u=o&&\"object\"==typeof t&&t&&!t.nodeType&&t,i=u&&u.exports===o?e.Buffer:void 0,c=i?i.allocUnsafe:void 0;t.exports=function(t,r){if(r)return t.slice();var n=t.length,e=c?c(n):new t.constructor(n);return t.copy(e),e}}).call(this,n(13)(t))},function(t,r){t.exports=function(t,r){var n=-1,e=t.length;for(r||(r=Array(e));++n<e;)r[n]=t[n];return r}},function(t,r,n){var e=n(12),o=n(26);t.exports=function(t,r){return e(t,o(t),r)}},function(t,r,n){var e=n(12),o=n(43);t.exports=function(t,r){return e(t,o(t),r)}},function(t,r,n){var e=n(47),o=n(43),u=n(40);t.exports=function(t){return e(t,u,o)}},function(t,r,n){var e=n(2)(n(1),\"DataView\");t.exports=e},function(t,r,n){var e=n(2)(n(1),\"Promise\");t.exports=e},function(t,r,n){var e=n(2)(n(1),\"Set\");t.exports=e},function(t,r,n){var e=n(2)(n(1),\"WeakMap\");t.exports=e},function(t,r){var n=Object.prototype.hasOwnProperty;t.exports=function(t){var r=t.length,e=new t.constructor(r);return r&&\"string\"==typeof t[0]&&n.call(t,\"index\")&&(e.index=t.index,e.input=t.input),e}},function(t,r,n){var e=n(27),o=n(115),u=n(116),i=n(117),c=n(118);t.exports=function(t,r,n){var a=t.constructor;switch(r){case\"[object ArrayBuffer]\":return e(t);case\"[object Boolean]\":case\"[object Date]\":return new a(+t);case\"[object DataView]\":return o(t,n);case\"[object Float32Array]\":case\"[object Float64Array]\":case\"[object Int8Array]\":case\"[object Int16Array]\":case\"[object Int32Array]\":case\"[object Uint8Array]\":case\"[object Uint8ClampedArray]\":case\"[object Uint16Array]\":case\"[object Uint32Array]\":return c(t,n);case\"[object Map]\":return new a;case\"[object Number]\":case\"[object String]\":return new a(t);case\"[object RegExp]\":return u(t);case\"[object Set]\":return new a;case\"[object Symbol]\":return i(t)}}},function(t,r,n){var e=n(27);t.exports=function(t,r){var n=r?e(t.buffer):t.buffer;return new t.constructor(n,t.byteOffset,t.byteLength)}},function(t,r){var n=/\\w*$/;t.exports=function(t){var r=new t.constructor(t.source,n.exec(t));return r.lastIndex=t.lastIndex,r}},function(t,r,n){var e=n(6),o=e?e.prototype:void 0,u=o?o.valueOf:void 0;t.exports=function(t){return u?Object(u.call(t)):{}}},function(t,r,n){var e=n(27);t.exports=function(t,r){var n=r?e(t.buffer):t.buffer;return new t.constructor(n,t.byteOffset,t.length)}},function(t,r,n){var e=n(120),o=n(45),u=n(25);t.exports=function(t){return\"function\"!=typeof t.constructor||u(t)?{}:e(o(t))}},function(t,r,n){var e=n(4),o=Object.create,u=function(){function t(){}return function(r){if(!e(r))return{};if(o)return o(r);t.prototype=r;var n=new t;return t.prototype=void 0,n}}();t.exports=u},function(t,r,n){var e=n(122),o=n(23),u=n(24),i=u&&u.isMap,c=i?o(i):e;t.exports=c},function(t,r,n){var e=n(15),o=n(3);t.exports=function(t){return o(t)&&\"[object Map]\"==e(t)}},function(t,r,n){var e=n(124),o=n(23),u=n(24),i=u&&u.isSet,c=i?o(i):e;t.exports=c},function(t,r,n){var e=n(15),o=n(3);t.exports=function(t){return o(t)&&\"[object Set]\"==e(t)}},function(t,r,n){var e=n(50);t.exports=function(t,r){var n=[];return e(t,(function(t,e,o){r(t,e,o)&&n.push(t)})),n}},function(t,r,n){var e=n(127),o=n(7);t.exports=function(t,r){return t&&e(t,r,o)}},function(t,r,n){var e=n(128)();t.exports=e},function(t,r){t.exports=function(t){return function(r,n,e){for(var o=-1,u=Object(r),i=e(r),c=i.length;c--;){var a=i[t?c:++o];if(!1===n(u[a],a,u))break}return r}}},function(t,r,n){var e=n(14);t.exports=function(t,r){return function(n,o){if(null==n)return n;if(!e(n))return t(n,o);for(var u=n.length,i=r?u:-1,c=Object(n);(r?i--:++i<u)&&!1!==o(c[i],i,c););return n}}},function(t,r,n){var e=n(131),o=n(142),u=n(55);t.exports=function(t){var r=o(t);return 1==r.length&&r[0][2]?u(r[0][0],r[0][1]):function(n){return n===t||e(n,t,r)}}},function(t,r,n){var e=n(17),o=n(52);t.exports=function(t,r,n,u){var i=n.length,c=i,a=!u;if(null==t)return!c;for(t=Object(t);i--;){var s=n[i];if(a&&s[2]?s[1]!==t[s[0]]:!(s[0]in t))return!1}for(;++i<c;){var f=(s=n[i])[0],p=t[f],l=s[1];if(a&&s[2]){if(void 0===p&&!(f in t))return!1}else{var v=new e;if(u)var b=u(p,l,f,t,r,v);if(!(void 0===b?o(l,p,3,u,v):b))return!1}}return!0}},function(t,r,n){var e=n(17),o=n(53),u=n(138),i=n(141),c=n(15),a=n(0),s=n(21),f=n(38),p=\"[object Object]\",l=Object.prototype.hasOwnProperty;t.exports=function(t,r,n,v,b,h){var y=a(t),x=a(r),d=y?\"[object Array]\":c(t),j=x?\"[object Array]\":c(r),_=(d=\"[object Arguments]\"==d?p:d)==p,g=(j=\"[object Arguments]\"==j?p:j)==p,m=d==j;if(m&&s(t)){if(!s(r))return!1;y=!0,_=!1}if(m&&!_)return h||(h=new e),y||f(t)?o(t,r,n,v,b,h):u(t,r,d,n,v,b,h);if(!(1&n)){var O=_&&l.call(t,\"__wrapped__\"),w=g&&l.call(r,\"__wrapped__\");if(O||w){var F=O?t.value():t,A=w?r.value():r;return h||(h=new e),b(F,A,n,v,h)}}return!!m&&(h||(h=new e),i(t,r,n,v,b,h))}},function(t,r,n){var e=n(20),o=n(134),u=n(135);function i(t){var r=-1,n=null==t?0:t.length;for(this.__data__=new e;++r<n;)this.add(t[r])}i.prototype.add=i.prototype.push=o,i.prototype.has=u,t.exports=i},function(t,r){t.exports=function(t){return this.__data__.set(t,\"__lodash_hash_undefined__\"),this}},function(t,r){t.exports=function(t){return this.__data__.has(t)}},function(t,r){t.exports=function(t,r){for(var n=-1,e=null==t?0:t.length;++n<e;)if(r(t[n],n,t))return!0;return!1}},function(t,r){t.exports=function(t,r){return t.has(r)}},function(t,r,n){var e=n(6),o=n(48),u=n(18),i=n(53),c=n(139),a=n(140),s=e?e.prototype:void 0,f=s?s.valueOf:void 0;t.exports=function(t,r,n,e,s,p,l){switch(n){case\"[object DataView]\":if(t.byteLength!=r.byteLength||t.byteOffset!=r.byteOffset)return!1;t=t.buffer,r=r.buffer;case\"[object ArrayBuffer]\":return!(t.byteLength!=r.byteLength||!p(new o(t),new o(r)));case\"[object Boolean]\":case\"[object Date]\":case\"[object Number]\":return u(+t,+r);case\"[object Error]\":return t.name==r.name&&t.message==r.message;case\"[object RegExp]\":case\"[object String]\":return t==r+\"\";case\"[object Map]\":var v=c;case\"[object Set]\":var b=1&e;if(v||(v=a),t.size!=r.size&&!b)return!1;var h=l.get(t);if(h)return h==r;e|=2,l.set(t,r);var y=i(v(t),v(r),e,s,p,l);return l.delete(t),y;case\"[object Symbol]\":if(f)return f.call(t)==f.call(r)}return!1}},function(t,r){t.exports=function(t){var r=-1,n=Array(t.size);return t.forEach((function(t,e){n[++r]=[e,t]})),n}},function(t,r){t.exports=function(t){var r=-1,n=Array(t.size);return t.forEach((function(t){n[++r]=t})),n}},function(t,r,n){var e=n(46),o=Object.prototype.hasOwnProperty;t.exports=function(t,r,n,u,i,c){var a=1&n,s=e(t),f=s.length;if(f!=e(r).length&&!a)return!1;for(var p=f;p--;){var l=s[p];if(!(a?l in r:o.call(r,l)))return!1}var v=c.get(t);if(v&&c.get(r))return v==r;var b=!0;c.set(t,r),c.set(r,t);for(var h=a;++p<f;){var y=t[l=s[p]],x=r[l];if(u)var d=a?u(x,y,l,r,t,c):u(y,x,l,t,r,c);if(!(void 0===d?y===x||i(y,x,n,u,c):d)){b=!1;break}h||(h=\"constructor\"==l)}if(b&&!h){var j=t.constructor,_=r.constructor;j==_||!(\"constructor\"in t)||!(\"constructor\"in r)||\"function\"==typeof j&&j instanceof j&&\"function\"==typeof _&&_ instanceof _||(b=!1)}return c.delete(t),c.delete(r),b}},function(t,r,n){var e=n(54),o=n(7);t.exports=function(t){for(var r=o(t),n=r.length;n--;){var u=r[n],i=t[u];r[n]=[u,i,e(i)]}return r}},function(t,r,n){var e=n(52),o=n(144),u=n(150),i=n(28),c=n(54),a=n(55),s=n(16);t.exports=function(t,r){return i(t)&&c(r)?a(s(t),r):function(n){var i=o(n,t);return void 0===i&&i===r?u(n,t):e(r,i,3)}}},function(t,r,n){var e=n(56);t.exports=function(t,r,n){var o=null==t?void 0:e(t,r);return void 0===o?n:o}},function(t,r,n){var e=n(146),o=/[^.[\\]]+|\\[(?:(-?\\d+(?:\\.\\d+)?)|([\"'])((?:(?!\\2)[^\\\\]|\\\\.)*?)\\2)\\]|(?=(?:\\.|\\[\\])(?:\\.|\\[\\]|$))/g,u=/\\\\(\\\\)?/g,i=e((function(t){var r=[];return 46===t.charCodeAt(0)&&r.push(\"\"),t.replace(o,(function(t,n,e,o){r.push(e?o.replace(u,\"$1\"):n||t)})),r}));t.exports=i},function(t,r,n){var e=n(147);t.exports=function(t){var r=e(t,(function(t){return 500===n.size&&n.clear(),t})),n=r.cache;return r}},function(t,r,n){var e=n(20);function o(t,r){if(\"function\"!=typeof t||null!=r&&\"function\"!=typeof r)throw new TypeError(\"Expected a function\");var n=function(){var e=arguments,o=r?r.apply(this,e):e[0],u=n.cache;if(u.has(o))return u.get(o);var i=t.apply(this,e);return n.cache=u.set(o,i)||u,i};return n.cache=new(o.Cache||e),n}o.Cache=e,t.exports=o},function(t,r,n){var e=n(149);t.exports=function(t){return null==t?\"\":e(t)}},function(t,r,n){var e=n(6),o=n(58),u=n(0),i=n(29),c=e?e.prototype:void 0,a=c?c.toString:void 0;t.exports=function t(r){if(\"string\"==typeof r)return r;if(u(r))return o(r,t)+\"\";if(i(r))return a?a.call(r):\"\";var n=r+\"\";return\"0\"==n&&1/r==-1/0?\"-0\":n}},function(t,r,n){var e=n(151),o=n(152);t.exports=function(t,r){return null!=t&&o(t,r,e)}},function(t,r){t.exports=function(t,r){return null!=t&&r in Object(t)}},function(t,r,n){var e=n(57),o=n(36),u=n(0),i=n(37),c=n(22),a=n(16);t.exports=function(t,r,n){for(var s=-1,f=(r=e(r,t)).length,p=!1;++s<f;){var l=a(r[s]);if(!(p=null!=t&&n(t,l)))break;t=t[l]}return p||++s!=f?p:!!(f=null==t?0:t.length)&&c(f)&&i(l,f)&&(u(t)||o(t))}},function(t,r){t.exports=function(t){return t}},function(t,r,n){var e=n(155),o=n(156),u=n(28),i=n(16);t.exports=function(t){return u(t)?e(i(t)):o(t)}},function(t,r){t.exports=function(t){return function(r){return null==r?void 0:r[t]}}},function(t,r,n){var e=n(56);t.exports=function(t){return function(r){return e(r,t)}}},function(t,r,n){var e=n(58),o=n(51),u=n(158),i=n(0);t.exports=function(t,r){return(i(t)?e:u)(t,o(r,3))}},function(t,r,n){var e=n(50),o=n(14);t.exports=function(t,r){var n=-1,u=o(t)?Array(t.length):[];return e(t,(function(t,e,o){u[++n]=r(t,e,o)})),u}},function(t,r){t.exports=class{constructor(t,r,n,e){this._content=t,this._isHidden=r,this._isSignature=n,this._isQuoted=e}getContent(){return this._content}isHidden(){return this._isHidden}isSignature(){return this._isSignature}isQuoted(){return this._isQuoted}isEmpty(){return 0===this.getContent().replace(\"\\n\",\"\").length}}},function(t,r){var n=Array.prototype.reverse;t.exports=function(t){return null==t?t:n.call(t)}},function(t,r,n){(function(t){var e;/*! https://mths.be/esrever v0.2.0 by @mathias */!function(o){var u=r,i=(t&&t.exports,\"object\"==typeof global&&global);i.global!==i&&i.window;var c=/([\\0-\\u02FF\\u0370-\\u1AAF\\u1B00-\\u1DBF\\u1E00-\\u20CF\\u2100-\\uD7FF\\uE000-\\uFE1F\\uFE30-\\uFFFF]|[\\uD800-\\uDBFF][\\uDC00-\\uDFFF]|[\\uD800-\\uDBFF](?![\\uDC00-\\uDFFF])|(?:[^\\uD800-\\uDBFF]|^)[\\uDC00-\\uDFFF])([\\u0300-\\u036F\\u1AB0-\\u1AFF\\u1DC0-\\u1DFF\\u20D0-\\u20FF\\uFE20-\\uFE2F]+)/g,a=/([\\uD800-\\uDBFF])([\\uDC00-\\uDFFF])/g,s=function(t){for(var r=\"\",n=(t=t.replace(c,(function(t,r,n){return s(n)+r})).replace(a,\"$2$1\")).length;n--;)r+=t.charAt(n);return r},f={version:\"0.2.0\",reverse:s};void 0===(e=function(){return f}.call(r,n,r,t))||(t.exports=e)}()}).call(this,n(13)(t))}]);\n\nfunction extractReplyContent(message) {\n  const email = EmailParser(message);\n  const reply = (email.getFragments()[0].getContent().trim());\n  return reply;\n}\n\nfor (const item of $input.all()) {\n  item.json.reply = extractReplyContent(item.json.text);\n}\n\nreturn $input.all();"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4f6998f6-88a8-4b8b-acea-33c3f33d04dd",
+          "name": "If spreadsheet doesn't exist",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1420,
+            2500
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json[\"error\"] }}",
+                  "value2": "The resource you are requesting could not be found"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f3564023-a1c5-42f5-923d-a8e98c95c284",
+          "name": "Successfully created or updated row",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1660,
+            2640
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "55869b16-3a98-4127-83ec-bcfdf21c2daf",
+          "name": "Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            980,
+            2140
+          ],
+          "parameters": {
+            "width": 778.177339901478,
+            "height": 289.16256157635416,
+            "content": "### Create spreadsheet and populate with headers and deal information\nA spreadsheet is created if the spreadsheet does not exist. The spreadsheet ID is stored in the `$getWorkflowStaticData('global')` variable. Using `Extract current deal` node, the deal information is formatted for the sending to the new spreadsheet."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8994f1e7-dd0d-4247-89fd-befcc9c511b0",
+          "name": "Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1220,
+            2680
+          ],
+          "parameters": {
+            "width": 301.18226600985224,
+            "height": 114.67980295566498,
+            "content": "### Tip: Deleting old spreadsheets\nIf you ever want to start over, delete the old spreadsheet, __making sure that it is also deleted from Google Drive's trash__."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cd8c9657-3380-4e25-907e-baa1c02c0793",
+          "name": "Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            400,
+            2140
+          ],
+          "parameters": {
+            "width": 260.3940886699507,
+            "height": 333.34975369458095,
+            "content": "### `Get spreadsheet ID`\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe spreadsheet ID is stored in this workflow's static data. If you want to refresh the static data you will need to copy this entire workflow into a new workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ab0348c2-f688-42d3-815b-63290e95baad",
+          "name": "Create spreadsheet",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1020,
+            2260
+          ],
+          "parameters": {
+            "title": "={{ $(\"Configure\").first().json[\"spreadsheetName\"] }}",
+            "options": {},
+            "resource": "spreadsheet",
+            "sheetsUi": {
+              "sheetValues": [
+                {
+                  "title": "={{ $(\"Configure\").first().json[\"worksheetName\"] }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "7",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "c56522b2-5eca-497d-afbb-d713abd8d810",
+          "name": "Store spreadsheet ID",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1220,
+            2260
+          ],
+          "parameters": {
+            "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nstaticData.googleSheetsSpreadsheetId = $('Create spreadsheet').first().json.spreadsheetId\nstaticData.googleSheetsWorksheetId = $('Create spreadsheet').first().json.sheets[0].properties.sheetId\n\nreturn {\n  \"spreadsheetId\": staticData.googleSheetsSpreadsheetId,\n  \"worksheetId\": staticData.googleSheetsWorksheetId\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ba62fd4d-912b-4b37-9fda-2f80cdeb65f8",
+          "name": "Paste data",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1620,
+            2260
+          ],
+          "parameters": {
+            "options": {
+              "cellFormat": "RAW"
+            },
+            "dataMode": "autoMapInputData",
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $node[\"Store spreadsheet ID\"].json[\"worksheetId\"] }}"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $node[\"Store spreadsheet ID\"].json[\"spreadsheetId\"] }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "7",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a8be831a-f2be-48c9-a661-bc8c5cde6444",
+          "name": "If no sheet IDs",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            800,
+            2380
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json[\"spreadsheetId\"] }}",
+                  "operation": "isEmpty"
+                },
+                {
+                  "value1": "={{ $json[\"worksheetId\"] }}",
+                  "operation": "isEmpty"
+                }
+              ]
+            },
+            "combineOperation": "any"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "efdb343d-f5bf-4ba4-bc27-850b9e7935ac",
+          "name": "Create or update rows",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1220,
+            2500
+          ],
+          "parameters": {
+            "options": {
+              "cellFormat": "RAW"
+            },
+            "dataMode": "autoMapInputData",
+            "operation": "appendOrUpdate",
+            "sheetName": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $node[\"If no sheet IDs\"].json[\"worksheetId\"] }}"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $node[\"If no sheet IDs\"].json[\"spreadsheetId\"] }}"
+            },
+            "columnToMatchOn": "ID"
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "7",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 3,
+          "continueOnFail": true
+        },
+        {
+          "id": "091ad4fa-21aa-42e0-abc5-17221cdf8fb7",
+          "name": "Get data from `Format data`",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1020,
+            2500
+          ],
+          "parameters": {
+            "jsCode": "return $('Format data').all()"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "97071540-59b2-48dd-8f88-ab44446832fc",
+          "name": "Get data from `Format data` node",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1420,
+            2260
+          ],
+          "parameters": {
+            "jsCode": "return $('Format data').all()"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ecf03802-51c8-43b1-84d8-5ed5826fd444",
+          "name": "Format data",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -40,
+            2380
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "ID",
+                  "value": "={{ $node[\"Generate UUID\"].json.uuid }}"
+                },
+                {
+                  "name": "Initial message",
+                  "value": "={{ $node[\"Extract message content (advanced)\"].json.reply }}"
+                },
+                {
+                  "name": "Generated reply",
+                  "value": "={{ $node[\"Generate reply\"].json.text }}"
+                },
+                {
+                  "name": "Good response?"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9eedd7b7-ec4e-4dbf-a257-33e73bdff9c1",
+          "name": "Send email reply",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -40,
+            1860
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "8e2f4a3b-d224-4248-9682-184a646e022f",
+          "name": "On feedback given",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -2460,
+            2940
+          ],
+          "webhookId": "e2aa55fb-618a-4478-805d-d6da46b908d1",
+          "parameters": {
+            "path": "e2aa55fb-618a-4478-805d-d6da46b908d1",
+            "options": {},
+            "responseMode": "responseNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "87506e44-21aa-4f08-82f9-f47a24ddb9ce",
+          "name": "Send feedback for fine-tuned data",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            -100,
+            2980
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsUi": {
+              "values": [
+                {
+                  "column": "Good response?",
+                  "fieldValue": "={{ $node[\"On feedback given\"].json.query.feedback }}"
+                }
+              ]
+            },
+            "operation": "update",
+            "sheetName": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json[\"worksheetId\"] }}"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $json[\"spreadsheetId\"] }}"
+            },
+            "valueToMatchOn": "={{ $node[\"On feedback given\"].json.query.id }}",
+            "columnToMatchOn": "ID"
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "7",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "d2a720d4-8487-4dfa-bdb8-6b59368e44bc",
+          "name": "Show HTML page",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            -920,
+            2980
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200
+            },
+            "respondWith": "text",
+            "responseBody": "={{ $json.html }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2da7a7b1-e96d-4759-b3cb-13558e2ad1d4",
+          "name": "Get sheet IDs #1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            480,
+            2200
+          ],
+          "parameters": {
+            "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nreturn {\n  \"spreadsheetId\": staticData.googleSheetsSpreadsheetId,\n  \"worksheetId\": staticData.googleSheetsWorksheetId\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "08ddeed5-fefe-4acd-918a-00d1fd5a5392",
+          "name": "Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -480,
+            2780
+          ],
+          "parameters": {
+            "width": 260.3940886699507,
+            "height": 333.34975369458095,
+            "content": "### `Get spreadsheet ID`\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe spreadsheet ID is stored in this workflow's static data. If you want to refresh the static data you will need to copy this entire workflow into a new workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "49d77f89-3c1e-4e86-93e8-ae7a566802b7",
+          "name": "If no spreadsheet in configuration #2",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -700,
+            2980
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $('Configure').first().json.spreadsheetId }}",
+                  "operation": "isEmpty"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e3b8f696-41eb-46e1-a4b1-6ba2d219aa45",
+          "name": "Store specific sheet IDs #2",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -400,
+            3180
+          ],
+          "parameters": {
+            "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nstaticData.googleSheetsSpreadsheetId = $('Configure').all()[0].json.spreadsheetId\nstaticData.googleSheetsWorksheetId = $('Configure').all()[0].json.worksheetId\n\nreturn {\n  \"spreadsheetId\": staticData.googleSheetsSpreadsheetId,\n  \"worksheetId\": staticData.googleSheetsWorksheetId\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "44d37f76-af16-4507-b1a1-76fadf530806",
+          "name": "Get sheet IDs #2",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -400,
+            2840
+          ],
+          "parameters": {
+            "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nreturn {\n  \"spreadsheetId\": staticData.googleSheetsSpreadsheetId,\n  \"worksheetId\": staticData.googleSheetsWorksheetId\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fae8cbc5-7462-4eb0-9f60-85e8e7cfd10e",
+          "name": "If no spreadsheet in configuration #1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            180,
+            2380
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $('Configure').first().json.spreadsheetId }}",
+                  "operation": "isEmpty"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "67312347-74c0-4ce4-a78c-615da6937bcf",
+          "name": "Store specific sheet IDs #1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            480,
+            2540
+          ],
+          "parameters": {
+            "jsCode": "const staticData = $getWorkflowStaticData('global');\n\nstaticData.googleSheetsSpreadsheetId = $('Configure').all()[0].json.spreadsheetId\nstaticData.googleSheetsWorksheetId = $('Configure').all()[0].json.worksheetId\n\nreturn {\n  \"spreadsheetId\": staticData.googleSheetsSpreadsheetId,\n  \"worksheetId\": staticData.googleSheetsWorksheetId\n}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "400eae76-7b17-48de-a49f-8b0cbc9db1f8",
+          "name": "Email template",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            160,
+            1860
+          ],
+          "parameters": {
+            "html": "<html>\n  <head>\n    <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\" />\n    <title>Template for ChatGPT email</title>\n    <style>\n      /* cspell:disable-file */\n      /* webkit printing magic: print all background colors */\n      html {\n        -webkit-print-color-adjust: exact;\n      }\n      * {\n        box-sizing: border-box;\n        -webkit-print-color-adjust: exact;\n      }\n\n      html,\n      body {\n        margin: 0;\n        padding: 0;\n      }\n      @media only screen {\n        body {\n          margin: 2em auto;\n          max-width: 900px;\n          color: rgb(55, 53, 47);\n        }\n      }\n\n      body {\n        line-height: 1.5;\n        white-space: pre-wrap;\n      }\n\n      a,\n      a.visited {\n        color: inherit;\n        text-decoration: underline;\n      }\n\n      .pdf-relative-link-path {\n        font-size: 80%;\n        color: #444;\n      }\n\n      h1,\n      h2,\n      h3 {\n        letter-spacing: -0.01em;\n        line-height: 1.2;\n        font-weight: 600;\n        margin-bottom: 0;\n      }\n\n      .page-title {\n        font-size: 2.5rem;\n        font-weight: 700;\n        margin-top: 0;\n        margin-bottom: 0.75em;\n      }\n\n      h1 {\n        font-size: 1.875rem;\n        margin-top: 1.875rem;\n      }\n\n      h2 {\n        font-size: 1.5rem;\n        margin-top: 1.5rem;\n      }\n\n      h3 {\n        font-size: 1.25rem;\n        margin-top: 1.25rem;\n      }\n\n      .source {\n        border: 1px solid #ddd;\n        border-radius: 3px;\n        padding: 1.5em;\n        word-break: break-all;\n      }\n\n      .callout {\n        border-radius: 3px;\n        padding: 1rem;\n      }\n\n      figure {\n        margin: 1.25em 0;\n        page-break-inside: avoid;\n      }\n\n      figcaption {\n        opacity: 0.5;\n        font-size: 85%;\n        margin-top: 0.5em;\n      }\n\n      mark {\n        background-color: transparent;\n      }\n\n      .indented {\n        padding-left: 1.5em;\n      }\n\n      hr {\n        background: transparent;\n        display: block;\n        width: 100%;\n        height: 1px;\n        visibility: visible;\n        border: none;\n        border-bottom: 1px solid rgba(55, 53, 47, 0.09);\n      }\n\n      img {\n        max-width: 100%;\n      }\n\n      @media only print {\n        img {\n          max-height: 100vh;\n          object-fit: contain;\n        }\n      }\n\n      @page {\n        margin: 1in;\n      }\n\n      .collection-content {\n        font-size: 0.875rem;\n      }\n\n      .column-list {\n        display: flex;\n        justify-content: space-between;\n      }\n\n      .column {\n        padding: 0 1em;\n      }\n\n      .column:first-child {\n        padding-left: 0;\n      }\n\n      .column:last-child {\n        padding-right: 0;\n      }\n\n      .table_of_contents-item {\n        display: block;\n        font-size: 0.875rem;\n        line-height: 1.3;\n        padding: 0.125rem;\n      }\n\n      .table_of_contents-indent-1 {\n        margin-left: 1.5rem;\n      }\n\n      .table_of_contents-indent-2 {\n        margin-left: 3rem;\n      }\n\n      .table_of_contents-indent-3 {\n        margin-left: 4.5rem;\n      }\n\n      .table_of_contents-link {\n        text-decoration: none;\n        opacity: 0.7;\n        border-bottom: 1px solid rgba(55, 53, 47, 0.18);\n      }\n\n      table,\n      th,\n      td {\n        border: 1px solid rgba(55, 53, 47, 0.09);\n        border-collapse: collapse;\n      }\n\n      table {\n        border-left: none;\n        border-right: none;\n      }\n\n      th,\n      td {\n        font-weight: normal;\n        padding: 0.25em 0.5em;\n        line-height: 1.5;\n        min-height: 1.5em;\n        text-align: left;\n      }\n\n      th {\n        color: rgba(55, 53, 47, 0.6);\n      }\n\n      ol,\n      ul {\n        margin: 0;\n        margin-block-start: 0.6em;\n        margin-block-end: 0.6em;\n      }\n\n      li > ol:first-child,\n      li > ul:first-child {\n        margin-block-start: 0.6em;\n      }\n\n      ul > li {\n        list-style: disc;\n      }\n\n      ul.to-do-list {\n        text-indent: -1.7em;\n      }\n\n      ul.to-do-list > li {\n        list-style: none;\n      }\n\n      .to-do-children-checked {\n        text-decoration: line-through;\n        opacity: 0.375;\n      }\n\n      ul.toggle > li {\n        list-style: none;\n      }\n\n      ul {\n        padding-inline-start: 1.7em;\n      }\n\n      ul > li {\n        padding-left: 0.1em;\n      }\n\n      ol {\n        padding-inline-start: 1.6em;\n      }\n\n      ol > li {\n        padding-left: 0.2em;\n      }\n\n      .mono ol {\n        padding-inline-start: 2em;\n      }\n\n      .mono ol > li {\n        text-indent: -0.4em;\n      }\n\n      .toggle {\n        padding-inline-start: 0em;\n        list-style-type: none;\n      }\n\n      /* Indent toggle children */\n      .toggle > li > details {\n        padding-left: 1.7em;\n      }\n\n      .toggle > li > details > summary {\n        margin-left: -1.1em;\n      }\n\n      .selected-value {\n        display: inline-block;\n        padding: 0 0.5em;\n        background: rgba(206, 205, 202, 0.5);\n        border-radius: 3px;\n        margin-right: 0.5em;\n        margin-top: 0.3em;\n        margin-bottom: 0.3em;\n        white-space: nowrap;\n      }\n\n      .collection-title {\n        display: inline-block;\n        margin-right: 1em;\n      }\n\n      .simple-table {\n        margin-top: 1em;\n        font-size: 0.875rem;\n        empty-cells: show;\n      }\n      .simple-table td {\n        height: 29px;\n        min-width: 120px;\n      }\n\n      .simple-table th {\n        height: 29px;\n        min-width: 120px;\n      }\n\n      .simple-table-header-color {\n        background: rgb(247, 246, 243);\n        color: black;\n      }\n      .simple-table-header {\n        font-weight: 500;\n      }\n\n      time {\n        opacity: 0.5;\n      }\n\n      .icon {\n        display: inline-block;\n        max-width: 1.2em;\n        max-height: 1.2em;\n        text-decoration: none;\n        vertical-align: text-bottom;\n        margin-right: 0.5em;\n      }\n\n      img.icon {\n        border-radius: 3px;\n      }\n\n      .user-icon {\n        width: 1.5em;\n        height: 1.5em;\n        border-radius: 100%;\n        margin-right: 0.5rem;\n      }\n\n      .user-icon-inner {\n        font-size: 0.8em;\n      }\n\n      .text-icon {\n        border: 1px solid #000;\n        text-align: center;\n      }\n\n      .page-cover-image {\n        display: block;\n        object-fit: cover;\n        width: 100%;\n        max-height: 30vh;\n      }\n\n      .page-header-icon {\n        font-size: 3rem;\n        margin-bottom: 1rem;\n      }\n\n      .page-header-icon-with-cover {\n        margin-top: -0.72em;\n        margin-left: 0.07em;\n      }\n\n      .page-header-icon img {\n        border-radius: 3px;\n      }\n\n      .link-to-page {\n        margin: 1em 0;\n        padding: 0;\n        border: none;\n        font-weight: 500;\n      }\n\n      p > .user {\n        opacity: 0.5;\n      }\n\n      td > .user,\n      td > time {\n        white-space: nowrap;\n      }\n\n      input[type=\"checkbox\"] {\n        transform: scale(1.5);\n        margin-right: 0.6em;\n        vertical-align: middle;\n      }\n\n      p {\n        margin-top: 0.5em;\n        margin-bottom: 0.5em;\n      }\n\n      .image {\n        border: none;\n        margin: 1.5em 0;\n        padding: 0;\n        border-radius: 0;\n        text-align: center;\n      }\n\n      .code,\n      code {\n        background: rgba(135, 131, 120, 0.15);\n        border-radius: 3px;\n        padding: 0.2em 0.4em;\n        border-radius: 3px;\n        font-size: 85%;\n        tab-size: 2;\n      }\n\n      code {\n        color: #eb5757;\n      }\n\n      .code {\n        padding: 1.5em 1em;\n      }\n\n      .code-wrap {\n        white-space: pre-wrap;\n        word-break: break-all;\n      }\n\n      .code > code {\n        background: none;\n        padding: 0;\n        font-size: 100%;\n        color: inherit;\n      }\n\n      blockquote {\n        font-size: 1.25em;\n        margin: 1em 0;\n        padding-left: 1em;\n        border-left: 3px solid rgb(55, 53, 47);\n      }\n\n      .bookmark {\n        text-decoration: none;\n        max-height: 8em;\n        padding: 0;\n        display: flex;\n        width: 100%;\n        align-items: stretch;\n      }\n\n      .bookmark-title {\n        font-size: 0.85em;\n        overflow: hidden;\n        text-overflow: ellipsis;\n        height: 1.75em;\n        white-space: nowrap;\n      }\n\n      .bookmark-text {\n        display: flex;\n        flex-direction: column;\n      }\n\n      .bookmark-info {\n        flex: 4 1 180px;\n        padding: 12px 14px 14px;\n        display: flex;\n        flex-direction: column;\n        justify-content: space-between;\n      }\n\n      .bookmark-image {\n        width: 33%;\n        flex: 1 1 180px;\n        display: block;\n        position: relative;\n        object-fit: cover;\n        border-radius: 1px;\n      }\n\n      .bookmark-description {\n        color: rgba(55, 53, 47, 0.6);\n        font-size: 0.75em;\n        overflow: hidden;\n        max-height: 4.5em;\n        word-break: break-word;\n      }\n\n      .bookmark-href {\n        font-size: 0.75em;\n        margin-top: 0.25em;\n      }\n\n      .sans {\n        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont,\n          \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, sans-serif,\n          \"Segoe UI Emoji\", \"Segoe UI Symbol\";\n      }\n      .code {\n        font-family: \"SFMono-Regular\", Menlo, Consolas, \"PT Mono\",\n          \"Liberation Mono\", Courier, monospace;\n      }\n      .serif {\n        font-family: Lyon-Text, Georgia, ui-serif, serif;\n      }\n      .mono {\n        font-family: iawriter-mono, Nitti, Menlo, Courier, monospace;\n      }\n      .pdf .sans {\n        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,\n          \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, sans-serif,\n          \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Twemoji\", \"Noto Color Emoji\",\n          \"Noto Sans CJK JP\";\n      }\n      .pdf:lang(zh-CN) .sans {\n        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,\n          \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, sans-serif,\n          \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Twemoji\", \"Noto Color Emoji\",\n          \"Noto Sans CJK SC\";\n      }\n      .pdf:lang(zh-TW) .sans {\n        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,\n          \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, sans-serif,\n          \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Twemoji\", \"Noto Color Emoji\",\n          \"Noto Sans CJK TC\";\n      }\n      .pdf:lang(ko-KR) .sans {\n        font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont,\n          \"Segoe UI\", Helvetica, \"Apple Color Emoji\", Arial, sans-serif,\n          \"Segoe UI Emoji\", \"Segoe UI Symbol\", \"Twemoji\", \"Noto Color Emoji\",\n          \"Noto Sans CJK KR\";\n      }\n      .pdf .code {\n        font-family: Source Code Pro, \"SFMono-Regular\", Menlo, Consolas,\n          \"PT Mono\", \"Liberation Mono\", Courier, monospace, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Sans Mono CJK JP\";\n      }\n      .pdf:lang(zh-CN) .code {\n        font-family: Source Code Pro, \"SFMono-Regular\", Menlo, Consolas,\n          \"PT Mono\", \"Liberation Mono\", Courier, monospace, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Sans Mono CJK SC\";\n      }\n      .pdf:lang(zh-TW) .code {\n        font-family: Source Code Pro, \"SFMono-Regular\", Menlo, Consolas,\n          \"PT Mono\", \"Liberation Mono\", Courier, monospace, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Sans Mono CJK TC\";\n      }\n      .pdf:lang(ko-KR) .code {\n        font-family: Source Code Pro, \"SFMono-Regular\", Menlo, Consolas,\n          \"PT Mono\", \"Liberation Mono\", Courier, monospace, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Sans Mono CJK KR\";\n      }\n      .pdf .serif {\n        font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Serif CJK JP\";\n      }\n      .pdf:lang(zh-CN) .serif {\n        font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Serif CJK SC\";\n      }\n      .pdf:lang(zh-TW) .serif {\n        font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Serif CJK TC\";\n      }\n      .pdf:lang(ko-KR) .serif {\n        font-family: PT Serif, Lyon-Text, Georgia, ui-serif, serif, \"Twemoji\",\n          \"Noto Color Emoji\", \"Noto Serif CJK KR\";\n      }\n      .pdf .mono {\n        font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace,\n          \"Twemoji\", \"Noto Color Emoji\", \"Noto Sans Mono CJK JP\";\n      }\n      .pdf:lang(zh-CN) .mono {\n        font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace,\n          \"Twemoji\", \"Noto Color Emoji\", \"Noto Sans Mono CJK SC\";\n      }\n      .pdf:lang(zh-TW) .mono {\n        font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace,\n          \"Twemoji\", \"Noto Color Emoji\", \"Noto Sans Mono CJK TC\";\n      }\n      .pdf:lang(ko-KR) .mono {\n        font-family: PT Mono, iawriter-mono, Nitti, Menlo, Courier, monospace,\n          \"Twemoji\", \"Noto Color Emoji\", \"Noto Sans Mono CJK KR\";\n      }\n      .highlight-default {\n        color: rgba(55, 53, 47, 1);\n      }\n      .highlight-gray {\n        color: rgba(120, 119, 116, 1);\n        fill: rgba(120, 119, 116, 1);\n      }\n      .highlight-brown {\n        color: rgba(159, 107, 83, 1);\n        fill: rgba(159, 107, 83, 1);\n      }\n      .highlight-orange {\n        color: rgba(217, 115, 13, 1);\n        fill: rgba(217, 115, 13, 1);\n      }\n      .highlight-yellow {\n        color: rgba(203, 145, 47, 1);\n        fill: rgba(203, 145, 47, 1);\n      }\n      .highlight-teal {\n        color: rgba(68, 131, 97, 1);\n        fill: rgba(68, 131, 97, 1);\n      }\n      .highlight-blue {\n        color: rgba(51, 126, 169, 1);\n        fill: rgba(51, 126, 169, 1);\n      }\n      .highlight-purple {\n        color: rgba(144, 101, 176, 1);\n        fill: rgba(144, 101, 176, 1);\n      }\n      .highlight-pink {\n        color: rgba(193, 76, 138, 1);\n        fill: rgba(193, 76, 138, 1);\n      }\n      .highlight-red {\n        color: rgba(212, 76, 71, 1);\n        fill: rgba(212, 76, 71, 1);\n      }\n      .highlight-gray_background {\n        background: rgba(241, 241, 239, 1);\n      }\n      .highlight-brown_background {\n        background: rgba(244, 238, 238, 1);\n      }\n      .highlight-orange_background {\n        background: rgba(251, 236, 221, 1);\n      }\n      .highlight-yellow_background {\n        background: rgba(251, 243, 219, 1);\n      }\n      .highlight-teal_background {\n        background: rgba(237, 243, 236, 1);\n      }\n      .highlight-blue_background {\n        background: rgba(231, 243, 248, 1);\n      }\n      .highlight-purple_background {\n        background: rgba(244, 240, 247, 0.8);\n      }\n      .highlight-pink_background {\n        background: rgba(249, 238, 243, 0.8);\n      }\n      .highlight-red_background {\n        background: rgba(253, 235, 236, 1);\n      }\n      .block-color-default {\n        color: inherit;\n        fill: inherit;\n      }\n      .block-color-gray {\n        color: rgba(120, 119, 116, 1);\n        fill: rgba(120, 119, 116, 1);\n      }\n      .block-color-brown {\n        color: rgba(159, 107, 83, 1);\n        fill: rgba(159, 107, 83, 1);\n      }\n      .block-color-orange {\n        color: rgba(217, 115, 13, 1);\n        fill: rgba(217, 115, 13, 1);\n      }\n      .block-color-yellow {\n        color: rgba(203, 145, 47, 1);\n        fill: rgba(203, 145, 47, 1);\n      }\n      .block-color-teal {\n        color: rgba(68, 131, 97, 1);\n        fill: rgba(68, 131, 97, 1);\n      }\n      .block-color-blue {\n        color: rgba(51, 126, 169, 1);\n        fill: rgba(51, 126, 169, 1);\n      }\n      .block-color-purple {\n        color: rgba(144, 101, 176, 1);\n        fill: rgba(144, 101, 176, 1);\n      }\n      .block-color-pink {\n        color: rgba(193, 76, 138, 1);\n        fill: rgba(193, 76, 138, 1);\n      }\n      .block-color-red {\n        color: rgba(212, 76, 71, 1);\n        fill: rgba(212, 76, 71, 1);\n      }\n      .block-color-gray_background {\n        background: rgba(241, 241, 239, 1);\n      }\n      .block-color-brown_background {\n        background: rgba(244, 238, 238, 1);\n      }\n      .block-color-orange_background {\n        background: rgba(251, 236, 221, 1);\n      }\n      .block-color-yellow_background {\n        background: rgba(251, 243, 219, 1);\n      }\n      .block-color-teal_background {\n        background: rgba(237, 243, 236, 1);\n      }\n      .block-color-blue_background {\n        background: rgba(231, 243, 248, 1);\n      }\n      .block-color-purple_background {\n        background: rgba(244, 240, 247, 0.8);\n      }\n      .block-color-pink_background {\n        background: rgba(249, 238, 243, 0.8);\n      }\n      .block-color-red_background {\n        background: rgba(253, 235, 236, 1);\n      }\n      .select-value-color-pink {\n        background-color: rgba(245, 224, 233, 1);\n      }\n      .select-value-color-purple {\n        background-color: rgba(232, 222, 238, 1);\n      }\n      .select-value-color-green {\n        background-color: rgba(219, 237, 219, 1);\n      }\n      .select-value-color-gray {\n        background-color: rgba(227, 226, 224, 1);\n      }\n      .select-value-color-opaquegray {\n        background-color: rgba(255, 255, 255, 0.0375);\n      }\n      .select-value-color-orange {\n        background-color: rgba(250, 222, 201, 1);\n      }\n      .select-value-color-brown {\n        background-color: rgba(238, 224, 218, 1);\n      }\n      .select-value-color-red {\n        background-color: rgba(255, 226, 221, 1);\n      }\n      .select-value-color-yellow {\n        background-color: rgba(253, 236, 200, 1);\n      }\n      .select-value-color-blue {\n        background-color: rgba(211, 229, 239, 1);\n      }\n\n      .checkbox {\n        display: inline-flex;\n        vertical-align: text-bottom;\n        width: 16;\n        height: 16;\n        background-size: 16px;\n        margin-left: 2px;\n        margin-right: 5px;\n      }\n\n      .checkbox-on {\n        background-image: url(\"data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22%2358A9D7%22%2F%3E%0A%3Cpath%20d%3D%22M6.71429%2012.2852L14%204.9995L12.7143%203.71436L6.71429%209.71378L3.28571%206.2831L2%207.57092L6.71429%2012.2852Z%22%20fill%3D%22white%22%2F%3E%0A%3C%2Fsvg%3E\");\n      }\n\n      .checkbox-off {\n        background-image: url(\"data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2016%2016%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%0A%3Crect%20x%3D%220.75%22%20y%3D%220.75%22%20width%3D%2214.5%22%20height%3D%2214.5%22%20fill%3D%22white%22%20stroke%3D%22%2336352F%22%20stroke-width%3D%221.5%22%2F%3E%0A%3C%2Fsvg%3E\");\n      }\n    </style>\n  </head>\n  <body>\n    <article id=\"f2b31a8e-f32a-474c-bf3e-baf4928f6c1c\" class=\"page sans\">\n      <div class=\"page-body\">\n        <p id=\"937a899c-eec7-4aaa-9ec3-631b13c30fb5\" class=\"\">\n          {{ $json.text }}\n        </p>\n        <hr id=\"fc51a942-226f-4411-b001-b5376a835e0c\" />\n        <!--\n            Was this message helpful? Yes • No.\n            If the user clicks \"Yes\", a webhook will be sent to the URL specified in the \"Yes\" button's \"Webhook URL\" field.\n            If the user clicks \"No\", a webhook will be sent to the URL specified in the \"No\" button's \"Webhook URL\" field.\n            Include the following in the webhook URL:\n            - initial message content\n            - reply content\n            use links\n        -->\n        <p id=\"c28c1c98-621b-4169-a7de-90d85d36ca90\" class=\"\">\n          Was this message helpful? <a href={{ $env.WEBHOOK_URL + 'webhook/' + $node[\"On feedback given\"].parameter[\"path\"] }}?id={{ $node[\"Generate UUID\"].json.uuid }}&feedback=Yes>Yes</a> <strong>•</strong> <a href={{ $env.WEBHOOK_URL + 'webhook/' + $node[\"On feedback given\"].parameter[\"path\"] }}?id={{ $node[\"Generate UUID\"].json.uuid }}&feedback=No>No</a>\n        </p>\n        <p id=\"7138639a-e639-4eb8-b80d-3d40bfc5c102\" class=\"\"></p>\n      </div>\n    </article>\n  </body>\n</html>\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "38e0f992-a461-4bc1-9f5c-2ceb0e461708",
+          "name": "Record feedback",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -1360,
+            2980
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "899a0c63-0333-4dc4-ba83-5615a38ae431",
+          "name": "Fallback route",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -1360,
+            3280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2fd5b109-8a54-4684-a8a3-3f7b2d961ae3",
+          "name": "Identify trigger #2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -2240,
+            2940
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "triggeredFrom",
+                  "value": "webhook"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8c27f798-d947-432c-bfc9-d22727d0159e",
+          "name": "Identify trigger #1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -2240,
+            2680
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "triggeredFrom",
+                  "value": "gmail"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bd8cc1dd-3643-4d2f-9527-cfd740a4072a",
+          "name": "Do not send unfinished email reply",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -40,
+            2060
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "c8b68fdb-c1c0-4f94-b712-e0570a3ad53c",
+          "name": "If reply is complete",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -260,
+            1960
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.finish_reason }}",
+                  "value2": "stop"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f9d56d42-aa4e-4394-8c83-8d39164a784e",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -100,
+            2020
+          ],
+          "parameters": {
+            "width": 225.59802712700315,
+            "height": 314.2786683107279,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nIf your workflow reaches this stage, you will need to consider increasing the tokens in `Generate reply` node."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "039714b3-88ac-4ca8-86fc-ec1c109110c3",
+          "name": "Do not send email to this recipient",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -1140,
+            2560
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "330c67dd-e538-414d-a144-e05dbf5effb3",
+          "name": "Send reply to database",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -260,
+            2380
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "6e7586db-f437-4450-a1c7-e5ea7e8767b0",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -3060,
+            2520
+          ],
+          "parameters": {
+            "width": 516.6954377311955,
+            "height": 680.5491163173024,
+            "content": "## Send a ChatGPT email reply when email received and save responses to Google Sheets\nThis workflow sends a OpenAI GPT reply when an email is received from specific email recipients. It then saves the initial email and the GPT response to an automatically generated Google spreadsheet. Subsequent GPT responses will be added to the same spreadsheet. Additionally, when feedback is given for any of the GPT responses, it will be recorded to the spreasheet, which can then be used later to fine-tune the GPT model.\n\n### How it works\nThis workflow is essentially a two-in-one workflow. It triggers off from two different nodes and have very different functionality from each trigger.\n\n**`On email received`**:\n1. Triggers off on the `On email received` node.\n2. Extract the email body from the email.\n3. Generate a response from the email body using the `OpenAI` node.\n4. Reply to the email sender using the `Send reply to recipient` node. A feedback link is also included in the email body which will trigger the `On feedback given` node. This is used to fine-tune the GPT model.\n5. Save the email body and OpenAI response to a Google Sheet. If a sheet does not exist, it will be created.\n\n\n**`On feedback given`**:\n1. Triggers off when a feedback link is clicked in the emailed GPT response.\n2. The feedback, either positive or negative, for that specific GPT response is then recorded to the Google Sheet.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9d5e780e-4282-4c7e-b083-3f769f7dc740",
+          "name": "Determine which trigger ran",
+          "type": "n8n-nodes-base.switch",
+          "position": [
+            -1660,
+            2800
+          ],
+          "parameters": {
+            "rules": {
+              "rules": [
+                {
+                  "value2": "gmail"
+                },
+                {
+                  "output": 1,
+                  "value2": "webhook"
+                }
+              ]
+            },
+            "value1": "={{ $json.triggeredFrom }}",
+            "dataType": "string",
+            "fallbackOutput": 3
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2c6c604c-7f59-42cc-9ed2-6d55f342f0ae",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1420,
+            3240
+          ],
+          "parameters": {
+            "width": 225.59802712700315,
+            "height": 289.61775585696694,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\nThis workflow should never reach this node. It is only here for extending the functionality of this workflow if needed."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3defbf98-0caa-49b1-9bfd-f4640b43d64b",
+          "name": "Is text within token limit?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -700,
+            2360
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{ $json.reply.length() / 4 <= $('Configure').first().json.maxTokenSize - $('Configure').first().json.replyTokenSize }}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b268b8a3-6361-4515-a995-320cd0979688",
+          "name": "Do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            -480,
+            2460
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "413588d1-ede0-4a51-85fa-c9035ec2e605",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -540,
+            2420
+          ],
+          "parameters": {
+            "width": 225.59802712700315,
+            "height": 288.2949081608216,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nThe email that was received is too large to process, as it exceeds token limit. See more on [token limits](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them)."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Configure": {
+          "main": [
+            [
+              {
+                "node": "Determine which trigger ran",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format data": {
+          "main": [
+            [
+              {
+                "node": "If no spreadsheet in configuration #1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate UUID": {
+          "main": [
+            [
+              {
+                "node": "Extract message content (advanced)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Email template": {
+          "main": [
+            [
+              {
+                "node": "Send reply to recipient",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate reply": {
+          "main": [
+            [
+              {
+                "node": "Send reply to database",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "If reply is complete",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Show HTML page": {
+          "main": [
+            [
+              {
+                "node": "If no spreadsheet in configuration #2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If no sheet IDs": {
+          "main": [
+            [
+              {
+                "node": "Create spreadsheet",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get data from `Format data`",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Record feedback": {
+          "main": [
+            [
+              {
+                "node": "Thanks for your response!",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get sheet IDs #1": {
+          "main": [
+            [
+              {
+                "node": "If no sheet IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get sheet IDs #2": {
+          "main": [
+            [
+              {
+                "node": "Send feedback for fine-tuned data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send email reply": {
+          "main": [
+            [
+              {
+                "node": "Email template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On email received": {
+          "main": [
+            [
+              {
+                "node": "Identify trigger #1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On feedback given": {
+          "main": [
+            [
+              {
+                "node": "Identify trigger #2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create spreadsheet": {
+          "main": [
+            [
+              {
+                "node": "Store spreadsheet ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Identify trigger #1": {
+          "main": [
+            [
+              {
+                "node": "Configure",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Identify trigger #2": {
+          "main": [
+            [
+              {
+                "node": "Configure",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If reply is complete": {
+          "main": [
+            [
+              {
+                "node": "Send email reply",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Do not send unfinished email reply",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store spreadsheet ID": {
+          "main": [
+            [
+              {
+                "node": "Get data from `Format data` node",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create or update rows": {
+          "main": [
+            [
+              {
+                "node": "If spreadsheet doesn't exist",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send reply to database": {
+          "main": [
+            [
+              {
+                "node": "Format data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Thanks for your response!": {
+          "main": [
+            [
+              {
+                "node": "Show HTML page",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Determine which trigger ran": {
+          "main": [
+            [
+              {
+                "node": "Only continue for specific emails",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Record feedback",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            null,
+            [
+              {
+                "node": "Fallback route",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get data from `Format data`": {
+          "main": [
+            [
+              {
+                "node": "Create or update rows",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Is text within token limit?": {
+          "main": [
+            [
+              {
+                "node": "Generate reply",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store specific sheet IDs #1": {
+          "main": [
+            [
+              {
+                "node": "If no sheet IDs",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store specific sheet IDs #2": {
+          "main": [
+            [
+              {
+                "node": "Send feedback for fine-tuned data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If spreadsheet doesn't exist": {
+          "main": [
+            [
+              {
+                "node": "Create spreadsheet",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Successfully created or updated row",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get data from `Format data` node": {
+          "main": [
+            [
+              {
+                "node": "Paste data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only continue for specific emails": {
+          "main": [
+            [
+              {
+                "node": "Generate UUID",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Do not send email to this recipient",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract message content (advanced)": {
+          "main": [
+            [
+              {
+                "node": "Is text within token limit?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If no spreadsheet in configuration #1": {
+          "main": [
+            [
+              {
+                "node": "Get sheet IDs #1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Store specific sheet IDs #1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If no spreadsheet in configuration #2": {
+          "main": [
+            [
+              {
+                "node": "Get sheet IDs #2",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Store specific sheet IDs #2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 49,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 7
+        },
+        "n8n-nodes-base.set": {
+          "count": 4
+        },
+        "n8n-nodes-base.code": {
+          "count": 8
+        },
+        "n8n-nodes-base.html": {
+          "count": 2
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 8
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 1
+        },
+        "n8n-nodes-base.crypto": {
+          "count": 1
+        },
+        "n8n-nodes-base.openAi": {
+          "count": 1
+        },
+        "n8n-nodes-base.switch": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.gmailTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 4
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 112,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.switch",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "If",
+              "Path",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Branch",
+              "Case"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.switch/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Switch",
+          "color": "#506000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "Switch",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 264,
+        "icon": "fa:key",
+        "name": "n8n-nodes-base.crypto",
+        "codex": {
+          "data": {
+            "alias": [
+              "Encrypt",
+              "SHA",
+              "Hash"
+            ],
+            "details": "The Crypto node allows you to hash and Hmac string in a specified format and sign a string using a private key. Use this node when you want to encrypt your data.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Crypto",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "key",
+          "type": "icon"
+        },
+        "displayName": "Crypto",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 824,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmailTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.gmailtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Gmail Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 840,
+        "icon": "file:openAi.svg",
+        "name": "n8n-nodes-base.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "ChatGPT",
+              "DallE"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/openai/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjYwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZD0iTTIzOS4xODQgMTA2LjIwM2E2NC43MiA2NC43MiAwIDAgMC01LjU3Ni01My4xMDNDMjE5LjQ1MiAyOC40NTkgMTkxIDE1Ljc4NCAxNjMuMjEzIDIxLjc0QTY1LjU4NiA2NS41ODYgMCAwIDAgNTIuMDk2IDQ1LjIyYTY0LjcyIDY0LjcyIDAgMCAwLTQzLjIzIDMxLjM2Yy0xNC4zMSAyNC42MDItMTEuMDYxIDU1LjYzNCA4LjAzMyA3Ni43NGE2NC42NyA2NC42NyAwIDAgMCA1LjUyNSA1My4xMDJjMTQuMTc0IDI0LjY1IDQyLjY0NCAzNy4zMjQgNzAuNDQ2IDMxLjM2YTY0LjcyIDY0LjcyIDAgMCAwIDQ4Ljc1NCAyMS43NDRjMjguNDgxLjAyNSA1My43MTQtMTguMzYxIDYyLjQxNC00NS40ODFhNjQuNzcgNjQuNzcgMCAwIDAgNDMuMjI5LTMxLjM2YzE0LjEzNy0yNC41NTggMTAuODc1LTU1LjQyMy04LjA4My03Ni40ODNtLTk3LjU2IDEzNi4zMzhhNDguNCA0OC40IDAgMCAxLTMxLjEwNS0xMS4yNTVsMS41MzUtLjg3IDUxLjY3LTI5LjgyNWE4LjYgOC42IDAgMCAwIDQuMjQ3LTcuMzY3di03Mi44NWwyMS44NDUgMTIuNjM2Yy4yMTguMTExLjM3LjMyLjQwOS41NjN2NjAuMzY3Yy0uMDU2IDI2LjgxOC0yMS43ODMgNDguNTQ1LTQ4LjYwMSA0OC42MDFNMzcuMTU4IDE5Ny45M2E0OC4zNSA0OC4zNSAwIDAgMS01Ljc4MS0zMi41ODlsMS41MzQuOTIxIDUxLjcyMiAyOS44MjZhOC4zNCA4LjM0IDAgMCAwIDguNDQxIDBsNjMuMTgxLTM2LjQyNXYyNS4yMjFhLjg3Ljg3IDAgMCAxLS4zNTguNjY1bC01Mi4zMzUgMzAuMTg0Yy0yMy4yNTcgMTMuMzk4LTUyLjk3IDUuNDMxLTY2LjQwNC0xNy44MDNNMjMuNTQ5IDg1LjM4YTQ4LjUgNDguNSAwIDAgMSAyNS41OC0yMS4zMzN2NjEuMzlhOC4yOSA4LjI5IDAgMCAwIDQuMTk1IDcuMzE2bDYyLjg3NCAzNi4yNzItMjEuODQ1IDEyLjYzNmEuODIuODIgMCAwIDEtLjc2NyAwTDQxLjM1MyAxNTEuNTNjLTIzLjIxMS0xMy40NTQtMzEuMTcxLTQzLjE0NC0xNy44MDQtNjYuNDA1em0xNzkuNDY2IDQxLjY5NS02My4wOC0zNi42M0wxNjEuNzMgNzcuODZhLjgyLjgyIDAgMCAxIC43NjggMGw1Mi4yMzMgMzAuMTg0YTQ4LjYgNDguNiAwIDAgMS03LjMxNiA4Ny42MzV2LTYxLjM5MWE4LjU0IDguNTQgMCAwIDAtNC40LTcuMjEzbTIxLjc0Mi0zMi42OS0xLjUzNS0uOTIyLTUxLjYxOS0zMC4wODFhOC4zOSA4LjM5IDAgMCAwLTguNDkyIDBMOTkuOTggOTkuODA4Vjc0LjU4N2EuNzIuNzIgMCAwIDEgLjMwNy0uNjY1bDUyLjIzMy0zMC4xMzNhNDguNjUyIDQ4LjY1MiAwIDAgMSA3Mi4yMzYgNTAuMzkxek04OC4wNjEgMTM5LjA5N2wtMjEuODQ1LTEyLjU4NWEuODcuODcgMCAwIDEtLjQxLS42MTRWNjUuNjg1YTQ4LjY1MiA0OC42NTIgMCAwIDEgNzkuNzU3LTM3LjM0NmwtMS41MzUuODctNTEuNjcgMjkuODI1YTguNiA4LjYgMCAwIDAtNC4yNDYgNy4zNjd6bTExLjg2OC0yNS41OEwxMjguMDY3IDk3LjNsMjguMTg4IDE2LjIxOHYzMi40MzRsLTI4LjA4NiAxNi4yMTgtMjguMTg4LTE2LjIxOHoiLz48L3N2Zz4="
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

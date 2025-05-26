@@ -1,0 +1,869 @@
+{
+  "workflow": {
+    "id": 2485,
+    "name": "Automate Droplet Snapshots on DigitalOcean",
+    "views": 457,
+    "recentViews": 0,
+    "totalViews": 457,
+    "createdAt": "2024-10-23T13:17:02.170Z",
+    "description": "This workflow automates the management of DigitalOcean Droplet snapshots by listing all droplets, filtering based on the number of snapshots, and deleting excess snapshots before creating new ones. It ensures your droplet snapshots stay organized and within a manageable limit, preventing unnecessary storage costs due to an excess of snapshots.\n\n### Who is this for?\nThis workflow is perfect for users managing DigitalOcean Droplets and looking to automate the process of snapshot creation and cleanup to save on storage costs and maintain efficient resource management. It’s useful for DevOps teams, cloud administrators, or any developer leveraging DigitalOcean for their infrastructure.\n\n### What problem is this workflow solving?\nWhen managing multiple DigitalOcean Droplets, snapshots can quickly accumulate, taking up space and increasing storage costs. Manually deleting and creating snapshots can be time-consuming and inefficient. This automation solves this problem by automating the snapshot management process, ensuring that no more than a defined number of snapshots are kept per droplet.\n\n### What this workflow does\n1. **Runs every 48 hours**: The workflow is triggered by a cron node that runs every 48 hours, ensuring timely snapshot management.\n2. **List all droplets**: The workflow retrieves all droplets in the DigitalOcean account.\n3. **Retrieve snapshots**: For each droplet, the workflow retrieves a list of existing snapshots.\n4. **Filter snapshots**: If the number of snapshots exceeds 4, the workflow filters for snapshots that need to be deleted.\n5. **Delete snapshots**: Excess snapshots are automatically deleted based on the filter criteria.\n6. **Create new snapshot**: After cleaning up, the workflow creates a new snapshot for each droplet, ensuring that backups are always up-to-date.\n\n### Setup\n1. **DigitalOcean API Key**: You’ll need to configure the HTTP Request nodes with your DigitalOcean API key. This key is required for authenticating requests to list droplets, retrieve snapshots, delete snapshots, and create new ones.\n2. **Snapshot Threshold**: By default, the workflow is set to keep no more than 4 snapshots per droplet. This can be adjusted by modifying the filter node conditions.\n3. **Set Execution Frequency**: The cron node is set to run every 48 hours, but you can adjust the timing to suit your needs.\n\n### How to customize this workflow\n- **Adjust Snapshot Limit**: Change the value in the filter node if you want to keep more or fewer snapshots.\n- **Modify Run Frequency**: The workflow runs every 48 hours by default. You can change the frequency in the cron node to run more or less often.\n- **Enhance with Notifications**: You can add a notification node (e.g., Slack or email) to alert you when snapshots are deleted or created.\n\n### Workflow Summary\nThis workflow automates the management of DigitalOcean Droplet snapshots by keeping the number of snapshots under a defined limit, deleting the oldest ones, and ensuring new snapshots are created at regular intervals.\n",
+    "workflow": {
+      "meta": {
+        "instanceId": "38d37c49298b42c645e6a7693766d7c3522b24e54454034f955422b5d7af611c"
+      },
+      "nodes": [
+        {
+          "id": "b6582c37-00c3-467c-95cb-fc6eb7ccd27d",
+          "name": "Filter",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1080,
+            420
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{ $json.meta.total }}",
+                  "value2": 4,
+                  "operation": "largerEqual"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "54b0f895-7e56-40eb-bc6c-f657457d004a",
+          "name": "List Snapshots for a Droplet",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            840,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.digitalocean.com/v2/droplets/{{ $json.droplets[0].id }}/snapshots ",
+            "options": {},
+            "authentication": "headerAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "1kwUrzy4cJXZx48R",
+              "name": "Digital Ocean Account (darryn@optimus01.co.za)"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": false
+        },
+        {
+          "id": "7c47438f-db04-41f7-aed6-a460d0a6889b",
+          "name": "List All Droplets",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "f3bc462f9219860aafe79747ee369e2f79ccd7f9b096dfe66b55d946871e8942",
+          "position": [
+            600,
+            420
+          ],
+          "parameters": {
+            "url": "https://api.digitalocean.com/v2/droplets",
+            "options": {},
+            "authentication": "headerAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "1kwUrzy4cJXZx48R",
+              "name": "Digital Ocean Account (darryn@optimus01.co.za)"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e751f6a4-0fdc-4be5-84f0-fecba100da09",
+          "name": "Delete a Snapshot",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "f3bc462f9219860aafe79747ee369e2f79ccd7f9b096dfe66b55d946871e8942",
+          "position": [
+            1320,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.digitalocean.com/v2/snapshots/{{ $json.snapshots[0].id }}",
+            "options": {},
+            "requestMethod": "DELETE",
+            "authentication": "headerAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "1kwUrzy4cJXZx48R",
+              "name": "Digital Ocean Account (darryn@optimus01.co.za)"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d4cc4a72-f909-4c10-bada-e5c731e46c5e",
+          "name": "Droplet Actions snapshot (n8n.optimus01.co.za)",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "f3bc462f9219860aafe79747ee369e2f79ccd7f9b096dfe66b55d946871e8942",
+          "position": [
+            1560,
+            420
+          ],
+          "parameters": {
+            "url": "=https://api.digitalocean.com/v2/droplets/{{ $('List All Droplets').item.json.droplets[0].id }}/actions ",
+            "options": {},
+            "requestMethod": "POST",
+            "authentication": "headerAuth",
+            "bodyParametersUi": {
+              "parameter": [
+                {
+                  "name": "type",
+                  "value": "snapshot"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "1kwUrzy4cJXZx48R",
+              "name": "Digital Ocean Account (darryn@optimus01.co.za)"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4f3be74a-add7-4a2c-99df-d5d47f17efee",
+          "name": "Runs every 48hrs",
+          "type": "n8n-nodes-base.cron",
+          "position": [
+            360,
+            420
+          ],
+          "parameters": {
+            "triggerTimes": {
+              "item": [
+                {
+                  "mode": "everyX",
+                  "value": 48
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "518a7b8c-adf6-448e-9f4a-5acc0f31523d",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            180
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 232.0445295774649,
+            "height": 411.1655661971828,
+            "content": "## Trigger workflow every 48 hours\n\nThis node triggers the workflow to run every 48 hours. You can adjust the frequency if needed to suit your snapshot management requirements."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "70fe9177-e770-4f19-8fbc-3782167dda55",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            540,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 232.0445295774649,
+            "height": 411.1655661971829,
+            "content": "## Get all droplets from DigitalOcean\nFetches a list of all the droplets in your DigitalOcean account. This is the first step in managing snapshots for each droplet.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "04d74698-0198-45c8-8a79-183fd5f19820",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            780,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 232.0445295774649,
+            "height": 412.3020619718309,
+            "content": "## Retrieve snapshots for a droplet\nRetrieves all the snapshots associated with a specific droplet. This ensures that we know how many snapshots currently exist for each droplet.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4a971e9a-dfdf-4932-8280-3991a83c2a72",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            180
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 232.0445295774649,
+            "height": 411.1655661971828,
+            "content": "## Check if there are more than 4 snapshots\nChecks if the number of snapshots for a droplet is equal to or greater than 4. If true, it proceeds to delete the oldest snapshot.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bb9a553a-a8fc-4b72-b0e0-704ebaf8b806",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1260,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 232.0445295774649,
+            "height": 411.1655661971829,
+            "content": "## Delete the oldest snapshot\nDeletes the oldest snapshot from the droplet if the number of snapshots exceeds the limit (4 in this case), based on the filter's condition.\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1811812f-db56-494a-8ffa-d64cc6f5037c",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1500,
+            180
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 232.0445295774649,
+            "height": 411.1655661971829,
+            "content": "## Create a new snapshot\nCreates a new snapshot for the droplet after cleaning up the old snapshots. Ensures that backups are always up to date."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "cb2bd85e-578b-4888-9625-ffed7249082c",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -545,
+            200
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 366.75796434038665,
+            "height": 381.1643518785302,
+            "content": "### What this workflow does\n1. **`Runs every 48 hours`**: The workflow is triggered by a cron node that runs every 48 hours, ensuring timely snapshot management.\n2. **`List all droplets`**: The workflow retrieves all droplets in the DigitalOcean account.\n3. **`Retrieve snapshots`**: For each droplet, the workflow retrieves a list of existing snapshots.\n4. **`Filter snapshots`**: If the number of snapshots exceeds 4, the workflow filters for snapshots that need to be deleted.\n5. **`Delete snapshots`**: Excess snapshots are automatically deleted based on the filter criteria.\n6. **`Create new snapshot`**: After cleaning up, the workflow creates a new snapshot for each droplet, ensuring that backups are always up-to-date."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "7fbb406b-9343-4d3c-9876-80cb3b7bd51e",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -165,
+            240
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 396.6384066163515,
+            "height": 282.5799404564392,
+            "content": "### Get More Templates Like This 👇\n[![Video Thumbnail](https://onlinethinking.io/wp-content/uploads/2024/10/Lets-Automate-It-Community.png)](http://onlinethinking.io/community)\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8afb93b2-e547-4f3b-be25-5ab85a3f477d",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -545,
+            600
+          ],
+          "parameters": {
+            "width": 777.0408639013781,
+            "height": 201.45195676871373,
+            "content": "## Setup\n1. **`DigitalOcean API Key`**: You’ll need to configure the HTTP Request nodes with your DigitalOcean API key. This key is required for authenticating requests to list droplets, retrieve snapshots, delete snapshots, and create new ones.\n2. **`Snapshot Threshold`**: By default, the workflow is set to keep no more than 4 snapshots per droplet. This can be adjusted by modifying the filter node conditions.\n3. **`Set Execution Frequency`**: The cron node is set to run every 48 hours, but you can adjust the timing to suit your needs."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "325a4b9c-9bd4-4f29-8595-98f0579d15c1",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -560,
+            60
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 809.515353297114,
+            "height": 944.3745310796205,
+            "content": "## Automate Droplet Snapshot Management on DigitalOcean\nBuilt for the [Let's Automate It Community](http://onlinethinking.io/community) by [Optimus Agency](https://optimus01.co.za/)\n\nThis workflow automates the management of DigitalOcean Droplet snapshots by keeping the number of snapshots under a defined limit, deleting the oldest ones, and ensuring new snapshots are created at regular intervals."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9540cfa4-4b72-40c2-b1d1-5bf3f9bd7884",
+          "name": "Sticky Note15",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -545,
+            820
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 777.0408639013781,
+            "height": 168.5111194243667,
+            "content": "## How to customize this workflow\n- **`Adjust Snapshot Limit`**: Change the value in the filter node if you want to keep more or fewer snapshots.\n- **`Modify Run Frequency`**: The workflow runs every 48 hours by default. You can change the frequency in the cron node to run more or less often.\n- **`Enhance with Notifications`**: You can add a notification node (e.g., Slack or email) to alert you when snapshots are deleted or created."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Filter": {
+          "main": [
+            [
+              {
+                "node": "Delete a Snapshot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Runs every 48hrs": {
+          "main": [
+            [
+              {
+                "node": "List All Droplets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Delete a Snapshot": {
+          "main": [
+            [
+              {
+                "node": "Droplet Actions snapshot (n8n.optimus01.co.za)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "List All Droplets": {
+          "main": [
+            [
+              {
+                "node": "List Snapshots for a Droplet",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "List Snapshots for a Droplet": {
+          "main": [
+            [
+              {
+                "node": "Filter",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.cron": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 11
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 4
+        }
+      }
+    },
+    "user": {
+      "name": "Darryn",
+      "username": "optimus01",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "http://onlinethinking.io/community/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7c20cc4f6cea0480e0e7d58353274476e195d6ec8926a3a6709bb217e7f03713?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 7,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.cron",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "details": "The Cron node uses Cron under the hood - a time-based job scheduler in Unix-like computer operating systems. Use this node when you want to trigger workflows periodically, especially in more complex scenarios like \"every Tuesday at 9 am\" or \"Weekdays\".",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Cron",
+          "color": "#29a568"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Cron",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 16,
+        "name": "DevOps"
+      },
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": []
+  }
+}

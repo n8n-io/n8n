@@ -1,0 +1,206 @@
+{
+  "workflow": {
+    "id": 455,
+    "name": "Sending an SMS with MessageBird",
+    "views": 399,
+    "recentViews": 0,
+    "totalViews": 399,
+    "createdAt": "2020-07-08T13:03:06.132Z",
+    "description": "![workflow-screenshot](fileId:62)",
+    "workflow": {
+      "id": "85",
+      "name": "Sending an SMS with MessageBird",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "MessageBird",
+          "type": "n8n-nodes-base.messageBird",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "message": "",
+            "originator": "",
+            "recipients": "",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "messageBirdApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "MessageBird",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.messageBird": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 333,
+        "icon": "file:messagebird.svg",
+        "name": "n8n-nodes-base.messageBird",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.messagebird/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/messageBird/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "MessageBird"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZmlsbD0iIzI0ODFENyIgZD0iTTUzLjQ3IDE0LjI5NWMtMi4zNzEgMC00LjQ5IDEuMTg2LTUuNzgzIDIuOTgybC04LjcyNyAxMi4yMWExLjc1IDEuNzUgMCAwIDEtMS40MzYuNzU1IDEuNzYzIDEuNzYzIDAgMCAxLTEuNzYtMS43NmMwLS4zNy4xMDktLjcxOC4yNzgtLjk3bDcuMzYxLTExLjAyNWMuNzU0LTEuMTEzIDEuMTg1LTIuNDc4IDEuMTg1LTMuOTUxYTcuMDQ2IDcuMDQ2IDAgMCAwLTcuMDY1LTcuMDc0SC40NjJ2Ny4wNzRoMzEuNzQ3YTMuNTY0IDMuNTY0IDAgMCAxLTMuNTU2IDMuNTU2SC40NjJjMCAyLjUxMy41MzkgNC45MiAxLjQ3MiA3LjA3NGgyMy4xNzRhMy41NjQgMy41NjQgMCAwIDEtMy41NTYgMy41NTZINC4wMTdhMTcuNjUgMTcuNjUgMCAwIDAgMTQuMTg2IDcuMDc0aDguNzI3Yy45Ny4wMDIgMS43NTcuNzg5IDEuNzYgMS43NmExLjc2MyAxLjc2MyAwIDAgMS0xLjc2IDEuNzZoLTguNzY0TDYuMzE0IDU1LjAyaDIxLjQ0YzkuODAzIDAgMTguMTM2LTYuMzkzIDIxLjA0Ni0xNS4yMjdMNTIuNzg4IDI3LjdhMjIuMyAyMi4zIDAgMCAxIDYuNzUxLTkuOTg0IDcuMDQgNy4wNCAwIDAgMC02LjA2OS0zLjQxMXptMCA0Ljg0OGMtLjcxOSAwLTEuMzMtLjYwOS0xLjMzLTEuMzI5LjAxLS43My42LTEuMzIgMS4zMy0xLjMzLjczLjAxIDEuMzE5LjYgMS4zMjggMS4zMyAwIC43NTQtLjYwOSAxLjMzLTEuMzI5IDEuMzN6Ii8+PC9zdmc+"
+        },
+        "displayName": "MessageBird",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 62,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/a2bd689113154e5b9980bf02f7c9d700.png"
+      }
+    ]
+  }
+}

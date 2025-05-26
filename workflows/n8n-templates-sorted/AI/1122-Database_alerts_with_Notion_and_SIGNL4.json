@@ -1,0 +1,1039 @@
+{
+  "workflow": {
+    "id": 1122,
+    "name": "Database alerts with Notion and SIGNL4",
+    "views": 713,
+    "recentViews": 0,
+    "totalViews": 713,
+    "createdAt": "2021-06-10T15:31:49.046Z",
+    "description": "## Objective\nIn industry and production sometimes machine data is available in databases. That might be sensor data like temperature or pressure or just binary information.\nIn this sample flow reads machine data and sends an alert to your SIGNL4 team when the machine is down. When the machine is up again the alert in [SIGNL4](https://www.signl4.com/) will get closed automatically.\n## Setup\nWe simulate the machine data using a Notion table.\n\n![image.png](fileId:511)\nWhen we un-check the Up box we simulate a machine-down event. In certain intervals n8n checks the database for down items. If such an item has been found an alert is send using SIGNL4 and the item in Notion is updates (in order not to read it again).\n\n![workflow-screenshot](fileId:509)\n\nStatus updates from SIGNL4 (acknowledgement, close, annotation, escalation, etc.) are received via webhook and we update the Notion item accordingly.\n\nThis is how the alert looks like in the [SIGNL4](https://www.signl4.com/) app.\n\n![image.png](fileId:510)\n\nThe flow can be easily adapted to other database monitoring scenarios.\n",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Function",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            230,
+            710
+          ],
+          "parameters": {
+            "functionCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\n\n// Loop over inputs and add a new field called 'myNewField' to the JSON of each one\nfor (item of items) {\n  \nvar type = \"Status\";\n// Acknowledged\nif ((item.json.body.alert.statusCode == 2)  && (item.json.body.eventType == 201)) {\n    type = \"Acknowledged\";\n}\n// Closed\nif ((item.json.body.alert.statusCode == 4) & (item.json.body.eventType == 201)) {\n    type = \"Closed\";\n}\n// New Alert\nif ((item.json.body.alert.statusCode == 1) & (item.json.body.eventType == 200)) {\n    type = \"New Alert\";\n}\n\n// No one on duty\nif ((item.json.body.alert.statusCode == 16) & (item.json.body.eventType == 201)) {\n    type = \"No one on duty\";\n}\n \n// Annotation\nvar annotation = \"\";\nif ((item.json.body.eventType == 203) & (item.json.body.annotation != undefined) ) {\n    type = \"Annotated\";\n    annotation = item.json.body.annotation.message;\n}\nif (annotation != \"\") {\n    annotation = \": \" + annotation;\n}\n \nvar username = \"System\";\nif (item.json.body.user != undefined) {\n    username = item.json.body.user.username;\n}\n \nvar data = type + \" by \" + username + annotation;\n \nitem.json.s4Status = data; //  + \": \" + JSON.stringify(item.json);\n\n\nitem.json.s4Up = false;\nif (type == \"Closed\") {\n  item.json.s4Up = true;\n}\n\n}\n\n// You can write logs to the browser console\nconsole.log('Done!');\n\nreturn items;\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Notion Trigger",
+          "type": "n8n-nodes-base.notionTrigger",
+          "disabled": true,
+          "position": [
+            230,
+            210
+          ],
+          "parameters": {
+            "event": "pageAddedToDatabase",
+            "pollTimes": {
+              "item": [
+                {
+                  "mode": "everyX",
+                  "unit": "minutes",
+                  "value": 1
+                }
+              ]
+            },
+            "databaseId": "0f26823d-f509-43bb-b0e9-e9bb4ab91217"
+          },
+          "credentials": {
+            "notionApi": "Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            50,
+            710
+          ],
+          "webhookId": "95fd62c7-fc8c-4f6f-8441-bbf85a2da81a",
+          "parameters": {
+            "path": "95fd62c7-fc8c-4f6f-8441-bbf85a2da81a",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Function",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            230,
+            710
+          ],
+          "parameters": {
+            "functionCode": "// Code here will run only once, no matter how many input items there are.\n// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function\n\n// Loop over inputs and add a new field called 'myNewField' to the JSON of each one\nfor (item of items) {\n  \nvar type = \"Status\";\n// Acknowledged\nif ((item.json.body.alert.statusCode == 2)  && (item.json.body.eventType == 201)) {\n    type = \"Acknowledged\";\n}\n// Closed\nif ((item.json.body.alert.statusCode == 4) & (item.json.body.eventType == 201)) {\n    type = \"Closed\";\n}\n// New Alert\nif ((item.json.body.alert.statusCode == 1) & (item.json.body.eventType == 200)) {\n    type = \"New Alert\";\n}\n\n// No one on duty\nif ((item.json.body.alert.statusCode == 16) & (item.json.body.eventType == 201)) {\n    type = \"No one on duty\";\n}\n \n// Annotation\nvar annotation = \"\";\nif ((item.json.body.eventType == 203) & (item.json.body.annotation != undefined) ) {\n    type = \"Annotated\";\n    annotation = item.json.body.annotation.message;\n}\nif (annotation != \"\") {\n    annotation = \": \" + annotation;\n}\n \nvar username = \"System\";\nif (item.json.body.user != undefined) {\n    username = item.json.body.user.username;\n}\n \nvar data = type + \" by \" + username + annotation;\n \nitem.json.s4Status = data; //  + \": \" + JSON.stringify(item.json);\n\n\nitem.json.s4Up = false;\nif (type == \"Closed\") {\n  item.json.s4Up = true;\n}\n\n}\n\n// You can write logs to the browser console\nconsole.log('Done!');\n\nreturn items;\n\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Notion Update",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            420,
+            710
+          ],
+          "parameters": {
+            "pageId": "={{$node[\"Webhook\"].json[\"body\"][\"alert\"][\"externalEventId\"]}}",
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Description|rich_text",
+                  "peopleValue": [],
+                  "textContent": "={{$node[\"Function\"].json[\"s4Status\"]}}",
+                  "relationValue": [],
+                  "multiSelectValue": []
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": "Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Interval",
+          "type": "n8n-nodes-base.interval",
+          "position": [
+            50,
+            380
+          ],
+          "parameters": {
+            "interval": 20
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SIGNL4 Resolve",
+          "type": "n8n-nodes-base.signl4",
+          "position": [
+            420,
+            540
+          ],
+          "parameters": {
+            "operation": "resolve",
+            "externalId": "={{$node[\"Notion Read Open\"].json[\"id\"]}}"
+          },
+          "credentials": {
+            "signl4Api": "SIGNL4"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SIGNL4 Alert",
+          "type": "n8n-nodes-base.signl4",
+          "position": [
+            420,
+            210
+          ],
+          "parameters": {
+            "message": "=Machine Alert: {{$node[\"Notion Trigger\"].json[\"Name\"]}}",
+            "additionalFields": {
+              "title": "n8n Alert",
+              "externalId": "={{$node[\"Notion Trigger\"].json[\"id\"]}}",
+              "locationFieldsUi": {
+                "locationFieldsValues": {
+                  "latitude": "52.3992137",
+                  "longitude": "13.0583823"
+                }
+              }
+            }
+          },
+          "credentials": {
+            "signl4Api": "SIGNL4"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Notion Update Read",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            570,
+            380
+          ],
+          "parameters": {
+            "pageId": "={{$node[\"Notion Read New\"].json[\"id\"]}}",
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Read|checkbox",
+                  "peopleValue": [],
+                  "checkboxValue": true,
+                  "relationValue": [],
+                  "multiSelectValue": []
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": "Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Notion Read Open",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            230,
+            540
+          ],
+          "parameters": {
+            "options": {
+              "filter": {
+                "multipleCondition": {
+                  "condition": {
+                    "and": [
+                      {
+                        "key": "Up|checkbox",
+                        "condition": "equals",
+                        "checkboxValue": true,
+                        "multiSelectValue": []
+                      },
+                      {
+                        "key": "Read|checkbox",
+                        "condition": "equals",
+                        "checkboxValue": true,
+                        "multiSelectValue": []
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "resource": "databasePage",
+            "operation": "getAll",
+            "databaseId": "0f26823d-f509-43bb-b0e9-e9bb4ab91217"
+          },
+          "credentials": {
+            "notionApi": "Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Notion Read New",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            230,
+            380
+          ],
+          "parameters": {
+            "options": {
+              "filter": {
+                "multipleCondition": {
+                  "condition": {
+                    "and": [
+                      {
+                        "key": "Read|checkbox",
+                        "condition": "equals",
+                        "multiSelectValue": []
+                      },
+                      {
+                        "key": "Up|checkbox",
+                        "condition": "equals",
+                        "multiSelectValue": []
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "resource": "databasePage",
+            "operation": "getAll",
+            "databaseId": "0f26823d-f509-43bb-b0e9-e9bb4ab91217"
+          },
+          "credentials": {
+            "notionApi": "Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Notion Update Final",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            570,
+            540
+          ],
+          "parameters": {
+            "pageId": "={{$node[\"Notion Read Open\"].json[\"id\"]}}",
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Read|checkbox",
+                  "peopleValue": [],
+                  "relationValue": [],
+                  "multiSelectValue": []
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": "Notion"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "SIGNL4 Alert 2",
+          "type": "n8n-nodes-base.signl4",
+          "position": [
+            420,
+            380
+          ],
+          "parameters": {
+            "message": "=Machine Alert: {{$node[\"Notion Read New\"].json[\"Name\"]}}",
+            "additionalFields": {
+              "title": "n8n Alert",
+              "externalId": "={{$node[\"Notion Read New\"].json[\"id\"]}}",
+              "locationFieldsUi": {
+                "locationFieldsValues": {
+                  "latitude": "52.3992137",
+                  "longitude": "13.0583823"
+                }
+              }
+            }
+          },
+          "credentials": {
+            "signl4Api": "SIGNL4"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Function",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Function": {
+          "main": [
+            [
+              {
+                "node": "Notion Update",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Interval": {
+          "main": [
+            [
+              {
+                "node": "Notion Read Open",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Notion Read New",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion Trigger": {
+          "main": [
+            [
+              {
+                "node": "SIGNL4 Alert",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SIGNL4 Alert 2": {
+          "main": [
+            [
+              {
+                "node": "Notion Update Read",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "SIGNL4 Resolve": {
+          "main": [
+            [
+              {
+                "node": "Notion Update Final",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion Read New": {
+          "main": [
+            [
+              {
+                "node": "SIGNL4 Alert 2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notion Read Open": {
+          "main": [
+            [
+              {
+                "node": "SIGNL4 Resolve",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 14,
+      "nodeTypes": {
+        "n8n-nodes-base.notion": {
+          "count": 5
+        },
+        "n8n-nodes-base.signl4": {
+          "count": 3
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.function": {
+          "count": 2
+        },
+        "n8n-nodes-base.interval": {
+          "count": 1
+        },
+        "n8n-nodes-base.notionTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Ron",
+      "username": "rons4",
+      "bio": "Co-founder at Derdack, Exploration at SIGNL4. Passionate about technology, SaaS, IoT, mobile, alerting, learning and more.",
+      "verified": true,
+      "links": [
+        "https://www.signl4.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/1af910dd96a18543fb15bf2097e28a14a72401781ec1ac4ffce7a07ad11dac7f?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 14,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.function",
+        "codex": {
+          "data": {
+            "alias": [
+              "Code",
+              "Javascript",
+              "Custom Code",
+              "Script",
+              "cpde"
+            ],
+            "details": "The Function node allows you to execute JavaScript in your workflow. Unlike the Function Item node, this node does not operate on incoming node data per-item. Instead, you must iterate over multiple items of incoming data yourself. This can be useful if you're performing data transformation where you want to manipulate the number of items being outputted by the node (i.e. 1 item is inputted in with nested object, 10 items are outputted without any nested objects)",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function",
+          "color": "#FF9922"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 21,
+        "icon": "fa:hourglass",
+        "name": "n8n-nodes-base.interval",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.interval/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Interval",
+          "color": "#00FF00"
+        },
+        "iconData": {
+          "icon": "hourglass",
+          "type": "icon"
+        },
+        "displayName": "Interval",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 334,
+        "icon": "file:signl4.png",
+        "name": "n8n-nodes-base.signl4",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.signl4/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/signl4/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "SIGNL4"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "SIGNL4",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 488,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notionTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.notiontrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Notion Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": [
+      {
+        "id": 509,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/5c3a63b15eab429094097eeafdfe7967.png"
+      },
+      {
+        "id": 510,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/70b448beabf14890a3943a5dec5cf853.png"
+      },
+      {
+        "id": 511,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/cca734a9ec4e47f593a79b27da833c41.png"
+      }
+    ]
+  }
+}

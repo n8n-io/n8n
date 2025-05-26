@@ -1,0 +1,97 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.supabase/common-issues/
+Scraped_At: 2025-05-20T18:51:50.784923
+
+Supabase node common issues
+#
+Here are some common errors and issues with the
+Supabase node
+and steps to resolve or troubleshoot them.
+Filtering rows by metadata
+#
+To filter rows by
+Supabase metadata
+, set the
+Select Type
+to
+String
+.
+From there, you can construct a query in the
+Filters (String)
+parameter to filter the metadata using the
+Supabase metadata query language
+, inspired by the
+MongoDB selectors
+format. Access the metadata properties using the
+Postgres
+->>
+arrow JSON operator
+like this (curly brackets denote components to fill in):
+1
+metadata->>{your-property}={comparison-operator}.{comparison-value}
+For example to access an
+age
+property in the metadata and return results greater than or equal to 21, you could enter the following in the
+Filters (String)
+field:
+1
+metadata->>age=gte.21
+You can combine these operators to construct more complex queries.
+Can't connect to a local Supabase database when using Docker
+#
+When you run Supabase in Docker, you need to configure the network so that n8n can connect to Supabase.
+The solution depends on how you're hosting the two components.
+If only Supabase is in Docker
+#
+If only Supabase is running in Docker, the Docker Compose file used by the
+self-hosting guide
+already runs Supabase bound to the correct interfaces.
+When configuring
+Supabase credentials
+, the
+localhost
+address should work without a problem (set the
+Host
+to
+localhost
+).
+If Supabase and n8n are running in separate Docker containers
+#
+If both n8n and Supabase are running in Docker in separate containers, you can use Docker networking to connect them.
+Configure Supabase to listen on all interfaces by binding to
+0.0.0.0
+inside of the container (the official
+Docker compose configuration
+already does this this). Add both the Supabase and n8n components to the same
+user-defined bridge network
+if you aren't already managing them together in the same Docker Compose file.
+When configuring
+Supabase credentials
+, use the Supabase API gateway container's name (
+supabase-kong
+by default) as the host address instead of
+localhost
+. For example, if you use the default configuration, you would set the
+Host
+to
+http://supabase-kong:8000
+.
+Records are accessible through Postgres but not Supabase
+#
+If queries for records return empty using the Supabase node, but are available through the
+Postgres
+node or with a Postgres client, there may be a conflict with Supabase's
+Row Level Security (RLS)
+policy.
+Supabase always enables RLS when you create a table in a public schema with the Table Editor. When RLS is active, the API doesn't return any data with the public
+anon
+key until you create policies. This is a security measure to ensure that you only expose data you intend to.
+To access data from a table with RLS enabled as the
+anon
+role,
+create a policy
+to enable the access patterns you intend to use.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

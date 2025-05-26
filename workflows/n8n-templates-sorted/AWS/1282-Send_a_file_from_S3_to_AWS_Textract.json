@@ -1,0 +1,294 @@
+{
+  "workflow": {
+    "id": 1282,
+    "name": "Send a file from S3 to AWS Textract",
+    "views": 1800,
+    "recentViews": 0,
+    "totalViews": 1800,
+    "createdAt": "2021-10-25T12:06:24.118Z",
+    "description": "This workflow shows how to download an image file from S3 and pass it on to Textract for text extraction.\n\n![](https://docs.n8n.io/assets/img/workflow.51d5f2fc.png)\n\nThe workflow uses two nodes:\n- **AWS S3**: This node will download a receipt file from S3\n- **AWS Textract**: This node connects to Aamazon's Textract service to extract text from the receipt file",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "AWS Textract",
+          "type": "n8n-nodes-base.awsTextract",
+          "position": [
+            650,
+            300
+          ],
+          "parameters": {},
+          "credentials": {
+            "aws": {
+              "id": "12",
+              "name": "AWS account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "AWS S3",
+          "type": "n8n-nodes-base.awsS3",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "fileKey": "Rechnung.jpg",
+            "bucketName": "textract-demodata"
+          },
+          "credentials": {
+            "aws": {
+              "id": "12",
+              "name": "AWS account"
+            }
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "AWS S3": {
+          "main": [
+            [
+              {
+                "node": "AWS Textract",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "AWS S3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.awsS3": {
+          "count": 1
+        },
+        "n8n-nodes-base.awsTextract": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Tom",
+      "username": "mutedjam",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "https://github.com/that-one-tom/"
+      ],
+      "avatar": "https://gravatar.com/avatar/7a3710173e907baffaf7ed7ebffc37955c9cdeadb8612200225a34a2e056aa17?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 307,
+        "icon": "file:s3.svg",
+        "name": "n8n-nodes-base.awsS3",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awss3/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "AWS S3"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDY1IiBoZWlnaHQ9IjI1MDAiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaWRZTWlkIiB2aWV3Qm94PSIwIDAgMjU2IDMxMCI+PHBhdGggZmlsbD0iIzhDMzEyMyIgZD0iTTIwLjYyNCA1My42ODYgMCA2NHYxODEuMDJsMjAuNjI0IDEwLjI1NC4xMjQtLjE0OVY1My44Mjh6Ii8+PHBhdGggZmlsbD0iI0UwNTI0MyIgZD0iTTEzMSAyMjkgMjAuNjI0IDI1NS4yNzRWNTMuNjg2TDEzMSA3OS4zODd6Ii8+PHBhdGggZmlsbD0iIzhDMzEyMyIgZD0ibTgxLjE3OCAxODcuODY2IDQ2LjgxOCA1Ljk2LjI5NC0uNjc4LjI2My03Ni43Ny0uNTU3LS42LTQ2LjgxOCA1Ljg3NHoiLz48cGF0aCBmaWxsPSIjOEMzMTIzIiBkPSJtMTI3Ljk5NiAyMjkuMjk1IDEwNy4zNzEgMjYuMDM1LjE2OS0uMjY5LS4wMDMtMjAxLjE5NS0uMTctLjE4LTEwNy4zNjcgMjUuOTk2eiIvPjxwYXRoIGZpbGw9IiNFMDUyNDMiIGQ9Im0xNzQuODI3IDE4Ny44NjYtNDYuODMxIDUuOTZ2LTc4LjA0OGw0Ni44MzEgNS44NzR6Ii8+PHBhdGggZmlsbD0iIzVFMUYxOCIgZD0ibTE3NC44MjcgODkuNjMxLTQ2LjgzMSA4LjUzNS00Ni44MTgtOC41MzUgNDYuNzU5LTEyLjI1NnoiLz48cGF0aCBmaWxsPSIjRjJCMEE5IiBkPSJtMTc0LjgyNyAyMTkuODAxLTQ2LjgzMS04LjU5MS00Ni44MTggOC41OTEgNDYuNzYxIDEzLjA1M3oiLz48cGF0aCBmaWxsPSIjOEMzMTIzIiBkPSJtODEuMTc4IDg5LjYzMSA0Ni44MTgtMTEuNTg2LjM3OS0uMTE3Vi4zMTNMMTI3Ljk5NiAwIDgxLjE3OCAyMy40MTN6Ii8+PHBhdGggZmlsbD0iI0UwNTI0MyIgZD0ibTE3NC44MjcgODkuNjMxLTQ2LjgzMS0xMS41ODZWMGw0Ni44MzEgMjMuNDEzeiIvPjxwYXRoIGZpbGw9IiM4QzMxMjMiIGQ9Im0xMjcuOTk2IDMwOS40MjgtNDYuODIzLTIzLjQwNXYtNjYuMjE3bDQ2LjgyMyAxMS41ODIuNjg5Ljc4My0uMTg3IDc1LjkwNnoiLz48cGF0aCBmaWxsPSIjRTA1MjQzIiBkPSJtMTI3Ljk5NiAzMDkuNDI4IDQ2LjgyNy0yMy40MDV2LTY2LjIxN2wtNDYuODI3IDExLjU4MnpNMjM1LjM2NyA1My42ODYgMjU2IDY0djE4MS4wMmwtMjAuNjMzIDEwLjMxeiIvPjwvc3ZnPg=="
+        },
+        "displayName": "AWS S3",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 530,
+        "icon": "file:textract.svg",
+        "name": "n8n-nodes-base.awsTextract",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awstextract/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "AWS Textract"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MCIgaGVpZ2h0PSI4MCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMCUiIHgyPSIxMDAlIiB5MT0iMTAwJSIgeTI9IjAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMDU1RjRFIi8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjNTZDMEE3Ii8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48cGF0aCBmaWxsPSJ1cmwoI2EpIiBkPSJNMCAwaDgwdjgwSDB6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIyLjA2MiA1MGMyLjMxNCAzLjYwMyA2LjM0OCA2IDEwLjkzOCA2IDcuMTY3IDAgMTMtNS44MzIgMTMtMTNzLTUuODMzLTEzLTEzLTEzYy01LjM5NyAwLTEwLjAzNCAzLjMwNy0xMS45OTggOGgyLjIxMmMxLjgyNS0zLjU1NiA1LjUyMi02IDkuNzg2LTYgNi4wNjUgMCAxMSA0LjkzNSAxMSAxMXMtNC45MzUgMTEtMTEgMTFhMTAuOTkgMTAuOTkgMCAwIDEtOC40NzktNHpNMzcgNDV2LTJoNWMwLTQuOTYyLTQuMDM4LTktOS05LTQuOTYzIDAtOSA0LjAzOC05IDloNXYyaC00Ljc3Yy45MTMgNC4wMDIgNC40OTQgNyA4Ljc3IDdhOC45NSA4Ljk1IDAgMCAwIDUuNjQzLTJIMzR2LTJoNi40NzhhOSA5IDAgMCAwIDEuMjktM3ptLTE1Ljk5OCAzaDIuMjEyQTEwLjkgMTAuOSAwIDAgMSAyMiA0M2MwLTEuMDQxLjE1NS0yLjA0NS40MjYtM2gtMi4wNjNBMTMgMTMgMCAwIDAgMjAgNDNjMCAxLjc3MS4zNiAzLjQ2IDEuMDAzIDVtLTEuMjU5IDJIMTd2LTJoMS44NzRjLS4zNC0uOTYtLjU4NS0xLjk2Mi0uNzI1LTNoLTIuNzM1bDEuMjkzIDEuMjkzLTEuNDE1IDEuNDE0LTMtM2ExIDEgMCAwIDEgMC0xLjQxNGwzLTMgMS40MTUgMS40MTRMMTUuNDE0IDQzSDE4YzAtMS4wMjcuMTA0LTIuMDMuMzAyLTNIMTd2LTJoMS44NzRDMjAuOTQgMzIuMTg0IDI2LjQ4NCAyOCAzMyAyOGM0LjQyNyAwIDguNCAxLjkzOSAxMS4xNDggNUg1OXYySDQ1LjY2NkExNC45IDE0LjkgMCAwIDEgNDggNDNoMTF2Mkg0Ny44NWMtLjk4MiA3LjMyNy03LjI1OSAxMy0xNC44NSAxMy01Ljc0NCAwLTEwLjczOC0zLjI0OC0xMy4yNTctOE0zNyAzOWExIDEgMCAwIDAtMS0xaC02YTEgMSAwIDAgMC0xIDF2Mmgydi0xaDF2M2gtMXYyaDR2LTJoLTF2LTNoMXYxaDJ6bTEyIDFoMTB2LTJINDl6bTAgMTBoMTB2LTJINDl6bTgtMjNoMy41ODVMNTcgMjMuNDE0em02LjcwNy4yOTNjLjE4Ny4xODcuMjkzLjQ0Mi4yOTMuNzA3djM1YTEgMSAwIDAgMS0xIDFIMzJhMSAxIDAgMCAxLTEtMXYtNGgydjNoMjlWMjloLTZhMSAxIDAgMCAxLTEtMXYtNkgzM3Y1aC0ydi02YTEgMSAwIDAgMSAxLTFoMjRhMSAxIDAgMCAxIC43MDcuMjkzek02OCAyNC4xNjZWNjFhMSAxIDAgMCAxLTEgMWgtMnYtMmgxVjI0LjYxMkw1OC42MTcgMThIMzZ2MWgtMnYtMmExIDEgMCAwIDEgMS0xaDI0Yy4yNDYgMCAuNDgzLjA5MS42NjYuMjU1bDggNy4xNjVjLjIxMi4xOS4zMzQuNDYxLjMzNC43NDYiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "AWS Textract",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": []
+  }
+}

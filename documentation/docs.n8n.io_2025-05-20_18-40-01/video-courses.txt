@@ -1,0 +1,41 @@
+URL: https://docs.n8n.io/video-courses/
+Scraped_At: 2025-05-20T19:10:37.667160
+
+Video courses
+#
+n8n provides two video courses on YouTube.
+For support, join the
+Forum
+.
+Beginner
+#
+The
+Beginner
+course covers the basics of n8n:
+Introduction and workflows
+APIs and Webhooks
+Nodes
+Data in n8n
+Core workflow concepts
+Useful nodes
+Error handling
+Debugging
+Collaboration
+Advanced
+#
+The
+Advanced
+course covers more complex workflows, more technical nodes, and enterprise features:
+Introduction and complex data flows
+Advanced technical nodes
+Pinning and editing output data
+Sub-workflows
+Error workflows
+Building a full example
+Handling files
+Enterprise features
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,2064 @@
+{
+  "workflow": {
+    "id": 2192,
+    "name": "Streamline Your Zoom Meetings with Secure, Automated Stripe Payments",
+    "views": 1893,
+    "recentViews": 0,
+    "totalViews": 1893,
+    "createdAt": "2024-03-25T10:09:05.315Z",
+    "description": "**🎉 Do you want to master AI automation, so you can save time and build cool stuff?** \n\nI’ve created a welcoming Skool community for non-technical yet resourceful learners.\n\n**👉🏻 [Join the AI Atelier](https://www.skool.com/the-ai-atelier-3311) 👈🏻**\n\n---\n\nUnlock **streamlined Zoom Meeting organization** and exclusive access management with this n8n workflow. Designed for educators, event organizers, and businesses, this tool automates your event logistics, so you can focus on delivering valuable content.\n\n## Features\n* **Zoom Meetings Creation:** Instantly generate new Zoom meetings with the n8n built-in form.\n* **Collect Payments Using Stripe:** Effortlessly monetize your events with secure, automatically created Stripe payment pages for each meeting.\n* **Exclusive Gated Access:** Ensure your content remains exclusive by sending Zoom meeting passwords only to verified subscribers who have completed their payment through Stripe.\n* **Participants Email Notifications:** Automate the distribution of Zoom meeting details post-payment, eliminating the need for manual email management and ensuring participants are promptly informed.\n* **Instant and Easy Participants Overview:** Manage and track your event registrations with ease. All related data is stored in a Google Sheets document that you own. You're notified via email with each new subscription, simplifying participant management.\n\n## Set Up Steps\n* Connect your Zoom, Stripe, Gmail and Google Sheet credentials. \n* Create an empty Google Sheet in your Google Drive.\n* Fill the config node (Sheet URL, email and currency).\n* Edit email text.\n\nThis n8n workflow template is designed to minimize setup time and maximize efficiency, allowing you to focus on delivering value to your subscribers. With just a few clicks, you can automate the entire process of organizing and monetizing your Zoom meetings.\n\n**Created by the [n8ninja](https://www.n8n.ninja/).**",
+    "workflow": {
+      "id": "2DT5BW5tOdy87AUl",
+      "meta": {
+        "instanceId": "8418cffce8d48086ec0a73fd90aca708aa07591f2fefa6034d87fe12a09de26e"
+      },
+      "name": "Streamline Your Zoom Meetings with Secure, Automated Stripe Payments",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "fcc38ae8-0dbf-4676-b47b-ba77f97a38b8",
+          "name": "Create Zoom meeting",
+          "type": "n8n-nodes-base.zoom",
+          "position": [
+            180,
+            480
+          ],
+          "parameters": {
+            "topic": "={{ $('Creation Form').item.json.title }}",
+            "authentication": "oAuth2",
+            "additionalFields": {
+              "password": "={{ Math.random().toString(36).slice(-4); }}",
+              "startTime": "={{ new Date(new Date($('Creation Form').item.json.date_start).getTime() + ($('Creation Form').item.json.hour * 3600000) + ($('Creation Form').item.json.minute * 60000)).toISOString() }}"
+            }
+          },
+          "credentials": {
+            "zoomOAuth2Api": {
+              "id": "JQ9fG5WNTVssHxGj",
+              "name": "Zoom account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3d2dea09-c463-447b-9a9d-daca8fdcac06",
+          "name": "Create Stripe Product",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            400,
+            480
+          ],
+          "parameters": {
+            "url": "https://api.stripe.com/v1/products",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "contentType": "form-urlencoded",
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "name",
+                  "value": "={{ $('Creation Form').item.json.title }}"
+                },
+                {
+                  "name": "default_price_data[unit_amount]",
+                  "value": "={{ $('Creation Form').item.json.price * 100 }}"
+                },
+                {
+                  "name": "default_price_data[currency]",
+                  "value": "={{ $('Config').item.json.currency }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "stripeApi"
+          },
+          "credentials": {
+            "stripeApi": {
+              "id": "qjose8z3RR7Xzm7b",
+              "name": "Stripe Dev"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "01ab74fb-19a1-42ef-a0ad-31107c7ded3f",
+          "name": "Config",
+          "type": "n8n-nodes-base.set",
+          "notes": "Setup your flow",
+          "position": [
+            -220,
+            640
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "038b54b7-9559-444e-8653-c5256a5b784e",
+                  "name": "currency",
+                  "type": "string",
+                  "value": "EUR"
+                },
+                {
+                  "id": "64d1eeee-cabe-403b-a634-f3238f586f58",
+                  "name": "sheet_url",
+                  "type": "string",
+                  "value": "https://docs.google.com/spreadsheets/d/1ZliqqBNo6X0iM9yXBOiCG1e4Q7L7bQKMFmjvbSgUSnA/edit#gid=0"
+                },
+                {
+                  "id": "997fe5a1-f601-458d-899c-673dff4acb04",
+                  "name": "teacher_email",
+                  "type": "string",
+                  "value": "emm.bernard@gmail.com"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 3.3
+        },
+        {
+          "id": "2aa87b96-924b-472c-8cc6-2de028ce0195",
+          "name": "Send email to teacher",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            1040,
+            480
+          ],
+          "parameters": {
+            "sendTo": "={{ $('Config').item.json.teacher_email }}",
+            "message": "=<b>Congratulations, your event has been succesfully created 🎉</b><br/><br/>\n\nTitle: {{ $('Creation Form').item.json.title }}<br/>\nPrice:  {{ $('Creation Form').item.json.price }} {{ $('Config').item.json.currency }}<br/>\nStart date: {{ $('Creation Form').item.json.date_start }}<br/><br/>\n\n<b>Payment link:</b><br/>\n {{ $('Create payment link').item.json.url }}<br/>\n<i>Start sharing this link to get subscriptions</i><br/><br/>\n<b>Participant list:</b><br/>\n{{ $('Config').item.json.sheet_url }}#gid={{ $('Create Stripe Product').item.json.created }}\n<br/><br/>\n<b>Zoom infos:</b><br/>\nLink: {{ $('Create Zoom meeting').item.json.join_url }}<br/>\nSession ID: {{ $('Create Zoom meeting').item.json.id }}<br/>\nPassword: {{ $('Create Zoom meeting').item.json.password }}<br/> ",
+            "options": {},
+            "subject": "=🎉 {{ $('Creation Form').item.json.title }} has been created!"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "DMcPDN0IHPwGmI7f",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "40f66f09-19c9-40eb-a9c4-138464ccd371",
+          "name": "Create participant list",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            840,
+            480
+          ],
+          "parameters": {
+            "title": "={{ $('Creation Form').item.json.date_start }} - {{ $('Creation Form').item.json.title }} - {{ $('Create Stripe Product').item.json.created }}",
+            "options": {
+              "index": 0,
+              "sheetId": "={{ $('Create Stripe Product').item.json.created }}"
+            },
+            "operation": "create",
+            "documentId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Config').item.json.sheet_url }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "RICzFHixgHXMuKmg",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.3,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "67ff21d2-57b8-4ccd-91ee-a1bff1ea23b2",
+          "name": "Add participant to list",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            400,
+            800
+          ],
+          "parameters": {
+            "columns": {
+              "value": {},
+              "schema": [
+                {
+                  "id": "city",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "city",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "email",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "email",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "country",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "country",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "postal_code",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "postal_code",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "amount",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "amount",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "currency",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "currency",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "autoMapInputData",
+              "matchingColumns": []
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('On payment').item.json.data.object.metadata.event_sheet_id }}"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Config').item.json.sheet_url }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "RICzFHixgHXMuKmg",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.3
+        },
+        {
+          "id": "67e317ba-77d5-4f77-8fe2-d38e1a68c6f1",
+          "name": "Send confirmation to participant",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            620,
+            800
+          ],
+          "parameters": {
+            "sendTo": "={{ $('On payment').item.json.data.object.customer_details.email }}",
+            "message": "=Dear {{ $('On payment').item.json.data.object.customer_details.name }},<br/><br/>\n\nWe are very happy to announce that your subscription to our event <b>{{ $json.title }}</b> starting on <b>{{ $json.start }}</b> is now confirmed.<br/><br/>\n\nHere are the infos you will need to participate:<br/> \nZoom link:  {{ $('On payment').item.json.data.object.metadata.zoom_link }}<br/>\nZoom password:{{ $('On payment').item.json.data.object.metadata.zoom_password }}<br/>\nZoom ID: {{ $('On payment').item.json.data.object.metadata.zoom_id }}<br/><br/> \n\nLooking forward to see you there!<br/>\nKind regards<br/>",
+            "options": {
+              "appendAttribution": false
+            },
+            "subject": "Than you for your subscription 🙏"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "DMcPDN0IHPwGmI7f",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "ac5ca5f3-f9ca-494f-8e78-33dd663111ab",
+          "name": "Notify teacher",
+          "type": "n8n-nodes-base.gmail",
+          "position": [
+            840,
+            800
+          ],
+          "parameters": {
+            "sendTo": "={{ $('Config').item.json.teacher_email }}",
+            "message": "=<b>A new participant registred for the event {{ $('Retrieve event infos').item.json.title }} ({{ $('Retrieve event infos').item.json.start }})!</b><br/><br/>\n\n<b>Name: {{ $('On payment').item.json.data.object.customer_details.name }}</b><br/>\n<b>Email: {{ $('On payment').item.json.data.object.customer_details.email }}</b><br/><br/>\n\n<b>Participant list:</b><br/>\n{{ $('Config').item.json.sheet_url }}#gid={{ $('On payment').item.json.data.object.metadata.event_sheet_id }} ",
+            "options": {},
+            "subject": "New participant registred ☝️"
+          },
+          "credentials": {
+            "gmailOAuth2": {
+              "id": "DMcPDN0IHPwGmI7f",
+              "name": "Gmail account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "33e5283f-3854-4ada-8412-858c205f1d1e",
+          "name": "Create payment link",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            620,
+            480
+          ],
+          "parameters": {
+            "url": "https://api.stripe.com/v1/payment_links",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "contentType": "form-urlencoded",
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "line_items[0][price]",
+                  "value": "={{ $json.default_price }}"
+                },
+                {
+                  "name": "line_items[0][quantity]",
+                  "value": "1"
+                },
+                {
+                  "name": "metadata[event_sheet_id]",
+                  "value": "={{ $('Create Stripe Product').item.json.created }}"
+                },
+                {
+                  "name": "metadata[zoom_link]",
+                  "value": "={{ $('Create Zoom meeting').item.json.join_url }}"
+                },
+                {
+                  "name": "metadata[zoom_password]",
+                  "value": "={{ $('Create Zoom meeting').item.json.password }}"
+                },
+                {
+                  "name": "metadata[zoom_id]",
+                  "value": "={{ $('Create Zoom meeting').item.json.id }}"
+                },
+                {
+                  "name": "metadata[title]",
+                  "value": "={{ $('Creation Form').item.json.title }}"
+                },
+                {
+                  "name": "metadata[start_time]",
+                  "value": "={{ $('Create Zoom meeting').item.json.start_time }}"
+                },
+                {
+                  "name": "metadata[price]",
+                  "value": "={{ $('Creation Form').item.json.price }}"
+                },
+                {
+                  "name": "metadata[currency]",
+                  "value": "={{ $('Config').item.json.currency }}"
+                }
+              ]
+            },
+            "nodeCredentialType": "stripeApi"
+          },
+          "credentials": {
+            "stripeApi": {
+              "id": "qjose8z3RR7Xzm7b",
+              "name": "Stripe Dev"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "600c5382-bdac-4131-a784-399f5be2b54b",
+          "name": "Format participant",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            180,
+            800
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "dabd3bc2-ca92-4d99-a223-b0ad18945121",
+                  "name": "email",
+                  "type": "string",
+                  "value": "={{ $('On payment').item.json.data.object.customer_details.email }}"
+                },
+                {
+                  "id": "d40709f6-ffcd-4055-a374-9044a9a5e3b2",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $('On payment').item.json.data.object.customer_details.name }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "c8a90ac5-14cd-4ff2-bd5b-c35724f085d1",
+          "name": "Format event",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            840,
+            280
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "a29943ba-b516-41a8-8f85-5bcee5eda0d1",
+                  "name": "title",
+                  "type": "string",
+                  "value": "={{ $('Creation Form').item.json.title }}"
+                },
+                {
+                  "id": "bf642fde-c4c2-42b4-beed-ef65efdab55b",
+                  "name": "start",
+                  "type": "string",
+                  "value": "={{ $('Creation Form').item.json.date_start }}"
+                },
+                {
+                  "id": "33f7a58e-624d-4ccc-bbea-ed3365cede20",
+                  "name": "price",
+                  "type": "number",
+                  "value": "={{ $('Creation Form').item.json.price }}"
+                },
+                {
+                  "id": "c948f71e-3b12-4c6a-a1f9-ee9a511fe262",
+                  "name": "currency",
+                  "type": "string",
+                  "value": "={{ $('Config').item.json.currency }}"
+                },
+                {
+                  "id": "887461ca-db0d-442e-8008-5fe6a6fbdd8f",
+                  "name": "zoom_link",
+                  "type": "string",
+                  "value": "={{ $('Create Zoom meeting').item.json.join_url }}"
+                },
+                {
+                  "id": "4b2bd5e2-3bd5-443a-94a3-9ababfd9d881",
+                  "name": "zoom_id",
+                  "type": "string",
+                  "value": "={{ $('Create Zoom meeting').item.json.id }}"
+                },
+                {
+                  "id": "a1cea8e2-9954-4143-b71f-5ea194a873dd",
+                  "name": "zoom_password",
+                  "type": "string",
+                  "value": "={{ $('Create Zoom meeting').item.json.password }}"
+                },
+                {
+                  "id": "faa52bc6-dfbe-49e2-bc95-dae198a61293",
+                  "name": "payment_link",
+                  "type": "string",
+                  "value": "={{ $json.url }}"
+                },
+                {
+                  "id": "d7f5f0f5-cc7b-436a-9ad1-0b8f410c62c6",
+                  "name": "payment_id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "020b22d0-f525-4120-9f8b-2fa33e88c2e1",
+                  "name": "event_sheet_id",
+                  "type": "string",
+                  "value": "={{ $json.metadata.event_sheet_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "def10b04-98c3-46cc-bdeb-9592c7466992",
+          "name": "Store event",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            1040,
+            280
+          ],
+          "parameters": {
+            "columns": {
+              "value": {},
+              "schema": [],
+              "mappingMode": "autoMapInputData",
+              "matchingColumns": []
+            },
+            "options": {},
+            "operation": "append",
+            "sheetName": {
+              "__rl": true,
+              "mode": "id",
+              "value": "0"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Config').item.json.sheet_url }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "RICzFHixgHXMuKmg",
+              "name": "Google Sheets account"
+            }
+          },
+          "typeVersion": 4.3,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "594fc7a1-f299-49c4-a25b-07cf2ced16f7",
+          "name": "Creation Form",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            -500,
+            480
+          ],
+          "webhookId": "1c6fe52c-48ab-4688-b5ae-7e24361aa603",
+          "parameters": {
+            "path": "1c6fe52c-48ab-4688-b5ae-7e24361aa602",
+            "options": {},
+            "formTitle": "Create a new meeting",
+            "formFields": {
+              "values": [
+                {
+                  "fieldLabel": "title",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "number",
+                  "fieldLabel": "price",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "date",
+                  "fieldLabel": "date_start",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "number",
+                  "fieldLabel": "hour"
+                },
+                {
+                  "fieldType": "number",
+                  "fieldLabel": "minute"
+                }
+              ]
+            },
+            "responseMode": "lastNode",
+            "formDescription": "This automates the creation of a Zoom Meeting and a Stripe Payment page, streamlining your event setup process."
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "18fec11b-da39-4fe2-afab-d1585e3d9a99",
+          "name": "On payment",
+          "type": "n8n-nodes-base.stripeTrigger",
+          "disabled": true,
+          "position": [
+            -500,
+            780
+          ],
+          "webhookId": "ee7d6932-0583-47a3-b442-8bc161eee5e9",
+          "parameters": {
+            "events": [
+              "checkout.session.completed"
+            ]
+          },
+          "credentials": {
+            "stripeApi": {
+              "id": "qjose8z3RR7Xzm7b",
+              "name": "Stripe Dev"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1d95a7a5-7ddc-4338-9784-1d0554f39808",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -220,
+            118
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 275.01592825011585,
+            "height": 468.76027109756643,
+            "content": "# Setup\n### 1/ Add Your credentials\n[Zoom](https://docs.n8n.io/integrations/builtin/credentials/zoom/)\n[Google](https://docs.n8n.io/integrations/builtin/credentials/google/)\n[Stripe](https://docs.n8n.io/integrations/builtin/credentials/stripe/)\n\nNote: For Google, you need to add Gmail and Google Sheet.\n\n### 2/ Create a [new Google Sheet](https://sheets.new/).\nKeep this sheet blank for now; it contains your meeting and participant information. Place it wherever it fits best in your organization.\n\n### 3/ And fill the config node\n# 👇"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "58312523-1bee-4a56-9ab2-dc166fe30573",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -920,
+            500
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 372,
+            "height": 200.14793114506386,
+            "content": "# Create a meeting 👉🏻\n\nYour journey to easy event management starts here.\n\nClick this node, copy the production URL, and keep it handy. It's your personal admin tool for quickly creating new meetings. Simple and efficient!"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "09153c6b-33cb-4fd1-8fa2-3513bca01f0c",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            620,
+            660
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 519.9859025074911,
+            "height": 106.11515926602786,
+            "content": "# 🖋️ Customize\n### Feel free to adapt email contents to your needs."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "da13aadc-eb3c-4d99-8e2b-3e56a40d09f3",
+          "name": "if is creation flow",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            -20,
+            640
+          ],
+          "parameters": {
+            "options": {
+              "looseTypeValidation": true
+            },
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "loose"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "40ddf809-1602-4120-ae7e-8be61437b50d",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $(\"Creation Form\").isExecuted }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ca62dd52-cb79-45c1-a26a-91ba4c16b6ed",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            180,
+            340
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 202.64787116404852,
+            "height": 85.79488430601403,
+            "content": "### Crafted by the\n## [🥷 n8n.ninja](https://n8n.ninja)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aebdc1b5-ccf7-4299-a8ec-10eb448c4d72",
+          "name": "the end",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1040,
+            800
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "active": true,
+      "pinData": {
+        "On payment": [
+          {
+            "json": {
+              "id": "evt_1Ou0e4BH8XCwzsfXEKVN0GkI",
+              "data": {
+                "object": {
+                  "id": "cs_test_a1G73c0pSu8hnD8y4we2ZVGy3MdmDuam1jLT07DqcBgYkuH1vOpWSkclBr",
+                  "url": null,
+                  "mode": "payment",
+                  "locale": "auto",
+                  "object": "checkout.session",
+                  "status": "complete",
+                  "consent": null,
+                  "created": 1710370285,
+                  "invoice": null,
+                  "ui_mode": "hosted",
+                  "currency": "eur",
+                  "customer": null,
+                  "livemode": false,
+                  "metadata": {
+                    "zoom_id": "86579738722",
+                    "zoom_link": "https://us06web.zoom.us/j/86579738722?pwd=i8QeOxKGO8GODInTP3gsYUjvrCYarA.1",
+                    "zoom_password": "260j",
+                    "event_sheet_id": "1710369993"
+                  },
+                  "shipping": null,
+                  "cancel_url": "https://stripe.com",
+                  "expires_at": 1710456685,
+                  "custom_text": {
+                    "submit": null,
+                    "after_submit": null,
+                    "shipping_address": null,
+                    "terms_of_service_acceptance": null
+                  },
+                  "submit_type": "auto",
+                  "success_url": "https://stripe.com",
+                  "amount_total": 2000,
+                  "payment_link": "plink_1Ou0ZCBH8XCwzsfXUongWL67",
+                  "setup_intent": null,
+                  "subscription": null,
+                  "automatic_tax": {
+                    "status": null,
+                    "enabled": false,
+                    "liability": null
+                  },
+                  "client_secret": null,
+                  "custom_fields": [],
+                  "shipping_rate": null,
+                  "total_details": {
+                    "amount_tax": 0,
+                    "amount_discount": 0,
+                    "amount_shipping": 0
+                  },
+                  "customer_email": null,
+                  "payment_intent": "pi_3Ou0e2BH8XCwzsfX14Vi1Pak",
+                  "payment_status": "paid",
+                  "recovered_from": null,
+                  "amount_subtotal": 2000,
+                  "after_expiration": null,
+                  "customer_details": {
+                    "name": "Emmanuel Bern",
+                    "email": "emm.bernard@gmail.com",
+                    "phone": null,
+                    "address": {
+                      "city": "Lausanne",
+                      "line1": "Avenue Charles Dickens 10",
+                      "line2": null,
+                      "state": null,
+                      "country": "CH",
+                      "postal_code": "1006"
+                    },
+                    "tax_ids": [],
+                    "tax_exempt": "none"
+                  },
+                  "invoice_creation": {
+                    "enabled": false,
+                    "invoice_data": {
+                      "footer": null,
+                      "issuer": null,
+                      "metadata": {},
+                      "description": null,
+                      "custom_fields": null,
+                      "account_tax_ids": null,
+                      "rendering_options": null
+                    }
+                  },
+                  "shipping_options": [],
+                  "customer_creation": "if_required",
+                  "consent_collection": null,
+                  "client_reference_id": null,
+                  "currency_conversion": null,
+                  "payment_method_types": [
+                    "card",
+                    "bancontact",
+                    "eps",
+                    "giropay",
+                    "ideal",
+                    "link",
+                    "klarna"
+                  ],
+                  "allow_promotion_codes": false,
+                  "payment_method_options": {
+                    "card": {
+                      "request_three_d_secure": "automatic"
+                    }
+                  },
+                  "phone_number_collection": {
+                    "enabled": false
+                  },
+                  "payment_method_collection": "always",
+                  "billing_address_collection": "auto",
+                  "shipping_address_collection": null,
+                  "payment_method_configuration_details": {
+                    "id": "pmc_1Om7TPBH8XCwzsfXBB30jrJh",
+                    "parent": null
+                  }
+                }
+              },
+              "type": "checkout.session.completed",
+              "object": "event",
+              "created": 1710370296,
+              "request": {
+                "id": null,
+                "idempotency_key": null
+              },
+              "livemode": false,
+              "api_version": "2020-08-27",
+              "pending_webhooks": 4
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "9e350a8f-30e0-43ab-8dab-a7edbfd637d8",
+      "connections": {
+        "Config": {
+          "main": [
+            [
+              {
+                "node": "if is creation flow",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On payment": {
+          "main": [
+            [
+              {
+                "node": "Config",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format event": {
+          "main": [
+            [
+              {
+                "node": "Store event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Creation Form": {
+          "main": [
+            [
+              {
+                "node": "Config",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Notify teacher": {
+          "main": [
+            [
+              {
+                "node": "the end",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format participant": {
+          "main": [
+            [
+              {
+                "node": "Add participant to list",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Zoom meeting": {
+          "main": [
+            [
+              {
+                "node": "Create Stripe Product",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create payment link": {
+          "main": [
+            [
+              {
+                "node": "Create participant list",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Format event",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "if is creation flow": {
+          "main": [
+            [
+              {
+                "node": "Create Zoom meeting",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Format participant",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Stripe Product": {
+          "main": [
+            [
+              {
+                "node": "Create payment link",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Add participant to list": {
+          "main": [
+            [
+              {
+                "node": "Send confirmation to participant",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create participant list": {
+          "main": [
+            [
+              {
+                "node": "Send email to teacher",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send confirmation to participant": {
+          "main": [
+            [
+              {
+                "node": "Notify teacher",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 20,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.set": {
+          "count": 3
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.zoom": {
+          "count": 1
+        },
+        "n8n-nodes-base.gmail": {
+          "count": 3
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 3
+        },
+        "n8n-nodes-base.stripeTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Emmanuel Bernard",
+      "username": "n8ninja",
+      "bio": "🎉 Do you want to master AI automation, so you can save time and build cool stuff?\n\nI’ve created a welcoming Skool community for non-technical yet resourceful learners.",
+      "verified": true,
+      "links": [
+        "https://www.skool.com/the-ai-atelier"
+      ],
+      "avatar": "https://gravatar.com/avatar/6c38a38d8002fa989515b5c11340ca14512f929dfd15a5a57422950f58441b12?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 54,
+        "icon": "file:stripe.svg",
+        "name": "n8n-nodes-base.stripeTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-your-customer-journey-with-n8n-an-interview-with-blent-ai/",
+                  "icon": "🚀",
+                  "label": "Automate your customer journey with n8n: An interview with Blent.ai"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.stripetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/stripe/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Stripe Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjU0IC04MCAzNjAgMzYwIj48cGF0aCBkPSJNNDE0IDExMy40YzAtMjUuNi0xMi40LTQ1LjgtMzYuMS00NS44LTIzLjggMC0zOC4yIDIwLjItMzguMiA0NS42IDAgMzAuMSAxNyA0NS4zIDQxLjQgNDUuMyAxMS45IDAgMjAuOS0yLjcgMjcuNy02LjV2LTIwYy02LjggMy40LTE0LjYgNS41LTI0LjUgNS41LTkuNyAwLTE4LjMtMy40LTE5LjQtMTUuMmg0OC45YzAtMS4zLjItNi41LjItOC45bS00OS40LTkuNWMwLTExLjMgNi45LTE2IDEzLjItMTYgNi4xIDAgMTIuNiA0LjcgMTIuNiAxNnptLTYzLjUtMzYuM2MtOS44IDAtMTYuMSA0LjYtMTkuNiA3LjhsLTEuMy02LjJoLTIydjExNi42bDI1LTUuMy4xLTI4LjNjMy42IDIuNiA4LjkgNi4zIDE3LjcgNi4zIDE3LjkgMCAzNC4yLTE0LjQgMzQuMi00Ni4xLS4xLTI5LTE2LjYtNDQuOC0zNC4xLTQ0LjhtLTYgNjguOWMtNS45IDAtOS40LTIuMS0xMS44LTQuN2wtLjEtMzcuMWMyLjYtMi45IDYuMi00LjkgMTEuOS00LjkgOS4xIDAgMTUuNCAxMC4yIDE1LjQgMjMuMyAwIDEzLjQtNi4yIDIzLjQtMTUuNCAyMy40bS03MS4zLTc0LjggMjUuMS01LjRWMzZsLTI1LjEgNS4zem0wIDcuNmgyNS4xdjg3LjVoLTI1LjF6bS0yNi45IDcuNC0xLjYtNy40aC0yMS42djg3LjVoMjVWOTcuNWM1LjktNy43IDE1LjktNi4zIDE5LTUuMnYtMjNjLTMuMi0xLjItMTQuOS0zLjQtMjAuOCA3LjRtLTUwLTI5LjEtMjQuNCA1LjItLjEgODAuMWMwIDE0LjggMTEuMSAyNS43IDI1LjkgMjUuNyA4LjIgMCAxNC4yLTEuNSAxNy41LTMuM1YxMzVjLTMuMiAxLjMtMTkgNS45LTE5LTguOVY5MC42aDE5VjY5LjNoLTE5ek03OS4zIDk0LjdjMC0zLjkgMy4yLTUuNCA4LjUtNS40IDcuNiAwIDE3LjIgMi4zIDI0LjggNi40VjcyLjJjLTguMy0zLjMtMTYuNS00LjYtMjQuOC00LjZDNjcuNSA2Ny42IDU0IDc4LjIgNTQgOTUuOWMwIDI3LjYgMzggMjMuMiAzOCAzNS4xIDAgNC42LTQgNi4xLTkuNiA2LjEtOC4zIDAtMTguOS0zLjQtMjcuMy04djIzLjhjOS4zIDQgMTguNyA1LjcgMjcuMyA1LjcgMjAuOCAwIDM1LjEtMTAuMyAzNS4xLTI4LjItLjEtMjkuOC0zOC4yLTI0LjUtMzguMi0zNS43IiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojNjM1YmZmIi8+PC9zdmc+"
+        },
+        "displayName": "Stripe Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      },
+      {
+        "id": 341,
+        "icon": "file:zoom.svg",
+        "name": "n8n-nodes-base.zoom",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zoom/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/zoom/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Zoom"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjUgNjUiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZD0iTTAgMzJDMCAxNC4yNzIgMTQuMjcyIDAgMzIgMHMzMiAxNC4yNzIgMzIgMzItMTQuMjcyIDMyLTMyIDMyUzAgNDkuNzI4IDAgMzIiLz48cGF0aCBmaWxsPSIjNGE4Y2ZmIiBkPSJNMy4xMzcgMzJBMjguOCAyOC44IDAgMCAxIDMyIDMuMTM3IDI4LjggMjguOCAwIDAgMSA2MC44NjIgMzIgMjguOCAyOC44IDAgMCAxIDMyIDYwLjg2MiAyOC44IDI4LjggMCAwIDEgMy4xMzcgMzIiLz48cGF0aCBkPSJtNDAuNzg0IDI4LjI1NCA4LjE1Ny01Ljk2MWMuNzEyLS41OCAxLjI1NS0uNDQ1IDEuMjU1LjYyN3YxOC4xNzdjMCAxLjIwNS0uNjc4IDEuMDY3LTEuMjU1LjYyN2wtOC4xNTctNS45NjF6bS0yNy42MDgtNS4yODl2MTMuNTUzYTUuNTUgNS41NSAwIDAgMCA1LjU3NSA1LjUyMmgxOS43NjVhMS4wMSAxLjAxIDAgMCAwIDEuMDEzLTEuMDA0VjI3LjQ4M2E1LjU1IDUuNTUgMCAwIDAtNS41NzUtNS41MjJIMTQuMTg5YTEuMDEgMS4wMSAwIDAgMC0xLjAxMyAxLjAwNCIvPjwvZz48L3N5bWJvbD48L3N2Zz4="
+        },
+        "displayName": "Zoom",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 356,
+        "icon": "file:gmail.svg",
+        "name": "n8n-nodes-base.gmail",
+        "codex": {
+          "data": {
+            "alias": [
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gmail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Gmail"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMTkzIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PHBhdGggZmlsbD0iIzQyODVGNCIgZD0iTTU4LjE4MiAxOTIuMDVWOTMuMTRMMjcuNTA3IDY1LjA3NyAwIDQ5LjUwNHYxMjUuMDkxYzAgOS42NTggNy44MjUgMTcuNDU1IDE3LjQ1NSAxNy40NTV6Ii8+PHBhdGggZmlsbD0iIzM0QTg1MyIgZD0iTTE5Ny44MTggMTkyLjA1aDQwLjcyN2M5LjY1OSAwIDE3LjQ1NS03LjgyNiAxNy40NTUtMTcuNDU1VjQ5LjUwNWwtMzEuMTU2IDE3LjgzNy0yNy4wMjYgMjUuNzk4eiIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im01OC4xODIgOTMuMTQtNC4xNzQtMzguNjQ3IDQuMTc0LTM2Ljk4OUwxMjggNjkuODY4bDY5LjgxOC01Mi4zNjQgNC42NyAzNC45OTItNC42NyA0MC42NDRMMTI4IDE0NS41MDR6Ii8+PHBhdGggZmlsbD0iI0ZCQkMwNCIgZD0iTTE5Ny44MTggMTcuNTA0VjkzLjE0TDI1NiA0OS41MDRWMjYuMjMxYzAtMjEuNTg1LTI0LjY0LTMzLjg5LTQxLjg5LTIwLjk0NXoiLz48cGF0aCBmaWxsPSIjQzUyMjFGIiBkPSJtMCA0OS41MDQgMjYuNzU5IDIwLjA3TDU4LjE4MiA5My4xNFYxNy41MDRMNDEuODkgNS4yODZDMjQuNjEtNy42NiAwIDQuNjQ2IDAgMjYuMjN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Gmail",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

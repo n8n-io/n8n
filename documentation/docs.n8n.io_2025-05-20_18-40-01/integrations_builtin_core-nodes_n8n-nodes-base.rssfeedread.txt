@@ -1,0 +1,38 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.rssfeedread/
+Scraped_At: 2025-05-20T18:56:32.395212
+
+RSS Read
+#
+Use the RSS Read node to read data from RSS feeds published on the internet.
+Node parameters
+#
+URL
+: Enter the URL for the RSS publication you want to read.
+Node options
+#
+Ignore SSL Issues
+: Choose whether n8n should ignore SSL/TLS verification (turned on) or not (turned off).
+Templates and examples
+#
+AI-Powered Information Monitoring with OpenAI, Google Sheets, Jina AI and Slack
+by Dataki
+View template details
+Personalized AI Tech Newsletter Using RSS, OpenAI and Gmail
+by Miha
+View template details
+Get data from multiple RSS feeds to Telegram
+by Valor
+View template details
+Browse RSS Read integration templates
+, or
+search all templates
+Related resources
+#
+n8n provides a trigger node for RSS Read. You can find the trigger node docs
+here
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

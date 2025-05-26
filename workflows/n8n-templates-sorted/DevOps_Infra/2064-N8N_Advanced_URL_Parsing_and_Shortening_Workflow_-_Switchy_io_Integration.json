@@ -1,0 +1,3877 @@
+{
+  "workflow": {
+    "id": 2064,
+    "name": "N8N Advanced URL Parsing and Shortening Workflow - Switchy.io Integration",
+    "views": 844,
+    "recentViews": 0,
+    "totalViews": 844,
+    "createdAt": "2024-01-24T19:24:32.055Z",
+    "description": "[![Video Overview of template  Advanced URL Parsing and Shortening Workflow - Switchy.io Integration](https://img.youtube.com/vi/c7yCZhmMjtI/maxresdefault.jpg)](https://youtu.be/c7yCZhmMjtI)\n\n## Overview\n\nThis N8N workflow facilitates advanced URL parsing and shortening, incorporating metadata extraction, OpenGraph tag handling, and integration with Switchy API for link management. It employs various nodes for URL processing, metadata extraction, and creation or updating of shortened links with enriched metadata.\n\n![Screenshot of template  Advanced URL Parsing and Shortening Workflow - Switchy.io Integration](https://live.staticflickr.com/65535/53646661632_fe2acba561_o.png)\n\n## Features\n\n- **URL Metadata Extraction:** Parses URLs to extract metadata such as titles, descriptions, images, and favicons.\n- **OpenGraph API Integration:** Utilizes OpenGraph API for detailed metadata retrieval.\n- **Switchy API Integration:** Manages shortened links via the Switchy API.\n- **GitHub API Integration:** Uses GitHub for hosting images related to the URLs.\n- **Screenshot Capabilities:** Captures screenshots of web pages as part of metadata.\n- **API Authorization and Configuration:** Manages API keys and configurations for external service integration.\n\n## Workflow Structure\n\n1. **Split In Batches:** Processes URLs in batches.\n2. **API Auth:** Configures API authorization.\n3. **URL Processing Nodes:** Extract metadata using various nodes like Get Headers, OpenGraph API, and Meta tags Scraper.\n4. **Conditional Nodes:** Include IF OpenGraph Invalid and If - Enable ScreenShots for logic handling.\n5. **Data Aggregation:** Uses nodes like Method 1 - META for final metadata aggregation.\n6. **Switchy API:** Handles link creation and updating.\n7. **GitHub Integration:** Hosts screenshots and images on a personal GitHub repository.\n8. **Final Output:** Provides the shortened URL after processing.\n\n## API Stack\n\n| API                         | Description                                     |\n|---------------------------------|-------------------------------------------------|\n| `switchy`                | For creating and updating shortened links.      |\n| `opengraph`             | To retrieve URL metadata using OpenGraph tags.  |\n| `dub.sh`                    | Used for scraping meta tags from web pages.     |\n| `microlink`              | Captures screenshots of web pages.              |\n| `pxl.to`                    | Alternative service for capturing screenshots.  |\n| `favicone`                  | Retrieves favicons for given URLs.              |\n| `github`                    | Hosts images and screenshots on GitHub repo.    |\n| `statically`             | Used for CDN services and image hosting.        |\n| _Other APIs_                    | _Additional APIs used for various purposes._    |\n\n## GitHub Repository Setup\n\nTo use this workflow, ensure your GitHub API is linked for hosting images. Set up a repository where the workflow can upload screenshots and other related images. This repository will be referenced in the workflow nodes where images are handled.\n\n## Configuration\n\nBefore running the workflow, set up the necessary API keys and configurations in the **API Auth** node. Adjust batch size and other parameters as needed.\n\n## Error Handling\n\nThe workflow includes nodes like **Stop and Error** for robust error handling, post an issue and mention the creator using [N8N community](https://community.n8n.io).\n\n## Contributions\n\nThis workflow is open for community contributions. Enhancements and improvements are welcome.",
+    "workflow": {
+      "meta": {},
+      "name": "[n8n] Advanced URL Parsing and Shortening Workflow - Switchy.io Integration",
+      "tags": [
+        {
+          "id": "RHVi",
+          "name": "Dub",
+          "createdAt": "2024-04-09T17:46:08.436Z",
+          "updatedAt": "2024-04-09T17:46:08.436Z"
+        },
+        {
+          "id": "U3dpdGNoeQ",
+          "name": "Switchy",
+          "createdAt": "2024-04-09T17:46:08.436Z",
+          "updatedAt": "2024-04-09T17:46:08.436Z"
+        },
+        {
+          "id": "UHhs",
+          "name": "Pxl",
+          "createdAt": "2024-04-09T17:46:08.436Z",
+          "updatedAt": "2024-04-09T17:46:08.436Z"
+        },
+        {
+          "id": "Tm9ydG9u",
+          "name": "Norton",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "Qml0ZGVmZW5kZXI",
+          "name": "Bitdefender",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "U3BsaXRJbkJhdGNoZXM",
+          "name": "SplitInBatches",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "SHR0cFJlcXVlc3Q",
+          "name": "HttpRequest",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "SHRtbA",
+          "name": "Html",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "Q29udmVydFRvRmlsZQ",
+          "name": "ConvertToFile",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "QWdncmVnYXRl",
+          "name": "Aggregate",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "R2l0aHVi",
+          "name": "Github",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "R2l0aHViQXBp",
+          "name": "GithubApi",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "U3RvcEFuZEVycm9y",
+          "name": "StopAndError",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "Rm9ybVRyaWdnZXI",
+          "name": "FormTrigger",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "UmVzcG9uZFRvV2ViaG9vaw",
+          "name": "RespondToWebhook",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        },
+        {
+          "id": "dGVtcGxhdGVz",
+          "name": "templates",
+          "createdAt": "2024-04-09T17:46:08.437Z",
+          "updatedAt": "2024-04-09T17:46:08.437Z"
+        }
+      ],
+      "nodes": [
+        {
+          "name": "Split In Batches",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            3140,
+            9383.397766717584
+          ],
+          "parameters": {
+            "options": {},
+            "batchSize": 1
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3080,
+            9783.397766717584
+          ],
+          "parameters": {
+            "width": 1249.1706015670397,
+            "height": 685.2594193361641,
+            "content": "## URL META TAGS DATA\n**This part** is used to parse long link data like title, descraption, image all them served in header with tags called. [URL metadata](https://ogp.me/)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            5240,
+            10223.397766717584
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 346.4519761795601,
+            "height": 241.68171599985524,
+            "content": "## Switchy API Limits:\n- 10.000 links/day.\n- 1.000 links/hour max.\n- 16 links /minute max."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Get Headers",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "position": [
+            3160,
+            10123.397766717584
+          ],
+          "parameters": {
+            "url": "={{ $('API Auth').item.json.LongURL }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "OpenGraph API",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "position": [
+            3160,
+            9923.397766717584
+          ],
+          "parameters": {
+            "url": "=https://www.opengraph.xyz/api/metadata/{{ $('API Auth').item.json.LongURL.urlEncode()}}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
+                },
+                {
+                  "name": "Accept",
+                  "value": "*/*"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "Referer",
+                  "value": "=https://www.opengraph.xyz/url/{{ $('API Auth').item.json.LongURL.urlEncode()}}"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "same-origin"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "cookie",
+                  "value": "crisp-client%2Fsession%2Fbb1ac897-aa52-4f90-b0e1-e191cb403caf=session_a7a69e83-51f6-4a3b-a101-68fc6d33aca7;"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Meta tags Scraper - dub.sh",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "position": [
+            3160,
+            10303.397766717584
+          ],
+          "parameters": {
+            "url": "https://app.dub.co/api/edge/metatags",
+            "options": {},
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "={{ $item(\"0\").$node[\"API Auth\"].json[\"LongURL\"] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "authority",
+                  "value": "app.dub.co"
+                },
+                {
+                  "name": "accept",
+                  "value": "*/*"
+                },
+                {
+                  "name": "accept-language",
+                  "value": "en-GB,en;q=0.9,en-US;q=0.8"
+                },
+                {
+                  "name": "cache-control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "dnt",
+                  "value": "1"
+                },
+                {
+                  "name": "pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "sec-ch-ua",
+                  "value": "\"Not_A Brand\";v=\"8\", \"Chromium\";v=\"120\", \"Microsoft Edge\";v=\"120\""
+                },
+                {
+                  "name": "sec-ch-ua-mobile",
+                  "value": "?0"
+                },
+                {
+                  "name": "sec-ch-ua-platform",
+                  "value": "\"Windows\""
+                },
+                {
+                  "name": "sec-fetch-dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "sec-fetch-mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "sec-fetch-site",
+                  "value": "same-origin"
+                },
+                {
+                  "name": "user-agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "name": "IF OpenGraph invaild",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3400,
+            9903.397766717584
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "b9f7d88d-4626-4e2c-a04c-ae8f9d4aed93",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notEquals"
+                  },
+                  "leftValue": "={{ $ifEmpty($json.data,'Unauthorized access') }}",
+                  "rightValue": "Unauthorized access"
+                },
+                {
+                  "id": "046b5c40-b6a4-434e-aa8e-d3b6c601f16d",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.body.error }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Parse headers",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            3360,
+            10100
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "ogTitle",
+                  "attribute": "content",
+                  "cssSelector": "meta[property^=\"og:title\"], meta[name=\"og:title\"], meta[property=\"twitter:title\"], meta[name=\"twitter:title\"]",
+                  "returnValue": "attribute"
+                },
+                {
+                  "key": "ogDescription",
+                  "attribute": "content",
+                  "cssSelector": "meta[name=\"description\"], meta[property=\"og:description\"], meta[property=\"twitter:description\"]",
+                  "returnValue": "attribute"
+                },
+                {
+                  "key": "ogImage",
+                  "attribute": "content",
+                  "cssSelector": "meta[property^=\"og:image\"], meta[name=\"og:image\"], meta[property=\"twitter:image\"], meta[name=\"twitter:image\"]",
+                  "returnValue": "attribute"
+                },
+                {
+                  "key": "favicon",
+                  "attribute": "href",
+                  "cssSelector": "link[rel=\"shortcut icon\"], link[rel=\"icon\"], link[rel=\"apple-touch-icon\"], link[rel=\"apple-touch-startup-image\"]",
+                  "returnValue": "attribute"
+                },
+                {
+                  "key": "Image",
+                  "attribute": "href",
+                  "cssSelector": "link[rel=\"preload\"][as=\"image\"],link[as=\"image\"]",
+                  "returnValue": "attribute"
+                },
+                {
+                  "key": "ogTitle",
+                  "cssSelector": "title",
+                  "returnValue": "html"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "If - Enable ScreenShots (yes to enable)",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            4040,
+            10080
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "cfcdcf45-822e-4e7a-bd7f-5fb321f96acd",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ ($if(\n  $('API Auth').item.json[\"OpenGraph Image Mode\"] = 'screenshot',\n  \"screenshot\")) }}",
+                  "rightValue": "=screenshot"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            4340,
+            9783.397766717584
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 885.4276629872791,
+            "height": 682.7545654243127,
+            "content": "# Screenshot stack"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "API Auth",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3600,
+            9160
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "OpenGraph Image Mode",
+                  "stringValue": "={{ $json['What\\'s OG Image method you like ?'].toLowerCase() }}"
+                },
+                {
+                  "name": "Dark Mode ?",
+                  "type": "booleanValue",
+                  "booleanValue": "={{ $json['With your brand, Do you Like dark mode ?'].replace('no','false').replace('yes','true') }}"
+                },
+                {
+                  "name": "Brand Name",
+                  "stringValue": "NodeMation"
+                },
+                {
+                  "name": "Switchy API Key",
+                  "stringValue": "={{ $json['What\\'s your Switchy API Key'] }}"
+                },
+                {
+                  "name": "LongURL",
+                  "stringValue": "={{ $json['What\\'s Your LongURL ?'].match(/\\b((?:https?|ftp):\\/\\/[^\\s/$.?#].[^\\s]*)/g)[0] }}"
+                },
+                {
+                  "name": "Scan LongURL",
+                  "stringValue": "={{ $json['scan Long URLs from virus/Phishing ? (Shorting a phishing URL will ban your domain from SEO)'] }}"
+                },
+                {
+                  "name": "Custom slug",
+                  "stringValue": "=<Optional: Slug is the path of shortened URL - default is random 5 chars> "
+                },
+                {
+                  "name": "tags",
+                  "stringValue": "=<Optional: Add tags if you need, each keyword seperated by \",\" for example: Marketing, Media, Shortened> "
+                },
+                {
+                  "name": "Switchy Folder ID",
+                  "stringValue": "<Optional: Enter Your Switchy Folder ID>"
+                },
+                {
+                  "name": "Custom Domain (CNAME)",
+                  "stringValue": "=<Optional: Use your custom domain linked to Switchy, otherwise keep it empty to use default domain swiy.co>"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "Method 1 - META",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3620,
+            9923.397766717584
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "ogTitle",
+                  "stringValue": "={{\n      // We used IFempty of title then use descraption, if the title giving no title output value then replace with descraption value, if no value for both then use empty value output.\n      // The domain name (Host)\n      // if the image url not found then use long URL host.\n \n($ifEmpty($json[\"body\"][\"metadata\"][\"ogTitle\"], ($json[\"body\"][\"metadata\"][\"domain\"], $(\"API Auth\").item.json[\"LongURL\"])\n        // This Regex to delete Any https:// or path from the url.\n        .match(/https?:\\/\\/[^\\/]+/)[0]\n        .replace(/https?:\\/\\//, \"\")\n      ))\n }}"
+                },
+                {
+                  "name": "ogDescription",
+                  "stringValue": "=  {{\n    // We used IFempty of descraption then use title, if the descraption giving no descraption output value then replace with title value, if no value for both then use empty value output.\n    $ifEmpty(\n      $json[\"body\"][\"metadata\"][\"ogDescription\"],\n      $json[\"body\"][\"metadata\"][\"ogSiteName\"]\n    ) || \"\"\n  }}"
+                },
+                {
+                  "name": "ogImage",
+                  "stringValue": "={{\n  // Constructing the base URL for the CDN\n  \"https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/\" +\n  // Adding the title, URL encoded\n  ($ifEmpty($json[\"body\"][\"metadata\"][\"ogTitle\"], $json[\"body\"][\"metadata\"][\"ogSiteName\"]).urlEncode() || \"\") +\n  \"/\" +\n  // Adding the description, URL encoded\n  ($ifEmpty($json[\"body\"][\"metadata\"][\"ogDescription\"], $json[\"body\"][\"metadata\"][\"ogTitle\"]).urlEncode() || \"\") +\n  \"/\" +\n  // Handling different OpenGraph Image Modes\n  (\n    $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'screenshot',\n      \"<SCR>\",\n      $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'brand',\n        (\n          \"https://cdn.statically.io/og/theme=\" +\n          ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n            .replace(\"false\", \"white/\")\n            .replace(\"true\", \"dark/\") +\n          (\n            (`%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20`+ $(\"API Auth\").item.json[\"Brand Name\"].slice(0,18) + '%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C') ||\n            $json[\"body\"][\"metadata\"][\"ogTitle\"].toUpperCase() ||\n            $json[\"body\"][\"metadata\"][\"ogDescription\"].toUpperCase() ||\n            \"Short Link\"\n          ) + '.jpg'\n        ).urlEncode(),\n        $ifEmpty(\n          $json[\"body\"][\"metadata\"][\"ogImage\"][\"url\"] || $json[\"body\"][\"metadata\"][\"image\"],\n          \"https://cdn.statically.io/og/theme=\" +\n            ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n              .replace(\"false\", \"white/\")\n              .replace(\"true\", \"dark/\") +\n            \"Default.jpg\"\n        ).urlEncode()\n      )\n    )\n  ) +\n  \"/og.png\"\n}}"
+                },
+                {
+                  "name": "Favicon",
+                  "stringValue": "={{ $ifEmpty($json[\"body\"][\"metadata\"][\"favicon\"],\n(\n      // Get the Favicon url, if not available then generate api request to get it with:\n      \"https://favicone.com/\" +\n        // Get the image failed to export how from it if not found then use LongURL.\n        $ifEmpty(\n          $json[\"body\"][\"metadata\"][\"fullUrl\"],\n          $('API Auth').item.json[\"LongURL\"]\n        )\n          // This Regex to delete Any https:// or path from the url.\n          .match(/https?:\\/\\/[^\\/]+/)[0]\n          .replace(/https?:\\/\\//, \"\") +\n        // This Parameter to resize the favicon into 32pixels.\n        \"?s=32\"\n)) }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "Convert to File",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            4440,
+            10263.397766717584
+          ],
+          "parameters": {
+            "options": {
+              "dataIsBase64": true
+            },
+            "operation": "toBinary",
+            "sourceProperty": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Final Data",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4980,
+            9883.397766717584
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Title",
+                  "stringValue": "={{ $item(\"0\").$node[\"Final Meta\"].json[\"data\"][\"0\"][\"ogTitle\"] }}"
+                },
+                {
+                  "name": "Description",
+                  "stringValue": "={{ $item(\"0\").$node[\"Final Meta\"].json[\"data\"][\"0\"][\"ogDescription\"].replace(/\\s{2,}/g, ' ').replace(/^\\s+|\\s{3,}/g, '') }}"
+                },
+                {
+                  "name": "ogImage",
+                  "stringValue": "={{ ($('Host OGImage').item.json[\"content\"][\"download_url\"]||'').replace('https://raw.githubusercontent.com/','https://cdn.statically.io/gh/')}}"
+                },
+                {
+                  "name": "Favicon",
+                  "stringValue": "={{ ($item(\"0\").$node[\"Host Favicon\"].json[\"content\"][\"download_url\"]||'').replace('https://raw.githubusercontent.com/','https://cdn.statically.io/gh/')}}"
+                },
+                {
+                  "name": "=url",
+                  "stringValue": "={{ $('API Auth').item.json.LongURL }}"
+                },
+                {
+                  "name": "slug",
+                  "stringValue": "={{ $('API Auth').item.json[\"Custom slug\"] }}"
+                },
+                {
+                  "name": "tags",
+                  "stringValue": "={{ $('API Auth').item.json.tags }}"
+                },
+                {
+                  "name": "folderId",
+                  "stringValue": "={{ $('API Auth').item.json[\"Switchy Folder ID\"] }}"
+                },
+                {
+                  "name": "api",
+                  "stringValue": "={{ $('API Auth').item.json[\"Switchy API Key\"] }}"
+                },
+                {
+                  "name": "name",
+                  "stringValue": "={{ $('API Auth').item.json[\"Brand Name\"] }}"
+                },
+                {
+                  "name": "domain",
+                  "stringValue": "={{ $('API Auth').item.json['Custom Domain (CNAME)'] }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {
+              "dotNotation": true,
+              "ignoreConversionErrors": true
+            }
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "CREATE",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Create Link",
+          "position": [
+            5280,
+            9883.397766717584
+          ],
+          "parameters": {
+            "url": "https://api.switchy.io/v1/links/create",
+            "method": "POST",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 15,
+                  "batchInterval": 60000
+                }
+              },
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "jsonBody": "={  \"link\": {\n    \"url\": \"{{ $json[\"url\"] }}\",\n\n    {{($ifEmpty(('\"tags\": \"' + $json[\"tags\"]+'\",'),'')\n// Replace Undefiend with default one, and default template texts with none.\n.replace('\"tags\": \"undefined\",','')\n.replace('\"tags\": \"<Optional: Add tags if you need, each keyword seperated by \",\" for example: Marketing, Media, Shortened> \",','')\n) }}\n\n    {{($ifEmpty(('\"domain\": \"' + $json[\"domain\"]+'\",'),'')\n// Replace Undefiend with default one, and default template texts with none.\n.replace('\"undefined\",','\"swiy.co\",')\n.replace('\"<Optional: Use your custom domain linked to Switchy, otherwise keep it empty to use default domain swiy.co>\",','\"swiy.co\",')) }}\n\n    \"title\": \"{{$json[\"Title\"].slice(0,60)}}\",\n\n    {{($ifEmpty(('\"description\": \"' + $json[\"Description\"].slice(0,62)+'...\",'),'')\n.replace('\"description\": \"undefined\",','')) }}\n\n    {{($ifEmpty(('\"image\": \"' + $json[\"ogImage\"]+'\",'),'')\n.replace('\"image\": \"undefined\",','')) }}\n\n    \"id\": \"{{$ifEmpty($json[\"slug\"].replace('<Optional: Slug is the path of shortened URL - default is random 5 chars> ',''),Array.from({ length: 5 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''))}}\",\n\n    {{($ifEmpty(('\"folderId\": \"' + $json[\"folderId\"]+'\",'),'')\n.replace('\"folderId\": undefined,','')\n.replace('\"folderId\": \"<Optional: Enter Your Switchy Folder ID>\",','')) }}\n\n    \"favicon\": \"{{$json[\"Favicon\"]}}\",\n\n    \"note\": \"{{ 'Created through N8N.io Workflow name: ' + $workflow.name }}\"  }}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Api-Authorization",
+                  "value": "={{ $item(\"0\").$node[\"Final Data\"].json[\"api\"] }}"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "UPDATE",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            5280,
+            10043.397766717584
+          ],
+          "parameters": {
+            "url": "=https://api.switchy.io/v1/links/by-domain/{{ $json.body.domain }}/{{ $json.body.id }}",
+            "method": "PUT",
+            "options": {
+              "batching": {
+                "batch": {
+                  "batchSize": 15,
+                  "batchInterval": 60000
+                }
+              },
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {
+                  "neverError": true,
+                  "fullResponse": true
+                }
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "jsonBody": "={  \"link\": {\n    \"url\": \"{{ $item(\"0\").$node[\"Final Data\"].json[\"url\"] }}\",\n\n    {{($ifEmpty(('\"tags\": \"' + $json[\"tags\"]+'\",'),'')\n// Replace Undefiend with default one, and default template texts with none.\n.replace('\"tags\": \"undefined\",','')\n.replace('\"tags\": \"<Optional: Add tags if you need, each keyword seperated by \",\" for example: Marketing, Media, Shortened> \",','')\n) }}\n\n    {{($ifEmpty(('\"domain\": \"' + $json[\"domain\"]+'\",'),'')\n// Replace Undefiend with default one, and default template texts with none.\n.replace('\"undefined\",','\"swiy.co\",')\n.replace('\"<Optional: Use your custom domain linked to Switchy, otherwise keep it empty to use default domain swiy.co>\",','\"swiy.co\",')) }}\n\n    \"title\": \"{{ $item(\"0\").$node[\"Final Data\"].json[\"Title\"].slice(0,60) }}\",\n\n    {{($ifEmpty(('\"description\": \"' + $item(\"0\").$node[\"Final Data\"].json[\"Description\"].slice(0,62)+'...\",'),'')\n.replace('\"description\": \"undefined\",','')) }}\n\n    {{($ifEmpty(('\"image\": \"' + $json[\"ogImage\"]+'\",'),'')\n.replace('\"image\": \"undefined\",','')) }}\n\n    {{($ifEmpty(('\"folderId\": \"' + $json[\"folderId\"]+'\",'),'')\n.replace('\"folderId\": undefined,','')\n.replace('\"folderId\": \"<Optional: Enter Your Switchy Folder ID>\",','')) }}\n\n    \"favicon\": \"{{$item(\"0\").$node[\"Final Data\"].json[\"Favicon\"]}}\",\n\n    \"note\": \"{{ 'Created through N8N.io Workflow name: ' + $workflow.name }}\"  }}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Api-Authorization",
+                  "value": "={{ $item(\"0\").$node[\"Final Data\"].json[\"api\"] }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "disabled": true,
+          "position": [
+            5240,
+            9783.397766717584
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 344.6623616873581,
+            "height": 418.2992490141105,
+            "content": "## Switchy API\n**Create or Update** Link. [Based on their API docs](https://google.com)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "IF Slug available",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            5420,
+            9883.397766717584
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{ $json.statusCode }}",
+                  "value2": "201",
+                  "operation": "regex"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Final Meta",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            3880,
+            10080
+          ],
+          "parameters": {
+            "options": {
+              "includeBinaries": true
+            },
+            "aggregate": "aggregateAllItemData"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Host Screenshot",
+          "type": "n8n-nodes-base.github",
+          "position": [
+            4820,
+            9883.397766717584
+          ],
+          "parameters": {
+            "owner": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ARHAEEM",
+              "cachedResultUrl": "https://github.com/ARHAEEM",
+              "cachedResultName": "ARHAEEM"
+            },
+            "filePath": "=screenshots/{{$(\"API Auth\").item.json[\"LongURL\"].match(/https?:\\/\\/[^\\/]+/)[0].replace(/https?:\\/\\//, \"\")}}/scr/{{(Array.from({ length: 5 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''))}}.png",
+            "resource": "file",
+            "binaryData": true,
+            "repository": {
+              "__rl": true,
+              "mode": "list",
+              "value": "n8n-templates-demos",
+              "cachedResultUrl": "https://github.com/ARHAEEM/n8n-templates-demos",
+              "cachedResultName": "n8n-templates-demos"
+            },
+            "commitMessage": "={{ $('API Auth').item.json.LongURL }}",
+            "binaryPropertyName": "=data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Host OGImage",
+          "type": "n8n-nodes-base.github",
+          "position": [
+            4660,
+            10223.397766717584
+          ],
+          "parameters": {
+            "owner": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ARHAEEM",
+              "cachedResultUrl": "https://github.com/ARHAEEM",
+              "cachedResultName": "ARHAEEM"
+            },
+            "filePath": "=screenshots/{{$(\"API Auth\").item.json[\"LongURL\"].match(/https?:\\/\\/[^\\/]+/)[0].replace(/https?:\\/\\//, \"\")}}/og/{{(Array.from({ length: 5 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''))}}.png",
+            "resource": "file",
+            "binaryData": true,
+            "repository": {
+              "__rl": true,
+              "mode": "list",
+              "value": "n8n-templates-demos",
+              "cachedResultUrl": "https://github.com/ARHAEEM/n8n-templates-demos",
+              "cachedResultName": "n8n-templates-demos"
+            },
+            "commitMessage": "={{ $('API Auth').item.json.LongURL }}",
+            "binaryPropertyName": "=data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Host Favicon",
+          "type": "n8n-nodes-base.github",
+          "position": [
+            4980,
+            10223.397766717584
+          ],
+          "parameters": {
+            "owner": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ARHAEEM",
+              "cachedResultUrl": "https://github.com/ARHAEEM",
+              "cachedResultName": "ARHAEEM"
+            },
+            "filePath": "=screenshots/{{$(\"API Auth\").item.json[\"LongURL\"].match(/https?:\\/\\/[^\\/]+/)[0].replace(/https?:\\/\\//, \"\")}}/icon/{{(Array.from({ length: 5 }, () => String.fromCharCode(Math.floor(Math.random() * 26) + 97)).join(''))}}.png",
+            "resource": "file",
+            "binaryData": true,
+            "repository": {
+              "__rl": true,
+              "mode": "list",
+              "value": "n8n-templates-demos",
+              "cachedResultUrl": "https://github.com/ARHAEEM/n8n-templates-demos",
+              "cachedResultName": "n8n-templates-demos"
+            },
+            "commitMessage": "={{ $('API Auth').item.json.LongURL }}",
+            "binaryPropertyName": "=data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4820,
+            10063.397766717584
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "download_url",
+                  "stringValue": "={{ $json.content.download_url }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2380,
+            9060
+          ],
+          "parameters": {
+            "width": 682.2425599837106,
+            "height": 1405.2214458171302,
+            "content": "# README\n## N8N META Config\n### 1- **Opengraph Image mode**: `screenshot` or `source` or `brand`\n### - **screenshot**: _take a screenshot for web page based on longurl._\n[![Screenshort Mode Demo](https://live.staticflickr.com/65535/53485029368_917acda850_o.png)](https://cdn.statically.io/gh/ARHAEEM/n8n-templates-demos/main/screenshots/n8n.io/og/mefwo.png)\n### - **source**: _scrape the source longurl og image and use it_\n[![Source Mode Demo](https://live.staticflickr.com/65535/53485194899_d6141292eb_o.png)](https://cdn.statically.io/gh/ARHAEEM/n8n-templates-demos/main/screenshots/n8n.io/og/cowyl.png)\n### -  **brand**: _Generate blank background, color based on `Dark Mode` option_\n[![Brand Mode Demo Dark](https://live.staticflickr.com/65535/53484898721_94e15670b0_o.png)](https://cdn.statically.io/gh/ARHAEEM/n8n-templates-demos/main/screenshots/n8n.io/og/gvhok.png) [![Brand Mode Demo White](https://live.staticflickr.com/65535/53485202839_680a5e825b_o.png)](https://cdn.statically.io/gh/ARHAEEM/n8n-templates-demos/main/screenshots/n8n.io/og/yguse.png)\n### 2- **Dark Mode**: `true` or `false` (_Working with `brand` OGI mode only._)\n- **true**: generate **black** patteren as background og image for the texts.\n- **false**: generate **white** patteren as background og image for the texts.\n### 3- **Brand Name**: Used for `brand` ogi background. The limit of brand name is 18 characters total.\n\n\n## Switchy API Workflow Configuration\n### This is part of Switchy API config i covered in this workflow.\n| Input Field           | Description                                      |\n|-----------------------|--------------------------------------------------|\n| **`Switchy API Key`**       | _API Key for Switchy integration._                 |\n| **`LongURL`**               | _The long URL to be shortened._                    |\n| **`Custom slug`**           | _Custom slug for the shortened URL._               |\n| **`tags`**                  | _Tags associated with the link._                   |\n| **`Switchy Folder ID`**     | _ID of the Switchy folder to use._                 |\n| **`Custom Domain (CNAME)`** | _Custom domain linked to Switchy._                 |\n\n\n### This is public APIs I've Used in Workflow\n#### Meta Data Stack\n- **Manual Get Headers**: Custom HTTP request to fetch headers.\n- **Dub.sh**: Scraping meta tags from web pages.\n- **OpenGraph API**: Using OpenGraph to retrieve meta information.\n#### Screenshot Stack\n- **Method 1 - SCR**: First method for taking screenshots (API name microlink).\n- **Method 2 - SCR**: Second method for taking screenshots (API name pxl.to)."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Download final OG",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Download Final OGI",
+          "position": [
+            4980,
+            10063.397766717584
+          ],
+          "parameters": {
+            "url": "={{\n  // The expression checks if $json.data[0].data[0].ogImage exists.\n  // It then attempts to replace '<SCR>' with the encoded download URL.\n  // If $json.data[0].content.download_url does not exist or is empty,\n  // '<SCR>' is replaced with an empty string.\n  ($item(\"0\").$node[\"Final Meta\"].json[\"data\"][\"0\"][\"ogImage\"]).replace('<SCR>', \n    $ifEmpty(\n       $json[\"download_url\"], \n      (\n        // If the image URL or its components don't exist, construct a default image URL based on other JSON values\n        // Get the \"Dark Mode\" setting from the API Auth node\n        \"https://cdn.statically.io/og/theme=\" +\n          ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n            .replace(\"false\", \"white/\")\n            .replace(\"true\", \"dark/\")+\n          \".jpg\"\n      )\n    ).urlEncode()\n  )\n  }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "allowUnauthorizedCerts": true
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Download Favicon",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4820,
+            10223.397766717584
+          ],
+          "parameters": {
+            "url": "={{ $item(\"0\").$node[\"Final Meta\"].json[\"data\"][\"0\"][\"Favicon\"] }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "allowUnauthorizedCerts": true
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Method 2 - META",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3500,
+            10100
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "ogTitle",
+                  "stringValue": "={{\n      // We used IFempty of title then use descraption, if the title giving no title output value then replace with descraption value, if no value for both then use empty value output.\n      // The domain name (Host)\n      // if the image url not found then use long URL host.\n \n($ifEmpty($json[\"ogTitle\"], ($(\"API Auth\").item.json[\"LongURL\"])\n        // This Regex to delete Any https:// or path from the url.\n        .match(/https?:\\/\\/[^\\/]+/)[0]\n        .replace(/https?:\\/\\//, \"\")\n      ))\n }}"
+                },
+                {
+                  "name": "ogDescription",
+                  "stringValue": "={{ (($ifEmpty($json.ogDescription , $json[\"ogTitle\"])) || 'Visit Now') }}"
+                },
+                {
+                  "name": "ogImage",
+                  "stringValue": "={{  // Constructing the base URL for the CDN\n  \"https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/\" +\n  // Adding the title, URL encoded\n  ($ifEmpty($json[\"ogTitle\"], $('API Auth').item.json[\"Brand Name\"]).urlEncode() || \"\") +\n  \"/\" +\n  // Adding the description, URL encoded\n  ($ifEmpty($json[\"ogDescription\"], $json[\"ogTitle\"]).urlEncode() || \"\") +\n  \"/\" +\n  // Handling different OpenGraph Image Modes\n  (\n    $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'screenshot',\n      \"<SCR>\",\n      $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'brand',\n        (\n          \"https://cdn.statically.io/og/theme=\" +\n          ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n            .replace(\"false\", \"white/\")\n            .replace(\"true\", \"dark/\") +\n          (\n            (`%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20`+ $(\"API Auth\").item.json[\"Brand Name\"].slice(0,18) + '%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C') ||\n            $json[\"ogTitle\"].toUpperCase() ||\n            $json[\"ogDescription\"].toUpperCase() ||\n            \"Short Link\"\n          ) + '.jpg'\n        ).urlEncode(),\n        $ifEmpty(\n          $json[\"ogImage\"] || $json[\"Image\"],\n          \"https://cdn.statically.io/og/theme=\" +\n            ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n              .replace(\"false\", \"white/\")\n              .replace(\"true\", \"dark/\") +\n            \"Default.jpg\"\n        ).urlEncode()\n      )\n    )\n  ) +\n  \"/og.png\"\n}}"
+                },
+                {
+                  "name": "Favicon",
+                  "stringValue": "={{ $ifEmpty($json[\"favicon\"],\n(\n// Get the Favicon url, if not available then generate api request to get it with:\n\"https://favicone.com/\" +\n// Get the image failed to export how from it if not found then use LongURL.\n$ifEmpty($('API Auth').item.json[\"LongURL\"],\n''\n)\n// This Regex to delete Any https:// or path from the url.\n.match(/https?:\\/\\/[^\\/]+/)[0]\n.replace(/https?:\\/\\//, \"\") +\n// This Parameter to resize the favicon into 32pixels.\n\"?s=32\"\n)) }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "Stop and Error",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            4040,
+            10320
+          ],
+          "parameters": {
+            "errorMessage": "META Stack need fix, report to creator through n8n community 'Ans'."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Method 3 - META1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3620,
+            10283
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "ogTitle",
+                  "stringValue": "={{\n      // We used IFempty of title then use descraption, if the title giving no title output value then replace with descraption value, if no value for both then use empty value output.\n      // The domain name (Host)\n      // if the image url not found then use long URL host.\n \n($ifEmpty($json[\"title\"], ($(\"API Auth\").item.json[\"LongURL\"])\n        // This Regex to delete Any https:// or path from the url.\n        .match(/https?:\\/\\/[^\\/]+/)[0]\n        .replace(/https?:\\/\\//, \"\")\n      ))\n }}"
+                },
+                {
+                  "name": "ogDescription",
+                  "stringValue": "={{ (($ifEmpty($json.description , $json[\"title\"])) || 'Visit Now') }}"
+                },
+                {
+                  "name": "ogImage",
+                  "stringValue": "={{  // Constructing the base URL for the CDN\n  \"https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/\" +\n  // Adding the title, URL encoded\n  ($ifEmpty($json[\"title\"], $('API Auth').item.json[\"Brand Name\"]).urlEncode() || \"\") +\n  \"/\" +\n  // Adding the description, URL encoded\n  ($ifEmpty($json[\"description\"], $json[\"title\"]).urlEncode() || \"\") +\n  \"/\" +\n  // Handling different OpenGraph Image Modes\n  (\n    $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'screenshot',\n      \"<SCR>\",\n      $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'brand',\n        (\n          \"https://cdn.statically.io/og/theme=\" +\n          ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n            .replace(\"false\", \"white/\")\n            .replace(\"true\", \"dark/\") +\n          (\n            (`%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20`+ $(\"API Auth\").item.json[\"Brand Name\"].slice(0,18) + '%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C') ||\n            $json[\"title\"].toUpperCase() ||\n            $json[\"description\"].toUpperCase() ||\n            \"Short Link\"\n          ) + '.jpg'\n        ).urlEncode(),\n        $ifEmpty(\n          $json[\"image\"],\n          \"https://cdn.statically.io/og/theme=\" +\n            ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n              .replace(\"false\", \"white/\")\n              .replace(\"true\", \"dark/\") +\n            \"Default.jpg\"\n        ).urlEncode()\n      )\n    )\n  ) +\n  \"/og.png\"\n}}"
+                },
+                {
+                  "name": "Favicon",
+                  "stringValue": "={{ $ifEmpty($json[\"favicon\"],\n(\n// Get the Favicon url, if not available then generate api request to get it with:\n\"https://favicone.com/\" +\n// Get the image failed to export how from it if not found then use LongURL.\n$ifEmpty($('API Auth').item.json[\"LongURL\"],\n''\n)\n// This Regex to delete Any https:// or path from the url.\n.match(/https?:\\/\\/[^\\/]+/)[0]\n.replace(/https?:\\/\\//, \"\") +\n// This Parameter to resize the favicon into 32pixels.\n\"?s=32\"\n)) }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "Method 1 - SCR",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "SCR API",
+          "onError": "continueErrorOutput",
+          "position": [
+            4440,
+            9863.397766717584
+          ],
+          "parameters": {
+            "url": "https://api.switchy.io/v1/proxy/proxy",
+            "options": {},
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "=https://api.microlink.io?url={{ $item(\"0\").$node[\"API Auth\"].json[\"LongURL\"].urlEncode() }}&screenshot=true&meta=true&embed=screenshot.url"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
+                },
+                {
+                  "name": "Accept",
+                  "value": "application/json, text/plain, */*"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "Origin",
+                  "value": "https://www.switchy.io"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Referer",
+                  "value": "https://www.switchy.io/"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "same-site"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "TE",
+                  "value": "trailers"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Method 2 - SCR",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Optional ",
+          "onError": "continueErrorOutput",
+          "position": [
+            4440,
+            10083.397766717584
+          ],
+          "parameters": {
+            "url": "https://app.pxl.to/api/public/tools/screenshot",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "sendHeaders": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "destination",
+                  "value": "={{ $item(\"0\").$node[\"API Auth\"].json[\"LongURL\"] }}"
+                },
+                {
+                  "name": "size",
+                  "value": "meta"
+                },
+                {
+                  "name": "width",
+                  "value": 1200
+                },
+                {
+                  "name": "height",
+                  "value": 628
+                },
+                {
+                  "name": "full",
+                  "value": false
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:122.0) Gecko/20100101 Firefox/122.0"
+                },
+                {
+                  "name": "Accept",
+                  "value": "*/*"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "Origin",
+                  "value": "https://www.pxl.to"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "same-site"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "TE",
+                  "value": "trailers"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Final SCR",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            4660,
+            9883.397766717584
+          ],
+          "parameters": {
+            "options": {
+              "includeBinaries": true
+            },
+            "aggregate": "aggregateAllItemData"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Stop And Error",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            4660,
+            10063.397766717584
+          ],
+          "parameters": {
+            "errorMessage": "SCR Stack need fix, report to creator through n8n community 'Ans'."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Shortened URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            5420,
+            10043.397766717584
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "Shortened URL",
+                  "value": "=https://{{ $json.body.domain }}/{{ $json.body.id }}"
+                },
+                {
+                  "name": "OG Method",
+                  "value": "={{ $('API Auth').item.json['OpenGraph Image Mode'] }}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "n8n Form Trigger",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            3140,
+            9183
+          ],
+          "webhookId": "4d7636c2-aa25-4a90-8f9c-e421166d21ab",
+          "parameters": {
+            "path": "switchy",
+            "formTitle": "Switchy URL Shortener",
+            "formFields": {
+              "values": [
+                {
+                  "fieldType": "textarea",
+                  "fieldLabel": "What's your Switchy API Key",
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "What's Your LongURL ?",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "dropdown",
+                  "fieldLabel": "What's OG Image method you like ?",
+                  "fieldOptions": {
+                    "values": [
+                      {
+                        "option": "Screenshot"
+                      },
+                      {
+                        "option": "Source"
+                      },
+                      {
+                        "option": "brand"
+                      }
+                    ]
+                  },
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "dropdown",
+                  "fieldLabel": "With your brand, Do you Like dark mode ?",
+                  "fieldOptions": {
+                    "values": [
+                      {
+                        "option": "no"
+                      },
+                      {
+                        "option": "yes"
+                      }
+                    ]
+                  },
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "dropdown",
+                  "fieldLabel": "scan Long URLs from virus/Phishing ? (Shorting a phishing URL will ban your domain from SEO)",
+                  "fieldOptions": {
+                    "values": [
+                      {
+                        "option": "No, Skip Scan part."
+                      },
+                      {
+                        "option": "Yes, Scan all Links."
+                      }
+                    ]
+                  },
+                  "requiredField": true
+                }
+              ]
+            },
+            "responseMode": "responseNode",
+            "formDescription": "This is demo simple of Switchy URL shortener."
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            3140,
+            9603.397766717584
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "text",
+            "responseBody": "={{ $json['Shortened URL'] }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3080,
+            9063.397766717584
+          ],
+          "parameters": {
+            "width": 365.4663416508872,
+            "height": 698.8834639756606,
+            "content": "## URL Preparing And Scanning\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Scan URL (Community)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3900,
+            9163
+          ],
+          "parameters": {
+            "url": "https://safeweb.norton.com/safeweb/sites/v1/details",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {}
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "={{ $('API Auth').item.json.LongURL.match(/^(?:https?:\\/\\/)?(?:[^@\\n]+@)?(?:www\\.)?([^:\\/\\n?]+)/im)[1] }}"
+                },
+                {
+                  "name": "insert",
+                  "value": "0"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json, text/plain, */*"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Referer",
+                  "value": "https://safeweb.norton.com/"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "same-origin"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "TE",
+                  "value": "trailers"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3460,
+            9063.397766717584
+          ],
+          "parameters": {
+            "width": 1102.2526655123636,
+            "height": 698.8834639756606,
+            "content": "## URL Preparing\nWe're using this side to control everything."
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            3840,
+            9063
+          ],
+          "parameters": {
+            "color": 7,
+            "width": 732.5923943084913,
+            "height": 698.8834639756606,
+            "content": "‌ ‌ ‌‌ ‌ ‌ ‌ ‌‌ ‌ ‌ ‌ ‌‌ ‌ ‌ ‌‌ ‌ ‌‌ ‌  ‌‌ ‌ ‌ ‌ ‌‌ ‌ ![Safe Web](https://static.nortoncdn.com/safeweb/prod/417315/assets/images/logo/norton_logo.svg)‌ ‌ ‌‌ ‌ ‌‌ ‌ ‌‌![Safe Web](https://static.nortoncdn.com/safeweb/prod/417315/assets/images/logo/safeweb_logo.svg) ‌ ‌‌ ‌ ‌‌ ‌ ‌‌![Safe Web](https://upload.wikimedia.org/wikipedia/commons/3/35/Bitdefender_logo.svg)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "If",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            4060,
+            9160
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "4b55880c-53dc-47d3-acc5-ecf5166bcce5",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.rating }}",
+                  "rightValue": "g"
+                },
+                {
+                  "id": "c412970c-402b-4ae1-ad36-385ecc563d7a",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.rating }}",
+                  "rightValue": "r"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "If1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3900,
+            9340
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "4b55880c-53dc-47d3-acc5-ecf5166bcce5",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gte"
+                  },
+                  "leftValue": "={{ $('Scan URL (Community)').item.json.reviewCount }}",
+                  "rightValue": 1
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Check Reviews (Community)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            3900,
+            9520
+          ],
+          "parameters": {
+            "url": "=https://safeweb.norton.com/safeweb/sites/v1/{{ $('Scan URL (Community)').item.json.id }}/reviews",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {}
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "sortType",
+                  "value": "1"
+                },
+                {
+                  "name": "pageNo",
+                  "value": "1"
+                },
+                {
+                  "name": "pageSize",
+                  "value": "2"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "application/json, text/plain, */*"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Referer",
+                  "value": "=https://safeweb.norton.com/report?url={{ $('Scan URL (Community)').item.json.url }}"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "same-origin"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "TE",
+                  "value": "trailers"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "Norton",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4060,
+            9340
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Risk Rate",
+                  "stringValue": "={{ $('Scan URL (Community)').item.json.rating }}"
+                },
+                {
+                  "name": "Community Rating",
+                  "stringValue": "={{ $('Scan URL (Community)').item.json.userRating+'\\/5' }}"
+                },
+                {
+                  "name": "Ban",
+                  "type": "booleanValue",
+                  "booleanValue": "={{ $('Scan URL (Community)').item.json.globalRestriction }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "bitdefender",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4420,
+            9343.397766717584
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "safe",
+                  "type": "booleanValue",
+                  "booleanValue": "={{ $json.safe.is }}"
+                },
+                {
+                  "name": "blocklist score",
+                  "stringValue": "={{ $item(\"0\").$node[\"HTML\"].json[\"result\"] }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "HTML",
+          "type": "n8n-nodes-base.html",
+          "position": [
+            4260,
+            9343.397766717584
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "extractHtmlContent",
+            "extractionValues": {
+              "values": [
+                {
+                  "key": "result",
+                  "cssSelector": ".label"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "(Fraud Check)",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Bitdefender",
+          "position": [
+            4260,
+            9163.397766717584
+          ],
+          "parameters": {
+            "url": "https://nimbus.bitdefender.net/url/fraud_info",
+            "method": "POST",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {}
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendBody": true,
+            "sendHeaders": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "url",
+                  "value": "={{ $('API Auth').item.json.LongURL.match(/^(?:https?:\\/\\/)?(?:[^@\\n]+@)?(?:www\\.)?([^:\\/\\n?]+)/im)[1] }}"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "*/*"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "Referer",
+                  "value": "https://trafficlight.bitdefender.com/"
+                },
+                {
+                  "name": "Origin",
+                  "value": "https://trafficlight.bitdefender.com"
+                },
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "empty"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "cors"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "cross-site"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "TE",
+                  "value": "trailers"
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 4.1
+        },
+        {
+          "name": "(Others)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4420,
+            9163.397766717584
+          ],
+          "parameters": {
+            "url": "=https://www.urlvoid.com/scan/{{ $('API Auth').item.json.LongURL.match(/^(?:https?:\\/\\/)?(?:[^@\\n]+@)?(?:www\\.)?([^:\\/\\n?]+)/im)[1] }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "response": {
+                "response": {}
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Accept",
+                  "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+                },
+                {
+                  "name": "Accept-Language",
+                  "value": "en-US,en;q=0.5"
+                },
+                {
+                  "name": "Accept-Encoding",
+                  "value": "gzip, deflate, br"
+                },
+                {
+                  "name": "Referer",
+                  "value": "https://www.urlvoid.com/"
+                },
+                {
+                  "name": "User-Agent",
+                  "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0"
+                },
+                {
+                  "name": "DNT",
+                  "value": "1"
+                },
+                {
+                  "name": "Connection",
+                  "value": "keep-alive"
+                },
+                {
+                  "name": "Upgrade-Insecure-Requests",
+                  "value": "1"
+                },
+                {
+                  "name": "Sec-Fetch-Dest",
+                  "value": "document"
+                },
+                {
+                  "name": "Sec-Fetch-Mode",
+                  "value": "navigate"
+                },
+                {
+                  "name": "Sec-Fetch-Site",
+                  "value": "same-origin"
+                },
+                {
+                  "name": "Sec-Fetch-User",
+                  "value": "?1"
+                },
+                {
+                  "name": "Sec-GPC",
+                  "value": "1"
+                },
+                {
+                  "name": "Pragma",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "Cache-Control",
+                  "value": "no-cache"
+                },
+                {
+                  "name": "TE",
+                  "value": "trailers"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "If2",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            4260,
+            9520
+          ],
+          "parameters": {
+            "options": {
+              "looseTypeValidation": true
+            },
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "loose"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "c409582d-b8b3-409f-a7af-7dcccb6f6beb",
+                  "operator": {
+                    "type": "number",
+                    "operation": "lte"
+                  },
+                  "leftValue": "={{ ($json.result.match(/.*\\//)[0].replace('/','')).toDecimalNumber() }}",
+                  "rightValue": "=5"
+                },
+                {
+                  "id": "f27aa777-2b4e-4bb9-8d0b-0de58283cc01",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('If').item.json.rating }}",
+                  "rightValue": "g"
+                },
+                {
+                  "id": "cbf7378d-c023-4de4-897d-e8c2e14bc08b",
+                  "operator": {
+                    "name": "filter.operator.equals",
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $('If').item.json.rating }}",
+                  "rightValue": "r"
+                },
+                {
+                  "id": "b240a351-6b68-4eac-a19e-383c44bbf721",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.safe }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "set unsafe",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            4420,
+            9540
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "Shortened URL",
+                  "stringValue": "=Unsafe / Skipped getting {{ $item(\"0\").$node[\"HTML\"].json[\"result\"] }}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "If3",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3600,
+            9380
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "4b55880c-53dc-47d3-acc5-ecf5166bcce5",
+                  "operator": {
+                    "type": "string",
+                    "operation": "startsWith"
+                  },
+                  "leftValue": "={{ $json['Scan LongURL'] }}",
+                  "rightValue": "Yes,"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "PhishTank",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            4060,
+            9520
+          ],
+          "parameters": {
+            "url": "=https://checkurl.phishtank.com/checkurl/index.php?url={{ $('API Auth').item.json.LongURL.match(/^(?:https?:\\/\\/)?(?:[^@\\n]+@)?(?:www\\.)?([^:\\/\\n?]+)/im)[1] }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              },
+              "allowUnauthorizedCerts": true
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "User-Agent",
+                  "value": "phishtank/anestooo"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "name": "IF GH invaild",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3640,
+            10100
+          ],
+          "parameters": {
+            "options": {
+              "ignoreCase": true
+            },
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": false,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "3c8cc92c-7232-4e30-b06b-3d8a57d80303",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.ogTitle }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "14329807-37fc-4265-beac-fff5bc4dda23",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.ogDescription }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "355ab988-c784-4fc3-8991-f5b0ab4b732a",
+                  "operator": {
+                    "type": "string",
+                    "operation": "notExists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.ogImage }}",
+                  "rightValue": ""
+                },
+                {
+                  "id": "1f85c367-6270-42c2-b109-0a66ece133dc",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.ogTitle + $json.ogDescription }}",
+                  "rightValue": "Error"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Method 4 - META",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            3840,
+            10320
+          ],
+          "parameters": {
+            "fields": {
+              "values": [
+                {
+                  "name": "ogTitle",
+                  "stringValue": "={{\n      // We used IFempty of title then use descraption, if the title giving no title output value then replace with descraption value, if no value for both then use empty value output.\n      // The domain name (Host)\n      // if the image url not found then use long URL host.\n \n($ifEmpty($json[\"title\"].replace('Error',$('API Auth').item.json[\"Brand Name\"].replaceAll('  ','')), ($(\"API Auth\").item.json[\"LongURL\"])\n        // This Regex to delete Any https:// or path from the url.\n        .match(/https?:\\/\\/[^\\/]+/)[0]\n        .replace(/https?:\\/\\//, \"\")\n      ))\n }}"
+                },
+                {
+                  "name": "ogDescription",
+                  "stringValue": "={{ (($ifEmpty($json.description , $json[\"title\"])) || 'Visit Now') }}"
+                },
+                {
+                  "name": "ogImage",
+                  "stringValue": "={{  // Constructing the base URL for the CDN\n  \"https://ogcdn.net/6064b869-74ed-4eb9-b76c-0b701ffe7e6b/v4/\" +\n  // Adding the title, URL encoded\n  ($ifEmpty($json[\"title\"].replace('Error',''), $('API Auth').item.json[\"Brand Name\"].replaceAll('  ','')).urlEncode() || \"\") +\n  \"/\" +\n  // Adding the description, URL encoded\n  ($ifEmpty($json[\"description\"].replace('No description',''), $json[\"title\"].replace('Error',$('API Auth').item.json[\"Brand Name\"].replaceAll('  ',''))).urlEncode() || \"\") +\n  \"/\" +\n  // Handling different OpenGraph Image Modes\n  (\n    $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'screenshot',\n      \"<SCR>\",\n      $if($('API Auth').item.json[\"OpenGraph Image Mode\"] === 'brand',\n        (\n          \"https://cdn.statically.io/og/theme=\" +\n          ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n            .replace(\"false\", \"white/\")\n            .replace(\"true\", \"dark/\") +\n          (\n            (`%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20`+ $(\"API Auth\").item.json[\"Brand Name\"].slice(0,18) + '%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C%20%E2%80%8C') ||\n            $json[\"title\"].toUpperCase() ||\n            $json[\"description\"].toUpperCase() ||\n            \"Short Link\"\n          ) + '.jpg'\n        ).urlEncode(),\n        $ifEmpty(\n          $json[\"image\"],\n          \"https://cdn.statically.io/og/theme=\" +\n            ($item(\"0\").$node[\"API Auth\"].json[\"Dark Mode ?\"] + \"\")\n              .replace(\"false\", \"white/\")\n              .replace(\"true\", \"dark/\") +\n            \"Default.jpg\"\n        ).urlEncode()\n      )\n    )\n  ) +\n  \"/og.png\"\n}}"
+                },
+                {
+                  "name": "Favicon",
+                  "stringValue": "={{ $ifEmpty($json[\"favicon\"],\n(\n// Get the Favicon url, if not available then generate api request to get it with:\n\"https://favicone.com/\" +\n// Get the image failed to export how from it if not found then use LongURL.\n$ifEmpty($('API Auth').item.json[\"LongURL\"],\n''\n)\n// This Regex to delete Any https:// or path from the url.\n.match(/https?:\\/\\/[^\\/]+/)[0]\n.replace(/https?:\\/\\//, \"\") +\n// This Parameter to resize the favicon into 32pixels.\n\"?s=32\"\n)) }}"
+                }
+              ]
+            },
+            "include": "none",
+            "options": {}
+          },
+          "typeVersion": 3.2
+        },
+        {
+          "name": "IF dub invaild",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            3380,
+            10300
+          ],
+          "parameters": {
+            "options": {
+              "ignoreCase": true
+            },
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": false,
+                "typeValidation": "strict"
+              },
+              "combinator": "or",
+              "conditions": [
+                {
+                  "id": "3c8cc92c-7232-4e30-b06b-3d8a57d80303",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.title }}",
+                  "rightValue": "No title"
+                },
+                {
+                  "id": "14329807-37fc-4265-beac-fff5bc4dda23",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.description }}",
+                  "rightValue": "No description"
+                },
+                {
+                  "id": "355ab988-c784-4fc3-8991-f5b0ab4b732a",
+                  "operator": {
+                    "type": "string",
+                    "operation": "equals"
+                  },
+                  "leftValue": "={{ $json.image }}",
+                  "rightValue": "No image"
+                },
+                {
+                  "id": "1f85c367-6270-42c2-b109-0a66ece133dc",
+                  "operator": {
+                    "type": "string",
+                    "operation": "contains"
+                  },
+                  "leftValue": "={{ $json.title + $json.description }}",
+                  "rightValue": "Error"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            4580,
+            9060
+          ],
+          "parameters": {
+            "width": 1000.9922558475889,
+            "height": 700.251847890049,
+            "content": "\n\n\n\n‌\n‌\n‌\n‌\n‌\n# 💡FYI:-\n- ### **This workflow can be for any URL Shortener by just changing the API Services for the shortener SaaS.**\n- ### **Do not use it for spam purposes as the used APIs is mostly workaround methods and not for \"Big Use Cases\".**\n- ### **Breaking the APIs will force me to not share them free. and yes this workflow not for productions.**\n- ### **Support 1:1 not included with this workflow. post anything you have** [here](https://community.n8n.io) and mention my account @Nskha.\n- ### **Follow my new templates updates** [on telegram](https://nodemation.t.me).\n\n‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌ ‌[![N8N Creator Profile - Nskha](https://cdn.statically.io/gh/Automations-Project/n8n-templates/main/stats.min.svg)](https://n8n.io/creators/nskha)"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": "false",
+      "pinData": {},
+      "settings": {
+        "timezone": "Europe/Istanbul",
+        "callerPolicy": "workflowsFromSameOwner",
+        "errorWorkflow": "",
+        "executionOrder": "v1",
+        "executionTimeout": 600,
+        "saveManualExecutions": true,
+        "saveExecutionProgress": true
+      },
+      "staticData": "",
+      "connections": {
+        "If": {
+          "main": [
+            [
+              {
+                "node": "PhishTank",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "If1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If1": {
+          "main": [
+            [
+              {
+                "node": "Check Reviews (Community)",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Norton",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If2": {
+          "main": [
+            [
+              {
+                "node": "OpenGraph API",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "set unsafe",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If3": {
+          "main": [
+            [
+              {
+                "node": "Scan URL (Community)",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "OpenGraph API",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "HTML": {
+          "main": [
+            [
+              {
+                "node": "bitdefender",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "CREATE": {
+          "main": [
+            [
+              {
+                "node": "IF Slug available",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Norton": {
+          "main": [
+            [
+              {
+                "node": "PhishTank",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UPDATE": {
+          "main": [
+            [
+              {
+                "node": "Shortened URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "(Others)": {
+          "main": [
+            [
+              {
+                "node": "HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "API Auth": {
+          "main": [
+            [
+              {
+                "node": "If3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final SCR": {
+          "main": [
+            [
+              {
+                "node": "Host Screenshot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "PhishTank": {
+          "main": [
+            [
+              {
+                "node": "(Fraud Check)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final Data": {
+          "main": [
+            [
+              {
+                "node": "CREATE",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final Meta": {
+          "main": [
+            [
+              {
+                "node": "If - Enable ScreenShots (yes to enable)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "set unsafe": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields": {
+          "main": [
+            [
+              {
+                "node": "Download final OG",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Headers": {
+          "main": [
+            [
+              {
+                "node": "Parse headers",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Meta tags Scraper - dub.sh",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "bitdefender": {
+          "main": [
+            [
+              {
+                "node": "If2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Host Favicon": {
+          "main": [
+            [
+              {
+                "node": "Final Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Host OGImage": {
+          "main": [
+            [
+              {
+                "node": "Download Favicon",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "(Fraud Check)": {
+          "main": [
+            [
+              {
+                "node": "(Others)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF GH invaild": {
+          "main": [
+            [
+              {
+                "node": "Meta tags Scraper - dub.sh",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Final Meta",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenGraph API": {
+          "main": [
+            [
+              {
+                "node": "IF OpenGraph invaild",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get Headers",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse headers": {
+          "main": [
+            [
+              {
+                "node": "Method 2 - META",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Shortened URL": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF dub invaild": {
+          "main": [
+            [
+              {
+                "node": "Method 4 - META",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Method 3 - META1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Method 1 - SCR": {
+          "main": [
+            [
+              {
+                "node": "Final SCR",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Method 2 - SCR",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Method 2 - SCR": {
+          "main": [
+            [
+              {
+                "node": "Convert to File",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop And Error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert to File": {
+          "main": [
+            [
+              {
+                "node": "Final SCR",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Host Screenshot": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Method 1 - META": {
+          "main": [
+            [
+              {
+                "node": "Final Meta",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Method 2 - META": {
+          "main": [
+            [
+              {
+                "node": "IF GH invaild",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Method 4 - META": {
+          "main": [
+            [
+              {
+                "node": "Final Meta",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download Favicon": {
+          "main": [
+            [
+              {
+                "node": "Host Favicon",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Method 3 - META1": {
+          "main": [
+            [
+              {
+                "node": "Final Meta",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split In Batches": {
+          "main": [
+            [
+              {
+                "node": "API Auth",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "n8n Form Trigger": {
+          "main": [
+            [
+              {
+                "node": "Split In Batches",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download final OG": {
+          "main": [
+            [
+              {
+                "node": "Host OGImage",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF Slug available": {
+          "main": [
+            [
+              {
+                "node": "Shortened URL",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "UPDATE",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "IF OpenGraph invaild": {
+          "main": [
+            [
+              {
+                "node": "Method 1 - META",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get Headers",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Scan URL (Community)": {
+          "main": [
+            [
+              {
+                "node": "If",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Reviews (Community)": {
+          "main": [
+            [
+              {
+                "node": "Norton",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Meta tags Scraper - dub.sh": {
+          "main": [
+            [
+              {
+                "node": "IF dub invaild",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Stop and Error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If - Enable ScreenShots (yes to enable)": {
+          "main": [
+            [
+              {
+                "node": "Method 1 - SCR",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 56,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 9
+        },
+        "n8n-nodes-base.set": {
+          "count": 11
+        },
+        "n8n-nodes-base.html": {
+          "count": 2
+        },
+        "n8n-nodes-base.github": {
+          "count": 3
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 9
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 14
+        },
+        "n8n-nodes-base.stopAndError": {
+          "count": 2
+        },
+        "n8n-nodes-base.convertToFile": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Nskha",
+      "username": "nskha",
+      "bio": "Welcome to Nskha! We're all about making real changes in the no-code tech field, just like with N8N 😉. Check out our amazing collection of free public templates and join us in building a collaborative database of no-code idea projects. Let's revolutionize the way we create without code!",
+      "verified": true,
+      "links": [
+        "https://nskha.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/6f99957ae9e5a66cf0bb95f4584cf321b0644a0ceea6a633bc968b6ec55e8410?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 16,
+        "icon": "file:github.svg",
+        "name": "n8n-nodes-base.github",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.github/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/github/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "GitHub"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yMC4wMTY1IDBDOC45NDc5MSAwIDAgOS4wMTM4OCAwIDIwLjE2NTNDMCAyOS4wNzkyIDUuNzMzMjQgMzYuNjI0NiAxMy42ODY4IDM5LjI5NTJDMTQuNjgxMiAzOS40OTYgMTUuMDQ1NCAzOC44NjEzIDE1LjA0NTQgMzguMzI3NEMxNS4wNDU0IDM3Ljg1OTkgMTUuMDEyNiAzNi4yNTc1IDE1LjAxMjYgMzQuNTg3OUM5LjQ0NDUgMzUuNzkgOC4yODQ5OCAzMi4xODQxIDguMjg0OTggMzIuMTg0MUM3LjM5MDE1IDI5Ljg0NyA2LjA2NDI5IDI5LjI0NjMgNi4wNjQyOSAyOS4yNDYzQzQuMjQxODUgMjguMDExIDYuMTk3MDQgMjguMDExIDYuMTk3MDQgMjguMDExQzguMjE4NjEgMjguMTQ0NiA5LjI3OTM4IDMwLjA4MSA5LjI3OTM4IDMwLjA4MUMxMS4wNjg2IDMzLjE1MjIgMTMuOTUxOCAzMi4yODQ0IDE1LjExMTggMzEuNzUwMkMxNS4yNzczIDMwLjQ0ODEgMTUuODA3OSAyOS41NDY3IDE2LjM3MTMgMjkuMDQ2QzExLjkzMDMgMjguNTc4NSA3LjI1NzgxIDI2Ljg0MjUgNy4yNTc4MSAxOS4wOTY3QzcuMjU3ODEgMTYuODkzMiA4LjA1MjY3IDE1LjA5MDUgOS4zMTIxNiAxMy42ODg0QzkuMTEzNDQgMTMuMTg3NyA4LjQxNzMyIDExLjExNzQgOS41MTEyOCA4LjM0NjQ0QzkuNTExMjggOC4zNDY0NCAxMS4yMDE0IDcuODEyMTcgMTUuMDEyMiAxMC40MTY0QzE2LjY0MzggOS45NzQ5NSAxOC4zMjYzIDkuNzUwNCAyMC4wMTY1IDkuNzQ4NTFDMjEuNzA2NyA5Ljc0ODUxIDIzLjQyOTUgOS45ODI0NiAyNS4wMjA1IDEwLjQxNjRDMjguODMxNyA3LjgxMjE3IDMwLjUyMTggOC4zNDY0NCAzMC41MjE4IDguMzQ2NDRDMzEuNjE1OCAxMS4xMTc0IDMwLjkxOTIgMTMuMTg3NyAzMC43MjA1IDEzLjY4ODRDMzIuMDEzMiAxNS4wOTA1IDMyLjc3NTMgMTYuODkzMiAzMi43NzUzIDE5LjA5NjdDMzIuNzc1MyAyNi44NDI1IDI4LjEwMjggMjguNTQ0OSAyMy42Mjg3IDI5LjA0NkMyNC4zNTggMjkuNjgwMiAyNC45ODczIDMwLjg4MiAyNC45ODczIDMyLjc4NTFDMjQuOTg3MyAzNS40ODkzIDI0Ljk1NDUgMzcuNjU5NiAyNC45NTQ1IDM4LjMyN0MyNC45NTQ1IDM4Ljg2MTMgMjUuMzE5MiAzOS40OTYgMjYuMzEzMiAzOS4yOTU2QzM0LjI2NjcgMzYuNjI0MiAzOS45OTk5IDI5LjA3OTIgMzkuOTk5OSAyMC4xNjUzQzQwLjAzMjcgOS4wMTM4OCAzMS4wNTIgMCAyMC4wMTY1IDBaIiBmaWxsPSIjMjQyOTJGIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "GitHub",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 528,
+        "icon": "fa:exclamation-triangle",
+        "name": "n8n-nodes-base.stopAndError",
+        "codex": {
+          "data": {
+            "alias": [
+              "Throw error",
+              "Error",
+              "Exception"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Stop and Error",
+          "color": "#ff0000"
+        },
+        "iconData": {
+          "icon": "exclamation-triangle",
+          "type": "icon"
+        },
+        "displayName": "Stop and Error",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 842,
+        "icon": "file:html.svg",
+        "name": "n8n-nodes-base.html",
+        "codex": {
+          "data": {
+            "alias": [
+              "extract",
+              "template",
+              "table"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.html/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "HTML"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTguNjQwNjIgMEgxMC40Mzc1VjEuNzgxMjVIMTIuMDkzN1YwSDEzLjg5MDZWNS4zOTA2MkgxMi4wOTM3VjMuNTkzNzVIMTAuNDUzMVY1LjM5MDYySDguNjQwNjJNMTYuMjY1NiAxLjc5Njg3SDE0LjY3OTdWMEgxOS42NTYyVjEuNzk2ODdIMTguMDYyNVY1LjM5MDYySDE2LjI2NTZNMjAuNDQ1MyAwSDIyLjMyODFMMjMuNDg0NCAxLjg5ODQ0TDI0LjY0MDYgMEgyNi41MjM0VjUuMzkwNjJIMjQuNzI2NlYyLjcxODc1TDIzLjQ2ODcgNC42NTYyNUwyMi4yMTA5IDIuNzE4NzVWNS4zOTA2MkgyMC40NDUzTTI3LjQxNDEgMEgyOS4yMTA5VjMuNjA5MzdIMzEuNzU3OFY1LjM5MDYySDI3LjQxNDEiIGZpbGw9ImJsYWNrIi8+CjxwYXRoIGQ9Ik04LjU3ODEyIDM2Ljc5NjlMNiA3Ljg1OTM4SDM0LjM0MzdMMzEuNzY1NiAzNi43ODEyTDIwLjE0ODQgNDAiIGZpbGw9IiNFNDREMjYiLz4KPHBhdGggZD0iTTIwLjE3MTkgMzcuNTM5MVYxMC4yMzQ0SDMxLjc1NzhMMjkuNTQ2OSAzNC45MjE5IiBmaWxsPSIjRjE2NTI5Ii8+CjxwYXRoIGQ9Ik0xMS4yNjU2IDEzLjc3MzRIMjAuMTcxOVYxNy4zMjAzSDE1LjE1NjJMMTUuNDg0NCAyMC45NTMxSDIwLjE3MTlWMjQuNDkyMkgxMi4yMzQ0TTEyLjM5MDYgMjYuMjczNEgxNS45NTMxTDE2LjIwMzEgMjkuMTA5NEwyMC4xNzE5IDMwLjE3MTlWMzMuODc1TDEyLjg5MDYgMzEuODQzNyIgZmlsbD0iI0VCRUJFQiIvPgo8cGF0aCBkPSJNMjkuMDQ2OSAxMy43NzM0SDIwLjE1NjJWMTcuMzIwM0gyOC43MTg3TTI4LjM5ODQgMjAuOTUzMUgyMC4xNTYyVjI0LjVIMjQuNTMxMkwyNC4xMTcyIDI5LjEwOTRMMjAuMTU2MiAzMC4xNzE5VjMzLjg1OTRMMjcuNDIxOSAzMS44NDM3IiBmaWxsPSJ3aGl0ZSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "HTML",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1234,
+        "icon": "file:convertToFile.svg",
+        "name": "n8n-nodes-base.convertToFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "encode",
+              "encoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "RTF",
+              "64",
+              "Base64"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Convert to File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjc2MTkgMkMxMy4yNDM3IDIgMTIuODIzNiAyLjQyMDA5IDEyLjgyMzYgMi45MzgzMVYxNS4yNTI2QzEzLjMxOTkgMTUuNDY0MyAxMy43ODUxIDE1Ljc3MiAxNC4xOTEgMTYuMTc1N0wyMS4yMjgzIDIzLjE3MzlDMjIuMDU0OCAyMy45OTU4IDIyLjUxOTUgMjUuMTEzMiAyMi41MTk1IDI2LjI3ODhDMjIuNTE5NSAyNy40NDQzIDIyLjA1NDggMjguNTYxOCAyMS4yMjgzIDI5LjM4MzdMMTQuMTkxIDM2LjM4MTlDMTMuNzg1IDM2Ljc4NTYgMTMuMzE5OSAzNy4wOTMyIDEyLjgyMzYgMzcuMzA1VjM3LjM1MjdDMTIuODIzNiAzNy44NzA5IDEzLjI0MzcgMzguMjkxIDEzLjc2MTkgMzguMjkxSDM5LjA2MTdDMzkuNTc5OSAzOC4yOTEgNDAgMzcuODcwOSA0MCAzNy4zNTI3TDQwIDE1Ljc5NEgyNy4xNDQzQzI2LjYyNjEgMTUuNzk0IDI2LjIwNiAxNS4zNzM5IDI2LjIwNiAxNC44NTU3VjJIMTMuNzYxOVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTI4Ljg2NDUgMkMyOC43NzgxIDIgMjguNzA4MSAyLjA3MDAyIDI4LjcwODEgMi4xNTYzOVYxMi44MjI3QzI4LjcwODEgMTMuMDgxOCAyOC45MTgyIDEzLjI5MTkgMjkuMTc3MyAxMy4yOTE5SDM5Ljg0MzZDMzkuOTMgMTMuMjkxOSA0MCAxMy4yMjE5IDQwIDEzLjEzNTVMNDAgMTIuNjI2M0M0MCAxMi4zNzc4IDM5LjkwMTQgMTIuMTM5NSAzOS43MjYgMTEuOTYzNkwzMC4wNjEgMi4yNzU2MUMyOS44ODUgMi4wOTkxNiAyOS42NDYgMiAyOS4zOTY3IDJIMjguODY0NVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTkuNzcyNjggMzQuNjAwM0M5LjA0MTg2IDMzLjg2NTQgOS4wNDUxNyAzMi42NzcyIDkuNzgwMDcgMzEuOTQ2NEwxMy42MzE1IDI4LjExNjNMMC45MzgzMTEgMjguMTE2M0MwLjQyMDA5NiAyOC4xMTYzIC0yLjI2NTE5ZS0wOCAyNy42OTYyIDAgMjcuMTc4TDguMjAyOTdlLTA4IDI1LjMwMTRDMS4wNDY4MmUtMDcgMjQuNzgzMiAwLjQyMDA5NSAyNC4zNjMxIDAuOTM4MzExIDI0LjM2MzFIMTMuNTUyOUw5Ljc4MDA3IDIwLjYxMTJDOS4wNDUxNyAxOS44ODA0IDkuMDQxODYgMTguNjkyMiA5Ljc3MjY4IDE3Ljk1NzNDMTAuNTAzNSAxNy4yMjI0IDExLjY5MTcgMTcuMjE5MSAxMi40MjY2IDE3Ljk0OTlMMTkuNDYzOSAyNC45NDgxQzE5LjgxODEgMjUuMzAwNCAyMC4wMTczIDI1Ljc3OTMgMjAuMDE3MyAyNi4yNzg4QzIwLjAxNzMgMjYuNzc4MyAxOS44MTgxIDI3LjI1NzIgMTkuNDYzOSAyNy42MDk1TDEyLjQyNjYgMzQuNjA3N0MxMS42OTE3IDM1LjMzODUgMTAuNTAzNSAzNS4zMzUyIDkuNzcyNjggMzQuNjAwM1oiIGZpbGw9IiMzQTQyRTkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Convert to File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": []
+  }
+}

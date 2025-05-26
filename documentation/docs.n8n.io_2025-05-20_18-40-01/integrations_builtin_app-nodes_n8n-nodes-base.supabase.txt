@@ -1,0 +1,63 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.supabase/
+Scraped_At: 2025-05-20T18:51:49.224446
+
+Supabase node
+#
+Use the Supabase node to automate work in Supabase, and integrate Supabase with other applications. n8n has built-in support for a wide range of Supabase features, including creating, deleting, and getting rows.
+On this page, you'll find a list of operations the Supabase node supports and links to more resources.
+Credentials
+Refer to
+Supabase credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Row
+Create a new row
+Delete a row
+Get a row
+Get all rows
+Update a row
+Templates and examples
+#
+AI Agent To Chat With Files In Supabase Storage
+by Mark Shcherbakov
+View template details
+Autonomous AI crawler
+by Oskar
+View template details
+Supabase Insertion & Upsertion & Retrieval
+by Ria
+View template details
+Browse Supabase integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Common issues
+#
+For common errors or issues and suggested resolution steps, refer to
+Common issues
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

@@ -1,0 +1,56 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.zammad/
+Scraped_At: 2025-05-20T18:52:52.277823
+
+Zammad node
+#
+Use the Zammad node to automate work in Zammad, and integrate Zammad with other applications. n8n has built-in support for a wide range of Zammad features, including creating, retrieving, and deleting groups and organizations.
+On this page, you'll find a list of operations the Zammad node supports and links to more resources.
+Credentials
+Refer to
+Zammad credentials
+for guidance on setting up authentication.
+Operations
+#
+Group
+Create
+Delete
+Get
+Get many
+Update
+Organization
+Create
+Delete
+Get
+Get many
+Update
+Ticket
+Create
+Delete
+Get
+Get many
+User
+Create
+Delete
+Get
+Get many
+Get self
+Update
+Templates and examples
+#
+Update people through Zulip about open tickets in Zammad
+by Ghazi Triki
+View template details
+Export Zammad Objects (Users, Roles, Groups, Organizations) to Excel
+by Sirhexalot
+View template details
+Sync Entra User to Zammad User
+by Sirhexalot
+View template details
+Browse Zammad integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

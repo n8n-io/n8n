@@ -1,0 +1,64 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gsuiteadmin/
+Scraped_At: 2025-05-20T18:48:28.241738
+
+Google Workspace Admin node
+#
+Use the Google Workspace Admin node to automate work in Google Workspace Admin, and integrate Google Workspace Admin with other applications. n8n has built-in support for a wide range of Google Workspace Admin features, including creating, updating, deleting, and getting users, and groups.
+On this page, you'll find a list of operations the Google Workspace Admin node supports and links to more resources.
+Credentials
+Refer to
+Google credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Group
+Create a group
+Delete a group
+Get a group
+Get all groups
+Update a group
+User
+Create a user
+Delete a user
+Get a user
+Get all users
+Update a user
+Templates and examples
+#
+Browse Google Workspace Admin integration templates
+, or
+search all templates
+How to project a user's information
+#
+There are three different ways to project a user's information:
+Basic
+: Doesn't include any custom fields.
+Custom
+: Includes the custom fields from schemas in
+customField
+.
+Full
+: Include all the fields associated with the user.
+To include custom fields, follow these steps:
+Select
+Custom
+from the
+Projection
+dropdown list.
+Select the
+Add Options
+button and select
+Custom Schemas
+from the dropdown list.
+Select the schema names you want to include from the
+Custom Schemas
+dropdown list.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

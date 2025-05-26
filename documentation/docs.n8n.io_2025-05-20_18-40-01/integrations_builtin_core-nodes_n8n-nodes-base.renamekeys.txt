@@ -1,0 +1,58 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.renamekeys/
+Scraped_At: 2025-05-20T18:56:28.886022
+
+Rename Keys
+#
+Use the Rename Keys node to rename the keys of a key-value pair in n8n.
+Node parameters
+#
+You can rename one or multiple keys using the Rename Keys node. Select the
+Add new key
+button to rename a key.
+For each key, enter the:
+Current Key Name
+: The current name of the key you want to rename.
+New Key Name
+: The new name you want to assign to the key.
+Node options
+#
+Choose whether to use a
+Regex
+regular expression to identify keys to rename. To use this option, you must also enter:
+The
+Regular Expression
+you'd like to use.
+Replace With
+: Enter the new name you want to assign to the key(s) that match the
+Regular Expression
+.
+You can also choose these Regex-specific options:
+Case Insensitive
+: Set whether the regular expression should match case (turned off) or be case insensitive (turned on).
+Max Depth
+: Enter the maximum depth to replace keys, using
+-1
+for unlimited and
+0
+for top-level only.
+Regex impacts
+Using a regular expression can affect any keys that match the expression, including keys you've already renamed.
+Templates and examples
+#
+Create Salesforce accounts based on Excel 365 data
+by Tom
+View template details
+Convert Reddit threads into short vertical videos with AI
+by Artur
+View template details
+Parse DMARC reports, save them in database and notify on DKIM or SPF error
+by Łukasz
+View template details
+Browse Rename Keys integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

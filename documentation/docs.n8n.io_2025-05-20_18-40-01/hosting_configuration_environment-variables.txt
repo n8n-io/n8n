@@ -1,0 +1,37 @@
+URL: https://docs.n8n.io/hosting/configuration/environment-variables/
+Scraped_At: 2025-05-20T18:43:44.749679
+
+Environment variables overview
+#
+This section lists of environment variables that you can use to change n8n's configuration settings when self-hosting n8n.
+File-based configuration
+You can provide a
+configuration file
+for n8n. You can also append
+_FILE
+to certain variables to provide their configuration in a separate file.
+Binary data
+Credentials
+Database
+Deployment
+Endpoints
+Executions
+External data storage
+External hooks
+External secrets
+Insights
+Logs
+License
+Nodes
+Queue mode
+Security
+Source control
+Task runners
+Timezone and localization
+User management and 2FA
+Workflows
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

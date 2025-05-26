@@ -1,0 +1,207 @@
+{
+  "workflow": {
+    "id": 667,
+    "name": "Send an SMS using the Mocean node",
+    "views": 280,
+    "recentViews": 0,
+    "totalViews": 280,
+    "createdAt": "2020-09-15T14:31:17.134Z",
+    "description": "![workflow-screenshot](fileId:241)",
+    "workflow": {
+      "id": "59",
+      "name": "Send an SMS using the Mocean node",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            590,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Mocean",
+          "type": "n8n-nodes-base.mocean",
+          "position": [
+            790,
+            260
+          ],
+          "parameters": {
+            "to": "",
+            "from": "",
+            "message": ""
+          },
+          "credentials": {
+            "moceanApi": "mocean"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Mocean",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.mocean": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 270,
+        "icon": "file:mocean.svg",
+        "name": "n8n-nodes-base.mocean",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mocean/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mocean/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Mocean"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTAgMjBWNDBINDBWMEgwVjIwWk0xMi4wNjI1IDguNTkzNzVDMTMuNjU2MiA4Ljc1IDE0LjQ1MzEgOS40Mjk2OSAxNC45ODQ0IDExLjA5MzhDMTUuNDA2MyAxMi4zOTg0IDE5Ljk4NDQgMjQuODUxNiAyMC4wNDY5IDI0Ljg1OTRDMjAuMDg1OSAyNC44NTk0IDIwLjQwNjMgMjQuMTA5NCAyMC43NSAyMy4xOTUzQzIyLjA4NTkgMTkuNjc5NyAyNS4yMzQ0IDExLjMyODEgMjUuMzU5NCAxMC45NjA5QzI1LjU5MzggMTAuMjU3OCAyNi4wMjM0IDkuNTM5MDYgMjYuNDI5NyA5LjE3OTY5QzI3LjA2MjUgOC42MDE1NiAyNy4zMTI1IDguNTU0NjkgMjkuOTIxOSA4LjU1NDY5SDMyLjE0ODRMMzIuNSA4Ljc1QzMyLjY4NzUgOC44NTkzNyAzMi45NTMxIDkuMTAxNTYgMzMuMDg1OSA5LjI4MTI1TDMzLjMyMDMgOS42MjVMMzMuMzQzNyAyMC4zNjcyQzMzLjM1OTQgMzAuMjE4OCAzMy4zNTE2IDMxLjEzMjggMzMuMjM0NCAzMS4yNTc4QzMyLjk4NDQgMzEuNTMxMyAzMi41OTM4IDMxLjYwMTYgMzEuMjEwOSAzMS42MDE2QzI5LjgwNDcgMzEuNjAxNiAyOS40Mzc1IDMxLjUzOTEgMjkuMTcxOSAzMS4yNDIyQzI5LjAzMTIgMzEuMDg1OSAyOS4wMjM0IDMwLjcxODggMjguOTg0NCAyMS42MDk0TDI4Ljk0NTMgMTIuMTQ4NEwyOC41NzgxIDEzLjE2NDFDMjguMzc1IDEzLjcxODcgMjYuODUxNiAxNy45Njg3IDI1LjIwMzEgMjIuNjAxNkMyMy41NDY5IDI3LjI0MjIgMjIuMTMyOCAzMS4xMDE2IDIyLjA1NDcgMzEuMTg3NUMyMS43MTA5IDMxLjU3MDMgMjEuNTM5MSAzMS42MDE2IDE5Ljk2MDkgMzEuNjAxNkMxOC42MDE2IDMxLjYwMTYgMTguNDQ1MyAzMS41ODU5IDE4LjEwOTQgMzEuNDI5N0MxNy45MTQxIDMxLjM0MzcgMTcuNjk1MyAzMS4xNzk3IDE3LjYyNSAzMS4wNzgxQzE3LjU2MjUgMzAuOTg0NCAxNi45ODQ0IDI5LjM2NzIgMTYuMzM1OSAyNy41QzEzLjc2NTYgMjAuMDA3OCAxMS4xNzk3IDEyLjUzMTMgMTEuMTA5NCAxMi4zNDM4QzExLjA0NjkgMTIuMjEwOSAxMS4wMjM0IDE1LjA1NDcgMTEuMDIzNCAyMS41NzAzQzExLjAxNTYgMzAuODk4NCAxMS4wMTU2IDMxIDEwLjg1OTQgMzEuMTk1M0MxMC41OTM3IDMxLjUzMTIgMTAuMjQyMiAzMS42MDE2IDguNzUgMzEuNjAxNkM3LjUzOTA2IDMxLjYwMTYgNy4zNDM3NSAzMS41ODU5IDcuMDcwMzEgMzEuNDQ1M0M2Ljg5ODQ0IDMxLjM1OTQgNi43MTg3NSAzMS4yMDMxIDYuNjY0MDYgMzEuMDkzOEM2LjU4NTk0IDMwLjkzNzUgNi41NzAzMSAyOC43MDMxIDYuNTg1OTQgMjAuMzkwNkw2LjYwMTU2IDkuODc1TDYuODA0NjkgOS40OTIxOUM3LjA0Njg3IDkuMDA3ODEgNy41MjM0NCA4LjY1NjI1IDguMDMxMjUgOC41ODU5NEM4LjYwOTM4IDguNTA3ODEgMTEuMjEwOSA4LjUxNTYyIDEyLjA2MjUgOC41OTM3NVoiIGZpbGw9IiMwNzQ4QTYiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Mocean",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 241,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/ef506cdfb724462d9c97732eb701f583.png"
+      }
+    ]
+  }
+}

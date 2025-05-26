@@ -1,0 +1,80 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/
+Scraped_At: 2025-05-20T18:48:11.695496
+
+Google Sheets
+#
+Use the Google Sheets node to automate work in Google Sheets, and integrate Google Sheets with other applications. n8n has built-in support for a wide range of Google Sheets features, including creating, updating, deleting, appending, removing and getting documents.
+On this page, you'll find a list of operations the Google Sheets node supports and links to more resources.
+Credentials
+Refer to
+Google Sheets credentials
+for guidance on setting up authentication.
+Operations
+#
+Document
+Create
+a spreadsheet.
+Delete
+a spreadsheet.
+Sheet Within Document
+Append or Update Row
+: Append a new row, or update the current one if it already exists.
+Append Row
+: Create a new row.
+Clear
+all data from a sheet.
+Create
+a new sheet.
+Delete
+a sheet.
+Delete Rows or Columns
+: Delete columns and rows from a sheet.
+Get Row(s)
+: Read all rows in a sheet.
+Update Row
+: Update a row in a sheet.
+Templates and examples
+#
+Scrape business emails from Google Maps without the use of any third party APIs
+by Akram Kadri
+View template details
+Automated Web Scraping: email a CSV, save to Google Sheets & Microsoft Excel
+by Mihai Farcas
+View template details
+AI-Powered Short-Form Video Generator with OpenAI, Flux, Kling, and ElevenLabs
+by Cameron Wills
+View template details
+Browse Google Sheets integration templates
+, or
+search all templates
+Related resources
+#
+Refer to
+Google Sheet's API documentation
+for more information about the service.
+Common issues
+#
+For common questions or issues and suggested solutions, refer to
+Common issues
+.
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

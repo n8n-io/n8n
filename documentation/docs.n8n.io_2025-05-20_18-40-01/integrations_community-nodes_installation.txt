@@ -1,0 +1,23 @@
+URL: https://docs.n8n.io/integrations/community-nodes/installation/
+Scraped_At: 2025-05-20T19:08:16.466153
+
+Install and manage community nodes
+#
+There are three ways to install community nodes:
+Within n8n using the
+nodes panel
+(for verified community nodes only).
+Within n8n
+using the GUI
+: Use this method to install community nodes from the npm registry.
+Manually from the command line
+: use this method to install community nodes from npm if your n8n instance doesn't support installation through the in-app GUI.
+Installing from npm only available on self-hosted instances
+Unverified community nodes aren't available on n8n cloud and require
+self-hosting
+n8n.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

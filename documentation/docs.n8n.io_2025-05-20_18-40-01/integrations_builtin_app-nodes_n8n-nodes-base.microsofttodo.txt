@@ -1,0 +1,70 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsofttodo/
+Scraped_At: 2025-05-20T18:49:43.004382
+
+Microsoft To Do node
+#
+Use the Microsoft To Do node to automate work in Microsoft To Do, and integrate Microsoft To Do with other applications. n8n has built-in support for a wide range of Microsoft To Do features, including creating, updating, deleting, and getting linked resources, lists, and tasks.
+On this page, you'll find a list of operations the Microsoft To Do node supports and links to more resources.
+Credentials
+Refer to
+Microsoft credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Linked Resource
+Create
+Delete
+Get
+Get All
+Update
+List
+Create
+Delete
+Get
+Get All
+Update
+Task
+Create
+Delete
+Get
+Get All
+Update
+Templates and examples
+#
+📂 Automatically Update Stock Portfolio from OneDrive to Excel
+by Louis
+View template details
+Create, update and get a task in Microsoft To Do
+by Harshil Agrawal
+View template details
+Analyze Email Headers for IP Reputation and Spoofing Detection - Outlook
+by Angel Menendez
+View template details
+Browse Microsoft To Do integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

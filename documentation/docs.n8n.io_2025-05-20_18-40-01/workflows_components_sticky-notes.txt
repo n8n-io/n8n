@@ -1,0 +1,111 @@
+URL: https://docs.n8n.io/workflows/components/sticky-notes/
+Scraped_At: 2025-05-20T19:10:45.252686
+
+Sticky Notes
+#
+Sticky Notes allow you to annotate and comment on your workflows.
+n8n recommends using Sticky Notes heavily, especially on
+template workflows
+, to help other users understand your workflow.
+Create a Sticky Note
+#
+Sticky Notes are a core node. To add a new Sticky Note:
+Open the nodes panel.
+Search for
+note
+.
+Click the
+Sticky Note
+node. n8n adds a new Sticky Note to the canvas.
+Edit a Sticky Note
+#
+Double click the Sticky Note you want to edit.
+Write your note.
+This guide
+explains how to format your text with Markdown. n8n uses
+markdown-it
+, which implements the CommonMark specification.
+Click away from the note, or press
+Esc
+, to stop editing.
+Change the color
+#
+To change the Sticky Note color:
+Hover over the Sticky Note
+Select
+Change color
+Sticky Note positioning
+#
+You can:
+Drag a Sticky Note anywhere on the canvas.
+Drag Sticky Notes behind nodes. You can use this to visually group nodes.
+Resize Sticky Notes by hovering over the edge of the note and dragging to resize.
+Change the color: select
+Options
+to open the color selector.
+Writing in Markdown
+#
+Sticky Notes support Markdown formatting. This section describes some common options.
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+The text in double asterisks will be **bold**
+
+The text in single asterisks will be *italic*
+
+Use # to indicate headings:
+# This is a top-level heading
+## This is a sub-heading
+### This is a smaller sub-heading
+
+You can add links:
+[Example](https://example.com/)
+
+Create lists with asterisks:
+
+* Item one
+* Item two
+
+Or created ordered lists with numbers:
+
+1. Item one
+2. Item two
+For a more detailed guide, refer to
+CommonMark's help
+. n8n uses
+markdown-it
+, which implements the CommonMark specification.
+Make images full width
+#
+You can force images to be 100% width of the sticky note by appending
+#full-width
+to the filename:
+1
+![
+Source example
+](
+https://<IMAGE-URL>/<IMAGE-NAME>.png#full-width
+)
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

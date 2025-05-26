@@ -1,0 +1,213 @@
+URL: https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstoremongodbatlas/
+Scraped_At: 2025-05-20T18:53:40.508194
+
+MongoDB Atlas Vector Store node
+#
+MongoDB Atlas Vector Search is a feature of MongoDB Atlas that enables users to store and query vector embeddings. Use this node to interact with Vector Search indexes in your MongoDB Atlas collections. You can insert documents, retrieve documents, and use the vector store in chains or as a tool for agents.
+On this page, you'll find the node parameters for the MongoDB Atlas Vector Store node, and links to more resources.
+Credentials
+You can find authentication information for this node
+here
+.
+Parameter resolution in sub-nodes
+Sub-nodes behave differently to other nodes when processing multiple items using an expression.
+Most nodes, including root nodes, take any number of items as input, process these items, and output the results. You can use expressions to refer to input items, and the node resolves the expression for each item in turn. For example, given an input of five
+name
+values, the expression
+{{ $json.name }}
+resolves to each name in turn.
+In sub-nodes, the expression always resolves to the first item. For example, given an input of five
+name
+values, the expression
+{{ $json.name }}
+always resolves to the first name.
+Prerequisites
+#
+Before using this node, create a
+Vector Search index
+in your MongoDB Atlas collection. Follow these steps to create one:
+Log in to the
+MongoDB Atlas dashboard
+.
+Select your organization and project.
+Find "Search & Vector Search" section.
+Select your cluster and click "Go to search".
+Click "Create Search Index".
+Choose "Vector Search" mode and use the visual or JSON editors. For example:
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+{
+"fields"
+:
+[
+{
+"type"
+:
+"vector"
+,
+"path"
+:
+"<field-name>"
+,
+"numDimensions"
+:
+1536
+,
+// any other value
+"similarity"
+:
+"<similarity-function>"
+}
+]
+}
+Adjust the "dimensions" value according to your embedding model (For example,
+1536
+for OpenAI's
+text-embedding-small-3
+).
+Name your index and create.
+Make sure to note the following values which are required when configuring the node:
+Collection name
+Vector index name
+Field names for embeddings and metadata
+Node usage patterns
+#
+You can use the MongoDB Atlas Vector Store node in the following patterns:
+Use as a regular node to insert and retrieve documents
+#
+You can use the MongoDB Atlas Vector Store as a regular node to insert or get documents. This pattern places the MongoDB Atlas Vector Store in the regular connection flow without using an agent.
+You can see an example of this in scenario 1 of
+this template
+(the template uses the Supabase Vector Store, but the pattern is the same).
+Connect directly to an AI agent as a tool
+#
+You can connect the MongoDB Atlas Vector Store node directly to the tool connector of an
+AI agent
+to use the vector store as a resource when answering queries.
+Here, the connection would be: AI agent (tools connector) -> MongoDB Atlas Vector Store node.
+Use a retriever to fetch documents
+#
+You can use the
+Vector Store Retriever
+node with the MongoDB Atlas Vector Store node to fetch documents from the MongoDB Atlas Vector Store node. This is often used with the
+Question and Answer Chain
+node to fetch documents from the vector store that match the given chat input.
+An
+example of the connection flow
+(the linked example uses Pinecone, but the pattern is the same) would be: Question and Answer Chain (Retriever connector) -> Vector Store Retriever (Vector Store connector) -> MongoDB Atlas Vector Store.
+Use the Vector Store Question Answer Tool to answer questions
+#
+Another pattern uses the
+Vector Store Question Answer Tool
+to summarize results and answer questions from the MongoDB Atlas Vector Store node. Rather than connecting the MongoDB Atlas Vector Store directly as a tool, this pattern uses a tool specifically designed to summarize data in the vector store.
+The
+connections flow
+(the linked example uses the In-Memory Vector Store, but the pattern is the same) in this case would look like this: AI agent (tools connector) -> Vector Store Question Answer Tool (Vector Store connector) -> In-Memory Vector store.
+Node parameters
+#
+Operation Mode
+#
+This Vector Store node has four modes:
+Get Many
+,
+Insert Documents
+,
+Retrieve Documents (As Vector Store for Chain/Tool)
+, and
+Retrieve Documents (As Tool for AI Agent)
+. The mode you select determines the operations you can perform with the node and what inputs and outputs are available.
+Get Many
+#
+In this mode, you can retrieve multiple documents from your vector database by providing a prompt. The prompt will be embedded and used for similarity search. The node will return the documents that are most similar to the prompt with their similarity score. This is useful if you want to retrieve a list of similar documents and pass them to an agent as additional context.
+Insert Documents
+#
+Use Insert Documents mode to insert new documents into your vector database.
+Retrieve Documents (As Vector Store for Chain/Tool)
+#
+Use Retrieve Documents (As Vector Store for Chain/Tool) mode with a vector-store retriever to retrieve documents from a vector database and provide them to the retriever connected to a chain. In this mode you must connect the node to a retriever node or root node.
+Retrieve Documents (As Tool for AI Agent)
+#
+Use Retrieve Documents (As Tool for AI Agent) mode to use the vector store as a tool resource when answering queries. When formulating responses, the agent uses the vector store when the vector store name and description match the question details.
+Get Many parameters
+#
+Mongo Collection
+: Enter the name of the MongoDB collection to use.
+Vector Index Name
+: Enter the name of the Vector Search index in your MongoDB Atlas collection.
+Embedding Field
+: Enter the field name in your documents that contains the vector embeddings.
+Metadata Field
+: Enter the field name in your documents that contains the text metadata.
+Insert Documents parameters
+#
+Mongo Collection
+: Enter the name of the MongoDB collection to use.
+Vector Index Name
+: Enter the name of the Vector Search index in your MongoDB Atlas collection.
+Embedding Field
+: Enter the field name in your documents that contains the vector embeddings.
+Metadata Field
+: Enter the field name in your documents that contains the text metadata.
+Retrieve Documents parameters (As Vector Store for Chain/Tool)
+#
+Mongo Collection
+: Enter the name of the MongoDB collection to use.
+Vector Index Name
+: Enter the name of the Vector Search index in your MongoDB Atlas collection.
+Embedding Field
+: Enter the field name in your documents that contains the vector embeddings.
+Metadata Field
+: Enter the field name in your documents that contains the text metadata.
+Retrieve Documents (As Tool for AI Agent) parameters
+#
+Name
+: The name of the vector store.
+Description
+: Explain to the LLM what this tool does. A good, specific description allows LLMs to produce expected results more often.
+Mongo Collection
+: Enter the name of the MongoDB collection to use.
+Vector Index Name
+: Enter the name of the Vector Search index in your MongoDB Atlas collection.
+Limit
+: Enter how many results to retrieve from the vector store. For example, set this to
+10
+to get the ten best results.
+Node options
+#
+Options
+#
+Metadata Filter
+: Filters results based on metadata.
+Templates and examples
+#
+Browse MongoDB Atlas Vector Store integration templates
+, or
+search all templates
+Related resources
+#
+Refer to:
+LangChain's MongoDB Atlas Vector Search documentation
+for more information about the service.
+MongoDB Atlas Vector Search documentation
+for more information about MongoDB Atlas Vector Search.
+View n8n's
+Advanced AI
+documentation.
+Self-hosted AI Starter Kit
+#
+New to working with AI and using self-hosted n8n? Try n8n's
+self-hosted AI Starter Kit
+to get started with a proof-of-concept or demo playground using Ollama, Qdrant, and PostgreSQL.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

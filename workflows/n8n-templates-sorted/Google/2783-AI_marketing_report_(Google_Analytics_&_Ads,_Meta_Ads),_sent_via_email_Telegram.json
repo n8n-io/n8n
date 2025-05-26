@@ -1,0 +1,3246 @@
+{
+  "workflow": {
+    "id": 2783,
+    "name": "AI marketing report (Google Analytics & Ads, Meta Ads), sent via email/Telegram",
+    "views": 24264,
+    "recentViews": 26,
+    "totalViews": 24264,
+    "createdAt": "2025-01-23T14:40:20.555Z",
+    "description": "## What this workflow does\nThis workflow retrieves Online Marketing data (Google Analytics for several domains, Google Ads, Meta Ads) from the last 7 days and the same period in the previous year. The data is then prepared by AI as a table, analyzed and provided with a small summary.\nThe summary is then sent by email to a desired address and, shortened and summarized again, sent to a Telegram account.\n\nThis workflow has the following sequence:\n\n1. time trigger (e.g. every Monday at 7 a.m.)\n2. retrieval of Online Marketing data from the last 7 days (via sub workflows)\n3. assignment and summary of the data\n4. retrieval of Online Marketing data from the same time period of the previous year\n5. allocation and summary of the data\n6. preparation in tabular form and brief analysis by AI.\n7. sending the report as an email\n8. preparation in short form by AI for Telegram (optional)\n9. sending as Telegram message.\n\n## Requirements\nThe following accesses are required for the workflow:\n- Google Analytics (via Google Analytics API): [Documentation](https://docs.n8n.io/integrations/builtin/credentials/google/)\n- Google Ads (via HTTP Request -&gt; Google Ads API):[Documentation](https://docs.n8n.io/integrations/builtin/credentials/google/)\n- Meta Ads (via Facebook Graph API): [Documentation](https://docs.n8n.io/integrations/builtin/credentials/facebookgraph/)\n- AI API access (e.g. via OpenAI, Anthropic, Google or Ollama)\n- SMTP access data (for sending the mail)\n- Telegram access data (optional for sending as Telegram message): [Documentation](https://docs.n8n.io/integrations/builtin/credentials/telegram/)\n\nYou must set up the individual sub-workflows as separate workflows. Then set the “Execute workflow trigger” here. Then select the corresponding sub-workflow in the AI Agent Tools.\nYou can select the number of domains yourself. If the data queries are not required, simply delete the corresponding tool (e.g. “Analytics_Domain_5).\n\nFeel free to [contact me via LinkedIn](https://www.linkedin.com/in/friedemann-schuetz), if you have any questions!",
+    "workflow": {
+      "id": "knmxcsujuHmViJl4",
+      "meta": {
+        "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+      },
+      "name": "Online Marketing Weekly Report",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "f145b442-3036-4769-b7ad-62c97fa5d662",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -1580,
+            -220
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "weeks",
+                  "triggerAtDay": [
+                    1
+                  ],
+                  "triggerAtHour": 7
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "9b25dfe7-cabe-4051-8d03-5f9b1f42621a",
+          "name": "OpenAI Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -1380,
+            120
+          ],
+          "parameters": {
+            "model": "gpt-4o",
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "niikB3HA4fT5WAqt",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f04d67a6-fb37-434d-8fd7-988db33f8cde",
+          "name": "Google_Ads",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -400,
+            120
+          ],
+          "parameters": {
+            "name": "Google_Ads",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "nRGs7Ogv7eU1mJQl",
+              "cachedResultName": "Google Ads Report: Weekly Subflow ROAS"
+            },
+            "description": "Call this tool to get the output of the Google Ads Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "179c2464-bf17-4a9b-8c5b-508a4acf746f",
+          "name": "Meta_Ads",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -300,
+            120
+          ],
+          "parameters": {
+            "name": "Meta_Ads",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "9sC80Rt1eqgrfphk",
+              "cachedResultName": "Meta Ads Report: Weekly Subflow ROAS"
+            },
+            "description": "Call this tool to get the output of the Meta Ads Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "f963f694-cf30-4b81-9ee1-3ad383714770",
+          "name": "Analytics_Domain_1",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -1180,
+            120
+          ],
+          "parameters": {
+            "name": "EP_Data",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ploQFf5BtgCC6ryu",
+              "cachedResultName": "GA Report: EP Subflow Weekly"
+            },
+            "description": "Call this tool to get the output of the SER Data Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "093d83fd-6788-418b-ac38-925b04be2515",
+          "name": "Analytics_Domain_3",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -860,
+            120
+          ],
+          "parameters": {
+            "name": "SBW_Data",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ECmFUVocSLqB3afJ",
+              "cachedResultName": "GA Report: SBW Subflow Weekly"
+            },
+            "description": "Call this tool to get the output of the SBW Data Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "57612276-4a48-4a6c-997c-f6c4f1196ed7",
+          "name": "Analytics_Domain_2",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -1020,
+            120
+          ],
+          "parameters": {
+            "name": "SER_Data",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "EWAE7Qx70cHZuXte",
+              "cachedResultName": "GA Report: SER Subflow Weekly"
+            },
+            "description": "Call this tool to get the output of the SER Data Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "3dfea4cf-87fb-44d5-9b95-304406da6b18",
+          "name": "Analytics_Domain_4",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -700,
+            120
+          ],
+          "parameters": {
+            "name": "SZO_Data",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "eyPh3eaqrBLAcLKF",
+              "cachedResultName": "GA Report: SZO Subflow Weekly"
+            },
+            "description": "Call this tool to get the output of the SZO Data Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "79f1cd20-6133-4c72-8942-5b1f55adbb7f",
+          "name": "Analytics_Domain_5",
+          "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+          "position": [
+            -540,
+            120
+          ],
+          "parameters": {
+            "name": "UCH_Data",
+            "workflowId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "ErIeoUuyF4fqMbhL",
+              "cachedResultName": "GA Report: UCH Subflow Weekly"
+            },
+            "description": "Call this tool to get the output of the UCH Data Workflow"
+          },
+          "typeVersion": 1.3
+        },
+        {
+          "id": "0740d70f-a582-4a12-ab12-08b46504e8f8",
+          "name": "Execute Workflow Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -1580,
+            460
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2449b1be-0ba8-41ae-9ea5-86028da736f0",
+          "name": "Calculator",
+          "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+          "position": [
+            380,
+            680
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "e8b884f1-2013-4c25-a641-8181528db173",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1660,
+            360
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 2340,
+            "height": 460,
+            "content": "## Sub-Workflow: Google Analytics Data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f7d290eb-07d1-413d-ba12-184229e519c0",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1660,
+            1440
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 2340,
+            "height": 460,
+            "content": "## Sub-Workflow: Meta Ads Data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c78da3ec-fb47-4373-8850-e1af89d7330e",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1660,
+            -280
+          ],
+          "parameters": {
+            "width": 2340,
+            "height": 540,
+            "content": "## Main Workflow: Weekly Report Assistant"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "79ae6b22-0067-4d51-bc64-e0360d2096f3",
+          "name": "Calculator1",
+          "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+          "position": [
+            440,
+            1200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d7608c67-4b10-4860-b683-de265b95cb03",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -1660,
+            880
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 2340,
+            "height": 500,
+            "content": "## Sub-Workflow: Google Ads Data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c047cc54-1598-4294-a398-cdb23ea8be4d",
+          "name": "Calculator3",
+          "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+          "position": [
+            460,
+            1760
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "165717a8-b215-4e0e-a5e9-586feaec261e",
+          "name": "Call Google Analytics data: Last 7 days",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            -1320,
+            460
+          ],
+          "parameters": {
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "listName": "screenPageViews"
+                },
+                {},
+                {
+                  "listName": "sessions"
+                },
+                {
+                  "listName": "sessionsPerUser"
+                },
+                {
+                  "name": "averageSessionDuration",
+                  "listName": "other"
+                },
+                {
+                  "name": "ecommercePurchases",
+                  "listName": "other"
+                },
+                {
+                  "name": "averagePurchaseRevenue",
+                  "listName": "other"
+                },
+                {
+                  "name": "purchaseRevenue",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "345060083",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p345060083/",
+              "cachedResultName": "https://www.ep-reisen.de  – GA4"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {}
+              ]
+            },
+            "additionalFields": {}
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "KJj8aAwdrmU2STrI",
+              "name": "Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "da636e2a-4396-4809-98ea-c04abdfc6b73",
+          "name": "Call Google Analytics data: Last 7 days (previous year)",
+          "type": "n8n-nodes-base.googleAnalytics",
+          "position": [
+            -400,
+            460
+          ],
+          "parameters": {
+            "endDate": "={{ $json.endDate }}",
+            "dateRange": "custom",
+            "startDate": "={{ $json.startDate }}",
+            "metricsGA4": {
+              "metricValues": [
+                {
+                  "listName": "screenPageViews"
+                },
+                {},
+                {
+                  "listName": "sessions"
+                },
+                {
+                  "listName": "sessionsPerUser"
+                },
+                {
+                  "name": "averageSessionDuration",
+                  "listName": "other"
+                },
+                {
+                  "name": "ecommercePurchases",
+                  "listName": "other"
+                },
+                {
+                  "name": "averagePurchaseRevenue",
+                  "listName": "other"
+                },
+                {
+                  "name": "purchaseRevenue",
+                  "listName": "other"
+                }
+              ]
+            },
+            "propertyId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "345060083",
+              "cachedResultUrl": "https://analytics.google.com/analytics/web/#/p345060083/",
+              "cachedResultName": "https://www.ep-reisen.de  – GA4"
+            },
+            "dimensionsGA4": {
+              "dimensionValues": [
+                {}
+              ]
+            },
+            "additionalFields": {}
+          },
+          "credentials": {
+            "googleAnalyticsOAuth2": {
+              "id": "KJj8aAwdrmU2STrI",
+              "name": "Google Analytics account"
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "f1ac5ff4-1b09-442f-96b0-4f1562dffebb",
+          "name": "Calculation same period previous year",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -620,
+            980
+          ],
+          "parameters": {
+            "jsCode": "// Aktuelles Datum\nconst today = new Date();\n\n// Berechnung des Enddatums (letzter Tag vor dem aktuellen Datum im Vorjahr)\nconst end = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate() - 1);\n\n// Berechnung des Startdatums (7 Tage vor dem Enddatum)\nconst start = new Date(end);\nstart.setDate(end.getDate() - 6);\n\n// Formatierung zu YYYYMMDD\nfunction formatDate(date) {\n    const year = date.getFullYear();\n    const month = String(date.getMonth() + 1).padStart(2, '0');\n    const day = String(date.getDate()).padStart(2, '0');\n    return `${year}${month}${day}`;\n}\n\n// Ausgabe\nconst startDate = formatDate(start);\nconst endDate = formatDate(end);\n\nreturn {\n    startDate,\n    endDate\n};"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "bc224327-ca75-451a-841f-7cd8c59c5925",
+          "name": "Format data input (previous year)",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -240,
+            980
+          ],
+          "parameters": {
+            "jsCode": "const inputData = items[0].json.results;\nconst totals = {\n   impressions: 0,\n   clicks: 0,\n   conversions: 0,\n   costMicros: 0,\n   conversionsValue: 0\n};\n\ninputData.forEach(campaign => {\n   totals.impressions += parseInt(campaign.metrics.impressions) || 0;\n   totals.clicks += parseInt(campaign.metrics.clicks) || 0;\n   totals.conversions += parseFloat(campaign.metrics.conversions) || 0;\n   totals.costMicros += parseInt(campaign.metrics.costMicros) || 0;\n   totals.conversionsValue += parseFloat(campaign.metrics.conversionsValue) || 0;\n});\n\nconst results = {\n   impressions: totals.impressions,\n   clicks: totals.clicks,\n   conversions: totals.conversions,\n   cost_micros: totals.costMicros,\n   ctr: totals.clicks / totals.impressions,\n   cost_per_conversion: totals.costMicros / totals.conversions,\n   cpm: (totals.costMicros / (totals.impressions / 1000)),\n   roas: totals.conversionsValue / (totals.costMicros / 1000000)\n};\nreturn results;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5b9dbc30-4a92-43d2-b9bf-477141aa4024",
+          "name": "Format data input (current year)",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1200,
+            980
+          ],
+          "parameters": {
+            "jsCode": "const inputData = items[0].json.results;\nconst totals = {\n    impressions: 0,\n    clicks: 0,\n    conversions: 0,\n    costMicros: 0,\n    conversionsValue: 0\n};\n\ninputData.forEach(campaign => {\n    totals.impressions += parseInt(campaign.metrics.impressions) || 0;\n    totals.clicks += parseInt(campaign.metrics.clicks) || 0; \n    totals.conversions += parseFloat(campaign.metrics.conversions) || 0;\n    totals.costMicros += parseInt(campaign.metrics.costMicros) || 0;\n    totals.conversionsValue += parseFloat(campaign.metrics.conversionsValue) || 0;\n});\n\nconst results = {\n    impressions: totals.impressions,\n    clicks: totals.clicks,\n    conversions: totals.conversions, \n    cost_micros: totals.costMicros,\n    ctr: totals.clicks / totals.impressions,\n    cost_per_conversion: totals.costMicros / totals.conversions,\n    cpm: (totals.costMicros / (totals.impressions / 1000)),\n    roas: totals.conversionsValue / (totals.costMicros / 1000000)\n};\n\nreturn results;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "fdb70b1a-8891-469f-9920-3623cb40760e",
+          "name": "Assign data from input (current year)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1020,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c2f8b9a-e964-49a0-8837-efb0dfd7bcae",
+                  "name": "Impressions",
+                  "type": "number",
+                  "value": "={{ $json.impressions }}"
+                },
+                {
+                  "id": "8b524518-1268-4971-b5c9-ae7da09d94f9",
+                  "name": "CPM",
+                  "type": "number",
+                  "value": "={{ $json.cpm }}"
+                },
+                {
+                  "id": "ca7279b9-c643-425f-aa99-cb17146e9994",
+                  "name": "Clicks",
+                  "type": "number",
+                  "value": "={{ $json.clicks }}"
+                },
+                {
+                  "id": "591288f7-e8cf-445e-872a-5b83f997b825",
+                  "name": "CTR",
+                  "type": "number",
+                  "value": "={{ $json.ctr }}"
+                },
+                {
+                  "id": "dc1a43da-3f3a-4dca-bbde-904222d7f693",
+                  "name": "Conversions",
+                  "type": "number",
+                  "value": "={{ $json.conversions }}"
+                },
+                {
+                  "id": "eac0b53e-c452-40b8-92bc-8af8ea349984",
+                  "name": "=Cost per Conversion",
+                  "type": "number",
+                  "value": "={{ $json.cost_per_conversion }}"
+                },
+                {
+                  "id": "4b5d569a-26c9-4a2f-be48-6814860d33c1",
+                  "name": "ROAS",
+                  "type": "number",
+                  "value": "={{ $json.roas }}"
+                },
+                {
+                  "id": "b96439be-189d-4ebe-b49e-d5c31fefe9f0",
+                  "name": "Spend",
+                  "type": "number",
+                  "value": "={{ $json.cost_micros }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "bef77ef4-b6ef-48c3-b0b7-5a12a3f75b05",
+          "name": "Summarize input (current year)",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            -820,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "Impressions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CPM",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Clicks",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CTR",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Conversions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Cost per Conversion",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Spend",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "ROAS",
+                  "aggregation": "average"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2be072fe-24fd-47f5-8026-31b98666de84",
+          "name": "Assign input (previous year)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -80,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c2f8b9a-e964-49a0-8837-efb0dfd7bcae",
+                  "name": "Impressions",
+                  "type": "number",
+                  "value": "={{ $json.impressions }}"
+                },
+                {
+                  "id": "8b524518-1268-4971-b5c9-ae7da09d94f9",
+                  "name": "CPM",
+                  "type": "number",
+                  "value": "={{ $json.cpm }}"
+                },
+                {
+                  "id": "ca7279b9-c643-425f-aa99-cb17146e9994",
+                  "name": "Clicks",
+                  "type": "number",
+                  "value": "={{ $json.clicks }}"
+                },
+                {
+                  "id": "591288f7-e8cf-445e-872a-5b83f997b825",
+                  "name": "CTR",
+                  "type": "number",
+                  "value": "={{ $json.ctr }}"
+                },
+                {
+                  "id": "dc1a43da-3f3a-4dca-bbde-904222d7f693",
+                  "name": "Conversions",
+                  "type": "number",
+                  "value": "={{ $json.conversions }}"
+                },
+                {
+                  "id": "eac0b53e-c452-40b8-92bc-8af8ea349984",
+                  "name": "=Cost per conversion",
+                  "type": "number",
+                  "value": "={{ $json.cost_per_conversion }}"
+                },
+                {
+                  "id": "76bda144-0cb4-4614-a658-ddb31726ecb9",
+                  "name": "ROAS",
+                  "type": "number",
+                  "value": "={{ $json.roas }}"
+                },
+                {
+                  "id": "b96439be-189d-4ebe-b49e-d5c31fefe9f0",
+                  "name": "Spend",
+                  "type": "number",
+                  "value": "={{ $json.cost_micros }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "87381409-c9e5-4d1f-a118-a9e592fa8805",
+          "name": "Summarize input (previous year)",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            100,
+            980
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "Impressions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CPM",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Clicks",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CTR",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Conversions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Cost per conversion",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Spend",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "ROAS",
+                  "aggregation": "average"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "000507e0-7806-4686-b157-56e9d58bd9db",
+          "name": "Calculate date format for Google Ads request (last 7 days)",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1600,
+            980
+          ],
+          "parameters": {
+            "jsCode": "// Aktuelles Datum\nconst today = new Date();\n\n// Berechnung des Enddatums (letzter Tag vor dem aktuellen Datum)\nconst end = new Date(today);\nend.setDate(today.getDate() - 1);\n\n// Berechnung des Startdatums (7 Tage vor dem Enddatum)\nconst start = new Date(end);\nstart.setDate(end.getDate() - 6);\n\n// Formatierung zu YYYYMMDD\nfunction formatDate(date) {\n    const year = date.getFullYear();\n    const month = String(date.getMonth() + 1).padStart(2, '0');\n    const day = String(date.getDate()).padStart(2, '0');\n    return `${year}${month}${day}`;\n}\n\n// Ausgabe\nconst startDate = formatDate(start);\nconst endDate = formatDate(end);\n\nreturn { startDate, endDate };"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a1b4d36a-c322-4771-bcf3-226870fcf000",
+          "name": "Call Google Ads Data: Last 7 days",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -1380,
+            980
+          ],
+          "parameters": {
+            "url": "https://googleads.googleapis.com/v17/customers/3300525230/googleAds:search",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "query",
+                  "value": "=SELECT\n   campaign.name,\n   metrics.impressions,\n   metrics.average_cpm,\n   metrics.clicks, \n   metrics.ctr,\n   metrics.conversions,\n   metrics.cost_per_conversion,\n   metrics.cost_micros,\n   metrics.conversions_value\nFROM campaign\nWHERE segments.date >= '{{ $json.startDate }}' AND segments.date <= '{{ $json.endDate }}'"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "developer-token",
+                  "value": "fzQ2U5IcU4ZH0vBDn4Slww"
+                }
+              ]
+            },
+            "nodeCredentialType": "googleAdsOAuth2Api"
+          },
+          "credentials": {
+            "googleOAuth2Api": {
+              "id": "yNLz0qjgW7jN4Osv",
+              "name": "Google account"
+            },
+            "googleAdsOAuth2Api": {
+              "id": "gEPlb6nlwRX35x6R",
+              "name": "Google Ads account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "7246c0af-4e9d-4037-bc1d-c4fd16aae7d3",
+          "name": "Call Google Ads Data: Last 7 days (previous year)",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            -420,
+            980
+          ],
+          "parameters": {
+            "url": "https://googleads.googleapis.com/v17/customers/3300525230/googleAds:search",
+            "method": "POST",
+            "options": {},
+            "sendBody": true,
+            "sendHeaders": true,
+            "authentication": "predefinedCredentialType",
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "query",
+                  "value": "=SELECT\n   campaign.name,\n   metrics.impressions,\n   metrics.average_cpm, \n   metrics.clicks,\n   metrics.ctr,\n   metrics.conversions,\n   metrics.cost_per_conversion,\n   metrics.cost_micros,\n   metrics.conversions_value\nFROM campaign\nWHERE segments.date >= '{{ $json.startDate }}' AND segments.date <= '{{ $json.endDate }}'"
+                }
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "developer-token",
+                  "value": "fzQ2U5IcU4ZH0vBDn4Slww"
+                }
+              ]
+            },
+            "nodeCredentialType": "googleAdsOAuth2Api"
+          },
+          "credentials": {
+            "googleOAuth2Api": {
+              "id": "yNLz0qjgW7jN4Osv",
+              "name": "Google account"
+            },
+            "googleAdsOAuth2Api": {
+              "id": "gEPlb6nlwRX35x6R",
+              "name": "Google Ads account"
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "13074a3d-6cf4-4ad7-9e26-002f8120e640",
+          "name": "Call Meta Ads Data: Last 7 days",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            -1380,
+            1540
+          ],
+          "parameters": {
+            "edge": "insights",
+            "node": "act_54337533",
+            "options": {
+              "queryParametersJson": "={\n \"fields\": \"impressions,cpm,inline_link_clicks,inline_link_click_ctr,conversions,cost_per_conversion,spend,action_values,purchase_roas\",\n \"time_range\": {\n   \"since\": \"{{ $json.currentPeriod.since }}\",\n   \"until\": \"{{ $json.currentPeriod.until }}\"\n }\n}"
+            },
+            "graphApiVersion": "v20.0"
+          },
+          "credentials": {
+            "facebookGraphApi": {
+              "id": "9q3YgP6zvgKBO4aj",
+              "name": "Facebook Graph account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "06a32368-f9f1-4311-bd17-3fea6b0d2888",
+          "name": "Call Meta Ads Data: Last 7 days (previous year)",
+          "type": "n8n-nodes-base.facebookGraphApi",
+          "position": [
+            -640,
+            1540
+          ],
+          "parameters": {
+            "edge": "insights",
+            "node": "act_54337533",
+            "options": {
+              "queryParametersJson": "={\n \"fields\": \"impressions,cpm,inline_link_clicks,inline_link_click_ctr,conversions,cost_per_conversion,spend,action_values,purchase_roas\",\n \"time_range\": {\n   \"since\": \"{{$node['Calculate date format for meta ads request s'].json.lastYear.since}}\",\n   \"until\": \"{{$node['Calculate date format for meta ads request s'].json.lastYear.until}}\"\n }\n}"
+            },
+            "graphApiVersion": "v20.0"
+          },
+          "credentials": {
+            "facebookGraphApi": {
+              "id": "9q3YgP6zvgKBO4aj",
+              "name": "Facebook Graph account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a13919d1-5680-44ea-826b-44afc0034702",
+          "name": "Summarize Meta input (current year)",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            -920,
+            1540
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "Impressions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CPM",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Clicks",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CTR",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Conversions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Cost per conversion",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Spend",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "ROAS",
+                  "aggregation": "average"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1afce576-0d2a-41bb-a94b-5d6eaae1fe3e",
+          "name": "Assign Meta data from input (current year)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1140,
+            1540
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c2f8b9a-e964-49a0-8837-efb0dfd7bcae",
+                  "name": "Impressions",
+                  "type": "number",
+                  "value": "={{ $json.data[0].impressions }}"
+                },
+                {
+                  "id": "8b524518-1268-4971-b5c9-ae7da09d94f9",
+                  "name": "CPM",
+                  "type": "number",
+                  "value": "={{ $json.data[0].cpm }}"
+                },
+                {
+                  "id": "ca7279b9-c643-425f-aa99-cb17146e9994",
+                  "name": "Clicks",
+                  "type": "number",
+                  "value": "={{ $json.data[0].inline_link_clicks }}"
+                },
+                {
+                  "id": "591288f7-e8cf-445e-872a-5b83f997b825",
+                  "name": "CTR",
+                  "type": "number",
+                  "value": "={{ $json.data[0].inline_link_click_ctr }}"
+                },
+                {
+                  "id": "dc1a43da-3f3a-4dca-bbde-904222d7f693",
+                  "name": "Conversions",
+                  "type": "number",
+                  "value": "={{ $json.data[0].conversions[0].value }}"
+                },
+                {
+                  "id": "eac0b53e-c452-40b8-92bc-8af8ea349984",
+                  "name": "=Cost per conversion",
+                  "type": "number",
+                  "value": "={{ $json.data[0].cost_per_conversion[0].value }}"
+                },
+                {
+                  "id": "c6cac2d8-b8f8-4b2a-9bcc-1c325db78799",
+                  "name": "ROAS",
+                  "type": "number",
+                  "value": "={{ $json.data[0].purchase_roas[0].value }}"
+                },
+                {
+                  "id": "b96439be-189d-4ebe-b49e-d5c31fefe9f0",
+                  "name": "Spend",
+                  "type": "number",
+                  "value": "={{ $json.data[0].spend }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "0d400918-eb14-4bb1-8950-27b39e651264",
+          "name": "Assign Meta data input (previous year)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -340,
+            1540
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c2f8b9a-e964-49a0-8837-efb0dfd7bcae",
+                  "name": "Impressions",
+                  "type": "number",
+                  "value": "={{ $json.data[0].impressions }}"
+                },
+                {
+                  "id": "8b524518-1268-4971-b5c9-ae7da09d94f9",
+                  "name": "CPM",
+                  "type": "number",
+                  "value": "={{ $json.data[0].cpm }}"
+                },
+                {
+                  "id": "ca7279b9-c643-425f-aa99-cb17146e9994",
+                  "name": "Clicks",
+                  "type": "number",
+                  "value": "={{ $json.data[0].inline_link_clicks }}"
+                },
+                {
+                  "id": "591288f7-e8cf-445e-872a-5b83f997b825",
+                  "name": "CTR",
+                  "type": "number",
+                  "value": "={{ $json.data[0].inline_link_click_ctr }}"
+                },
+                {
+                  "id": "dc1a43da-3f3a-4dca-bbde-904222d7f693",
+                  "name": "Conversions",
+                  "type": "number",
+                  "value": "={{ $json.data[0].conversions[0].value }}"
+                },
+                {
+                  "id": "eac0b53e-c452-40b8-92bc-8af8ea349984",
+                  "name": "=Cost per conversion",
+                  "type": "number",
+                  "value": "={{ $json.data[0].cost_per_conversion[0].value }}"
+                },
+                {
+                  "id": "b866032c-07ac-440b-a81a-d9787926b9d6",
+                  "name": "ROAS",
+                  "type": "number",
+                  "value": "={{ $json.data[0].purchase_roas[0].value }}"
+                },
+                {
+                  "id": "b96439be-189d-4ebe-b49e-d5c31fefe9f0",
+                  "name": "Spend",
+                  "type": "number",
+                  "value": "={{ $json.data[0].spend }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "faf34f2a-f6d3-4510-aeee-6b25174abc08",
+          "name": "Summarize Meta data input (previous year)",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            -40,
+            1540
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "Impressions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CPM",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Clicks",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "CTR",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Conversions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Cost per conversion",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Spend",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "ROAS",
+                  "aggregation": "average"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "3985f30a-94ab-45be-a511-b9ae0d4f3bb0",
+          "name": "Format all Meta data for LLM",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            160,
+            1540
+          ],
+          "parameters": {
+            "jsCode": "const currentData = $('Summarize Meta input (current year)').first().json;\nconst previousData = $('Summarize Meta data input (previous year)').first().json;\n\nfunction parseNumber(value) {\n    if (typeof value === 'string') {\n        return parseFloat(value.replace(/\\./g, '').replace(',', '.'));\n    }\n    return value || 0;\n}\n\nfunction formatNumber(number, decimals = 0) {\n    if (number === 0) return \"0\";\n    return parseNumber(number).toLocaleString('de-DE', {\n        minimumFractionDigits: decimals,\n        maximumFractionDigits: decimals\n    });\n}\n\nfunction calculateCPM(cpm) {\n    return parseNumber(cpm);\n}\n\nreturn [{\n    current_impressions: formatNumber(currentData.sum_Impressions),\n    current_cpm: formatNumber(calculateCPM(currentData.average_CPM), 2),\n    current_clicks: formatNumber(currentData.sum_Clicks),\n    current_ctr: formatNumber(parseNumber(currentData.average_CTR), 2),\n    current_conversions: formatNumber(currentData.sum_Conversions, 2),\n    current_cost_per_conversion: formatNumber(currentData.average_Cost_per_conversion, 2),\n    current_cost: formatNumber(currentData.sum_Spend, 2),\n    current_roas: formatNumber(parseNumber(currentData.average_ROAS), 2),\n    \n    previous_impressions: formatNumber(previousData.sum_Impressions),\n    previous_cpm: formatNumber(calculateCPM(previousData.average_CPM), 2),\n    previous_clicks: formatNumber(previousData.sum_Clicks),\n    previous_ctr: formatNumber(parseNumber(previousData.average_CTR), 2),\n    previous_conversions: formatNumber(previousData.sum_Conversions, 2),\n    previous_cost_per_conversion: formatNumber(previousData.average_Cost_per_conversion || 0, 2),\n    previous_cost: formatNumber(previousData.sum_Spend, 2),\n    previous_roas: formatNumber(parseNumber(previousData.average_ROAS), 2)\n}];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "146d6907-66af-41ff-ab32-b2a3ec5787b6",
+          "name": "Processing for Google Ads report",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            400,
+            980
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o",
+              "cachedResultName": "GPT-4O"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Please analyze the following data and output the results in table form:\n\n| Metric | Last 7 Days | Previous Year | Percentage Change |\n|--------|-------------|---------------|-------------------|\n| Total Impressions | {{$json.current_impressions}} | {{$json.previous_impressions}} | Percentage Change |\n| CPM | {{$json.current_cpm}} | {{$json.previous_cpm}} | Percentage Change |\n| Total Clicks | {{$json.current_clicks}} | {{$json.previous_clicks}} | Percentage Change |\n| CTR | {{$json.current_ctr}} | {{$json.previous_ctr}} | Percentage Change |\n| Conversions | {{$json.current_conversions}} | {{$json.previous_conversions}} | Percentage Change |\n| Cost per Conversion | {{$json.current_cost_per_conversion}} | {{$json.previous_cost_per_conversion}} | Percentage Change |\n| ROAS | {{ $json.current_roas }} | {{ $json.previous_roas }} | Percentage Change |\n| Costs | {{$json.current_cost}} | {{$json.previous_cost}} | Percentage Change |\n\nNumber format:\n- Period (.) for thousands (e.g. 4.000)\n- Comma (,) for decimal numbers (e.g. 3,4)\n- Display CPM, Cost per Conversion, ROAS and Costs in €\n- CTR in percent\n\nPlease write a brief summary of the analyzed data above the table (in max 3 sentences!)\n\nIMPORTANT:\nWrite nothing except the summary and the table below it!\nNO INTRODUCTION, NO CONCLUSION!"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "niikB3HA4fT5WAqt",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "2fd2a795-caa4-4194-8049-4955c1d54dd9",
+          "name": "Format all Google data for LLM",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            260,
+            980
+          ],
+          "parameters": {
+            "jsCode": "const currentData = $('Summarize input (current year)').first().json;\nconst previousData = $('Summarize input (previous year)').first().json;\n\nfunction formatNumber(number, decimals = 0) {\n   if (number === 0) return \"0\";\n   return number.toLocaleString('de-DE', {\n       minimumFractionDigits: decimals,\n       maximumFractionDigits: decimals\n   });\n}\n\nfunction calculateCPM(costMicros, impressions) {\n   if (impressions === 0) return 0;\n   return (costMicros / 1000000 / impressions) * 1000;\n}\n\nreturn [{\n   current_impressions: formatNumber(currentData.sum_Impressions),\n   current_cpm: formatNumber(calculateCPM(currentData.sum_Spend, currentData.sum_Impressions), 2),\n   current_clicks: formatNumber(currentData.sum_Clicks),\n   current_ctr: formatNumber(currentData.average_CTR * 100, 2),\n   current_conversions: formatNumber(currentData.sum_Conversions, 2),\n   current_cost_per_conversion: formatNumber(currentData.average_Cost_per_Conversion / 1000000, 2),\n   current_cost: formatNumber(currentData.sum_Spend / 1000000, 2),\n   current_roas: formatNumber(currentData.average_ROAS, 2),\n   \n   previous_impressions: formatNumber(previousData.sum_Impressions),\n   previous_cpm: formatNumber(calculateCPM(previousData.sum_Spend, previousData.sum_Impressions), 2),\n   previous_clicks: formatNumber(previousData.sum_Clicks),\n   previous_ctr: formatNumber(previousData.average_CTR * 100, 2),\n   previous_conversions: formatNumber(previousData.sum_Conversions, 2),\n   previous_cost_per_conversion: formatNumber(previousData.average_Cost_per_conversion / 1000000, 2),\n   previous_cost: formatNumber(previousData.sum_Spend / 1000000, 2),\n   previous_roas: formatNumber(previousData.average_ROAS, 2)\n}];"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "e7e357e7-3f16-4b6e-ae50-c6741bbe8357",
+          "name": "Assign Google Analytics data input (current year)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -1080,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c2f8b9a-e964-49a0-8837-efb0dfd7bcae",
+                  "name": "Page views",
+                  "type": "number",
+                  "value": "={{ $json.screenPageViews }}"
+                },
+                {
+                  "id": "8b524518-1268-4971-b5c9-ae7da09d94f9",
+                  "name": "Users",
+                  "type": "number",
+                  "value": "={{ $json.totalUsers }}"
+                },
+                {
+                  "id": "ca7279b9-c643-425f-aa99-cb17146e9994",
+                  "name": "Sessions",
+                  "type": "number",
+                  "value": "={{ $json.sessions }}"
+                },
+                {
+                  "id": "591288f7-e8cf-445e-872a-5b83f997b825",
+                  "name": "Sessions per user",
+                  "type": "number",
+                  "value": "={{ $json.sessionsPerUser }}"
+                },
+                {
+                  "id": "dc1a43da-3f3a-4dca-bbde-904222d7f693",
+                  "name": "Session duration",
+                  "type": "number",
+                  "value": "={{ $json.averageSessionDuration }}"
+                },
+                {
+                  "id": "eac0b53e-c452-40b8-92bc-8af8ea349984",
+                  "name": "=Conversions",
+                  "type": "number",
+                  "value": "={{ $json.ecommercePurchases }}"
+                },
+                {
+                  "id": "b96439be-189d-4ebe-b49e-d5c31fefe9f0",
+                  "name": "Value per Conversion",
+                  "type": "number",
+                  "value": "={{ $json.averagePurchaseRevenue }}"
+                },
+                {
+                  "id": "94835d43-2fc8-49c0-97f0-6f0f8699337a",
+                  "name": "Revenue",
+                  "type": "number",
+                  "value": "={{ $json.purchaseRevenue }}"
+                },
+                {
+                  "id": "d70f8138-3b84-4b88-a98f-eb929e1cc29a",
+                  "name": "date",
+                  "type": "string",
+                  "value": "={{ $json.date }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9f16d330-9288-42bc-9a21-beb002c0ce4f",
+          "name": "Summarize Google Analytics input (current year)",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            -860,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "Page views",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Users",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Sessions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Sessions per user",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Session duration",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Conversions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Value per Conversion",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Revenue",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "date"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9355325f-35c2-4663-922e-d7ccec873fea",
+          "name": "Calculate date format for meta ads request s",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -1600,
+            1540
+          ],
+          "parameters": {
+            "jsCode": "// Aktuelles Datum\nconst now = new Date();\n\n// Gestern als Ende-Datum\nconst yesterday = new Date(now);\nyesterday.setDate(now.getDate() - 1);\n\n// Start-Datum (7 Tage vor gestern)\nconst weekStart = new Date(yesterday);\nweekStart.setDate(yesterday.getDate() - 6);\n\n// Vorjahreszeitraum\nconst lastYearStart = new Date(weekStart);\nlastYearStart.setFullYear(weekStart.getFullYear() - 1);\n\nconst lastYearEnd = new Date(yesterday);\nlastYearEnd.setFullYear(yesterday.getFullYear() - 1);\n\n// Formatierung YYYY-MM-DD\nfunction formatDate(date) {\n    return date.toISOString().split('T')[0];\n}\n\n// Ausgabe\nitems[0] = {\n  json: {\n    currentPeriod: {\n      since: formatDate(weekStart),\n      until: formatDate(yesterday)\n    },\n    lastYear: {\n      since: formatDate(lastYearStart),\n      until: formatDate(lastYearEnd)\n    }\n  }\n};\n\nreturn items;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7677727b-606b-4377-9057-032e91d1faae",
+          "name": "Calculation same period previous year1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            -620,
+            460
+          ],
+          "parameters": {
+            "jsCode": "return {\n  // Berechnung des Startdatums: Vorjahr, gleiche Woche, 7 Tage zurück\n  startDate: (() => {\n    const date = new Date();\n    date.setFullYear(date.getFullYear() - 1); // Zurück ins Vorjahr\n    date.setDate(date.getDate() - 7); // 7 Tage zurück\n    return date.toISOString().split('T')[0];\n  })(),\n  \n  // Berechnung des Enddatums: Vorjahr, heutiges Datum\n  endDate: (() => {\n    const date = new Date();\n    date.setFullYear(date.getFullYear() - 1); // Zurück ins Vorjahr\n    return date.toISOString().split('T')[0];\n  })(),\n};\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "d49d00f4-7336-40b7-8833-d2e8c9eacb5b",
+          "name": "Assign Google Analytics data input (previous year)",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -180,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "9c2f8b9a-e964-49a0-8837-efb0dfd7bcae",
+                  "name": "Page views",
+                  "type": "number",
+                  "value": "={{ $json.screenPageViews }}"
+                },
+                {
+                  "id": "8b524518-1268-4971-b5c9-ae7da09d94f9",
+                  "name": "Users",
+                  "type": "number",
+                  "value": "={{ $json.totalUsers }}"
+                },
+                {
+                  "id": "ca7279b9-c643-425f-aa99-cb17146e9994",
+                  "name": "Sessions",
+                  "type": "number",
+                  "value": "={{ $json.sessions }}"
+                },
+                {
+                  "id": "591288f7-e8cf-445e-872a-5b83f997b825",
+                  "name": "Sessions per user",
+                  "type": "number",
+                  "value": "={{ $json.sessionsPerUser }}"
+                },
+                {
+                  "id": "dc1a43da-3f3a-4dca-bbde-904222d7f693",
+                  "name": "Session duration",
+                  "type": "number",
+                  "value": "={{ $json.averageSessionDuration }}"
+                },
+                {
+                  "id": "eac0b53e-c452-40b8-92bc-8af8ea349984",
+                  "name": "=Conversions",
+                  "type": "number",
+                  "value": "={{ $json.ecommercePurchases }}"
+                },
+                {
+                  "id": "b96439be-189d-4ebe-b49e-d5c31fefe9f0",
+                  "name": "Value per conversion",
+                  "type": "number",
+                  "value": "={{ $json.averagePurchaseRevenue }}"
+                },
+                {
+                  "id": "94835d43-2fc8-49c0-97f0-6f0f8699337a",
+                  "name": "Revenue",
+                  "type": "number",
+                  "value": "={{ $json.purchaseRevenue }}"
+                },
+                {
+                  "id": "dd8255c6-65b1-41ce-b596-70c09108d6e2",
+                  "name": "=date",
+                  "type": "string",
+                  "value": "={{ $json.date }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a6f72675-f055-4270-8fff-05d61da6f3f9",
+          "name": "Summarize Google Analytics input (previous year)",
+          "type": "n8n-nodes-base.summarize",
+          "position": [
+            40,
+            460
+          ],
+          "parameters": {
+            "options": {},
+            "fieldsToSummarize": {
+              "values": [
+                {
+                  "field": "Page views",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Users",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Sessions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Sessions per user",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Session duration",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Conversions",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "Value per conversion",
+                  "aggregation": "average"
+                },
+                {
+                  "field": "Revenue",
+                  "aggregation": "sum"
+                },
+                {
+                  "field": "date"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "61311c11-59d2-4b77-afc5-52b1d66afbd7",
+          "name": "Send mail report",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [
+            560,
+            -220
+          ],
+          "parameters": {
+            "html": "={{ $json.output }}",
+            "options": {},
+            "subject": "Weekly Report: Online Marketing Report",
+            "toEmail": "friedemann.schuetz@ep-reisen.de",
+            "fromEmail": "friedemann.schuetz@posteo.de"
+          },
+          "credentials": {
+            "smtp": {
+              "id": "A71x7hx6lKj7nxp1",
+              "name": "SMTP account"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "928d15f2-141c-4e88-abcc-60799793bde7",
+          "name": "Processing for Meta Ads Report",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            400,
+            1540
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o",
+              "cachedResultName": "GPT-4O"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Please analyze the following data and output the results in table form:\n\n| Metric | Last 7 Days | Previous Year | Percentage Change |\n|--------|-------------|---------------|-------------------|\n| Total Impressions | {{$json.current_impressions}} | {{$json.previous_impressions}} | Percentage Change |\n| CPM | {{$json.current_cpm}} | {{$json.previous_cpm}} | Percentage Change |\n| Total Clicks | {{$json.current_clicks}} | {{$json.previous_clicks}} | Percentage Change |\n| CTR | {{$json.current_ctr}} | {{$json.previous_ctr}} | Percentage Change |\n| Conversions | {{$json.current_conversions}} | {{$json.previous_conversions}} | Percentage Change |\n| Cost per Conversion | {{$json.current_cost_per_conversion}} | {{$json.previous_cost_per_conversion}} | Percentage Change |\n| ROAS | {{ $json.current_roas }} | {{ $json.previous_roas }} | Percentage Change |\n| Costs | {{$json.current_cost}} | {{$json.previous_cost}} | Percentage Change |\n\nNumber format:\n- Period (.) for thousands (e.g. 4.000)\n- Comma (,) for decimal numbers (e.g. 3,4)\n- Display CPM, Cost per Conversion, ROAS and Costs in €\n- CTR in percent\n\nPlease write a brief summary of the analyzed data above the table (in max 3 sentences!)\n\nIMPORTANT:\nWrite nothing except the summary and the table below it!\nNO INTRODUCTION, NO CONCLUSION!"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "niikB3HA4fT5WAqt",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "ce9175bd-b355-47eb-8dd8-dd26292e0061",
+          "name": "Processing for Google Analytics Report",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            400,
+            460
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o",
+              "cachedResultName": "GPT-4O"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Please analyze the following data and output the results in table form:\n| Metric                        | Last 7 Days | Previous Year | Percentage Change |\n|-------------------------------|-------------|---------------|-------------------|\n| Total Page Views              | {{ $('Summarize Google Analytics input (current year)').item.json.sum_Page_views }} | {{ $json.sum_Page_views }} | Percentage Change |\n| Total Users                   | {{ $('Summarize Google Analytics input (current year)').item.json.sum_Users }} | {{ $json.sum_Users }} | Percentage Change |\n| Total Sessions                | {{ $('Summarize Google Analytics input (current year)').item.json.sum_Sessions }} | {{ $json.sum_Sessions }} | Percentage Change |\n| Average Sessions per User     | {{ $('Summarize Google Analytics input (current year)').item.json.average_Sessions_per_user }} | {{ $json.average_Sessions_per_user }} | Percentage Change |\n| Average Session Duration      | {{ $('Summarize Google Analytics input (current year)').item.json.average_Session_duration }} | {{ $json.average_Session_duration }} | Percentage Change |\n| Total Purchases               | {{ $('Summarize Google Analytics input (current year)').item.json.sum_Conversions }} | {{ $json.sum_Conversions }} | Percentage Change |\n| Average Revenue per Purchase  | {{ $('Summarize Google Analytics input (current year)').item.json.average_Value_per_Conversion }} | {{ $json.average_Value_per_conversion }} | Percentage Change |\n| Total Revenue                 | {{ $('Summarize Google Analytics input (current year)').item.json.sum_Revenue }} | {{ $('Summarize Google Analytics input (previous year)').item.json.sum_Revenue }} | Percentage Change |\n\nNumber format:\n- Period (.) for thousands (e.g. 4.000)\n- Comma (,) for decimal numbers (e.g. 3,4)\n- Convert Average Session Duration to minutes instead of seconds\n- Average Revenue per Purchase and Total Revenue in €\n\nPlease write a brief summary of the analyzed data above the table (in max 3 sentences!)\n\nIMPORTANT:\nWrite nothing except the summary and the table below it!\nNO INTRODUCTION, NO CONCLUSION!"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "niikB3HA4fT5WAqt",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "c960aed4-83c9-4f7f-b341-0eb29d4c3733",
+          "name": "Processing for Telegram Report",
+          "type": "@n8n/n8n-nodes-langchain.openAi",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "modelId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini",
+              "cachedResultName": "GPT-4O-MINI"
+            },
+            "options": {},
+            "messages": {
+              "values": [
+                {
+                  "content": "=Convert the following text from HTML to plain text:\n\n{{ $json.output }}\n\nPlease format the table so that each evaluation (Domain 1, Domain 2, Domain 3, Domain 4, Domain 5, Google Ads, Meta Ads) is its own paragraph! Also, please display only the summary (without the table), but incorporate the numbers into the running text!\n\nExample:\n\nDomain 1:\nxx,xxx page views (+x.xx%)\nxx,xxx users (-x.xx%)\n\nDomain 2:\nxx,xxx page views (+x.xx%)\nxx,xxx users (-x.xx%)\n\n<userStyle>Normal</userStyle>"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "niikB3HA4fT5WAqt",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "542bad2f-fad2-4e6d-b7af-499c7cd2b35c",
+          "name": "Weekly Report Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            -900,
+            -220
+          ],
+          "parameters": {
+            "text": "=# Expert in Data Processing and Email Generation in N8N\nYOU ARE AN EXPERT IN DATA PROCESSING AND EMAIL GENERATION IN N8N. YOUR TASK IS TO CREATE AN ENGLISH-LANGUAGE HTML EMAIL THAT COMPREHENSIVELY SUMMARIZES GOOGLE ANALYTICS AND GOOGLE ADS DATA FROM VARIOUS WORKFLOWS. YOU MUST FORMAT THE CAPTURED DATA ACCORDING TO THE SPECIFIED SPECIFICATIONS AND DESIGN THE EMAIL FOR OPTIMAL READABILITY.\n\n## Instructions\n\n### 1. Collect Summary\n- First, retrieve the summary and table for `Analytics_Domain_1` from the `Analytics_Domain_1` workflow.\n- Second, retrieve the summary and table for `Analytics_Domain_2` from the `Analytics_Domain_2` workflow.\n- Third, retrieve the summary and table for `Analytics_Domain_3` from the `Analytics_Domain_3` workflow.\n- Fourth, retrieve the summary and table for `Analytics_Domain_4` from the `Analytics_Domain_4` workflow.\n- Fifth, retrieve the summary and table for `Analytics_Domain_5` from the `Analytics_Domain_5` workflow.\n- Sixth, retrieve the summary and table for `Google_Ads` from the `Google_Ads` workflow.\n- Seventh, retrieve the summary and table for `Meta_Ads` from the `Meta_Ads` workflow.\n\n### 2. Email Structure\n- Begin the email with the following introduction:  \n  \"Hi Freddy,  \n  Here is your weekly Online Marketing Report for the last 7 days from Domain 1, Domain 2, Domain 3, Domain 4, Domain 5, as well as Google Ads and Meta Ads!\"\n\n- Create a separate section for each dataset:  \n  - **Domain 1**: Contains the summary and table from `Analytics_Domain_1`\n  - **Domain 2**: Contains the summary and table from `Analytics_Domain_2`\n  - **Domain 3**: Contains the summary and table from `Analytics_Domain_3`\n  - **Domain 4**: Contains the summary and table from `Analytics_Domain_4`\n  - **Domain 5**: Contains the summary and table from `Analytics_Domain_5`\n  - **Google Ads**: Contains the summary and table from `Google Ads`\n  - **Meta Ads**: Contains the summary and table from `Meta Ads`\n\n- Present the sections clearly and readably as HTML.\n\n### 3. Design and Formatting\n- Use simple HTML structures with clear section titles (e.g., `<h2>` for titles).\n- Present the summary as a paragraph (e.g., `<p>`).\n- The table should be cleanly formatted (e.g., with `<table>`, `<tr>`, `<td>`).\n- Keep the presentation clear and easy to read.\n\n### 4. No Conclusion, No Signature\n\n### HTML Output Structure\n\n```html\n<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body {\n            font-family: Arial, sans-serif;\n            line-height: 1.6;\n        }\n        h2 {\n            color: #333;\n        }\n        table {\n            width: 100%;\n            border-collapse: collapse;\n            margin: 10px 0;\n        }\n        table, th, td {\n            border: 1px solid #ddd;\n        }\n        th, td {\n            padding: 8px;\n            text-align: left;\n        }\n        th {\n            background-color: #f4f4f4;\n        }\n    </style>\n</head>\n<body>\n    <p>Hi,</p>\n    <p>Here is your weekly Online Marketing Report for the last 7 days from Domain 1, Domain 2, Domain 3, Domain 4, Domain 5, as well as Google Ads and Meta Ads!</p>\n    \n    <h2>Domain 1</h2>\n    <p>[Summary from Analytics_Domain_1 will be inserted here]</p>\n    <table>\n        [Table content from Analytics_Domain_1 will be inserted here]\n    </table>\n    \n    <h2>Domain 2</h2>\n    <p>[Summary from Analytics_Domain_2 will be inserted here]</p>\n    <table>\n        [Table content from Analytics_Domain_2 will be inserted here]\n    </table>\n</body>\n</html>\n```\n\n### 5. Output\n- Format the entire HTML content as a string for email transmission.\n\n### What Not to Do\n- No unwanted closings or signatures\n- No unstructured, hard-to-read data formatting\n- No missing sections or titles\n- No copying of data without HTML formatting",
+            "options": {},
+            "promptType": "define"
+          },
+          "typeVersion": 1.7
+        },
+        {
+          "id": "2a405e35-5d34-4f3c-a5e8-81e958cc550a",
+          "name": "Send Telegram report",
+          "type": "n8n-nodes-base.telegram",
+          "position": [
+            560,
+            0
+          ],
+          "parameters": {
+            "text": "={{ $json.message.content }}",
+            "chatId": "1810565648",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "telegramApi": {
+              "id": "0hnyvxyUMN77sBmU",
+              "name": "Telegram account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "eb8e59fe-2dbd-49e6-a055-a01f7419d8f3",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2120,
+            -280
+          ],
+          "parameters": {
+            "width": 440,
+            "height": 2180,
+            "content": "Welcome to Online Marketing Weekly Report Workflow!\n\nThis workflow has the following sequence:\n\n1. time trigger (e.g. every Monday at 7 a.m.)\n2. retrieval of Online Marketing data from the last 7 days (via sub workflows)\n3. assignment and summary of the data\n4. retrieval of Online Marketing data from the same time period of the previous year\n5. allocation and summary of the data\n6. preparation in tabular form and brief analysis by AI.\n7. sending the report as an email\n8. preparation in short form by AI for Telegram (optional)\n9. sending as Telegram message.\n\nThe following accesses are required for the workflow:\n- Google Analytics (via Google Analytics API): [Documentation](https://docs.n8n.io/integrations/builtin/credentials/google/)\n- Google Ads (via HTTP Request -&gt; Google Ads API):[Documentation](https://docs.n8n.io/integrations/builtin/credentials/google/)\n- Meta Ads (via Facebook Graph API): [Documentation](https://docs.n8n.io/integrations/builtin/credentials/facebookgraph/)\n- AI API access (e.g. via OpenAI, Anthropic, Google or Ollama)\n- SMTP access data (for sending the mail)\n- Telegram access data (optional for sending as Telegram message): [Documentation](https://docs.n8n.io/integrations/builtin/credentials/telegram/)\n\nYou can contact me via LinkedIn, if you have any questions: https://www.linkedin.com/in/friedemann-schuetz"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "timezone": "Europe/Berlin",
+        "callerPolicy": "workflowsFromSameOwner",
+        "executionOrder": "v1"
+      },
+      "versionId": "0595b0a6-3130-4041-b3b1-41e820edd985",
+      "connections": {
+        "Meta_Ads": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculator": {
+          "ai_tool": [
+            [
+              {
+                "node": "Processing for Google Analytics Report",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google_Ads": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculator1": {
+          "ai_tool": [
+            [
+              {
+                "node": "Processing for Google Ads report",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculator3": {
+          "ai_tool": [
+            [
+              {
+                "node": "Processing for Meta Ads Report",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenAI Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analytics_Domain_1": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analytics_Domain_2": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analytics_Domain_3": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analytics_Domain_4": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Analytics_Domain_5": {
+          "ai_tool": [
+            [
+              {
+                "node": "Weekly Report Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Weekly Report Agent": {
+          "main": [
+            [
+              {
+                "node": "Processing for Telegram Report",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Send mail report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send Telegram report": {
+          "main": [
+            []
+          ]
+        },
+        "Execute Workflow Trigger": {
+          "main": [
+            [
+              {
+                "node": "Call Google Analytics data: Last 7 days",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Summarize input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format all Meta data for LLM": {
+          "main": [
+            [
+              {
+                "node": "Processing for Meta Ads Report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format all Google data for LLM": {
+          "main": [
+            [
+              {
+                "node": "Processing for Google Ads report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Processing for Telegram Report": {
+          "main": [
+            [
+              {
+                "node": "Send Telegram report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Calculation same period previous year",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Meta Ads Data: Last 7 days": {
+          "main": [
+            [
+              {
+                "node": "Assign Meta data from input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Format all Google data for LLM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format data input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Assign data from input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Google Ads Data: Last 7 days": {
+          "main": [
+            [
+              {
+                "node": "Format data input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Format data input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Assign input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize Meta input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Call Meta Ads Data: Last 7 days (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign data from input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Summarize input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculation same period previous year": {
+          "main": [
+            [
+              {
+                "node": "Call Google Ads Data: Last 7 days (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign Meta data input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Summarize Meta data input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculation same period previous year1": {
+          "main": [
+            [
+              {
+                "node": "Call Google Analytics data: Last 7 days (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Google Analytics data: Last 7 days": {
+          "main": [
+            [
+              {
+                "node": "Assign Google Analytics data input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize Meta data input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Format all Meta data for LLM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign Meta data from input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Summarize Meta input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate date format for meta ads request s": {
+          "main": [
+            [
+              {
+                "node": "Call Meta Ads Data: Last 7 days",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Meta Ads Data: Last 7 days (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Assign Meta data input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize Google Analytics input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Calculation same period previous year1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Summarize Google Analytics input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Processing for Google Analytics Report",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign Google Analytics data input (current year)": {
+          "main": [
+            [
+              {
+                "node": "Summarize Google Analytics input (current year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Google Ads Data: Last 7 days (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Format data input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign Google Analytics data input (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Summarize Google Analytics input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Call Google Analytics data: Last 7 days (previous year)": {
+          "main": [
+            [
+              {
+                "node": "Assign Google Analytics data input (previous year)",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Calculate date format for Google Ads request (last 7 days)": {
+          "main": [
+            [
+              {
+                "node": "Call Google Ads Data: Last 7 days",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 51,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 6
+        },
+        "n8n-nodes-base.code": {
+          "count": 8
+        },
+        "n8n-nodes-base.telegram": {
+          "count": 1
+        },
+        "n8n-nodes-base.emailSend": {
+          "count": 1
+        },
+        "n8n-nodes-base.summarize": {
+          "count": 6
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleAnalytics": {
+          "count": 2
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.openAi": {
+          "count": 4
+        },
+        "n8n-nodes-base.facebookGraphApi": {
+          "count": 2
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolWorkflow": {
+          "count": 7
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolCalculator": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Friedemann Schuetz",
+      "username": "freddy-schuetz",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/friedemann-schuetz"
+      ],
+      "avatar": "https://gravatar.com/avatar/eb8eb92141f57c72c5f5a9fb5e8c85dca42047f764de54ab5466999cbb691079?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 11,
+        "icon": "fa:envelope",
+        "name": "n8n-nodes-base.emailSend",
+        "codex": {
+          "data": {
+            "alias": [
+              "SMTP",
+              "email",
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.sendemail/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/sendemail/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Send Email",
+          "color": "#00bb88"
+        },
+        "iconData": {
+          "icon": "envelope",
+          "type": "icon"
+        },
+        "displayName": "Send Email",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 49,
+        "icon": "file:telegram.svg",
+        "name": "n8n-nodes-base.telegram",
+        "codex": {
+          "data": {
+            "alias": [
+              "human",
+              "form",
+              "wait",
+              "hitl",
+              "approval"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/using-automation-to-boost-productivity-in-the-workplace/",
+                  "icon": "💪",
+                  "label": "Using Automation to Boost Productivity in the Workplace"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-telegram-bots-with-n8n-a-no-code-platform/",
+                  "icon": "💬",
+                  "label": "Creating Telegram Bots with n8n, a No-Code Platform"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/telegram/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "HITL"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "HITL": [
+                "Human in the Loop"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Telegram"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNjYgNjYiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzM3YWVlMiIgZD0iTTAgMzJjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMyczMyLTE0LjMyNyAzMi0zMlM0OS42NzMgMCAzMiAwIDAgMTQuMzI3IDAgMzIiLz48cGF0aCBmaWxsPSIjYzhkYWVhIiBkPSJtMjEuNjYxIDM0LjMzOCAzLjc5NyAxMC41MDhzLjQ3NS45ODMuOTgzLjk4MyA4LjA2OC03Ljg2NCA4LjA2OC03Ljg2NGw4LjQwNy0xNi4yMzctMjEuMTE5IDkuODk4eiIvPjxwYXRoIGZpbGw9IiNhOWM2ZDgiIGQ9Im0yNi42OTUgMzcuMDM0LS43MjkgNy43NDZzLS4zMDUgMi4zNzMgMi4wNjggMGw0LjY0NC00LjIwMyIvPjxwYXRoIGQ9Im0yMS43MyAzNC43MTItNy44MDktMi41NDVzLS45MzItLjM3OC0uNjMzLTEuMjM3Yy4wNjItLjE3Ny4xODYtLjMyOC41NTktLjU4OCAxLjczMS0xLjIwNiAzMi4wMjgtMTIuMDk2IDMyLjAyOC0xMi4wOTZzLjg1Ni0uMjg4IDEuMzYxLS4wOTdjLjIzMS4wODguMzc4LjE4Ny41MDMuNTQ4LjA0NS4xMzIuMDcxLjQxMS4wNjguNjg5LS4wMDMuMjAxLS4wMjcuMzg2LS4wNDUuNjc4LS4xODQgMi45NzgtNS43MDYgMjUuMTk4LTUuNzA2IDI1LjE5OHMtLjMzIDEuMy0xLjUxNCAxLjM0NWMtLjQzMi4wMTYtLjk1Ni0uMDcxLTEuNTgyLS42MS0yLjMyMy0xLjk5OC0xMC4zNTItNy4zOTQtMTIuMTI2LTguNThhLjM0LjM0IDAgMCAxLS4xNDYtLjIzOWMtLjAyNS0uMTI1LjEwOC0uMjguMTA4LS4yOHMxMy45OC0xMi40MjcgMTQuMzUyLTEzLjczMWMuMDI5LS4xMDEtLjA3OS0uMTUxLS4yMjYtLjEwNy0uOTI5LjM0Mi0xNy4wMjUgMTAuNTA2LTE4LjgwMSAxMS42MjktLjEwNC4wNjYtLjM5NS4wMjMtLjM5NS4wMjMiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Telegram",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 28,
+            "name": "HITL"
+          }
+        ]
+      },
+      {
+        "id": 314,
+        "icon": "file:facebook.svg",
+        "name": "n8n-nodes-base.facebookGraphApi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.facebookgraphapi/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/facebookGraph/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Facebook Graph API"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MCA2MCI+PHBhdGggZmlsbD0iIzE4NzdmMiIgZD0iTTU5LjUgMzBDNTkuNSAxMy43MSA0Ni4yOS41IDMwIC41Uy41IDEzLjcxLjUgMzBjMCAxNC43MiAxMC43OSAyNi45MyAyNC44OSAyOS4xNFYzOC41M0gxNy45VjMwaDcuNDl2LTYuNWMwLTcuMzkgNC40LTExLjQ4IDExLjE0LTExLjQ4IDMuMjMgMCA2LjYuNTggNi42LjU4djcuMjZoLTMuNzJjLTMuNjYgMC00LjgxIDIuMjctNC44MSA0LjYxVjMwaDguMThsLTEuMzEgOC41M0gzNC42djIwLjYxQzQ4LjcxIDU2LjkzIDU5LjUgNDQuNzIgNTkuNSAzMCIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik00MS40OCAzOC41MyA0Mi43OSAzMGgtOC4xOHYtNS41M2MwLTIuMzMgMS4xNC00LjYxIDQuODEtNC42MWgzLjcyVjEyLjZzLTMuMzgtLjU4LTYuNi0uNThjLTYuNzQgMC0xMS4xNCA0LjA4LTExLjE0IDExLjQ4VjMwaC03LjV2OC41M2g3LjQ5djIwLjYxYzEuNS4yNCAzLjA0LjM2IDQuNjEuMzZzMy4xMS0uMTIgNC42MS0uMzZWMzguNTN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Facebook Graph API",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      },
+      {
+        "id": 435,
+        "icon": "file:analytics.svg",
+        "name": "n8n-nodes-base.googleAnalytics",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googleanalytics/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Analytics"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxOTIiIGhlaWdodD0iMTkyIj48cGF0aCBmaWxsPSJub25lIiBkPSJNMCAwaDE5MnYxOTJIMHoiLz48cGF0aCBmaWxsPSIjRjlBQjAwIiBkPSJNMTMwIDI5djEzMmMwIDE0Ljc3IDEwLjE5IDIzIDIxIDIzIDEwIDAgMjEtNyAyMS0yM1YzMGMwLTEzLjU0LTEwLTIyLTIxLTIycy0yMSA5LjMzLTIxIDIxIi8+PHBhdGggZmlsbD0iI0UzNzQwMCIgZD0iTTc1IDk2djY1YzAgMTQuNzcgMTAuMTkgMjMgMjEgMjMgMTAgMCAyMS03IDIxLTIzVjk3YzAtMTMuNTQtMTAtMjItMjEtMjJzLTIxIDkuMzMtMjEgMjEiLz48Y2lyY2xlIGN4PSI0MSIgY3k9IjE2MyIgcj0iMjEiIGZpbGw9IiNFMzc0MDAiLz48L3N2Zz4="
+        },
+        "displayName": "Google Analytics",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1195,
+        "icon": "fa:calculator",
+        "name": "@n8n/n8n-nodes-langchain.toolCalculator",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolcalculator/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Other Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Calculator"
+        },
+        "iconData": {
+          "icon": "calculator",
+          "type": "icon"
+        },
+        "displayName": "Calculator",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1205,
+        "icon": "fa:network-wired",
+        "name": "@n8n/n8n-nodes-langchain.toolWorkflow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolworkflow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Call n8n Workflow Tool"
+        },
+        "iconData": {
+          "icon": "network-wired",
+          "type": "icon"
+        },
+        "displayName": "Call n8n Workflow Tool",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1241,
+        "icon": "file:summarize.svg",
+        "name": "n8n-nodes-base.summarize",
+        "codex": {
+          "data": {
+            "alias": [
+              "Append",
+              "Array",
+              "Average",
+              "Concatenate",
+              "Count",
+              "Group",
+              "Item",
+              "List",
+              "Max",
+              "Min",
+              "Pivot",
+              "Sum",
+              "Summarise",
+              "Summarize",
+              "Transform",
+              "Unique"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.summarize/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Summarize"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48cGF0aCBmaWxsPSIjRjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzIgOTFjLTE1LjQ2NCAwLTI4IDEyLjUzNi0yOCAyOHYzMTdjMCAxNS40NjQgMTIuNTM2IDI4IDI4IDI4aDI0OGMxNS40NjQgMCAyOC0xMi41MzYgMjgtMjhWMTE5YzAtMTUuNDY0LTEyLjUzNi0yOC0yOC0yOGgtNmE2IDYgMCAwIDEtNi02VjQ5YTYgNiAwIDAgMSA2LTZoNmM0MS45NzQgMCA3NiAzNC4wMjYgNzYgNzZ2MzE3YzAgNDEuOTc0LTM0LjAyNiA3Ni03NiA3NkgxMzJjLTQxLjk3NCAwLTc2LTM0LjAyNi03Ni03NlYxMTljMC00MS45NzQgMzQuMDI2LTc2IDc2LTc2aDZhNiA2IDAgMCAxIDYgNnYzNmE2IDYgMCAwIDEtNiA2eiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iI0Y5MiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMjU2IDBjLTI3LjIzMiAwLTUwLjIyNyAxOC4xNDItNTcuNTU4IDQzSDE4MmE2IDYgMCAwIDAtNiA2djcwYTYgNiAwIDAgMCA2IDZoMTQ4YTYgNiAwIDAgMCA2LTZWNDlhNiA2IDAgMCAwLTYtNmgtMTYuNDQyQzMwNi4yMjcgMTguMTQyIDI4My4yMzIgMCAyNTYgMG0wIDQwYTE5LjkgMTkuOSAwIDAgMC0xMC41NDEgM0MyMzkuNzgxIDQ2LjUyOCAyMzYgNTIuODIzIDIzNiA2MGMwIDExLjA0NiA4Ljk1NCAyMCAyMCAyMHMyMC04Ljk1NCAyMC0yMGMwLTcuMTc3LTMuNzgxLTEzLjQ3Mi05LjQ1OS0xN0ExOS45IDE5LjkgMCAwIDAgMjU2IDQwbTEwMSAxNzljMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgyMzNjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ2LTI0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBmaWxsPSIjRjkyIiBkPSJNMTk3IDIwN2MwIDEzLjI1NS0xMC43NDUgMjQtMjQgMjRzLTI0LTEwLjc0NS0yNC0yNCAxMC43NDUtMjQgMjQtMjQgMjQgMTAuNzQ1IDI0IDI0Ii8+PHBhdGggZmlsbD0iI0Y5MiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzU3IDM5NWMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDIzM2MtNi42MjcgMC0xMi01LjM3My0xMi0xMnYtMjRjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxMTJjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGZpbGw9IiNGOTIiIGQ9Ik0xOTcgMzgzYzAgMTMuMjU1LTEwLjc0NSAyNC0yNCAyNHMtMjQtMTAuNzQ1LTI0LTI0IDEwLjc0NS0yNCAyNC0yNCAyNCAxMC43NDUgMjQgMjQiLz48cGF0aCBmaWxsPSIjRjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNTcgMzA3YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMjMzYy02LjYyNyAwLTEyLTUuMzczLTEyLTEydi0yNGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDExMmM2LjYyNyAwIDEyIDUuMzczIDEyIDEyeiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iI0Y5MiIgZD0iTTE5NyAyOTVjMCAxMy4yNTUtMTAuNzQ1IDI0LTI0IDI0cy0yNC0xMC43NDUtMjQtMjQgMTAuNzQ1LTI0IDI0LTI0IDI0IDEwLjc0NSAyNCAyNCIvPjwvc3ZnPg=="
+        },
+        "displayName": "Summarize",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1250,
+        "icon": "file:openAi.svg",
+        "name": "@n8n/n8n-nodes-langchain.openAi",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "ChatGPT",
+              "DallE",
+              "whisper",
+              "audio",
+              "transcribe",
+              "tts",
+              "assistant"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-langchain.openai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Miscellaneous",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg1IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NiAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MSA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSJibGFjayIvPgo8L3N2Zz4K"
+        },
+        "displayName": "OpenAI",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

@@ -1,0 +1,70 @@
+URL: https://docs.n8n.io/code/
+Scraped_At: 2025-05-20T18:40:40.146183
+
+Code in n8n
+#
+n8n is a low-code tool. This means you can do a lot without code, then add code when needed.
+Code in your workflows
+#
+There are two places in your workflows where you can use code:
+Expressions
+Use
+expressions
+to transform
+data
+in your nodes. You can use JavaScript in expressions, as well as n8n's
+Built-in methods and variables
+and
+Data transformation functions
+.
+Expressions
+Code node
+Use the Code node to add JavaScript or Python to your workflow.
+Code node
+Other technical resources
+#
+These are features that are relevant to technical users.
+Technical nodes
+#
+n8n provides core nodes, which simplify adding key functionality such as API requests, webhooks, scheduling, and file handling.
+Write a backend
+The
+HTTP Request
+,
+Webhook
+, and
+Code
+nodes help you make API calls, respond to webhooks, and write any JavaScript in your workflow.
+Use this do things like
+Create an API endpoint
+.
+Core nodes
+Represent complex logic
+You can build complex flows, using nodes like
+If
+,
+Switch
+, and
+Merge
+nodes.
+Flow logic
+Other developer resources
+#
+The n8n API
+n8n provides an API, where you can programmatically perform many of the same tasks as you can in the GUI. There's an
+n8n API node
+to access the API in your workflows.
+API
+Self-host
+You can self-host n8n. This keeps your data on your own infrastructure.
+Hosting
+Build your own nodes
+You can build custom nodes, install them on your n8n instance, and publish them to
+npm
+.
+Creating nodes
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

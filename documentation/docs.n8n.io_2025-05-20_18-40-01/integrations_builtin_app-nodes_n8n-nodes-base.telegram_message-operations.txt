@@ -1,0 +1,1083 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.telegram/message-operations/
+Scraped_At: 2025-05-20T18:52:05.109163
+
+Telegram node Message operations
+#
+Use these operations to send, edit, and delete messages in a chat; send files to a chat; and pin/unpin message from a chat. Refer to
+Telegram
+for more information on the Telegram node itself.
+Add bot to channel
+To use most of these operations, you must add your bot to a channel so that it can send messages to that channel. Refer to
+Common Issues | Add a bot to a Telegram channel
+for more information.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+s
+Delete Chat Message
+#
+Use this operation to delete a message from chat using the Bot API
+deleteMessage
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Delete Chat Message
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to delete in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Message ID
+: Enter the unique identifier of the message you want to delete.
+Refer to the Telegram Bot API
+deleteMessage
+documentation for more information.
+Edit Message Text
+#
+Use this operation to edit the text of an existing message using the Bot API
+editMessageText
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Edit Message Text
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to leave in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Message ID
+: Enter the unique identifier of the message you want to edit.
+Reply Markup
+: Select whether to use the
+Inline Keyboard
+to display the InlineKeyboardMarkup
+None
+not to. This sets the
+reply_markup
+parameter. Refer to the
+InlineKeyboardMarkup
+documentation for more information.
+Text
+: Enter the text you want to edit the message to.
+Refer to the Telegram Bot API
+editMessageText
+documentation for more information.
+Edit Message Text additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node. Select
+Add Field
+to add any of the following:
+Disable WebPage Preview
+: Select whether you want to enable link previews for links in this message (turned off) or disable link previews for links in this message (turned on). This sets the
+link_preview_options
+parameter for
+is_disabled
+. Refer to the
+LinkPreviewOptions
+documentation for more information.
+Parse Mode
+: Choose whether the message should be parsed using
+HTML
+(default),
+Markdown (Legacy)
+, or
+MarkdownV2
+. This sets the
+parse_mode
+parameter.
+Pin Chat Message
+#
+Use this operation to pin a message for the chat using the Bot API
+pinChatMessage
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Pin Chat Message
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to pin the message to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Message ID
+: Enter the unique identifier of the message you want to pin.
+Refer to the Telegram Bot API
+pinChatMessage
+documentation for more information.
+Pin Chat Message additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node. Select
+Add Field
+to add any of the following:
+Disable Notifications
+: By default, Telegram will notify all chat members that the message has been pinned. If you don't want these notifications to go out, turn this control on. Sets the
+disable_notification
+parameter to
+true
+.
+Send Animation
+#
+Use this operation to send GIFs or H.264/MPEG-4 AVC videos without sound up to 50 MB in size to the chat using the Bot API
+sendAnimation
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Animation
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the animation to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Binary File
+: To send a binary file from the node itself, turn this option on. If you turn this parameter on, you must enter the
+Input Binary Field
+containing the file you want to send.
+Animation
+: If you aren't using the
+Binary File
+, enter the animation to send here. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to the Telegram Bot API
+sendAnimation
+documentation for more information.
+Send Animation additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendAnimation method. Select
+Add Field
+to add any of the following:
+Caption
+: Enter a caption text for the animation, max of 1024 characters.
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Duration
+: Enter the animation's duration in seconds.
+Height
+: Enter the height of the animation.
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to Telegram's
+Formatting options
+for more information on these options.
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Thumbnail
+: Add the thumbnail of the file sent. Ignore this field if thumbnail generation for the file is supported server-side. The thumbnail should meet these specs:
+JPEG format
+Less than 200 KB in size
+Width and height less than 320px.
+Width
+: Enter the width of the video clip.
+Send Audio
+#
+Use this operation to send an audio file to the chat and display it in the music player using the Bot API
+sendAudio
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Audio
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the audio to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Binary File
+: To send a binary file from the node itself, turn this option on. If you turn this parameter on, you must enter the
+Input Binary Field
+containing the file you want to send.
+Audio
+: If you aren't using the
+Binary File
+, enter the audio to send here. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to the Telegram Bot API
+sendAudio
+documentation for more information.
+Send Audio additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendAudio method. Select
+Add Field
+to add any of the following:
+Caption
+: Enter a caption text for the audio, max of 1024 characters.
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Duration
+: Enter the audio's duration in seconds.
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to Telegram's
+Formatting options
+for more information on these options.
+Performer
+: Enter the name of the performer.
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Title
+: Enter the audio track's name.
+Thumbnail
+: Add the thumbnail of the file sent. Ignore this field if thumbnail generation for the file is supported server-side. The thumbnail should meet these specs:
+JPEG format
+Less than 200 KB in size
+Width and height less than 320px.
+Send Chat Action
+#
+Use this operation when you need to tell the user that something is happening on the bot's side. The status is set for 5 seconds or less using the Bot API
+sendChatAction
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Chat Action
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the chat action to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Action
+: Select the action you'd like to broadcast the bot as taking. The options here include:
+Find Location
+,
+Typing
+,
+Recording
+audio or video, and
+Uploading
+file types.
+Refer to Telegram's Bot API
+sendChatAction
+documentation for more information.
+Send Document
+#
+Use this operation to send a document to the chat using the Bot API
+sendDocument
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Document
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the document to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Binary File
+: To send a binary file from the node itself, turn this option on. If you turn this parameter on, you must enter the
+Input Binary Field
+containing the file you want to send.
+Document
+: If you aren't using the
+Binary File
+, enter the document to send here. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to Telegram's Bot API
+sendDocument
+documentation for more information.
+Send Document additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendDocument method. Select
+Add Field
+to add any of the following:
+Caption
+: Enter a caption text for the file, max of 1024 characters.
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to
+Formatting options
+for more information on these options.
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Thumbnail
+: Add the thumbnail of the file sent. Ignore this field if thumbnail generation for the file is supported server-side. The thumbnail should meet these specs:
+JPEG format
+Less than 200 KB in size
+Width and height less than 320px.
+Send Location
+#
+Use this operation to send a geolocation to the chat using the Bot API
+sendLocation
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Location
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the location to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Latitude
+: Enter the latitude of the location.
+Longitude
+: Enter the longitude of the location.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to Telegram's Bot API
+sendLocation
+documentation for more information.
+Send Location additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendLocation method. Select
+Add Field
+to add any of the following:
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Send Media Group
+#
+Use this operation to send a group of photos and/or videos using the Bot API
+sendMediaGroup
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Media Group
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the media group to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Media
+: Use
+Add Media
+to add different media types to your media group. For each medium, select:
+Type
+: The type of media this is. Choose from
+Photo
+and
+Video
+.
+Media File
+: Enter the media file to send. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Additional Fields
+: For each media file, you can choose to add these fields:
+Caption
+: Enter a caption text for the file, max of 1024 characters.
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to
+Formatting options
+for more information on these options.
+Refer to Telegram's Bot API
+sendMediaGroup
+documentation for more information.
+Send Media Group additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendMediaGroup method. Select
+Add Field
+to add any of the following:
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Send Message
+#
+Use this operation to send a message to the chat using the Bot API
+sendMessage
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Message
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the message to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Text
+: Enter the text to send, max 4096 characters after entities parsing.
+Refer to Telegram's Bot API
+sendMessage
+documentation for more information.
+Send Message limits
+Telegram limits the number of messages you can send to 30 per second. If you expect to hit this limit, refer to
+Send more than 30 messages per second
+for a suggested workaround.
+Send Message additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendMessage method. Select
+Add Field
+to add any of the following:
+Append n8n Attribution
+: Choose whether to include the phrase
+This message was sent automatically with n8n
+to the end of the message (turned on, default) or not (turned off).
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Disable WebPage Preview
+: Select whether you want to enable link previews for links in this message (turned off) or disable link previews for links in this message (turned on). This sets the
+link_preview_options
+parameter for
+is_disabled
+. Refer to the
+LinkPreviewOptions
+documentation for more information.
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to Telegram's
+Formatting options
+for more information on these options.
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Send and Wait for Response
+#
+Use this operation to send a message to the chat using the Bot API
+sendMessage
+method and pause the workflow execution until the user confirms the operation.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send and Wait for Response
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the message to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Message
+: Enter the text to send.
+Response Type
+: The approval or response type to use:
+Approval
+: Users can approve or disapprove from within the message.
+Free Text
+: Users can submit a response with a form.
+Custom Form
+: Users can submit a response with a custom form.
+Refer to Telegram's Bot API
+sendMessage
+documentation for more information.
+Send Message limits
+Telegram limits the number of messages you can send to 30 per second. If you expect to hit this limit, refer to
+Send more than 30 messages per second
+for a suggested workaround.
+Send and Wait for Response additional fields
+#
+The additional fields depend on which
+Response Type
+you choose.
+Approval
+#
+The
+Approval
+response type adds these options:
+Type of Approval
+: Whether to present only an approval button or both an approval and disapproval buttons.
+Button Label
+: The label for the approval or disapproval button. The default choice is
+✅ Approve
+and
+❌ Decline
+for approval and disapproval actions respectively.
+Limit Wait Time
+: Whether the workflow will automatically resume execution after a specified time limit. This can be an interval or a specific wall time.
+Free Text
+#
+When using the Free Text response type, the following options are available:
+Message Button Label
+: The label to use for message button. The default choice is
+Respond
+.
+Response Form Title
+: The title of the form where users provide their response.
+Response Form Description
+: A description for the form where users provide their response.
+Response Form Button Label
+: The label for the button on the form to submit their response. The default choice is
+Submit
+.
+Limit Wait Time
+: Whether the workflow will automatically resume execution after a specified time limit. This can be an interval or a specific wall time.
+Custom Form
+#
+When using the Custom Form response type, you build a form using the fields and options you want.
+You can customize each form element with the settings outlined in the
+n8n Form trigger's form elements
+. To add more fields, select the
+Add Form Element
+button.
+The following options are also available:
+Message Button Label
+: The label to use for message button. The default choice is
+Respond
+.
+Response Form Title
+: The title of the form where users provide their response.
+Response Form Description
+: A description for the form where users provide their response.
+Response Form Button Label
+: The label for the button on the form to submit their response. The default choice is
+Submit
+.
+Limit Wait Time
+: Whether the workflow will automatically resume execution after a specified time limit. This can be an interval or a specific wall time.
+Send Photo
+#
+Use this operation to send a photo to the chat using the Bot API
+sendPhoto
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Photo
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the photo to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Binary File
+: To send a binary file from the node itself, turn this option on. If you turn this parameter on, you must enter the
+Input Binary Field
+containing the file you want to send.
+Photo
+: If you aren't using the
+Binary File
+, enter the photo to send here. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to Telegram's Bot API
+sendPhoto
+documentation for more information.
+Send Photo additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendPhoto method. Select
+Add Field
+to add any of the following:
+Caption
+: Enter a caption text for the file, max of 1024 characters.
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to Telegram's
+Formatting options
+for more information on these options.
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Send Sticker
+#
+Use this method to send static .WEBP, animated .TGS, or video .WEBM stickers using the Bot API
+sendSticker
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Sticker
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the sticker to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Binary File
+: To send a binary file from the node itself, turn this option on. If you turn this parameter on, you must enter the
+Input Binary Field
+containing the file you want to send.
+Sticker
+: If you aren't using the
+Binary File
+, enter the photo to send here. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to Telegram's Bot API
+sendSticker
+documentation for more information.
+Send Sticker additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendSticker method. Select
+Add Field
+to add any of the following:
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Send Video
+#
+Use this operation to send a video to the chat using the Bot API
+sendVideo
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Send Video
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to send the video to in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Binary File
+: To send a binary file from the node itself, turn this option on. If you turn this parameter on, you must enter the
+Input Binary Field
+containing the file you want to send.
+Video
+: If you aren't using the
+Binary File
+, enter the video to send here. Pass a
+file_id
+to send a file that exists on the Telegram servers (recommended) or an HTTP URL for Telegram to get a file from the internet.
+Reply Markup
+: Use this parameter to set more interface options. Refer to
+Reply Markup parameters
+for more information on these options and how to use them.
+Refer to Telegram's Bot API
+sendVideo
+documentation for more information.
+Send Video additional fields
+#
+Use the
+Additional Fields
+to further refine the behavior of the node using optional fields in Telegram's sendVideo method. Select
+Add Field
+to add any of the following:
+Caption
+: Enter a caption text for the video, max of 1024 characters.
+Disable Notification
+: Choose whether to send the notification silently (turned on) or with a standard notification (turned off).
+Duration
+: Enter the video's duration in seconds.
+Height
+: Enter the height of the video.
+Parse Mode
+: Enter the parser to use for any related text. Options include
+HTML
+(default),
+Markdown (Legacy)
+,
+MarkdownV2
+. Refer to Telegram's
+Formatting options
+for more information on these options.
+Reply To Message ID
+: If the message is a reply, enter the ID of the message it's replying to.
+Message Thread ID
+: Enter a unique identifier for the target message thread (topic) of the forum; for forum supergroups only.
+Thumbnail
+: Add the thumbnail of the file sent. Ignore this field if thumbnail generation for the file is supported server-side. The thumbnail should meet these specs:
+JPEG format
+Less than 200 KB in size
+Width and height less than 320px.
+Width
+: Enter the width of the video.
+Unpin Chat Message
+#
+Use this operation to unpin a message from the chat using the Bot API
+unpinChatMessage
+method.
+Enter these parameters:
+Credential to connect with
+: Create or select an existing
+Telegram credential
+.
+Resource
+: Select
+Message
+.
+Operation
+: Select
+Pin Chat Message
+.
+Chat ID
+: Enter the Chat ID or username of the channel you wish to unpin the message from in the format
+@channelusername
+.
+To feed a Chat ID directly into this node, use the
+Telegram Trigger
+node. Refer to
+Common Issues | Get the Chat ID
+for more information.
+Message ID
+: Enter the unique identifier of the message you want to unpin.
+Refer to the Telegram Bot API
+unpinChatMessage
+documentation for more information.
+Reply Markup parameters
+#
+For most of the
+Message
+Send
+actions (such as Send Animation, Send Audio), use the
+Reply Markup
+parameter to set more interface options:
+Force Reply
+: The Telegram client will act as if the user has selected the bot's message and tapped
+Reply
+, automatically displaying a reply interface to the user. Refer to
+Force Reply parameters
+for further guidance on this option.
+Inline Keyboard
+: Display an inline keyboard right next to the message. Refer to
+Inline Keyboard parameters
+for further guidance on this option.
+Reply Keyboard
+: Display a custom keyboard with reply options. Refer to
+Reply Keyboard parameters
+for further guidance on this option.
+Reply Keyboard Remove
+: The Telegram client will remove the current custom keyboard and display the default letter-keyboard. Refer to
+Reply Keyboard parameters
+for further guidance on this option.
+Telegram Business accounts
+Telegram restricts the following options in channels and for messages sent on behalf of a Telegram Business account:
+Force Reply
+Reply Keyboard
+Reply Keyboard Remove
+Force Reply parameters
+#
+Force Reply
+is useful if you want to create user-friendly step-by-step interfaces without having to sacrifice privacy mode.
+If you select
+Reply Markup > Force Reply
+, choose from these
+Force Reply
+parameters:
+Force Reply
+: Turn on to show the reply interface to the user, as described above.
+Selective
+: Turn this on if you want to force reply from these users only:
+Users that are
+@mentioned
+in the text of the message.
+The sender of the original message, if this Send Animation message is a reply to a message.
+Refer to
+ForceReply
+for more information.
+Inline Keyboard parameters
+#
+If you select
+Reply Markup > Inline Keyboard
+, define the inline keyboard buttons you want to display using the
+Add Button
+option. To add more rows to your keyboard, use
+Add Keyboard Row
+.
+Refer to
+InlineKeyboardMarkup
+and
+InlineKeyboardButtons
+for more information.
+Reply Keyboard parameters
+#
+If you select
+Reply Markup > Reply Keyboard
+, use the
+Reply Keyboard
+section to define the buttons and rows in your Reply Keyboard.
+Use the
+Reply Keyboard Options
+to further refine the keyboard's behavior:
+Resize Keyboard
+: Choose whether to request the Telegram client to resize the keyboard vertically for optimal fit (turned on) or whether to use the same height as the app's standard keyboard (turned off).
+One Time Keyboard
+: Choose whether the Telegram client should hide the keyboard as soon as a user uses it (turned on) or to keep displaying it (turned off).
+Selective
+: Turn this on if you want to show the keyboard to these users only:
+Users that are
+@mentioned
+in the text of the message.
+The sender of the original message, if this Send Animation message is a reply to a message.
+Refer to
+ReplyKeyboardMarkup
+for more information.
+Reply Keyboard Remove parameters
+#
+If you select
+Reply Markup > Reply Keyboard Remove
+, choose from these
+Reply Keyboard Remove
+parameters:
+Remove Keyboard
+: Choose whether to request the Telegram client to remove the custom keyboard (turned on) or to keep it (turned off).
+Selective
+: Turn this on if you want to remove the keyboard for these users only:
+Users that are
+@mentioned
+in the text of the message.
+The sender of the original message, if this Send Animation message is a reply to a message.
+Refer to
+ReplyKeyboardRemove
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

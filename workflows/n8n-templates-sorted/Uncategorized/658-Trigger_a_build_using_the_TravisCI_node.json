@@ -1,0 +1,220 @@
+{
+  "workflow": {
+    "id": 658,
+    "name": "Trigger a build using the TravisCI node",
+    "views": 267,
+    "recentViews": 0,
+    "totalViews": 267,
+    "createdAt": "2020-09-14T10:18:01.436Z",
+    "description": "![workflow-screenshot](fileId:230)",
+    "workflow": {
+      "id": "52",
+      "name": "Trigger a build using the TravisCI node",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            510,
+            350
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "TravisCI",
+          "type": "n8n-nodes-base.travisCi",
+          "position": [
+            710,
+            350
+          ],
+          "parameters": {
+            "slug": "",
+            "branch": "",
+            "operation": "trigger",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "travisCiApi": "travisCI"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "TravisCI": {
+          "main": [
+            []
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "TravisCI",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.travisCi": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 353,
+        "icon": "file:travisci.png",
+        "name": "n8n-nodes-base.travisCi",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.travisci/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/travisCi/"
+                }
+              ]
+            },
+            "categories": [
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "TravisCI"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "TravisCI",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 230,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/7338c89f10c342b5b20efcf65a1f8587.png"
+      }
+    ]
+  }
+}

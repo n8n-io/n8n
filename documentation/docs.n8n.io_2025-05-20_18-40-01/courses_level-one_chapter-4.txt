@@ -1,0 +1,38 @@
+URL: https://docs.n8n.io/courses/level-one/chapter-4/
+Scraped_At: 2025-05-20T18:41:45.248232
+
+Designing the Workflow
+#
+Now that we know what Nathan wants to automate, let's consider the steps he needs to take to achieve his goals:
+Get the relevant data (order id, order status, order value, employee name) from the data warehouse
+Filter the orders by their status (Processing or Booked)
+Calculate the total value of all the Booked orders
+Notify the team members about the Booked orders in the company's Discord channel
+Insert the details about the Processing orders in Airtable for follow-up
+Schedule this workflow to run every Monday morning
+Nathan's workflow involves sending data from the company's data warehouse to two external services:
+Discord
+Airtable
+Before that, the data has to be wrangled with general functions (conditional filtering, calculation, scheduling).
+n8n provides integrations for all these steps, so Nathan's workflow in n8n would look like this:
+View workflow file
+You will build this workflow in eight steps:
+Getting data from the data warehouse
+Inserting data into Airtable
+Filtering orders
+Setting values for processing orders
+Calculating booked orders
+Notifying the team
+Scheduling the workflow
+Activating and examining the workflow
+To build this workflow, you will need the credentials found in the email you received from n8n when you signed up for this course. If you haven't signed up already, you can do it
+here
+. If you haven't received a confirmation email after signing up,
+contact us
+.
+Start building!
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

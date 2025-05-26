@@ -1,0 +1,205 @@
+{
+  "workflow": {
+    "id": 506,
+    "name": "Get all the tasks in Flow",
+    "views": 326,
+    "recentViews": 0,
+    "totalViews": 326,
+    "createdAt": "2020-07-14T06:54:20.443Z",
+    "description": "![workflow-screenshot](fileId:104)",
+    "workflow": {
+      "id": "130",
+      "name": "Get all the tasks in Flow",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Flow",
+          "type": "n8n-nodes-base.flow",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "filters": {},
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "flowApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Flow",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.flow": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 74,
+        "icon": "file:flow.svg",
+        "name": "n8n-nodes-base.flow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.flow/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/flow/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Flow"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjI5NjcgNS4wNjU4NkMxMy44MjE5IDUuMDE2MjggMTQuMzQ5MyA0Ljk5NDY3IDE0Ljg3NjggNS4wMDExMUMyMy4wMjU3IDUuMDAxMTEgMjkuNTY4MyAxMS42MzE2IDI5LjYyOTYgMTkuOTcxNEMyOS41NzQ4IDIyLjU1MjQgMjcuODIyMyAyNC42MDUgMjUuNDM3NyAyNC42MDVDMjMuMDI5NiAyNC42MDUgMjAuOTQ1NCAyMi44OTA0IDIwLjk0NTQgMTkuOTY4OEMyMC45NDU0IDE2LjYyMzggMTguMDgwMiAxMy45ODIgMTQuNjM3OSAxMy45ODJDMTEuMTk5NCAxMy45ODIgOC43MjIxMyAxNi44NDY2IDguNjc2NDIgMjAuMjgwOUM4LjY3NjQyIDI2LjI5NjIgMTIuMTEwOSAzMS45NTI4IDE2LjkwMzYgMzQuNDc0MkMxNy4zMTI0IDM0LjczMzIgMTcuNDcxNyAzNC43NTkxIDE3Ljg0MzkgMzQuOTY4OUMxNi43NzY5IDM1LjI2NjggMTUuNTQ4MSAzNS4zNzA0IDE0Ljg3NDIgMzUuMzcwNEM2LjY2MDEgMzUuMzcwNCAwIDI4LjY2ODcgMCAyMC4yNzk2QzAgMTIuNDk2NiA1Ljc3MjA5IDUuODgxNzIgMTMuMjk0MSA1LjA2NTg2SDEzLjI5NjdaIiBmaWxsPSIjNDZCMUZGIi8+CjxwYXRoIGQ9Ik0yMi4xMTIxIDUuMzA4NTNDMjcuNjY2NyA3LjQ3OTg4IDMxLjMyNTQgMTMuODU2NSAzMS4zNzM3IDIwLjI3ODVDMzEuMjk5NCAyMy44NjQyIDI4LjM5MTcgMjYuNDU5NCAyNS4zMTA2IDI2LjQ1OTRDMjIuMjMzNCAyNi40NTk0IDE5LjA0MTUgMjQuMjU1NyAxOS4wNDE1IDIwLjI3NTlDMTkuMDQxNSAxNy42MjEgMTcuMDM2MSAxNS44MTY2IDE0LjUzIDE1LjgxNjZDMTIuMTcgMTUuODE2NiAxMC4zNzA2IDE3Ljc1MzMgMTAuMzcwNiAyMC4yNzU5QzEwLjM3MDYgMjIuNDY2NyAxMC43OTMxIDIzLjcwMjEgMTEuMDA1NiAyNC42MDU3QzExLjIxNDIgMjUuNTEwNSAxMi4wNTEzIDI3LjE5NTcgMTIuMDcwOSAyNy4yMzcyQzEyLjE0OTEgMjcuMzk2NyAxMi45NDQ1IDI4Ljg2NjcgMTMuOTU2MyAzMC4wOTQzQzE0LjYyMTIgMzAuODc4IDE1LjM2MjQgMzEuNTk0NSAxNi4xNjkgMzIuMjMzM0MxNi4yNTEyIDMyLjI5ODEgMTYuODk5MiAzMi43OTA3IDE3LjE0NjkgMzIuOTU5MkMxNy4yMzgyIDMzLjAyMTQgMTguODQyIDM0LjA0ODEgMjAuNDI0OSAzNC41NjE1QzIyLjAxMDQgMzUuMDcyMiAyMy4zNDU2IDM1LjM3MDQgMjUuMTA1OSAzNS4zNzA0QzMzLjI4NTIgMzUuMzcwNCA0MC4wMDAyIDI4LjY3NDggNDAuMDAwMiAyMC4yNzg1QzQwLjAwMjggMTEuODgwOSAzMy40ODk5IDUgMjUuMTg4IDVDMjQuMzA0IDUgMjIuOTU0NSA1LjE1NTU2IDIyLjExMDggNS4zMDg1M0gyMi4xMTIxWiIgZmlsbD0iIzhFRDRGRSIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Flow",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 104,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/f1cb95c324d745af97bc72c0905fa2b6.png"
+      }
+    ]
+  }
+}

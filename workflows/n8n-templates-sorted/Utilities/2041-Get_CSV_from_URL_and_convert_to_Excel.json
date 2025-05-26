@@ -1,0 +1,516 @@
+{
+  "workflow": {
+    "id": 2041,
+    "name": "Get CSV from URL and convert to Excel",
+    "views": 4239,
+    "recentViews": 0,
+    "totalViews": 4239,
+    "createdAt": "2024-01-07T22:49:42.984Z",
+    "description": "This workflow demonstrates the conversion of a CSV file to Excel format.\n\nFirst, an example CSV file is downloaded via a direct link. The source file is taken from the European Open Data Portal:\n[https://data.europa.eu/data/datasets/veranstaltungsplaetze-potsdam-potsdam?locale=en](https://data.europa.eu/data/datasets/veranstaltungsplaetze-potsdam-potsdam?locale=en)\n\nThe binary data is then imported via the Spreadsheet File node and converted to Excel format.\n\nN.B. Note that as of version 1.23.0 n8n, the Spreadsheet File node has been redesigned and is now called Convert to File node. Learn more on the release notes page: [https://docs.n8n.io/release-notes/#n8n1230](https://docs.n8n.io/release-notes/#n8n1230)",
+    "workflow": {
+      "id": "xcl8D1sukz9Rak69",
+      "meta": {
+        "instanceId": "fb924c73af8f703905bc09c9ee8076f48c17b596ed05b18c0ff86915ef8a7c4a"
+      },
+      "name": "Import CSV from URL to Excel",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "580d8a47-32cc-4976-a464-793523ae3d1e",
+          "name": "When clicking \"Execute Workflow\"",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            860,
+            380
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2ca1b012-db79-415a-8983-53ac23cd42d1",
+          "name": "Import CSV",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            1260,
+            380
+          ],
+          "parameters": {
+            "options": {
+              "delimiter": ";",
+              "headerRow": true
+            },
+            "fileFormat": "csv"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "5bc0a423-91bc-4b52-af05-2869223bbbff",
+          "name": "Download CSV",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1060,
+            380
+          ],
+          "parameters": {
+            "url": "https://opendata.potsdam.de/api/v2/catalog/datasets/veranstaltungsplaetze-potsdam/exports/csv",
+            "options": {
+              "response": {
+                "response": {
+                  "responseFormat": "file"
+                }
+              }
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "d403206d-e53c-44d7-b39e-361fa8fc3a23",
+          "name": "Convert to Excel",
+          "type": "n8n-nodes-base.spreadsheetFile",
+          "position": [
+            1460,
+            380
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "=converted_csv.{{ $parameter.fileFormat }}",
+              "headerRow": true,
+              "sheetName": "csv_page"
+            },
+            "operation": "toFile",
+            "fileFormat": "xlsx"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "66279cfc-4bde-45af-910f-84854eca9a70",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            820,
+            177
+          ],
+          "parameters": {
+            "width": 808,
+            "height": 385,
+            "content": "## Convert CSV to Excel (.xlsx)\n1. Click Execute Workflow to begin\n2. Download the data from the Web\n3. Import CSV binary data as a JSON\n4. Convert JSON to .xlsx file\n\nSource:\nhttps://data.europa.eu/data/datasets/veranstaltungsplaetze-potsdam-potsdam?locale=en"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {
+        "Download CSV": [
+          {
+            "json": {},
+            "binary": {
+              "data": {
+                "data": "ZmlkO25hbWU7d2VibGluaztwZGY7ZHdnO3NoYXBlX2FyZWE7c2hhcGVfbGVuZ3RoO2dlb19zaGFwZTtnZW9fcG9pbnRfMmQNCjE7QWx0ZXIgTWFya3Q7aHR0cHM6Ly93d3cucG90c2RhbS5kZS9hbHRlci1tYXJrdC1hbHMtdmVyYW5zdGFsdHVuZ3NvcnQ7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9BbHRlci1NYXJrdC5wZGY7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9BbHRlci1NYXJrdC5EV0c7OTQyMS4yNzgzMjAzMTI1OzM5NS45NjM0NDY0MTM4MTk7InsiImNvb3JkaW5hdGVzIiI6IFtbWzEzLjA2MDUyODA5MTM3MjMsIDUyLjM5NTg4NTQyNDEyOF0sIFsxMy4wNjE0OTA0ODc1MTAzLCA1Mi4zOTYwNzk3ODkwMjEzXSwgWzEzLjA2MTY5NzQyNzUyNTEsIDUyLjM5NTc3MDIyNTg1NDVdLCBbMTMuMDYxNzI5MzI2NDIxLCA1Mi4zOTU3MDIyOTc1MjQ1XSwgWzEzLjA2MTc0MTI0NTM2ODMsIDUyLjM5NTYyNzkzMzA0MV0sIFsxMy4wNjE3MzEzODk0NzAzLCA1Mi4zOTU1NTg3NzU4NzM2XSwgWzEzLjA2MTY4ODc5MTY2MDIsIDUyLjM5NTQ3NDk4MjM0MzRdLCBbMTMuMDYxMDAxMDM0NDI0MSwgNTIuMzk1NTYyMzc4MDE0NF0sIFsxMy4wNjA5Mjc3MzAyMzUxLCA1Mi4zOTU2MTkwNjAwMTg4XSwgWzEzLjA2MDgzMTMwMDg0ODMsIDUyLjM5NTY2MTIyMzEzNjddLCBbMTMuMDYwNzE5MzM2MTMyMywgNTIuMzk1Njg1MzcwNzc4XSwgWzEzLjA2MDYwODY2ODM0ODEsIDUyLjM5NTY4OTg3NDkxMzhdLCBbMTMuMDYwNTI4MDkxMzcyMywgNTIuMzk1ODg1NDI0MTI4XV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi4zOTU3NzAzMTk2NTgwODQsIDEzLjA2MTIxMjI3NjEyODMyNw0KNjtEci4tUnVkb2xmLVRzY2jDpHBlLVBsYXR6O2h0dHBzOi8vd3d3LnBvdHNkYW0uZGUvZHItcnVkb2xmLXRzY2hhZXBlLXBsYXR6LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0RyLVJ1ZG9sZi1Uc2NoYWVwZS1QbGF0ei5wZGY7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9Eci1SdWRvbGYtVHNjaGFlcGUtUGxhdHouRFdHOzQ1ODkuNTQ3ODUxNTYyNTsyNzQuMjgwNzUzNzg3Njk3OyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4wMzU3MDEyNzkzNzU1LCA1Mi4zOTU4NjY4MTgxNDQzXSwgWzEzLjAzNTY2MzE4ODIzMTMsIDUyLjM5NjE3MTgzNTY3Nl0sIFsxMy4wMzU3OTA5MzIwMDIyLCA1Mi4zOTYxNzkxMDYzMTM4XSwgWzEzLjAzNTgyNjEyNjkzMTEsIDUyLjM5NjI0MDg1OTg3XSwgWzEzLjAzNTkwNzU0ODE2MzMsIDUyLjM5NjMwMDUxNzA5NTldLCBbMTMuMDM2MDA1MDkzNDUyNCwgNTIuMzk2MzMzMDE1ODUzXSwgWzEzLjAzNjEyMTg0MzgyMSwgNTIuMzk2MzQyMDE0NTY4XSwgWzEzLjAzNjIzNjMxNjc0NDYsIDUyLjM5NjMxNTUxOTM5MzVdLCBbMTMuMDM2MzMzMDI5MzU0MSwgNTIuMzk2MjYyMzkzNTI1XSwgWzEzLjAzNjM5MjExMTgzOTcsIDUyLjM5NjIwMjA0NTYyNjVdLCBbMTMuMDM2MzkyMzYzNTUzNSwgNTIuMzk2MTMzMDkxODg3OF0sIFsxMy4wMzYzNTg2NjkyNjksIDUyLjM5NjA3NzIxNjEzMThdLCBbMTMuMDM2MzEzMjE1NTA3MiwgNTIuMzk2MDM1NTU1NjI0OV0sIFsxMy4wMzYyNDM5MjU1NDcsIDUyLjM5NTk5OTYzOTgzNzNdLCBbMTMuMDM2MTIxNjUxOTA4NCwgNTIuMzk1OTc1Mjk0MDIyN10sIFsxMy4wMzU5OTgwNTE4Njg4LCA1Mi4zOTU5Njc5MDY5NzA5XSwgWzEzLjAzNTkxNjI0MjgzNTEsIDUyLjM5NTk0NTY4MjcxMDVdLCBbMTMuMDM1ODU0MjcyMTk5MSwgNTIuMzk1OTA2MTY5MjMxOV0sIFsxMy4wMzU4Mjg3MDA1NzcyLCA1Mi4zOTU4NzMwNDM5NTQ3XSwgWzEzLjAzNTcwMTI3OTM3NTUsIDUyLjM5NTg2NjgxODE0NDNdXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjM5NjEyMDEzOTk0NTg4LCAxMy4wMzYwMTUzNzMxMTUxMDINCjk7SG9sbMOkbmRpc2NoZXMgVmllcnRlbDtodHRwczovL3d3dy5wb3RzZGFtLmRlL2hvbGxhZW5kaXNjaGVzLXZpZXJ0ZWwtYWxzLXZlcmFuc3RhbHR1bmdzb3J0O2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvSG9sbGFlbmRpc2NoZXMtVmllcnRlbF9QREYuemlwO2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvSG9sbGFlbmRpc2NoZXMtVmllcnRlbF9EV0cuemlwOzI5NTYyLjg2OTE0MDYyNTsyMjkxLjgzODgyMDkxOTY0OyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4wNTgwMjU2MzcxMTIzLCA1Mi40MDI2MDcwMDgzMDk5XSwgWzEzLjA1ODAzNDc0OTg0MjYsIDUyLjQwMjc0NDkwNDkwMjJdLCBbMTMuMDYwNDA1MTIxOTYwNiwgNTIuNDAzMDUxMDIwODQ3NF0sIFsxMy4wNjAxNjYyNjU0MDU3LCA1Mi40MDM3NTM1Njg0MDM0XSwgWzEzLjA2MDQzMTcyNTAyNTQsIDUyLjQwMzgwMjY1MTI3MDVdLCBbMTMuMDYwNjcxNzA4MjAwOCwgNTIuNDAzMDg1MzM5ODg3M10sIFsxMy4wNjI1MDY1OTI1NDMzLCA1Mi40MDMzMjMxMjUzNDgyXSwgWzEzLjA2MjU0NTQzOTA5NjIsIDUyLjQwMzE5MTEzMDM3NzVdLCBbMTMuMDYwNzE2NDA4MDA3NSwgNTIuNDAyOTU0MTQ1MzI2OV0sIFsxMy4wNjEwMTQ3MTQ3NzgsIDUyLjQwMjA2Nzk1MDUwMTNdLCBbMTMuMDU3OTY2Mjc1MTk3OCwgNTIuNDAxNjg5MzY3OTE4NV0sIFsxMy4wNTc5Nzg3OTE3MjU0LCA1Mi40MDE4Mjk0NjE2MTIxXSwgWzEzLjA2MDY5MzkwMDIyMTYsIDUyLjQwMjE3NDQzOTk1OTZdLCBbMTMuMDYwNDQ4ODMxMDIzOSwgNTIuNDAyOTE5ODE4MDUzXSwgWzEzLjA1ODAyNTYzNzExMjMsIDUyLjQwMjYwNzAwODMwOTldXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjQwMjY2OTc2NjA0ODUzLCAxMy4wNjAxMjgyODUyMDc4NjMNCjEwO0pvaGFubmVzLUtlcGxlci1QbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL2pvaGFubmVzLWtlcGxlci1wbGF0ei1hbHMtdmVyYW5zdGFsdHVuZ3NvcnQ7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9Kb2hhbm5lcy1LZXBsZXItUGxhdHoucGRmO2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvSm9oYW5uZXMtS2VwbGVyLVBsYXR6LkRXRzs0NTcxLjU1OTU3MDMxMjU7MjcyLjYxNDE5NDgxNjIzOyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4xMjk4NzQwNzA3NjA4LCA1Mi4zNzYxOTk0MDAwODM3XSwgWzEzLjEzMDQyOTM5NTE0ODgsIDUyLjM3NjIwNDM4MzA3MjFdLCBbMTMuMTMwNDMyMzc5MTY5NiwgNTIuMzc2MDc5OTA2NTQ4M10sIFsxMy4xMzA0ODA1NTAxMDY2LCA1Mi4zNzYwNjkzNTYzOTQ1XSwgWzEzLjEzMDQ4Njk3NjkwODQsIDUyLjM3NTgxNzE0NjcyODNdLCBbMTMuMTI5ODgyNDEzMjQzNCwgNTIuMzc1ODIwNTI1NTkxN10sIFsxMy4xMjk4NzQwNzA3NjA4LCA1Mi4zNzYxOTk0MDAwODM3XV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi4zNzYwMDY4Mzk3MTM2NywgMTMuMTMwMTczNzM4NTUxNTM3DQoxNTtXZWJlcnBsYXR6O2h0dHBzOi8vd3d3LnBvdHNkYW0uZGUvd2ViZXJwbGF0ei1hbHMtdmVyYW5zdGFsdHVuZ3NvcnQ7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9XZWJlcnBsYXR6LnBkZjtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL1dlYmVycGxhdHouRFdHOzYzNjQuNTY4MzU5Mzc1OzM1NC4wNTQ2ODY4MDU0MjM7InsiImNvb3JkaW5hdGVzIiI6IFtbWzEzLjA5NTA3MTQ2MjE4NjgsIDUyLjM5NDAxMDEzODEyMzNdLCBbMTMuMDk1MDk1OTA5MTUwMSwgNTIuMzk0MDA0NTE0MDUwN10sIFsxMy4wOTU2NDkzNzQ2NDM2LCA1Mi4zOTM0ODQ5OTY2Mzg2XSwgWzEzLjA5NTY0NTcxNTAzODIsIDUyLjM5MzQ2NzkyNTUyMTFdLCBbMTMuMDk1NjI2ODU0NDQ1NywgNTIuMzkzNDYyNTQxMzI0OV0sIFsxMy4wOTQ3MDgwODA3NTEsIDUyLjM5MzM2NDk3MzEyMTldLCBbMTMuMDk0Njc2ODMyNDIzNCwgNTIuMzkzMzcwNzU2Mjg2XSwgWzEzLjA5NDY3MjY3MDg3NiwgNTIuMzkzMzgzMDgxNDc0M10sIFsxMy4wOTUwNTkxNTE4NzksIDUyLjM5NDAwMzQzNjAwMzVdLCBbMTMuMDk1MDcxNDYyMTg2OCwgNTIuMzk0MDEwMTM4MTIzM11dXSwgIiJ0eXBlIiI6ICIiUG9seWdvbiIifSI7NTIuMzkzNjE3NTYwMDkwMzUsIDEzLjA5NTEzMzQwODg2MDQ5DQoxNjtTdGV1YmVucGxhdHo7aHR0cHM6Ly93d3cucG90c2RhbS5kZS9zdGV1YmVucGxhdHotYWxzLXZlcmFuc3RhbHR1bmdzb3J0O2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvU3RldWJlbnBsYXR6LnBkZjtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL1N0ZXViZW5wbGF0ei5EV0c7MjYzNy41MjUzOTA2MjU7MjQ3LjQ4NDE3MjIzMDE1ODsieyIiY29vcmRpbmF0ZXMiIjogW1tbMTMuMDU5MzI4ODc5MjY3NiwgNTIuMzk1MTQ3ODk4NDI3NV0sIFsxMy4wNTk3NDM1MjQ2MzYzLCA1Mi4zOTUwOTI4NTE2MzQ2XSwgWzEzLjA1OTU3ODMwOTMxOTgsIDUyLjM5NDYwMzg2MTE3NjddLCBbMTMuMDU5NDg0NDE2NjI2NSwgNTIuMzk0NjE2NTkzNzQxOF0sIFsxMy4wNTkzMjg4NzkyNjc2LCA1Mi4zOTUxNDc4OTg0Mjc1XV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi4zOTQ5MTg5MjYxMTQ3NSwgMTMuMDU5NTM0MzA5MjUxNzU0DQoxODtTdGFkdGhlaWRlOzs7OzIxOTcuNDM5NDUzMTI1OzE4OC42Nzc1NzM5NTc3MzsieyIiY29vcmRpbmF0ZXMiIjogW1tbMTMuMDE4NjE5MTk2Nzk4OSwgNTIuMzgzMTI0NDM5OTExNl0sIFsxMy4wMTg3ODgzNzg5NTM3LCA1Mi4zODMzNjA4MDQ4NjAzXSwgWzEzLjAxOTE4NTMwNjA2MjQsIDUyLjM4MzE4NDI3Mjc5OTFdLCBbMTMuMDE4OTU2OTk4MTU1OSwgNTIuMzgyOTk2MjM5OTM0NV0sIFsxMy4wMTg2MTkxOTY3OTg5LCA1Mi4zODMxMjQ0Mzk5MTE2XV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi4zODMxNzEwODQ1OTM0OSwgMTMuMDE4ODg4Mzg1NzM4MTk2DQoyO0FtIFNjaGxhYXR6IC0gU3RhZHRwbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL2FtLXNjaGxhYXR6LXN0YWR0cGxhdHotYWxzLXZlcmFuc3RhbHR1bmdzb3J0O2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvU2NobGFhdHoucGRmO2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvU2NobGFhdHouRFdHOzQzMDUuMjkxMDE1NjI1OzI2Ny4wMDk3MjI2NTA3NjM7InsiImNvb3JkaW5hdGVzIiI6IFtbWzEzLjA5NDUwNzk0MzEwMDcsIDUyLjM3NzM4ODA4NDI0NjhdLCBbMTMuMDkzOTUzOTA3OTcxMiwgNTIuMzc3MjkzODgwNDk3OF0sIFsxMy4wOTM3NjE1NDU4MzcxLCA1Mi4zNzcyOTkyNTgwNl0sIFsxMy4wOTM3ODQ5NDE4MTc0LCA1Mi4zNzc2Mjc0MTE2NzUxXSwgWzEzLjA5NDUyMDQ2NDc1OTksIDUyLjM3NzYwNTU0MjYyNzldLCBbMTMuMDk0NTA3OTQzMTAwNywgNTIuMzc3Mzg4MDg0MjQ2OF1dXSwgIiJ0eXBlIiI6ICIiUG9seWdvbiIifSI7NTIuMzc3NDcxMjg0MTI0MTIsIDEzLjA5NDExNjQ5ODM2NTAxOA0KMztCYXNzaW5wbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL2Jhc3NpbnBsYXR6LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0Jhc3NpbnBsYXR6X1BERi56aXA7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9CYXNzaW5wbGF0el9EV0cuemlwOzgwMjg5LjAzOTA2MjU7MTEzOS43OTI1NTYzODc5NzsieyIiY29vcmRpbmF0ZXMiIjogW1tbMTMuMDU5Mzg1NDc4MTgzNCwgNTIuNDAwMTA3MDQzNDc2M10sIFsxMy4wNTg3NjE1Mjk4OTg2LCA1Mi40MDE3OTYyNzE2Mjg3XSwgWzEzLjA2MTAxNDcxNDc3OCwgNTIuNDAyMDY3OTUwNTAxM10sIFsxMy4wNjE2MjUwMzYxNzQxLCA1Mi40MDAzOTAwMjg0MzE4XSwgWzEzLjA1OTM4NTQ3ODE4MzQsIDUyLjQwMDEwNzA0MzQ3NjNdXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjQwMTA5MDcxOTUyNDc4LCAxMy4wNjAxOTUxMDA0MDQxMDENCjg7SGVpbmVyLUNhcm93LVBsYXR6O2h0dHBzOi8vd3d3LnBvdHNkYW0uZGUvaGVpbmVyLWNhcm93LXBsYXR6LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0hlaW5lci1DYXJvdy1QbGF0ei5wZGY7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9IZWluZXItQ2Fyb3ctUGxhdHouRFdHOzU1NDQuNzkwMDM5MDYyNTszMjEuNTg3NDY0OTgxNjE3OyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4xMzU0MTE3NTYzMTUyLCA1Mi4zNjIxOTc2NjE4NDZdLCBbMTMuMTM1NTIxMzg4NjYzLCA1Mi4zNjIwMjI3NjA4NTk5XSwgWzEzLjEzNTUyNTcwMTIwODgsIDUyLjM2MTgzODYzMTMwODJdLCBbMTMuMTM1MzgyNzQ3MTg5OSwgNTIuMzYxODM3MTI5Njk4NF0sIFsxMy4xMzUzODcwNjU1NTUxLCA1Mi4zNjE2ODc0MjQ0NTU0XSwgWzEzLjEzNTAyMzg1NzYyOTYsIDUyLjM2MTY4Mjc2ODcwNDZdLCBbMTMuMTM1MDE5MjQ0NzY1OSwgNTIuMzYxODMyMDMwNzQ3NV0sIFsxMy4xMzQ4NzMwOTEzNTgxLCA1Mi4zNjE4Mjk5ODAyOTcxXSwgWzEzLjEzNDg2MTYyODYzMDYsIDUyLjM2MjE0MjIxMjg3MjVdLCBbMTMuMTM1MDIzMjgxNDc2MiwgNTIuMzYyMTQ1OTQyNjgzNF0sIFsxMy4xMzUwMjE0MDE5NzE4LCA1Mi4zNjIxOTE2NDc5NDRdLCBbMTMuMTM1NDExNzU2MzE1MiwgNTIuMzYyMTk3NjYxODQ2XV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi4zNjE5NTU0NzA5MjY4OCwgMTMuMTM1MTkzMDUyMzAyOTAzDQoxMztOZXVlciBNYXJrdDtodHRwczovL3d3dy5wb3RzZGFtLmRlL25ldWVyLW1hcmt0LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL05ldWVyLU1hcmt0LnBkZjtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL05ldWVyLU1hcmt0LkRXRzs2NTcwLjQwNTI3MzQzNzU7MzI2Ljc4Nzk5NTAwNjMwMzsieyIiY29vcmRpbmF0ZXMiIjogW1tbMTMuMDU3MTk5Nzg3OTE0MiwgNTIuMzk2NTY4NTA5Mjc5OF0sIFsxMy4wNTgwMTA1OTIxODI0LCA1Mi4zOTY0Njk1NzEyNTk4XSwgWzEzLjA1Nzg3MTM1Mzk0MzUsIDUyLjM5NjA5ODUyOTQ1N10sIFsxMy4wNTcwNjM5NTcyNzE4LCA1Mi4zOTYxNjg1MzI0NzAzXSwgWzEzLjA1NzE5OTc4NzkxNDIsIDUyLjM5NjU2ODUwOTI3OThdXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjM5NjMyNzMxNDMyMDEyNSwgMTMuMDU3NTMxNzkxMzU3MzQ3DQoxNDtSdXNzaXNjaGUgS29sb25pZTtodHRwczovL3d3dy5wb3RzZGFtLmRlL3J1c3Npc2NoZS1rb2xvbmllLWFsZXhhbmRyb3drYS0wO2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvUnVzc2lzY2hlLUtvbG9uaWUucGRmO2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvUnVzc2lzY2hlLUtvbG9uaWUuRFdHOzkwOTAuMzA0Njg3NTsxMjE4LjQwMTMxNTM2NjY2OyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4wNTgxMjUxNTAwNDI4LCA1Mi40MTE0Nzg3Njk1MzczXSwgWzEzLjA1ODIwMTMyMTkxMzMsIDUyLjQxMTQ0MzA1NjMzMTRdLCBbMTMuMDU3MTg4MzY1NzE3MSwgNTIuNDEwNjI3NjIzNzIyNF0sIFsxMy4wNTc3MzU1NTkxNTc2LCA1Mi40MTAwMDY2MzEwOTE5XSwgWzEzLjA1NzYzNTk5MzY4MDUsIDUyLjQwOTk3MDgzODAwNzNdLCBbMTMuMDU3MjU0ODM3ODI5NCwgNTIuNDEwNDAzNTQzOTA4NV0sIFsxMy4wNTY5MDM1MDU5OTkyLCA1Mi40MTA0NjI3NTgyNTQ0XSwgWzEzLjA1NjI1NjIzNjA2MywgNTIuNDEwMDg5NzM4MjM3M10sIFsxMy4wNTYxOTM2MzE1NjYzLCA1Mi40MTAxMzQzNDg3MTc5XSwgWzEzLjA1NzA1MTYxMjAyNTcsIDUyLjQxMDY1NTYyMzY1MThdLCBbMTMuMDU2NTcxODc5MzE5OSwgNTIuNDExNjE1Njg2NDkyXSwgWzEzLjA1NjY3NTc4OTA0MDksIDUyLjQxMTYzNjM1ODMwNzldLCBbMTMuMDU3MDMzMDMxMjg1NSwgNTIuNDEwOTI3Mjk4ODY0OV0sIFsxMy4wNTczOTc1MjY1MjA3LCA1Mi40MTA5MDA0Mjk4MTldLCBbMTMuMDU4MTI1MTUwMDQyOCwgNTIuNDExNDc4NzY5NTM3M11dXSwgIiJ0eXBlIiI6ICIiUG9seWdvbiIifSI7NTIuNDEwNzU4NzI0OTc0NjQsIDEzLjA1NzE1NDY1NjExOTM1OQ0KNDtCcmFuZGVuYnVyZ2VyIFN0cmHDn2U7aHR0cHM6Ly93d3cucG90c2RhbS5kZS9icmFuZGVuYnVyZ2VyLXN0cmFzc2UtYWxzLXZlcmFuc3RhbHR1bmdzb3J0O2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvQnJhbmRlbmJ1cmdlci1TdHJhc3NlX1BERi56aXA7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9CcmFuZGVuYnVyZ2VyLVN0cmFzc2VfRFdHLnppcDsyNzk5MC4zMzQ5NjA5Mzc1OzIzNTIuODE2MDA1OTY4MTk7InsiImNvb3JkaW5hdGVzIiI6IFtbWzEzLjA1ODg0ODk1MTI2NzQsIDUyLjQwMDk4NjUzNjI5XSwgWzEzLjA1ODg4ODgzMTU3OSwgNTIuNDAwODU3NzcxMTEwNF0sIFsxMy4wNTc1ODE0ODkwOTE3LCA1Mi40MDA2OTE2NDUwNzE3XSwgWzEzLjA0ODc1NjQwNDE3ODIsIDUyLjM5OTU3MjkxNDg0NjhdLCBbMTMuMDQ4NzEzMzk1ODQ4LCA1Mi4zOTk3MDUyOTE5MzYyXSwgWzEzLjA1ODg0ODk1MTI2NzQsIDUyLjQwMDk4NjUzNjI5XV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi40MDAyNzc1OTg1NjA1LCAxMy4wNTM3Nzg2MjkyOTE0OTUNCjU7QnJhbmRlbmJ1cmdlciBUb3IgLSBWb3JwbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL2JyYW5kZW5idXJnZXItdG9yLXZvcnBsYXR6LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0JyYW5kZW5idXJnZXItVG9yLVZvcnBsYXR6LnBkZjtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0JyYW5kZW5idXJnZXItVG9yLVZvcnBsYXR6LkRXRzszNDYyLjM5MzU1NDY4NzU7MjM2LjcxODczNTI1MDY0MzsieyIiY29vcmRpbmF0ZXMiIjogW1tbMTMuMDQ4MTEyMDQ3MjI3OSwgNTIuMzk5NzEwODY1MDI2MV0sIFsxMy4wNDg2OTAwODQyMzIyLCA1Mi4zOTk3Nzk2NDg5MTk1XSwgWzEzLjA0ODc4MDcyOTU0MzcsIDUyLjM5OTQ5NzA4NjczNzVdLCBbMTMuMDQ4MjA1MTg1MzgxMywgNTIuMzk5NDI0Nzc1ODUyNl0sIFsxMy4wNDgxMTIwNDcyMjc5LCA1Mi4zOTk3MTA4NjUwMjYxXV1dLCAiInR5cGUiIjogIiJQb2x5Z29uIiJ9Ijs1Mi4zOTk2MDMwNzEzNzkzOTYsIDEzLjA0ODQ0NjM3MTE2MDY0NA0KNztFcm5zdC1CdXNjaC1QbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL2VybnN0LWJ1c2NoLXBsYXR6LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0VybnN0LUJ1c2NoLVBsYXR6LnBkZjtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL0VybnN0LUJ1c2NoLVBsYXR6LkRXRzs1MzE0LjE3NzczNDM3NTsyOTcuODAzNTY1MTczNjY4OyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4xNDA3NTE0MzI4MzM2LCA1Mi4zNjkwMDkwNjcyNzU4XSwgWzEzLjE0MDMxNTgyNTk1MTYsIDUyLjM2ODczMjYyNDQ5MjhdLCBbMTMuMTQwMjM5MjM4OTc1MiwgNTIuMzY4Nzc3ODk3NzU4M10sIFsxMy4xNDAxNDg2NDU4Mjc0LCA1Mi4zNjg3MTgzNjkyNzRdLCBbMTMuMTM5ODI1MTU2MDI0OSwgNTIuMzY4OTQ1ODU2Mzk0Nl0sIFsxMy4xNDAzMjM2MDQxNzkyLCA1Mi4zNjkyNjE4MjMzMDU5XSwgWzEzLjE0MDc1MTQzMjgzMzYsIDUyLjM2OTAwOTA2NzI3NThdXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjM2ODk3ODQ2MDczNTkxLCAxMy4xNDAyODM0NDMzMDkzNA0KMTE7THVpc2VucGxhdHo7aHR0cHM6Ly93d3cucG90c2RhbS5kZS9sdWlzZW5wbGF0ei1hbHMtdmVyYW5zdGFsdHVuZ3NvcnQ7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9MdWlzZW5wbGF0ei5wZGY7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9MdWlzZW5wbGF0ei5EV0c7NjkyMi4yNjk1MzEyNTszMzIuODM3NTYyMzYyMzA1OyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4wNDY4NTgzNzM0NTY4LCA1Mi4zOTk2MjQwNjMyNjAzXSwgWzEzLjA0NzU5NjQ3OTQxOTQsIDUyLjM5OTcyMTg3NjM2OV0sIFsxMy4wNDc3NjE1NTQyNTc0LCA1Mi4zOTkyNzc0ODUwNzMxXSwgWzEzLjA0NzAzNzAwOTMzMjUsIDUyLjM5OTE4MTgxNzY2NTFdLCBbMTMuMDQ2ODU4MzczNDU2OCwgNTIuMzk5NjI0MDYzMjYwM11dXSwgIiJ0eXBlIiI6ICIiUG9seWdvbiIifSI7NTIuMzk5NDUyMDA4MjczMDgsIDEzLjA0NzMxMzEzMjAyMzM5NA0KMTI7TmF1ZW5lciBUb3IgLSBWb3JwbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL25hdWVuZXItdG9yLXZvcnBsYXR6LWFscy12ZXJhbnN0YWx0dW5nc29ydDtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL05hdWVuZXItVG9yLnBkZjtodHRwczovL2RlLmZ0cC5vcGVuZGF0YXNvZnQuY29tL3BvdHNkYW0vVmVyYW5zdGFsdHVuZ3NvcnRlL05hdWVuZXItVG9yLkRXRzsxNzI3LjUxNzU3ODEyNTsxNzEuNDM5MzYyODUzOTcyOyJ7IiJjb29yZGluYXRlcyIiOiBbW1sxMy4wNTc0Mzg3NDYxMDI5LCA1Mi40MDM0NzQyNTIwOTEzXSwgWzEzLjA1NzU4MDQyMzcxNTIsIDUyLjQwMzQ4MTAyODIxMTldLCBbMTMuMDU3NTc5ODI3MDQ4MywgNTIuNDAzNDU1NjA3ODQwNF0sIFsxMy4wNTc3ODIwOTg2MjM3LCA1Mi40MDM0NTE2Mzk4MzY0XSwgWzEzLjA1Nzg0MjM0NzQ2ODcsIDUyLjQwMzQyODEzNjY1NDRdLCBbMTMuMDU3ODM0MTg5NjkzOSwgNTIuNDAzMjExMTgyOTQxOV0sIFsxMy4wNTc1MzUxMTk3MDI1LCA1Mi40MDMyMjAzMDI2Nzc0XSwgWzEzLjA1NzQzODc0NjEwMjksIDUyLjQwMzQ3NDI1MjA5MTNdXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjQwMzM0NDE4NzE3OTQ5LCAxMy4wNTc2NTc1NTQ2MzE4NDUNCjE3O0pvaGFuLUJvdW1hbi1QbGF0ejtodHRwczovL3d3dy5wb3RzZGFtLmRlL2pvaGFuLWJvdW1hbi1wbGF0ei1hbHMtdmVyYW5zdGFsdHVuZ3NvcnQ7aHR0cHM6Ly9kZS5mdHAub3BlbmRhdGFzb2Z0LmNvbS9wb3RzZGFtL1ZlcmFuc3RhbHR1bmdzb3J0ZS9Kb2hhbi1Cb3VtYW4tUGxhdHoucGRmO2h0dHBzOi8vZGUuZnRwLm9wZW5kYXRhc29mdC5jb20vcG90c2RhbS9WZXJhbnN0YWx0dW5nc29ydGUvSm9oYW4tQm91bWFuLVBsYXR6LkRXRzszNTIxLjIzOTI1NzgxMjU7MjU5Ljg1ODYxMDY0NzU1ODsieyIiY29vcmRpbmF0ZXMiIjogW1tbMTMuMDM4MzgzNjY5NDcwMywgNTIuNDEzMzE1NzYxODEzOV0sIFsxMy4wMzgwMjA0NzAzODE5LCA1Mi40MTMzODQ4MjU1NzQ2XSwgWzEzLjAzODE5NDk2NzAxNTEsIDUyLjQxMzczMTMxMTg4NDJdLCBbMTMuMDM4MjM0NTk5NDUzMywgNTIuNDEzNzIzODIyMTg3OF0sIFsxMy4wMzgyNjM2MDQxNTUyLCA1Mi40MTM3ODEyMjkwODA3XSwgWzEzLjAzODMzMTYzODIwODgsIDUyLjQxMzc2ODE1MjE3ODRdLCBbMTMuMDM4MzU5OTQ0MjI2MSwgNTIuNDEzODIzNjYwMzk1Nl0sIFsxMy4wMzg2MTMyNTIzOTk0LCA1Mi40MTM3NzUzMjU0MDMzXSwgWzEzLjAzODM4MzY2OTQ3MDMsIDUyLjQxMzMxNTc2MTgxMzldXV0sICIidHlwZSIiOiAiIlBvbHlnb24iIn0iOzUyLjQxMzU2ODc1NDc4MzczLCAxMy4wMzgzMTk0MzU4MTc3MjgNCg==",
+                "fileName": "veranstaltungsplaetze-potsdam.csv",
+                "fileSize": "12.3 kB",
+                "fileType": "text",
+                "mimeType": "text/csv",
+                "fileExtension": "csv"
+              }
+            },
+            "pairedItem": {
+              "item": 0
+            }
+          }
+        ]
+      },
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "bf39a01f-0bb5-48e1-914c-8eec4d91cf35",
+      "connections": {
+        "Import CSV": {
+          "main": [
+            [
+              {
+                "node": "Convert to Excel",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Download CSV": {
+          "main": [
+            [
+              {
+                "node": "Import CSV",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking \"Execute Workflow\"": {
+          "main": [
+            [
+              {
+                "node": "Download CSV",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 5,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.spreadsheetFile": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Yulia",
+      "username": "yulia",
+      "bio": "Let's connect! ",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/yulia-dmitrievna-1112361b5/"
+      ],
+      "avatar": "https://gravatar.com/avatar/d29a8262aa8835d430919f8002957a77169f8da987dee0740aa494ae67a061b7?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 41,
+        "icon": "fa:table",
+        "name": "n8n-nodes-base.spreadsheetFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "_Excel",
+              "Excel",
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "xls",
+              "xlsx",
+              "ods"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Spreadsheet File",
+          "color": "#2244FF"
+        },
+        "iconData": {
+          "icon": "table",
+          "type": "icon"
+        },
+        "displayName": "Spreadsheet File",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

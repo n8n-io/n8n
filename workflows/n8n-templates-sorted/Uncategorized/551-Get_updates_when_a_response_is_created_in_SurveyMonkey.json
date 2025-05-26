@@ -1,0 +1,118 @@
+{
+  "workflow": {
+    "id": 551,
+    "name": "Get updates when a response is created in SurveyMonkey",
+    "views": 399,
+    "recentViews": 0,
+    "totalViews": 399,
+    "createdAt": "2020-07-23T00:12:41.076Z",
+    "description": "Companion workflow for SurveyMonkey node docs\n\n![workflow-screenshot](fileId:148)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "SurveyMonkey Trigger",
+          "type": "n8n-nodes-base.surveyMonkeyTrigger",
+          "position": [
+            880,
+            390
+          ],
+          "webhookId": "52754661-725a-49e0-88fc-a8e5dbbea5a5",
+          "parameters": {
+            "event": "response_created",
+            "surveyIds": [
+              "288506979"
+            ],
+            "objectType": "survey",
+            "authentication": "oAuth2"
+          },
+          "credentials": {
+            "surveyMonkeyOAuth2Api": "surveymonkey_oauth"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.surveyMonkeyTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 316,
+        "icon": "file:surveyMonkey.svg",
+        "name": "n8n-nodes-base.surveyMonkeyTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Form"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.surveymonkeytrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/surveyMonkey/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "SurveyMonkey Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PHBhdGggZmlsbD0iIzAwQkY2RiIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNTMuMDUgNDIuMTc4YTIuMDggMi4wOCAwIDAgMS0xLjM5NC0uNTM3Yy4xMjUtMS4wODUuMjA5LTIuMTgxLjIyMy0zLjI5N2EyLjEgMi4xIDAgMCAxIDEuMTctLjM2MiAyLjEgMi4xIDAgMCAxIDEuNDgyIDMuNTgzIDIuMSAyLjEgMCAwIDEtMS40ODEuNjEzbS00Ni4xIDBhMi4wOTMgMi4wOTMgMCAwIDEtMi4wOS0yLjA5NGMwLTEuMTYuOTQtMi4xMDQgMi4wOS0yLjEwNC40MzMgMCAuODM3LjE0IDEuMTcxLjM2NC4wMTQgMS4xMTYuMDk4IDIuMjEyLjIyMyAzLjI5N2EyLjEgMi4xIDAgMCAxLTEuMzk0LjUzN200NS45NjMtOS4yMWE3IDcgMCAwIDAtMS42OTUuMjEyYy0yLjA4My04LjI2OC04Ljg1LTE0LjY2NS0xNy4zMDItMTYuMTc4LS4zNzctLjA3LS43MTgtLjExOC0xLjEwMi0uMTY3LjA2My0yLjA3Mi4xNi00LjQ2NiAzLjE5Ny02LjYyTDM1LjUzIDlzLTUuOTE2IDEuODQ1LTYuNjAyIDYuOTI2Yy0uMjk2LTEuMzgzLTMuMDU0LTMuMTEyLTQuNDItMy40NGwtLjY4IDEuMDk5czEuODEyLjkxIDIuMjUyIDMuNDE3Yy04LjQ1IDEuNTE1LTE1LjIxNSA3LjkxMi0xNy4yOTggMTYuMTc4YTcgNyAwIDAgMC0xLjY5Ni0uMjExQzMuMTggMzIuOTY5IDAgMzYuMTUyIDAgNDAuMDg0IDAgNDQuMDA4IDMuMTggNDcuMiA3LjA4NiA0Ny4yYy45MTUgMCAxLjc4OC0uMTg0IDIuNTktLjQ5OEEyMiAyMiAwIDAgMCAxMS45NzkgNTFsNS44ODItMy45OC0uMDUtLjA2NmMtMS41NTYtMi4wMDctMi41MDgtNC45NjItMi42NjctNy45MDQtLjE3Ny0zLjI0Mi42MTItNi40NjQgMi42NzctOC4zNTggNC4yNTQtMy42MzQgOC44ODYtMS45NzggMTEuNzg5IDEuNTA3aC43OGMyLjkwMy0zLjQ4NSA3LjUzNS01LjE0MSAxMS43OS0xLjUwNyAyLjA2NCAxLjg5NCAyLjg1MyA1LjExNiAyLjY3NyA4LjM2LS4xNiAyLjk0LTEuMTEyIDUuODk1LTIuNjY4IDcuOTAzbC0uMDUuMDY0TDQ4LjAyIDUxYTIyIDIyIDAgMCAwIDIuMzAzLTQuMyA3LjEgNy4xIDAgMCAwIDIuNTg5LjQ5OWMzLjkwNyAwIDcuMDg3LTMuMTkgNy4wODctNy4xMTUgMC0zLjkzMy0zLjE4LTcuMTE3LTcuMDg3LTcuMTE3Ii8+PC9zdmc+"
+        },
+        "displayName": "SurveyMonkey Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 148,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/da58779aa17a4305a90b02128fb90d33.png"
+      }
+    ]
+  }
+}

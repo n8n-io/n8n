@@ -1,0 +1,264 @@
+{
+  "workflow": {
+    "id": 1823,
+    "name": "Create Monday item on a new Mautic contact",
+    "views": 798,
+    "recentViews": 0,
+    "totalViews": 798,
+    "createdAt": "2022-11-10T15:05:45.374Z",
+    "description": "This workflow creates a new item in a [Monday.com](http://monday.com/) board when a new contact is created in Mautic. Additional fields can be added to the workflow to send more data to [Monday.com](http://monday.com/).\n\n## Prerequisites\n\n- Monday account and [Monday credentials](https://docs.n8n.io/integrations/builtin/credentials/mondaycom/).\n- Mautic account and [Mautic credentials](https://docs.n8n.io/integrations/builtin/credentials/mautic/).\n\n## How it works\n\nWhen a new contact is created in Mautic, the workflow creates a new item in the [Monday.com](http://monday.com/) board. By default the workflow will send the contact's email address to [Monday.com](http://monday.com/) and name the item after the contact's first and last name.\n\n## Setup\n\nThis workflow requires that you set up a [Monday.com](http://monday.com/) board. To do so, follow the steps below:\n\n1. In [Monday.com](http://monday.com/), create a new item board.\n2. In the board, add the following columns:\n    - Email (with type \"Email\")\n    - Any other fields you require to the board.\n3. If more columns are created, you will need to find out what their ID's are by turning on developer mode as explained in this [Monday article](https://support.monday.com/hc/en-us/articles/360000225709-Board-item-column-and-automation-or-integration-ID-s).\n4. With these new IDs, you can add them to the `Create item` [Monday.com](http://monday.com/) node, this is explained further in the workflow as a sticky note.",
+    "workflow": {
+      "meta": {
+        "instanceId": "237600ca44303ce91fa31ee72babcdc8493f55ee2c0e8aa2b78b3b4ce6f70bd9"
+      },
+      "nodes": [
+        {
+          "id": "4da16859-d29b-4eb7-90a4-3904c1bfff68",
+          "name": "Create item",
+          "type": "n8n-nodes-base.mondayCom",
+          "position": [
+            620,
+            240
+          ],
+          "parameters": {
+            "name": "={{$node[\"On created contact\"].json[\"mautic.lead_post_save_new\"][0][\"contact\"][\"fields\"][\"core\"][\"firstname\"][\"value\"]}} {{$node[\"On created contact\"].json[\"mautic.lead_post_save_new\"][0][\"contact\"][\"fields\"][\"core\"][\"lastname\"][\"value\"]}}",
+            "boardId": "3461879764",
+            "groupId": "topics",
+            "resource": "boardItem",
+            "additionalFields": {
+              "columnValues": "={\n  \"email\": {\n    \"email\": \"{{$node[\"On created contact\"].json[\"mautic.lead_post_save_new\"][0][\"contact\"][\"fields\"][\"core\"][\"email\"][\"value\"]}}\",\n    \"text\" : \"{{$node[\"On created contact\"].json[\"mautic.lead_post_save_new\"][0][\"contact\"][\"fields\"][\"core\"][\"email\"][\"value\"]}}\"\n  }\n}"
+            }
+          },
+          "credentials": {
+            "mondayComApi": {
+              "id": "26",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "88655428-439e-4324-8d8f-865625650c7a",
+          "name": "On created contact",
+          "type": "n8n-nodes-base.mauticTrigger",
+          "position": [
+            400,
+            240
+          ],
+          "webhookId": "8c80d932-4c37-4ebe-92ad-e456249db2c5",
+          "parameters": {
+            "events": [
+              "mautic.lead_post_save_new"
+            ]
+          },
+          "credentials": {
+            "mauticApi": {
+              "id": "34",
+              "name": "[UPDATE ME]"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bff916e6-2ddc-456b-a8fa-c8841f47abed",
+          "name": "Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            620,
+            400
+          ],
+          "parameters": {
+            "width": 301,
+            "height": 309,
+            "content": "## How to add more fields to Monday\nBy default, this `Create item` node only adds the name of the item and the email to Monday (provided that there is an email field already created).\n\nIdeally, you would like to share more fields than just the name and email. Refer to the [community discussion here](https://community.n8n.io/t/change-multiple-column-values-with-monday/4262) for more information on how to set up more column values in the `Create item` Monday node."
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "On created contact": {
+          "main": [
+            [
+              {
+                "node": "Create item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.mondayCom": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.mauticTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "n8n Team",
+      "username": "n8n-team",
+      "bio": "Meet the official n8n team. We specialize in building workflows that transform intricate tasks into seamless operations.",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/b3d1a47322f05a8be3d2e7bad6a80c29161bd58b91e4762cbb3ac25e5d0db5a8?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 127,
+        "icon": "file:mautic.svg",
+        "name": "n8n-nodes-base.mauticTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mautictrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mautic/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Mautic Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbDpzcGFjZT0icHJlc2VydmUiIHdpZHRoPSIzNDkuNzc5IiBoZWlnaHQ9IjM0OS43NzkiPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik0xNzQuODkgMzQ5Ljc3OUM3OC42MTIgMzQ5Ljc3OSAwIDI3MS40NjIgMCAxNzQuODlTNzguNjEyIDAgMTc0Ljg5IDBjMjMuMjYgMCA0NS45MzEgNC40MTcgNjcuMTI5IDEzLjU0MyA1Ljg4OSAyLjY1IDguODMzIDkuNDIyIDYuNDc4IDE1LjYwNS0yLjY0OSA1Ljg4OC05LjQyMSA4LjgzMy0xNS42MDQgNi40NzctMTguNTQ5LTcuNjU1LTM3Ljk4LTExLjQ4Mi01OC4wMDItMTEuNDgyLTgzLjMyMyAwLTE1MS4wNDEgNjcuNzE4LTE1MS4wNDEgMTUxLjA0MXM2Ny43MTcgMTUxLjA0MSAxNTEuMDQgMTUxLjA0MSAxNTEuMDQxLTY3LjcxOCAxNTEuMDQxLTE1MS4wNDFjMC0xNy45Ni0yLjk0NC0zNS4zMzItOS4xMjctNTEuODE5LTIuMzU1LTYuMTgzLjg4My0xMi45NTUgNy4wNjYtMTUuMzFzMTIuOTU0Ljg4MyAxNS4zMSA3LjA2NmM3LjA2NiAxOS4xMzggMTAuNiAzOS40NTMgMTAuNiA2MC4wNjMtLjAwMSA5NS45ODMtNzguMzE4IDE3NC41OTUtMTc0Ljg5IDE3NC41OTUiLz48cGF0aCBmaWxsPSIjRkRCOTMzIiBkPSJtMjUxLjQ0IDE1Ni45My0yNy4wODYgMjguMjY0IDE1LjAxNSA2My4zMDJoMzQuMTUzem0tMTEuMTg3LTgzLjYxOCA5LjQyMSA5LjQyMi03NC43ODQgNzkuMjAxLTYzLjg5MS02NS42NTgtMzYuODAzIDE1Mi4yMTloMzQuMTU0bDIwLjMxNS04NC41IDQ2LjIyNSA1MC4zNDcgOTguOTI3LTEwNy43NiA5LjQyMiA5LjcxNiA5LjQyMS01My4yOTJ6Ii8+PC9zdmc+"
+        },
+        "displayName": "Mautic Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      },
+      {
+        "id": 309,
+        "icon": "file:mondayCom.svg",
+        "name": "n8n-nodes-base.mondayCom",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mondaycom/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mondayCom/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Monday.com"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiNGRjNENTciIGQ9Ik04LjE4NCA0Ny4zOTNBNy4yIDcuMiAwIDAgMSAxLjkgNDMuNjc0YTcuMjIgNy4yMiAwIDAgMSAuMTk2LTcuMzA3bDEyLjk0NS0yMC43M2E3LjE4IDcuMTggMCAwIDEgNi4zNTYtMy4zNzYgNy4yIDcuMiAwIDAgMSA2LjA5NyAzLjgyNCA3LjIxIDcuMjEgMCAwIDEtLjI1OCA3LjJsLTEyLjk1IDIwLjcyN2E3LjE5IDcuMTkgMCAwIDEtNi4xMDMgMy4zNzl6Ii8+PHBhdGggZmlsbD0iI0ZGQ0IwMCIgZD0iTTMwLjQ5NCA0Ny4zOTNhNy4yIDcuMiAwIDAgMS02LjI5NS0zLjcxMyA3LjIxIDcuMjEgMCAwIDEgLjE5NC03LjMxM2wxMi45NTQtMjAuNzNhNy4xNyA3LjE3IDAgMCAxIDYuNDExLTMuNjM0QTcuMTkgNy4xOSAwIDAgMSA1MCAxNS45MjNhNy4yMSA3LjIxIDAgMCAxLS40NzYgNy4zNmwtMTIuOTMgMjAuNzNhNy4xOSA3LjE5IDAgMCAxLTYuMTAyIDMuMzc4bC4wMDMuMDAyeiIvPjxwYXRoIGZpbGw9IiMwMEQ2NDciIGQ9Ik00NS41OTEgNDAuMzU3YzAtMy44OTUgMy4yMTQtNy4wMzQgNy4yMDUtNy4wMzRTNjAgMzYuNDYgNjAgNDAuMzU3cy0zLjIxNCA3LjAzNC03LjIwNCA3LjAzNGMtMy45OTEgMC03LjIwNS0zLjEzNy03LjIwNS03LjAzNCIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Monday.com",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

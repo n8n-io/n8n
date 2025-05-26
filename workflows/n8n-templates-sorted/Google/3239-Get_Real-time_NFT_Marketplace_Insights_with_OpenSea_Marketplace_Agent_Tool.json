@@ -1,0 +1,1124 @@
+{
+  "workflow": {
+    "id": 3239,
+    "name": "Get Real-time NFT Marketplace Insights with OpenSea Marketplace Agent Tool",
+    "views": 422,
+    "recentViews": 3,
+    "totalViews": 422,
+    "createdAt": "2025-03-20T15:09:34.975Z",
+    "description": "**Track NFT listings, offers, orders, and trait-based pricing in real time!** This workflow integrates **OpenSea API**, **AI-powered analytics (GPT-4o-mini)**, and **n8n automation** to provide instant insights into NFT trading activity. Ideal for **NFT traders, collectors, and investors** looking to **monitor the market and identify profitable opportunities**.  \n\n## **How It Works**  \n1. A **user submits a query** about NFT listings, offers, or order history.  \n2. The **OpenSea Marketplace Agent** determines the correct API tool:  \n   - Retrieve **active NFT listings** for a collection.  \n   - Fetch **valid offers** for individual NFTs or entire collections.  \n   - Identify the **cheapest NFT listings** by collection or token ID.  \n   - Track the **highest offer** made for a single NFT.  \n   - Access **detailed order history** for a transaction.  \n3. The **OpenSea API** *(requires API key)* is queried to fetch real-time data.  \n4. **The AI engine processes and structures the response**, making it easy to interpret.  \n5. The **NFT marketplace insights are delivered via Telegram, Slack, or stored in a database**.  \n\n## **What You Can Do with This Agent**  \n🔹 **Find the Best NFT Listings** → Retrieve the **cheapest available listings** in any collection.  \n🔹 **Track Offers on NFTs** → See **all active offers**, including highest bids.  \n🔹 **Analyze Collection-Wide Market Data** → Compare **listings, offers, and sales activity**.  \n🔹 **Retrieve Order Details** → Search by **order hash** to check **buyer, seller, and transaction status**.  \n🔹 **Fetch NFT Trait-Based Offers** → Identify **rare traits that receive premium bids**.  \n🔹 **Monitor Multi-Chain Listings** → Works across **Ethereum, Polygon (Matic), Arbitrum, Optimism, and more**.  \n\n## **Example Queries You Can Use**  \n✅ _\"Show me the 10 cheapest listings for Bored Ape Yacht Club.\"_  \n✅ _\"Find the highest bid for CryptoPunk #1234.\"_  \n✅ _\"Track all open offers for Azuki NFTs.\"_  \n✅ _\"Retrieve details for this OpenSea order: 0x123abc... on Ethereum.\"_  \n✅ _\"List all NFTs for sale in the 'CloneX' collection.\"_  \n\n## **Available API Tools & Endpoints**  \n1️⃣ **Get All Listings by Collection** → `/api/v2/listings/collection/{collection_slug}/all` _(Fetches active listings for a collection)_  \n2️⃣ **Get All Offers by Collection** → `/api/v2/offers/collection/{collection_slug}/all` _(Retrieves all offers for a collection)_  \n3️⃣ **Get Best Listing by NFT** → `/api/v2/listings/collection/{collection_slug}/nfts/{identifier}/best` _(Finds the lowest-priced NFT listing)_  \n4️⃣ **Get Best Listings by Collection** → `/api/v2/listings/collection/{collection_slug}/best` _(Fetches the cheapest listings per collection)_  \n5️⃣ **Get Best Offer by NFT** → `/api/v2/offers/collection/{collection_slug}/nfts/{identifier}/best` _(Retrieves the highest offer for an NFT)_  \n6️⃣ **Get Collection Offers** → `/api/v2/offers/collection/{collection_slug}` _(Shows collection-wide offers)_  \n7️⃣ **Get Item Offers** → `/api/v2/orders/{chain}/{protocol}/offers` _(Fetches active item-specific offers)_  \n8️⃣ **Get Listings by Chain & Protocol** → `/api/v2/orders/{chain}/{protocol}/listings` _(Retrieves active listings across blockchains)_  \n9️⃣ **Get Order Details by Hash** → `/api/v2/orders/chain/{chain}/protocol/{protocol_address}/{order_hash}` _(Checks order status using an order hash)_  \n🔟 **Get Trait-Based Offers** → `/api/v2/offers/collection/{collection_slug}/traits` _(Fetches offers for specific NFT traits)_  \n\n## **Set Up Steps**  \n1. **Get an OpenSea API Key**  \n   - Sign up at [OpenSea API](https://docs.opensea.io/reference/api-keys) and request an API key.  \n2. **Configure API Credentials in n8n**  \n   - Add your OpenSea API key under **HTTP Header Authentication**.  \n3. **Connect the Workflow to Telegram, Slack, or Database (Optional)**  \n   - Use **n8n integrations** to send alerts to **Telegram, Slack, or save results to Google Sheets, Notion, etc.**  \n4. **Deploy and Test**  \n   - Send a query (e.g., `\"Get the best listing for BAYC #5678\"`) and receive instant insights!  \n\n**Stay ahead of the NFT market—gain powerful insights with AI-powered OpenSea analytics!** ",
+    "workflow": {
+      "id": "brRSLvIkYp3mLq0K",
+      "meta": {
+        "instanceId": "a5283507e1917a33cc3ae615b2e7d5ad2c1e50955e6f831272ddd5ab816f3fb6"
+      },
+      "name": "OpenSea Marketplace Agent Tool",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "13579b30-83df-4da6-b0de-90eeaf3252e7",
+          "name": "Marketplace Agent Brain",
+          "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+          "position": [
+            -300,
+            -260
+          ],
+          "parameters": {
+            "model": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gpt-4o-mini"
+            },
+            "options": {}
+          },
+          "credentials": {
+            "openAiApi": {
+              "id": "yUizd8t0sD5wMYVG",
+              "name": "OpenAi account"
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "9f979fae-49c6-4a50-b96b-92de5a49ba14",
+          "name": "Marketplace Agent Memory",
+          "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+          "position": [
+            -120,
+            -260
+          ],
+          "parameters": {},
+          "typeVersion": 1.3
+        },
+        {
+          "id": "202ca463-f038-46df-99ea-84fbda70a933",
+          "name": "OpenSea Marketplace Agent",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            420,
+            -540
+          ],
+          "parameters": {
+            "text": "={{ $json.message }}",
+            "options": {
+              "systemMessage": "### **🛒 OpenSea Marketplace Agent Overview**\nThis agent interacts with the OpenSea marketplace API to retrieve marketplace data, including NFT listings, offers, orders, and trait-specific data. The system follows strict input requirements to ensure compatibility with OpenSea API rules.\n\n---\n\n## **⚡ Available Tools & Usage Guidelines**\nThe OpenSea Marketplace Agent has access to the following marketplace-related tools:\n\n---\n\n### **1️⃣ Get All Listings (by Collection)**\n📍 **Endpoint**: `/api/v2/listings/collection/{collection_slug}/all`  \n🔹 **Description**: Retrieves all active, valid listings for a given collection.  \n🔹 **Required Parameter**:  \n   - `collection_slug` → The unique collection identifier from OpenSea.  \n🔹 **Optional Query Parameters**:  \n   - `limit` → Number of listings to return (1-100, default: 100).  \n   - `next` → Cursor for pagination.  \n🔹 **Example Query**:  \n   - _\"Retrieve all active listings for the 'boredapeyachtclub' collection.\"_  \n\n---\n\n### **2️⃣ Get All Offers (by Collection)**\n📍 **Endpoint**: `/api/v2/offers/collection/{collection_slug}/all`  \n🔹 **Description**: Retrieves all valid offers for a given NFT collection, including individual and criteria-based offers.  \n🔹 **Required Parameter**:  \n   - `collection_slug` → The unique collection identifier from OpenSea.  \n🔹 **Optional Query Parameters**:  \n   - `limit` → Number of offers to return (1-100, default: 100).  \n   - `next` → Cursor for pagination.  \n🔹 **Example Query**:  \n   - _\"Fetch all current offers for 'azuki' collection.\"_  \n\n---\n\n### **3️⃣ Get Best Listing (by NFT)**  \n📍 **Endpoint**: `/api/v2/listings/collection/{collection_slug}/nfts/{identifier}/best`  \n🔹 **Description**: Retrieves the best (cheapest) active listing for a specific NFT.  \n🔹 **Required Parameters**:  \n   - `collection_slug` → The collection identifier.  \n   - `identifier` → The NFT token ID.  \n🔹 **Optional Query Parameters**:  \n   - `include_private_listings` → Boolean (default: `false`).  \n🔹 **Example Query**:  \n   - _\"Find the lowest-priced listing for NFT #1234 in 'doodles' collection.\"_  \n\n---\n\n### **4️⃣ Get Best Listings (by Collection)**  \n📍 **Endpoint**: `/api/v2/listings/collection/{collection_slug}/best`  \n🔹 **Description**: Retrieves the lowest-priced active listings for a specific collection.  \n🔹 **Required Parameter**:  \n   - `collection_slug` → The collection identifier.  \n🔹 **Optional Query Parameters**:  \n   - `include_private_listings` → Boolean (default: `false`).  \n   - `limit` → Number of listings to return (1-100, default: 100).  \n   - `next` → Cursor for pagination.  \n🔹 **Example Query**:  \n   - _\"Get the 10 cheapest listings for 'mutantapeyachtclub'.\"_  \n\n---\n\n### **5️⃣ Get Best Offer (by NFT)**  \n📍 **Endpoint**: `/api/v2/offers/collection/{collection_slug}/nfts/{identifier}/best`  \n🔹 **Description**: Retrieves the highest offer made for a specific NFT.  \n🔹 **Required Parameters**:  \n   - `collection_slug` → The collection identifier.  \n   - `identifier` → The NFT token ID.  \n🔹 **Example Query**:  \n   - _\"Find the highest offer for NFT #5678 in 'moonbirds' collection.\"_  \n\n---\n\n### **6️⃣ Get Collection Offers**  \n📍 **Endpoint**: `/api/v2/offers/collection/{collection_slug}`  \n🔹 **Description**: Retrieves all active collection-wide offers for a specific NFT collection.  \n🔹 **Required Parameter**:  \n   - `collection_slug` → The collection identifier.  \n🔹 **Example Query**:  \n   - _\"List all collection offers for 'clonex'.\"_  \n\n---\n\n### **7️⃣ Get Item Offers**  \n📍 **Endpoint**: `/api/v2/orders/{chain}/{protocol}/offers`  \n🔹 **Description**: Retrieves all valid **individual** offers (excluding criteria-based offers).  \n🔹 **Required Parameters**:  \n   - `chain` → The blockchain network (must use an **allowed chain**, see below).  \n   - `protocol` → The token settlement protocol (only `\"seaport\"` is supported).  \n🔹 **Optional Query Parameters**:  \n   - `asset_contract_address`, `cursor`, `limit`, `listed_after`, `listed_before`, `maker`, `order_by`, `order_direction`, `payment_token_address`, `taker`, `token_ids`.  \n🔹 **Example Query**:  \n   - _\"Fetch all active item offers for NFTs on Ethereum using Seaport protocol.\"_  \n\n---\n\n### **8️⃣ Get Listings (by Chain & Protocol)**  \n📍 **Endpoint**: `/api/v2/orders/{chain}/{protocol}/listings`  \n🔹 **Description**: Retrieves all active listings filtered by blockchain and protocol.  \n🔹 **Required Parameters**:  \n   - `chain` → The blockchain network (**must be an allowed chain**).  \n   - `protocol` → `\"seaport\"` protocol.  \n🔹 **Optional Query Parameters**:  \n   - `asset_contract_address`, `cursor`, `limit`, `listed_after`, `listed_before`, `maker`, `order_by`, `order_direction`, `payment_token_address`, `taker`, `token_ids`.  \n🔹 **Example Query**:  \n   - _\"Retrieve all active listings for Ethereum Seaport orders.\"_  \n\n---\n\n### **9️⃣ Get Order (Single Order by Hash)**  \n📍 **Endpoint**: `/api/v2/orders/chain/{chain}/protocol/{protocol_address}/{order_hash}`  \n🔹 **Description**: Retrieves a specific order (offer or listing) based on its hash.  \n🔹 **Required Parameters**:  \n   - `chain` → The blockchain network (**must be an allowed chain**).  \n   - `protocol_address` → **Always set to** `0x0000000000000068f116a894984e2db1123eb395`.  \n   - `order_hash` → The hash of the order.  \n🔹 **Example Query**:  \n   - _\"Fetch details for order `0x123abc...` on Ethereum.\"_  \n\n---\n\n### **🔟 Get Trait Offers**  \n📍 **Endpoint**: `/api/v2/offers/collection/{collection_slug}/traits`  \n🔹 **Description**: Retrieves all active offers made for a specific trait in a collection.  \n🔹 **Required Parameter**:  \n   - `collection_slug` → The collection identifier.  \n🔹 **Optional Query Parameters**:  \n   - `float_value`, `int_value`, `type`, `value`.  \n🔹 **Example Query**:  \n   - _\"Find all offers for 'Background: Blue' in the 'azuki' collection.\"_  \n\n---\n\n## **⚠️ Critical Notes & Restrictions**\n1. **Only Allowed Blockchains Can Be Used**  \n   - ✅ Supported Chains:  \n     - `amoy`, `ape_chain`, `ape_curtis`, `arbitrum`, `arbitrum_nova`, `arbitrum_sepolia`, `avalanche`, `avalanche_fuji`, `b3`, `b3_sepolia`, `baobab`, `base`, `base_sepolia`, `bera_chain`, `blast`, `blast_sepolia`, `ethereum`, `flow`, `flow_testnet`, `klaytn`, `matic`, `monad_testnet`, `mumbai`, `optimism`, `optimism_sepolia`, `sei_testnet`, `sepolia`, `shape`, `solana`, `soldev`, `soneium`, `soneium_minato`, `unichain`, `zora`, `zora_sepolia`.  \n   - ❌ **Incorrect Chain Inputs Will Cause Errors**  \n     - `\"polygon\"` ❌ **will fail**. Use `\"matic\"` instead.\n\n2. **Protocol Must Be `\"seaport\"` for Item & Listing Queries**  \n   - The `\"protocol\"` field must always be set to `\"seaport\"`.\n\n3. **Fixed Protocol Address for Get Order**  \n   - **For retrieving a specific order**, the `protocol_address` **must always be**:  \n     - `0x0000000000000068f116a894984e2db1123eb395`.\n\n---\n\n## **✅ Example Queries**\n- _\"Fetch all best listings for Ethereum NFTs.\"_  \n- _\"Find the highest offer for a Bored Ape #456.\"_  \n- _\"Get details for a specific order hash.\"_  \n\n🚀 **Follow these rules to ensure successful API queries!**"
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.8
+        },
+        {
+          "id": "c055762a-8fe7-4141-a639-df2372f30060",
+          "name": "Workflow Input Trigger",
+          "type": "n8n-nodes-base.executeWorkflowTrigger",
+          "position": [
+            -60,
+            -540
+          ],
+          "parameters": {
+            "workflowInputs": {
+              "values": [
+                {
+                  "name": "message"
+                },
+                {
+                  "name": "sessionId"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e25c62f0-1047-4fbb-815c-caeaa22d2fe1",
+          "name": "OpenSea Get All Listings by Collection",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            60,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/listings/collection/{collection_slug}/all",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves all active, valid listings for a single NFT collection on OpenSea, allowing pagination and limit options.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d568d5de-82e4-4be1-b9e9-9ec56ca9d872",
+          "name": "OpenSea Get All Offers by Collection",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            240,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/offers/collection/{collection_slug}/all",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves all active, valid offers for a specified NFT collection on OpenSea, including individual and criteria offers.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "1b591b2d-787f-4519-9dfc-fc0489bc0725",
+          "name": "OpenSea Get Best Listing by NFT",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            440,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/listings/collection/{collection_slug}/nfts/{identifier}/best",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "include_private_listings",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves the best available listing for a specific NFT from OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "33222cfb-17c7-4507-8d09-fa0a7ba1beae",
+          "name": "OpenSea Get Best Listings by Collection",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            640,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/listings/collection/{collection_slug}/best",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "include_private_listings",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "next",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves the cheapest active and valid listings for a specific NFT collection on OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "7fd0ddd6-96eb-487d-b7a2-b8fcb29b4e22",
+          "name": "OpenSea Get Best Offer by NFT",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            860,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/offers/collection/{collection_slug}/nfts/{identifier}/best",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves the best offers for a specific NFT on OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "7047b8bc-ea5e-4b9b-9230-0fc46c46c58f",
+          "name": "OpenSea Get Collection Offers",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1080,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/offers/collection/{collection_slug}",
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "toolDescription": "This tool retrieves the active, valid collection offers for a specified NFT collection on OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "cab63cc4-96b4-4e14-8eb7-9fca08791040",
+          "name": "OpenSea Get Item Offers",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1300,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/orders/{chain}/{protocol}/offers",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "asset_contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "cursor",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "listed_after",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "listed_before",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "maker",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "order_by",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "order_direction",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "payment_token_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "taker",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "token_ids",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves active, valid individual offers for NFTs on OpenSea. It does not include criteria offers.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "63760966-bbec-466d-83dc-a52b235df43a",
+          "name": "OpenSea Get Listings",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1500,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/orders/{chain}/{protocol}/listings",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "asset_contract_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "cursor",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "limit",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "listed_after",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "listed_before",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "maker",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "order_by",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "order_direction",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "payment_token_address",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "taker",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "token_ids",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves the complete set of active, valid listings for NFTs on OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "d0365a8a-dfd4-4a86-88cf-4e8ccbdf6c36",
+          "name": "OpenSea Get Trait Offers",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1900,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/offers/collection/{collection_slug}/traits",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "float_value",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "int_value",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "type",
+                  "valueProvider": "modelOptional"
+                },
+                {
+                  "name": "value",
+                  "valueProvider": "modelOptional"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves the active, valid trait offers for a specified collection on OpenSea.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "148a00a5-d8f4-4708-9afd-b1111f7d71bd",
+          "name": "OpenSea Get Order",
+          "type": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+          "position": [
+            1700,
+            -260
+          ],
+          "parameters": {
+            "url": "https://api.opensea.io/api/v2/orders/chain/{chain}/protocol/0x0000000000000068f116a894984e2db1123eb395/{order_hash}",
+            "sendQuery": true,
+            "sendHeaders": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "parametersQuery": {
+              "values": [
+                {
+                  "name": "chain"
+                },
+                {
+                  "name": "order_hash"
+                }
+              ]
+            },
+            "toolDescription": "This tool retrieves a single order (offer or listing) from OpenSea using its order hash. Protocol and Chain are required to prevent hash collisions. The protocol address is always set to 0x0000000000000068f116a894984e2db1123eb395.",
+            "parametersHeaders": {
+              "values": [
+                {
+                  "name": "Accept",
+                  "value": "application/json",
+                  "valueProvider": "fieldValue"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "3v99GVMGF4tKP5nM",
+              "name": "OpenSea"
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "2b616d18-f719-42dd-a616-d91ae11be009",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -2080,
+            -1840
+          ],
+          "parameters": {
+            "color": 2,
+            "width": 1380,
+            "height": 1860,
+            "content": "# OpenSea Marketplace Agent Tool (n8n Workflow) Guide\n\n## 🚀 Workflow Overview\nThe **OpenSea Marketplace Agent Tool** is an **AI-driven marketplace analytics system** for **NFT trading insights**. This tool integrates with **OpenSea's API** to fetch and analyze **NFT listings, offers, orders, and trait-specific data**, helping traders and collectors make informed decisions.\n\n### 🎯 **Key Features**:\n- Retrieve **active NFT listings** for a collection.\n- Fetch **valid offers** for individual NFTs or entire collections.\n- Find the **cheapest available NFT listings** by collection or NFT.\n- Track **the highest offer** made for an NFT or collection-wide offers.\n- Access **detailed order data** based on order hash.\n- Ensure **API query compliance** to prevent errors.\n\n---\n\n## 🔗 **Nodes & Functions**\n### **1️⃣ Marketplace Agent Brain**\n- **Type**: AI Language Model (GPT-4o Mini)\n- **Purpose**: Processes marketplace-related API requests and user queries.\n\n### **2️⃣ Marketplace Agent Memory**\n- **Type**: AI Memory Buffer\n- **Purpose**: Stores session data to maintain context across multiple queries.\n\n### **3️⃣ OpenSea Get All Listings by Collection**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/listings/collection/{collection_slug}/all`\n- **Function**: Retrieves all active listings for a given collection.\n\n### **4️⃣ OpenSea Get All Offers by Collection**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/offers/collection/{collection_slug}/all`\n- **Function**: Fetches all active offers made for NFTs in a collection.\n\n### **5️⃣ OpenSea Get Best Listing by NFT**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/listings/collection/{collection_slug}/nfts/{identifier}/best`\n- **Function**: Retrieves the **lowest-priced** active listing for a specific NFT.\n\n### **6️⃣ OpenSea Get Best Listings by Collection**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/listings/collection/{collection_slug}/best`\n- **Function**: Fetches the **cheapest listings** for a given NFT collection.\n\n### **7️⃣ OpenSea Get Best Offer by NFT**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/offers/collection/{collection_slug}/nfts/{identifier}/best`\n- **Function**: Retrieves the **highest offer** made for a specific NFT.\n\n### **8️⃣ OpenSea Get Collection Offers**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/offers/collection/{collection_slug}`\n- **Function**: Retrieves all **active collection-wide offers**.\n\n### **9️⃣ OpenSea Get Item Offers**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/orders/{chain}/{protocol}/offers`\n- **Function**: Fetches **individual active offers** (excluding criteria-based offers).\n\n### **🔟 OpenSea Get Listings by Chain & Protocol**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/orders/{chain}/{protocol}/listings`\n- **Function**: Retrieves all active **listings filtered by blockchain and protocol**.\n\n### **11️⃣ OpenSea Get Order by Hash**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/orders/chain/{chain}/protocol/0x0000000000000068f116a894984e2db1123eb395/{order_hash}`\n- **Function**: Fetches **a specific order (listing or offer)** based on its order hash.\n\n### **12️⃣ OpenSea Get Trait Offers**\n- **Type**: API Request\n- **Endpoint**: `/api/v2/offers/collection/{collection_slug}/traits`\n- **Function**: Retrieves **active offers** for specific traits in a collection.\n\n---\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f483a29b-626d-4c15-84a9-ac9937aea302",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -600,
+            -1840
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 1500,
+            "height": 1080,
+            "content": "\n## 📌 **How to Use the Workflow**\n\n### ✅ **Step 1: Input Data**\n- Provide required parameters such as `collection_slug`, `identifier`, `chain`, `protocol`, or `order_hash`.\n\n### ✅ **Step 2: Execute API Calls**\n- The system processes requests and fetches NFT marketplace data.\n\n### ✅ **Step 3: Analyze & Output Results**\n- Results can be integrated into dashboards, alerts, or Telegram notifications.\n\n---\n\n## ⚠️ **Common API Queries & Examples**\n\n### **1️⃣ Get All Listings for a Collection**\n```plaintext\nGET https://api.opensea.io/api/v2/listings/collection/boredapeyachtclub/all\n```\n\n### **2️⃣ Get All Offers for a Collection**\n```plaintext\nGET https://api.opensea.io/api/v2/offers/collection/azuki/all\n```\n\n### **3️⃣ Get Best Listing for an NFT**\n```plaintext\nGET https://api.opensea.io/api/v2/listings/collection/doodles/nfts/1234/best\n```\n\n### **4️⃣ Get Best Offer for an NFT**\n```plaintext\nGET https://api.opensea.io/api/v2/offers/collection/moonbirds/nfts/5678/best\n```\n\n### **5️⃣ Get Order Details by Order Hash**\n```plaintext\nGET https://api.opensea.io/api/v2/orders/chain/ethereum/protocol/0x0000000000000068f116a894984e2db1123eb395/0x123abc...\n```\n\n---\n\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6c111fd9-0076-438e-8516-3a0e03e63510",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1040,
+            -1840
+          ],
+          "parameters": {
+            "color": 3,
+            "width": 1060,
+            "height": 520,
+            "content": "## ⚡ **Error Handling & Troubleshooting**\n| **Error Code** | **Description** |\n|--------------|----------------|\n| `200` | Success |\n| `400` | Bad Request (Invalid input) |\n| `404` | Not Found (Incorrect slug, address, or identifier) |\n| `500` | Server Error (OpenSea API issue) |\n\n### 🔹 **Fixing Common Errors**\n- Ensure correct **collection slug** and **NFT identifier**.\n- Always use `\"matic\"` instead of `\"polygon\"` for chain input.\n- Verify that the **protocol is set to `\"seaport\"`** where required.\n- **Order hash queries require the fixed protocol address:** `0x0000000000000068f116a894984e2db1123eb395`.\n- Retry after some time if the OpenSea API is experiencing downtime.\n\n---\n\n## 🚀 **Connect with Me for Support**\nIf you need assistance, custom OpenSea marketplace insights, or automation support, feel free to connect with me on LinkedIn:\n\n🌐 **Don Jayamaha – LinkedIn**  \n🔗 [http://linkedin.com/in/donjayamahajr](http://linkedin.com/in/donjayamahajr)\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "f82ae6e7-43e0-4c9d-ae7e-0ddacc93a92a",
+      "connections": {
+        "OpenSea Get Order": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Listings": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Workflow Input Trigger": {
+          "main": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Marketplace Agent Brain": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Item Offers": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Marketplace Agent Memory": {
+          "ai_memory": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_memory",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Trait Offers": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Best Offer by NFT": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Collection Offers": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Best Listing by NFT": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get All Offers by Collection": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get All Listings by Collection": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "OpenSea Get Best Listings by Collection": {
+          "ai_tool": [
+            [
+              {
+                "node": "OpenSea Marketplace Agent",
+                "type": "ai_tool",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 49,
+    "workflowInfo": {
+      "nodeCount": 17,
+      "nodeTypes": {
+        "n8n-nodes-base.stickyNote": {
+          "count": 3
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.lmChatOpenAi": {
+          "count": 1
+        },
+        "n8n-nodes-base.executeWorkflowTrigger": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.toolHttpRequest": {
+          "count": 10
+        },
+        "@n8n/n8n-nodes-langchain.memoryBufferWindow": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Don Jayamaha Jr",
+      "username": "don-the-gem-dealer",
+      "bio": "With 12 years of experience as a Blockchain Strategist and Web3 Architect, I specialize in bridging the gap between traditional industries and decentralized technologies. My expertise spans tokenized assets, crypto payment integrations, and blockchain-driven market solutions.",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/donjayamahajr/"
+      ],
+      "avatar": "https://gravatar.com/avatar/95f70084b3fec5ed68a61eef6dc6128dfb085d865a02ed631d0853d2730696bf?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 837,
+        "icon": "fa:sign-out-alt",
+        "name": "n8n-nodes-base.executeWorkflowTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When Executed by Another Workflow",
+          "color": "#ff6d5a"
+        },
+        "iconData": {
+          "icon": "sign-out-alt",
+          "type": "icon"
+        },
+        "displayName": "Execute Workflow Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1153,
+        "icon": "file:openAiLight.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTM2Ljg2NzEgMTYuMzcxOEMzNy43NzQ2IDEzLjY0OCAzNy40NjIxIDEwLjY2NDIgMzYuMDEwOCA4LjE4NjYxQzMzLjgyODIgNC4zODY1MyAyOS40NDA3IDIuNDMxNDkgMjUuMTU1NiAzLjM1MTUxQzIzLjI0OTMgMS4yMDM5NiAyMC41MTA1IC0wLjAxNzMxNDggMTcuNjM5MiAwLjAwMDE4NTUzM0MxMy4yNTkxIC0wLjAwOTgxNDY4IDkuMzcyNzMgMi44MTAyNSA4LjAyNTIgNi45Nzc4M0M1LjIxMTM5IDcuNTU0MSAyLjc4MjU4IDkuMzE1MzggMS4zNjEzIDExLjgxMTdDLTAuODM3NDkzIDE1LjYwMTggLTAuMzM2MjMyIDIwLjM3OTQgMi42MDEzMyAyMy42Mjk0QzEuNjkzODEgMjYuMzUzMiAyLjAwNjMyIDI5LjMzNzEgMy40NTc2IDMxLjgxNDZDNS42NDAxNSAzNS42MTQ3IDEwLjAyNzcgMzcuNTY5NyAxNC4zMTI4IDM2LjY0OTdDMTYuMjE3OSAzOC43OTczIDE4Ljk1NzkgNDAuMDE4NSAyMS44MjkyIDM5Ljk5OThDMjYuMjExOCA0MC4wMTEgMzAuMDk5NCAzNy4xODg1IDMxLjQ0NjkgMzMuMDE3MUMzNC4yNjA4IDMyLjQ0MDkgMzYuNjg5NiAzMC42Nzk2IDM4LjExMDggMjguMTgzM0M0MC4zMDcxIDI0LjM5MzIgMzkuODA0NiAxOS42MTk0IDM2Ljg2ODMgMTYuMzY5M0wzNi44NjcxIDE2LjM3MThaTTIxLjgzMTcgMzcuMzg2QzIwLjA3OCAzNy4zODg1IDE4LjM3OTIgMzYuNzc0NyAxNy4wMzI5IDM1LjY1MDlDMTcuMDk0MSAzNS42MTg0IDE3LjIwMDQgMzUuNTU5NyAxNy4yNjkxIDM1LjUxNzJMMjUuMjM0MyAzMC45MTcxQzI1LjY0MTggMzAuNjg1OCAyNS44OTE4IDMwLjI1MjEgMjUuODg5MyAyOS43ODMzVjE4LjU1NDNMMjkuMjU1NyAyMC40OTgxQzI5LjI5MTkgMjAuNTE1NiAyOS4zMTU3IDIwLjU1MDYgMjkuMzIwNyAyMC41OTA2VjI5Ljg4OTZDMjkuMzE1NyAzNC4wMjQ3IDI1Ljk2NjggMzcuMzc3MiAyMS44MzE3IDM3LjM4NlpNNS43MjY0IDMwLjUwNzFDNC44NDc2MyAyOC45ODk2IDQuNTMxMzcgMjcuMjEwOCA0LjgzMjYzIDI1LjQ4NDVDNC44OTEzOCAyNS41MTk1IDQuOTk1MTMgMjUuNTgzMiA1LjA2ODg4IDI1LjYyNTdMMTMuMDM0MSAzMC4yMjU4QzEzLjQzNzggMzAuNDYyMSAxMy45Mzc4IDMwLjQ2MjEgMTQuMzQyOCAzMC4yMjU4TDI0LjA2NjggMjQuNjEwN1YyOC40OTgzQzI0LjA2OTMgMjguNTM4MyAyNC4wNTA1IDI4LjU3NyAyNC4wMTkzIDI4LjYwMkwxNS45Njc5IDMzLjI1MDlDMTIuMzgxNSAzNS4zMTU5IDcuODAxNDQgMzQuMDg4NCA1LjcyNzY1IDMwLjUwNzFINS43MjY0Wk0zLjYzMDEgMTMuMTIwNUM0LjUwNTEyIDExLjYwMDQgNS44ODY0IDEwLjQzNzkgNy41MzE0NCA5LjgzNDE1QzcuNTMxNDQgOS45MDI5IDcuNTI3NjkgMTAuMDI0MiA3LjUyNzY5IDEwLjEwOTJWMTkuMzEwNkM3LjUyNTE5IDE5Ljc3ODEgNy43NzUxOSAyMC4yMTE5IDguMTgxNDUgMjAuNDQzMUwxNy45MDU0IDI2LjA1N0wxNC41MzkxIDI4LjAwMDhDMTQuNTA1MyAyOC4wMjMzIDE0LjQ2MjggMjguMDI3IDE0LjQyNTMgMjguMDEwOEw2LjM3MjY2IDIzLjM1ODJDMi43OTM4MyAyMS4yODU2IDEuNTY2MzEgMTYuNzA2OCAzLjYyODg1IDEzLjEyMTdMMy42MzAxIDEzLjEyMDVaTTMxLjI4ODIgMTkuNTU2OUwyMS41NjQyIDEzLjk0MTdMMjQuOTMwNiAxMS45OTkyQzI0Ljk2NDMgMTEuOTc2NyAyNS4wMDY4IDExLjk3MjkgMjUuMDQ0MyAxMS45ODkyTDMzLjA5NyAxNi42MzhDMzYuNjgyMSAxOC43MDkzIDM3LjkxMDggMjMuMjk1NyAzNS44Mzk1IDI2Ljg4MDhDMzQuOTYzMyAyOC4zOTgzIDMzLjU4MzIgMjkuNTYwOCAzMS45Mzk1IDMwLjE2NThWMjAuNjg5NEMzMS45NDMyIDIwLjIyMTkgMzEuNjk0NSAxOS43ODk0IDMxLjI4OTQgMTkuNTU2OUgzMS4yODgyWk0zNC42MzgzIDE0LjUxNDJDMzQuNTc5NSAxNC40NzggMzQuNDc1OCAxNC40MTU1IDM0LjQwMiAxNC4zNzNMMjYuNDM2OCA5Ljc3Mjg5QzI2LjAzMzEgOS41MzY2NCAyNS41MzMxIDkuNTM2NjQgMjUuMTI4MSA5Ljc3Mjg5TDE1LjQwNDEgMTUuMzg4VjExLjUwMDRDMTUuNDAxNiAxMS40NjA0IDE1LjQyMDQgMTEuNDIxNyAxNS40NTE2IDExLjM5NjdMMjMuNTAzIDYuNzUxNThDMjcuMDg5NCA0LjY4Mjc5IDMxLjY3NDUgNS45MTQwNiAzMy43NDIgOS41MDE2NEMzNC42MTU4IDExLjAxNjcgMzQuOTMyIDEyLjc5MDUgMzQuNjM1OCAxNC41MTQySDM0LjYzODNaTTEzLjU3NDEgMjEuNDQzMUwxMC4yMDY1IDE5LjQ5OTRDMTAuMTcwMiAxOS40ODE5IDEwLjE0NjUgMTkuNDQ2OCAxMC4xNDE1IDE5LjQwNjhWMTAuMTA3OUMxMC4xNDQgNS45Njc4MSAxMy41MDI4IDIuNjEyNzQgMTcuNjQyOSAyLjYxNTI0QzE5LjM5NDIgMi42MTUyNCAyMS4wODkyIDMuMjMwMjUgMjIuNDM1NSA0LjM1MDI4QzIyLjM3NDMgNC4zODI3OCAyMi4yNjkzIDQuNDQxNTMgMjIuMTk5MiA0LjQ4NDAzTDE0LjIzNDEgOS4wODQxM0MxMy44MjY2IDkuMzE1MzggMTMuNTc2NiA5Ljc0Nzg5IDEzLjU3OTEgMTAuMjE2N0wxMy41NzQxIDIxLjQ0MDZWMjEuNDQzMVpNMTUuNDAyOSAxNy41MDA2TDE5LjczNDIgMTQuOTk5M0wyNC4wNjU1IDE3LjQ5OTNWMjIuNTAwN0wxOS43MzQyIDI1LjAwMDdMMTUuNDAyOSAyMi41MDA3VjE3LjUwMDZaIiBmaWxsPSIjN0Q3RDg3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1163,
+        "icon": "fa:database",
+        "name": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.memorybufferwindow/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Memory"
+              ],
+              "Memory": [
+                "For beginners"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Simple Memory"
+        },
+        "iconData": {
+          "icon": "database",
+          "type": "icon"
+        },
+        "displayName": "Simple Memory",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1268,
+        "icon": "file:httprequest.svg",
+        "name": "@n8n/n8n-nodes-langchain.toolHttpRequest",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.toolhttprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Tools"
+              ],
+              "Tools": [
+                "Recommended Tools"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA0MCA0MCI+PHBhdGggZmlsbD0iIzAwMDRGNSIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNNDAgMjBDNDAgOC45NTMgMzEuMDQ3IDAgMjAgMFMwIDguOTUzIDAgMjBzOC45NTMgMjAgMjAgMjAgMjAtOC45NTMgMjAtMjBNMjAgMzYuOTQ2Yy0xLjExNSAwLTIuODYyLS45NzktNC41LTQuMjQ3LS43MDQtMS40MDctMS4zMDQtMy4xNTYtMS43NDctNS4wMTRIMjYuMTljLS4zODYgMS44NTUtLjk4NiAzLjYwNS0xLjY5IDUuMDE0LTEuNjM4IDMuMjY4LTMuMzg1IDQuMjQ3LTQuNSA0LjI0N00xMi45MDYgMjBjMCAxLjYxLjEwMyAzLjE2NC4yOTQgNC42M2gxMy42YTM2IDM2IDAgMCAwIC4yOTQtNC42M2MwLTEuNjEtLjEwMy0zLjE2NC0uMjk0LTQuNjNIMTMuMmEzNiAzNiAwIDAgMC0uMjk0IDQuNjNNMjAgMy4wNTRjMS4xMTUgMCAyLjg2Mi45NzcgNC41IDQuMjQ2LjcwNyAxLjQxNCAxLjMwNyAzLjEwNyAxLjY5MiA1LjAxNUgxMy43NWMuNDQzLTEuOTEgMS4wNDQtMy42MDIgMS43NS01LjAxNCAxLjYzOC0zLjI3IDMuMzg1LTQuMjQ3IDQuNS00LjI0N00zMC4xNDggMjBjMC0xLjU5LS4wOTQtMy4xMzgtLjMyNS00LjYzaDYuNDgxYy40MjEgMS40NzIuNjQyIDMuMDI2LjY0MiA0LjYzcy0uMjIgMy4xNTgtLjY0MiA0LjYzaC02LjQ4MWMuMjMxLTEuNDkyLjMyNS0zLjA0LjMyNS00LjYzTTI2LjI3NyA0LjI1NWMxLjM2IDIuMTA1IDIuNDM0IDQuODc3IDMuMSA4LjA2aDUuNzI4YTE2Ljk4IDE2Ljk4IDAgMCAwLTguODI4LTguMDZtLTE1LjY1NCA4LjA2aC01LjczYzEuODU4LTMuNjQ3IDUtNi41MzIgOC44My04LjA2LTEuMzYgMi4xMDUtMi40MzQgNC44NzctMy4xIDguMDZNMy4wNTQgMjBjMCAxLjYwMy4yMjMgMy4xNTcuNjQgNC42M2g2LjQyOGE0MCA0MCAwIDAgMS0uMjctNC42M2MwLTEuNTk0LjA5NC0zLjE0Mi4yNy00LjYzSDMuNjk1YTE3IDE3IDAgMCAwLS42NCA0LjYzbTIzLjIyMyAxNS43NDNjMS4zNi0yLjEwNCAyLjQzNC00Ljg3NSAzLjEtOC4wNThoNS43MjhhMTYuOTYgMTYuOTYgMCAwIDEtOC44MjggOC4wNThtLTEyLjU1NCAwYTE3IDE3IDAgMCAxLTguODMtOC4wNThoNS43M2MuNjY2IDMuMTgzIDEuNzQgNS45NTQgMy4xIDguMDU4IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L3N2Zz4="
+        },
+        "displayName": "HTTP Request Tool",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

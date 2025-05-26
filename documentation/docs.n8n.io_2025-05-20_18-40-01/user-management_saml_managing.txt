@@ -1,0 +1,28 @@
+URL: https://docs.n8n.io/user-management/saml/managing/
+Scraped_At: 2025-05-20T19:10:30.819660
+
+Manage users with SAML
+#
+There are some user management tasks that are affected by SAML.
+Exempt users from SAML
+#
+You can allow users to log in without using SAML. To do this:
+Go to
+Settings
+>
+Users
+.
+Select the menu icon by the user you want to exempt from SAML.
+Select
+Allow Manual Login
+.
+Deleting users
+#
+If you remove a user from your IdP, they remain logged in to n8n. You need to manually remove them from n8n as well. Refer to
+Manage users
+for guidance on deleting users.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

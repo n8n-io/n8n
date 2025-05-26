@@ -1,0 +1,199 @@
+{
+  "workflow": {
+    "id": 990,
+    "name": "Manage contacts via Autopilot",
+    "views": 278,
+    "recentViews": 0,
+    "totalViews": 278,
+    "createdAt": "2021-03-18T13:09:47.231Z",
+    "description": "This workflow allows you to create a new list, add a new contact to that list, update the contact, and get all contacts in the list using the Autopilot node.\n\n![workflow-screenshot](fileId:449)\n\n**Autopilot node:** This node will create a new list called `n8n-docs` in Autopilot.\n\n**Autopilot1 node:** This node creates a new contact and adds it to the list created in the previous node.\n\n**Autopilot2 node:** This node updates the information of the contact that we created in the previous node.\n\n**Autopilot3 node:** This node returns all the contacts of the `n8n-docs` list that we created using the Autopilot node.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Autopilot",
+          "type": "n8n-nodes-base.autopilot",
+          "position": [
+            470,
+            320
+          ],
+          "parameters": {
+            "name": "n8n-docs",
+            "resource": "list"
+          },
+          "credentials": {
+            "autopilotApi": "Autopilot API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Autopilot1",
+          "type": "n8n-nodes-base.autopilot",
+          "position": [
+            670,
+            320
+          ],
+          "parameters": {
+            "email": "",
+            "additionalFields": {
+              "autopilotList": "={{$json[\"list_id\"]}}"
+            }
+          },
+          "credentials": {
+            "autopilotApi": "Autopilot API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Autopilot2",
+          "type": "n8n-nodes-base.autopilot",
+          "position": [
+            870,
+            320
+          ],
+          "parameters": {
+            "email": "={{$node[\"Autopilot1\"].parameter[\"email\"]}}",
+            "additionalFields": {
+              "Company": "n8n"
+            }
+          },
+          "credentials": {
+            "autopilotApi": "Autopilot API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Autopilot3",
+          "type": "n8n-nodes-base.autopilot",
+          "position": [
+            1070,
+            320
+          ],
+          "parameters": {
+            "listId": "={{$node[\"Autopilot\"].json[\"list_id\"]}}",
+            "resource": "contactList",
+            "operation": "getAll",
+            "returnAll": true
+          },
+          "credentials": {
+            "autopilotApi": "Autopilot API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Autopilot": {
+          "main": [
+            [
+              {
+                "node": "Autopilot1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Autopilot1": {
+          "main": [
+            [
+              {
+                "node": "Autopilot2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Autopilot2": {
+          "main": [
+            [
+              {
+                "node": "Autopilot3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.autopilot": {
+          "count": 4
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 465,
+        "icon": "file:autopilot.svg",
+        "name": "n8n-nodes-base.autopilot",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.autopilot/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/autopilot/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Autopilot"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjM4IDI2IDM1IDM1Ij48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzE4ZDRiMiIgc3Ryb2tlPSIjMThkNGIyIiBzdHJva2Utd2lkdGg9IjMiLz48cGF0aCBmaWxsPSIjZmZmIiBkPSJNNDUuNCA0Mi42aDE5LjlsMy40LTQuOEg0MnptMy4xIDguM2gxMy4xbDMuNC00LjhINDUuNHptNTQtLjciLz48L3N2Zz4="
+        },
+        "displayName": "Autopilot",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 449,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/0b210074e1f749b2b33206d0ac98cde9.png"
+      }
+    ]
+  }
+}

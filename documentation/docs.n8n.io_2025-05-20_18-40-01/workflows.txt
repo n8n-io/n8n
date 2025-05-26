@@ -1,0 +1,29 @@
+URL: https://docs.n8n.io/workflows/
+Scraped_At: 2025-05-20T19:10:39.087588
+
+Workflows
+#
+A
+workflow
+is a collection of nodes connected together to automate a process.
+Create
+a workflow.
+Use
+Workflow templates
+to help you get started.
+Learn about the key
+components
+of an automation in n8n.
+Debug using the
+Executions
+list.
+Share
+workflows between users.
+If it's your first time building a workflow, you may want to use the
+quickstart guides
+to quickly try out n8n features.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

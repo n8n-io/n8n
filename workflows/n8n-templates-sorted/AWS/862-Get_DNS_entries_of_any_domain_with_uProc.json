@@ -1,0 +1,314 @@
+{
+  "workflow": {
+    "id": 862,
+    "name": "Get DNS entries of any domain with uProc",
+    "views": 1215,
+    "recentViews": 0,
+    "totalViews": 1215,
+    "createdAt": "2020-12-30T10:14:55.547Z",
+    "description": "Do you want to control the DNS domain entries of your customers or servers?\n\nThis workflow gets DNS information of any domain using the uProc [**Get Domain DNS records tool**](https://app.uproc.io/#/tools/processor/get/domain/records).\n\nYou can use this workflow to check existing DNS records in real-time to ensure that any domain setup is correct.\n\n![workflow-screenshot](fileId:361)\n\nYou need to add your credentials (Email and API Key - real -) located at [**Integration section**](https://app.uproc.io/#/settings/integration) to n8n.\n\nYou can replace \"Create Domain Item\" with any integration containing a domain, like Google Sheets, MySQL, or Zabbix server.\n\nEvery \"uProc\" node returns multiple items with the next fields per every item:\n- type: Contains the DNS record type (A, ALIAS, AAAA, CERT, CNAME, MX, NAPTR, NS, PTR, SOA, SRV, TXT, URL).\n- values: Contains the DNS record values.",
+    "workflow": {
+      "id": "113",
+      "name": "Get DNS entries",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            240,
+            290
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Create Domain Item",
+          "type": "n8n-nodes-base.functionItem",
+          "position": [
+            450,
+            290
+          ],
+          "parameters": {
+            "functionCode": "item.domain = \"n8n.io\";\nreturn item;"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Get DNS records",
+          "type": "n8n-nodes-base.uproc",
+          "position": [
+            650,
+            290
+          ],
+          "parameters": {
+            "tool": "getDomainRecords",
+            "group": "internet",
+            "domain": "= {{$node[\"Create Domain Item\"].json[\"domain\"]}}",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "uprocApi": "miquel-uproc"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Create Domain Item": {
+          "main": [
+            [
+              {
+                "node": "Get DNS records",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Create Domain Item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.uproc": {
+          "count": 1
+        },
+        "n8n-nodes-base.functionItem": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Miquel Colomer",
+      "username": "mcolomer",
+      "bio": "As a passionate developer and AI agent creator, I’ve been at the forefront of automation, pioneering workflows and training AI to handle complex tasks seamlessly. I’m an early adopter and expert of n8n, having worked with its powerful capabilities to create automation solutions for diverse industries. I founded n8nhackers, the first AI-powered agency focused on n8n, where we help businesses transform their workflows with cutting-edge automation.",
+      "verified": true,
+      "links": [
+        "https://n8nhackers.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/c4974f5be3985d7f30465d2d963967905bcb2f9b8a8ecaf8ba4396bfbd034db2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 15,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.functionItem",
+        "codex": {
+          "data": {
+            "alias": [
+              "Javascript",
+              "Code",
+              "Custom Code",
+              "JS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function Item",
+          "color": "#ddbb33"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function Item",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 431,
+        "icon": "file:uproc.png",
+        "name": "n8n-nodes-base.uproc",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uproc/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/uProc/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "uProc"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "uProc",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      },
+      {
+        "id": 29,
+        "name": "SecOps"
+      }
+    ],
+    "image": [
+      {
+        "id": 361,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/ff05ca9814c5450c92090c1fd4edab83.png"
+      }
+    ]
+  }
+}

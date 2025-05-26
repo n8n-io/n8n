@@ -1,0 +1,1077 @@
+{
+  "workflow": {
+    "id": 2490,
+    "name": "Build an endpoint to perform CRUD operations with multiple HTTP methods",
+    "views": 2499,
+    "recentViews": 1,
+    "totalViews": 2499,
+    "createdAt": "2024-10-23T16:32:21.930Z",
+    "description": "This n8n workflow template allows you to create a CRUD endpoint that performs the following actions:\n\n- Create a new record\n- Get a record\n- Get many records\n- Update a record\n- Delete a record\n\nThis template is connected with Airtable but you can replace the Airtable nodes with anything you need to interact with (e.g. Postgres, MySQL, Notion, Coda...).\n\nThe template uses the n8n Webhook node setting 'Allow Multiple HTTP Methods' to enable multiple HTTP methods on the same node.\n\n# Features\n\n- Just two nodes to create 5 endpoints\n- Use it with Airtable or replace the Airtable nodes for your own customization\n- Add your custom logic exploiting all n8n's possibilities\n\n# Workflow Steps\n\n- **Webhook node**: exposes the endpoints to get many records and create a new record\n- **Webhook (with ID) node**: exposes the endpoints to get, update, and delete a record. Due to a n8n limitation, this endpoint will have an additional code in the path (e.g. https://my.app.n8n.cloud/webhook/580ccc56-f308-4b64-961d-38323501a170/customers/:id). Keep this in mind when using these endpoints in your application\n- **Various Airtable nodes**: execute various specific operations to interact with Airtable records\n\n# Getting Started\n\nTo deploy and use this template:\n\n1. Import the workflow into your n8n workspace\n2. Customize the endpoint paths by tweaking the 'Path' parameters in the 'Webhook' and 'Webhook (with ID)' nodes (currently *customers*)\n3. Set up your Airtable credentials by following [this guide](https://docs.n8n.io/integrations/builtin/credentials/airtable/) and customize the Airtable nodes by selecting your base, table, and the correct fields to update. *...or...* replace the Airtable nodes and connect the endpoint to any other service (e.g. Postgres, MySQL, Notion, Coda)\n\n\n# How to use the workflow\n\n1. Activate the workflow\n2. Connect your app to the endpoints (production URLs) to perform the various operations allowed by the workflow\n\nNote that the Webhook nodes have two URLs, one for testing and one for production. The testing URL is activated when you click on 'Test workflow' button and can't be used for production. The production URL is available after you activate the workflow. More info [here](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls).\n\nFeel free to get in touch with me if you have questions about this workflow.\n",
+    "workflow": {
+      "id": "GWXjIqENWvx6OqvX",
+      "meta": {
+        "instanceId": "94467bfa3af1aedd621d1940913d2d1a79e58bb9e7bbb0aa858d7f4a635296a5",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "TEMPLATE - Multi Methods API Endpoint",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "d5b5010f-97fb-4f80-871b-e9f04b3977a9",
+          "name": "Respond to Webhook",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1220,
+            -180
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "allIncomingItems"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "46711e2f-6cd1-4947-9452-7a1484ae562f",
+          "name": "Respond to Webhook1",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1220,
+            860
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 201
+            },
+            "respondWith": "allIncomingItems"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "20489a88-39a5-4cf7-8c08-826e4e9a7f34",
+          "name": "Respond to Webhook2",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1220,
+            340
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200
+            },
+            "respondWith": "allIncomingItems"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "04320a5f-29fe-42b0-9e01-31035f23b9dc",
+          "name": "Respond to Webhook4",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1220,
+            600
+          ],
+          "parameters": {
+            "options": {},
+            "respondWith": "allIncomingItems"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "45ef8f08-f765-440d-be85-12096b6b4105",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            765.3897477624087
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 514,
+            "height": 255.253864930838,
+            "content": "#### Creation\nCreates a new record"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2e820357-250c-41a7-9daa-4eb77e7eded6",
+          "name": "Create",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1000,
+            860
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app662qLY5J8ys4fU",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU",
+              "cachedResultName": "customers"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblwvA7Wrmvmv37rq",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU/tblwvA7Wrmvmv37rq",
+              "cachedResultName": "Table 1"
+            },
+            "columns": {
+              "value": {
+                "email": "={{ $json.query.email }}",
+                "phone": "={{ $json.query.phone }}",
+                "address": "={{ $json.query.address }}",
+                "last_name": "={{ $json.query.last_name }}",
+                "first_name": "={{ $json.query.first_name }}",
+                "customer_id": "={{ $json.query.customer_id }}"
+              },
+              "schema": [
+                {
+                  "id": "customer_id",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "customer_id",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "first_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "first_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "last_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "last_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "email",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "email",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "phone",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "phone",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "address",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "address",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": []
+            },
+            "options": {},
+            "operation": "create"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "yX3WnQ0zNClN0JoN",
+              "name": "Airtable giulio@n8n"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "dceb7ad3-3c29-4cb9-b097-00c5ae1d2732",
+          "name": "Get All",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1000,
+            600
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app662qLY5J8ys4fU",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU",
+              "cachedResultName": "customers"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblwvA7Wrmvmv37rq",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU/tblwvA7Wrmvmv37rq",
+              "cachedResultName": "Table 1"
+            },
+            "options": {},
+            "operation": "search"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "yX3WnQ0zNClN0JoN",
+              "name": "Airtable giulio@n8n"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "15a418ac-9de1-4c1d-ada7-057c280373df",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            522.9617575264442
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 514,
+            "height": 228.69080553295362,
+            "content": "#### Get All\nRetrieves all records"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9736394d-3298-485c-b907-19804bbd48fb",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            -260
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 514,
+            "height": 228,
+            "content": "#### Get\nRetrieves a single record"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b5544fc2-10cf-47dd-815c-51e8044e073d",
+          "name": "Get Single",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1000,
+            -180
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app662qLY5J8ys4fU",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU",
+              "cachedResultName": "customers"
+            },
+            "limit": 1,
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblwvA7Wrmvmv37rq",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU/tblwvA7Wrmvmv37rq",
+              "cachedResultName": "Table 1"
+            },
+            "options": {},
+            "operation": "search",
+            "returnAll": false,
+            "filterByFormula": "=({customer_id} = {{ $json.params.id }})"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "yX3WnQ0zNClN0JoN",
+              "name": "Airtable giulio@n8n"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "0f08fcee-b892-47ec-b13c-639f7e5b4b91",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            260
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 508.29454841334433,
+            "height": 248.84784377542707,
+            "content": "#### Update\nUpdates of an existing record"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "56ff1769-15fe-475d-96aa-9c0f1a9edf05",
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1000,
+            340
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app662qLY5J8ys4fU",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU",
+              "cachedResultName": "customers"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblwvA7Wrmvmv37rq",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU/tblwvA7Wrmvmv37rq",
+              "cachedResultName": "Table 1"
+            },
+            "columns": {
+              "value": {
+                "email": "={{ $json.query.email }}",
+                "phone": "={{ $json.query.phone }}",
+                "address": "={{ $json.query.address }}",
+                "last_name": "={{ $json.query.last_name }}",
+                "first_name": "={{ $json.query.first_name }}",
+                "customer_id": "={{ $json.query.customer_id }}"
+              },
+              "schema": [
+                {
+                  "id": "id",
+                  "type": "string",
+                  "display": true,
+                  "removed": true,
+                  "readOnly": true,
+                  "required": false,
+                  "displayName": "id",
+                  "defaultMatch": true
+                },
+                {
+                  "id": "customer_id",
+                  "type": "number",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "customer_id",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "first_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "first_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "last_name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "last_name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "email",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "email",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "phone",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "phone",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "address",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "readOnly": false,
+                  "required": false,
+                  "displayName": "address",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "customer_id"
+              ]
+            },
+            "options": {},
+            "operation": "update"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "yX3WnQ0zNClN0JoN",
+              "name": "Airtable giulio@n8n"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "e20c0448-9688-47ae-873b-7cc5ac6e826a",
+          "name": "Respond to Webhook5",
+          "type": "n8n-nodes-base.respondToWebhook",
+          "position": [
+            1420,
+            80
+          ],
+          "parameters": {
+            "options": {
+              "responseCode": 200
+            },
+            "respondWith": "allIncomingItems"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "f13eb006-b576-4e65-9c04-7a8516dccb35",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            940,
+            -20
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 737.8307567127741,
+            "height": 267.43205858421476,
+            "content": "#### Delete\nDeletes a record"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0f434e52-2fda-41c0-9f40-38bf1977b8a6",
+          "name": "Airtable1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1200,
+            80
+          ],
+          "parameters": {
+            "id": "={{ $json.id }}",
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app662qLY5J8ys4fU",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU",
+              "cachedResultName": "customers"
+            },
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblwvA7Wrmvmv37rq",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU/tblwvA7Wrmvmv37rq",
+              "cachedResultName": "Table 1"
+            },
+            "operation": "deleteRecord"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "yX3WnQ0zNClN0JoN",
+              "name": "Airtable giulio@n8n"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "c58724ab-354b-43af-8a60-495837f8a4a2",
+          "name": "Get Single1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1000,
+            80
+          ],
+          "parameters": {
+            "base": {
+              "__rl": true,
+              "mode": "list",
+              "value": "app662qLY5J8ys4fU",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU",
+              "cachedResultName": "customers"
+            },
+            "limit": 1,
+            "table": {
+              "__rl": true,
+              "mode": "list",
+              "value": "tblwvA7Wrmvmv37rq",
+              "cachedResultUrl": "https://airtable.com/app662qLY5J8ys4fU/tblwvA7Wrmvmv37rq",
+              "cachedResultName": "Table 1"
+            },
+            "options": {},
+            "operation": "search",
+            "returnAll": false,
+            "filterByFormula": "=({customer_id} = {{ $json.params.id }})"
+          },
+          "credentials": {
+            "airtableTokenApi": {
+              "id": "yX3WnQ0zNClN0JoN",
+              "name": "Airtable giulio@n8n"
+            }
+          },
+          "typeVersion": 2.1
+        },
+        {
+          "id": "1b8fc8af-4892-4804-85d0-8e84904a3cf0",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            500,
+            720
+          ],
+          "webhookId": "580ccc56-f308-4b64-961d-38323501a170",
+          "parameters": {
+            "path": "customers",
+            "options": {},
+            "responseMode": "responseNode",
+            "multipleMethods": true
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "7a8a9006-c2ea-4a87-8a94-fb925ed91abd",
+          "name": "Webhook (with ID)",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            500,
+            80
+          ],
+          "webhookId": "580ccc56-f308-4b64-961d-38323501a170",
+          "parameters": {
+            "path": "customers/:id",
+            "options": {},
+            "httpMethod": [
+              "GET",
+              "DELETE",
+              "PUT"
+            ],
+            "responseMode": "responseNode",
+            "multipleMethods": true
+          },
+          "typeVersion": 2
+        }
+      ],
+      "active": true,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "b9009017-c9f6-4f8c-9592-350825e54476",
+      "connections": {
+        "Create": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get All": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Get All",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Create",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable1": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Single": {
+          "main": [
+            [
+              {
+                "node": "Respond to Webhook",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Single1": {
+          "main": [
+            [
+              {
+                "node": "Airtable1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook (with ID)": {
+          "main": [
+            [
+              {
+                "node": "Get Single",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get Single1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 18,
+      "nodeTypes": {
+        "n8n-nodes-base.webhook": {
+          "count": 2
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 6
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 5
+        },
+        "n8n-nodes-base.respondToWebhook": {
+          "count": 5
+        }
+      }
+    },
+    "user": {
+      "name": "Giulio",
+      "username": "gandreini",
+      "bio": "Product designer at n8n, founder of Mondo surf atlas and forecast",
+      "verified": false,
+      "links": [
+        "https://www.linkedin.com/in/giulioandreini/"
+      ],
+      "avatar": "https://gravatar.com/avatar/8881c112afdb9ed815d053eef68dd3d35629caec4ec9ab505eb57e7279791230?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 535,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.respondToWebhook",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Respond to Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Respond to Webhook",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      }
+    ],
+    "image": []
+  }
+}

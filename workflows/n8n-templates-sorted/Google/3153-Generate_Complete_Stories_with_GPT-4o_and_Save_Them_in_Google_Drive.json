@@ -1,0 +1,1920 @@
+{
+  "workflow": {
+    "id": 3153,
+    "name": "Generate Complete Stories with GPT-4o and Save Them in Google Drive",
+    "views": 481,
+    "recentViews": 2,
+    "totalViews": 481,
+    "createdAt": "2025-03-13T15:32:01.628Z",
+    "description": "**AI Story Generator with GPT-4o and Google Drive Integration**\n\nAutomatically generate complete stories with GPT-4o and seamlessly save them to Google Drive.\n\n**Who is this for?**\n\n- Creative writers and authors\n- Marketing and sales professionals\n- Educators and content creators\n- Fan fiction enthusiasts\n- Anyone interested in automating storytelling with AI\n\n**What problem is this workflow solving?**\n\nManually creating engaging, structured narratives can be time-consuming. Writers and content creators often struggle to maintain consistency, depth, and engaging storytelling structure. This workflow solves these challenges by automating story creation using advanced AI (GPT-4o) and proven storytelling techniques.\n\n**What this workflow does**\n\nThis n8n automation generates comprehensive stories through an iterative AI-driven process:\n\n**Step 1: Provide Your Story Idea**\nUsers input a clear description and specify their desired story format (short story, fan fiction, sales email, etc.).\n\n**Step 2: AI-Driven Analysis**\nGPT-4o analyzes the provided idea, categorizes the story, selects relevant storytelling frameworks inspired by PipDeck Storyteller Tactics, and determines narrative tone and direction.\n\n**Step 3: Story and Character**\nFoundationEstablishes core themes, emotional hooks, and detailed character backgrounds.\n\n**Step 4: Initial Story Development**\nCreates a structured plot outline including engaging elements such as hooks, twists, and resolutions.\n\n**Step 5: Iterative Enhancement**\nRefines the story through multiple automated prompts, improving narrative depth, character development, dialogue, and realism.\n\n**Step 6: Editorial Feedback**\nGenerates automated critiques highlighting clichés, weak dialogues, and areas for improvement.\n\n**Step 7: Final Polished Version**\nIncorporates editorial feedback to produce a complete, polished, ready-to-use narrative.\n\n**Step 8: Instant Google Drive**\nOrganizationAutomatically saves the final story directly to your specified Google Drive folder for easy access and management.\n\n**Setup Instructions**\n\n**Prerequisites**:\n- n8n account (cloud or self-hosted)\n- GPT-4o API access via OpenAI\n- Google Drive account\n\n**Configure OpenAI Node:**\n- Add your GPT-4o API key in the OpenAI node settings.\n- Configure Google Drive Node:\n- Connect your Google Drive account by authenticating with n8n.\n- Specify the folder where generated stories should be saved.\n\n**Test Workflow:**\n\nRun the workflow with a simple story prompt to ensure proper setup.\n\nHow to Customize this Workflow\n\nAdjust Prompt Details: Modify AI prompt instructions to suit your specific story style and audience.\n\nExpand or Narrow Iterations: Change the number of iterations to balance between speed and story complexity.\n\nCustomize Feedback Level: Adjust the level of editorial feedback provided.\n\n**Dependencies and Requirements**\n\n- GPT-4o API from OpenAI\n- Google Drive integration enabled in n8n\n\n**Get Started**\n\nDownload and deploy this template today to streamline your storytelling process and produce consistently engaging, high-quality content effortlessly.",
+    "workflow": {
+      "meta": {
+        "instanceId": "c468f3e9ec76d6a999f2a3139e7b38fe14df5109932c20629efadf9cb993c0f1",
+        "templateCredsSetupCompleted": true
+      },
+      "nodes": [
+        {
+          "id": "c92b4ff9-aee9-43af-9771-a65f82d36b39",
+          "name": "$INPUTS$",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1020,
+            -360
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "32d9f0e9-144d-4e19-a91d-9a72da1fce3d",
+          "name": "Sentiment Analysis",
+          "type": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+          "position": [
+            1260,
+            -180
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1
+        },
+        {
+          "id": "cafd5be9-880f-405e-8ffe-4b8c34f937f3",
+          "name": "Connect",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1800,
+            -340
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "2ce2d8eb-290e-408b-ba6c-4a1958434e1f",
+          "name": "Convince",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1620,
+            -340
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9f448ab7-9015-450e-96ff-a3b91ba710c8",
+          "name": "Explain",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1800,
+            -180
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "07d62485-32e9-4bed-9e1a-7655f3c958e9",
+          "name": "Impress",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1620,
+            -180
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "becf7b85-24fb-4356-8cb0-36ccd57032c1",
+          "name": "Lead",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1620,
+            -20
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "057d4b7e-6ada-4971-affb-c6c4758da99a",
+          "name": "Motivate",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1800,
+            -20
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "63a88fd9-19ac-4e6b-99c6-b92adbd03488",
+          "name": "Sell",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1980,
+            -180
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "45364868-d7ae-4f09-8dbf-c55d5b8b4c18",
+          "name": "Structured Output Parser",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            960,
+            220
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "64c41e54-d300-4f53-8ea6-fcb5ab8f5143",
+          "name": "When clicking ‘Test workflow’",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            720,
+            -360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "5be4862e-2157-49dd-9776-c8cda5652996",
+          "name": "prompt",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2220,
+            -340
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7e3e5894-e76a-4e5f-839d-f32bf8eed774",
+          "name": "pick cards",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            720,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "08c279c5-c5b1-4f5e-8561-c7f97d56c1e7",
+          "name": "story baseline",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2380,
+            -340
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "56bfd805-9ee5-4821-8ead-969f047dbaa4",
+          "name": "story plot",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2340,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1.7
+        },
+        {
+          "id": "80d6fe40-52f8-4e7c-8f0f-7886ae05bcdf",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1100,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "3f2ce91b-b4cc-499b-a844-c0d6b157e3cc",
+          "name": "story enhancement",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            1560,
+            260
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "eb46ce10-f348-466f-a744-4edc29d0a49f",
+          "name": "characters",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2200,
+            -40
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "68885015-91d6-4654-add1-3e3e452113b4",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            1340,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "1783f82f-f6f1-48eb-818e-0cde36a67ea0",
+          "name": "Aggregate",
+          "type": "n8n-nodes-base.aggregate",
+          "position": [
+            2060,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "1efe0358-36ec-4208-b4a3-2581a3bd82b8",
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1180,
+            860
+          ],
+          "parameters": {},
+          "typeVersion": 3.4
+        },
+        {
+          "id": "69735d14-bc24-4a91-9f8b-2fc9e3d09540",
+          "name": "story timeline",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "maxTries": 5,
+          "position": [
+            720,
+            560
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7,
+          "waitBetweenTries": 100
+        },
+        {
+          "id": "454f32c0-16c6-4187-873e-642d196d5f4f",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            -440
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6d0cf2bb-cf00-4404-8b3b-64b3e04a06fe",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1200,
+            -440
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "668eccc9-a6dc-4b7f-a949-edea1f405138",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            920,
+            -440
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "afa731f1-e4e3-4f8c-a2eb-2f075b227f48",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2160,
+            -440
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1a90ea2a-d84f-4f53-b2f5-577be1b0c2d2",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2160,
+            -140
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0c533b8a-7b77-4882-af0a-3f0fc2b2cf1f",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1680,
+            460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "690c9516-2fa5-4454-a3c1-42e235ec96f6",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5f495274-d64c-4ce9-ad22-776c34e80c55",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2280,
+            160
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f14a6431-f6ec-4eef-873d-2a64f07f1811",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1300,
+            160
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "fc8cb6e2-c55c-4358-abcc-c5ee9dbde3e2",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            160
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5d2abf13-f144-44ac-9704-4cbf77251f2e",
+          "name": "json schema",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            2540,
+            -400
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "b6de0d85-6488-46ed-a422-662bdbba8927",
+          "name": "story draft",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "maxTries": 5,
+          "position": [
+            1300,
+            560
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7,
+          "waitBetweenTries": 100
+        },
+        {
+          "id": "d9b577d2-76a7-4d8e-ab5a-7ac0b14907ab",
+          "name": "edit notes",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "maxTries": 5,
+          "position": [
+            1800,
+            560
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7,
+          "waitBetweenTries": 100
+        },
+        {
+          "id": "3ef023fa-b434-4f4d-9f5a-8fa73fb2e13a",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1220,
+            460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a4ad6eea-cffe-454c-8d5d-ca9083fe7f4a",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2120,
+            460
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "aa9cb55e-f07a-4d88-a605-4dcfaf10d4ea",
+          "name": "Sticky Note12",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            760
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5ef977f9-86c0-4ab0-aba3-f7e37728f5e1",
+          "name": "character json",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            2400,
+            -80
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "38f5dffc-d2bb-4c9b-b257-2af6fc8b7d30",
+          "name": "Sticky Note13",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            -180
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bde362d9-18c7-4e35-bda4-5487a01d2a07",
+          "name": "story rules",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            720,
+            -60
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "12b70183-36dc-4834-88b9-43560449ace8",
+          "name": "rules json",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            940,
+            -100
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "e77b44ef-f80c-47d8-b416-0f652f67a70e",
+          "name": "gpt-4o1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+          "position": [
+            2080,
+            860
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "2f98a06a-54ba-41af-8104-89dfc2b188b7",
+          "name": "Structured Output Parser1",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            2540,
+            200
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "237eb833-f2e1-4d4f-90b1-4499f5560dbc",
+          "name": "Structured Output Parser2",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            2480,
+            520
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "439ea9b6-14f8-452b-a090-f1dd94c2f69f",
+          "name": "Structured Output Parser3",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            1500,
+            500
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "713d1051-1841-4218-9d7e-a8a7405a885e",
+          "name": "story enhancements json",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            1820,
+            180
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "a417089c-3b0f-4bb5-bd83-5a7773c2675a",
+          "name": "edit notes json",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            1980,
+            500
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "50b841a3-8386-4c29-a384-a9afd784e690",
+          "name": "story_final",
+          "type": "@n8n/n8n-nodes-langchain.agent",
+          "position": [
+            2260,
+            560
+          ],
+          "parameters": {},
+          "retryOnFail": true,
+          "typeVersion": 1.7
+        },
+        {
+          "id": "298d49f8-9381-43e3-8aef-18929b2d4442",
+          "name": "create_story_file",
+          "type": "n8n-nodes-base.googleDrive",
+          "position": [
+            720,
+            860
+          ],
+          "parameters": {},
+          "typeVersion": 3
+        },
+        {
+          "id": "1a4ed288-761f-47e9-ba9e-4a0a1c2c05c5",
+          "name": "Sticky Note14",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1020,
+            760
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "b77cccd2-987d-4626-8731-5ce985ff4a59",
+          "name": "Sticky Note15",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1440,
+            760
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2c7ee24e-e5ef-48cd-981a-379a84a9b751",
+          "name": "timeline json",
+          "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+          "position": [
+            940,
+            500
+          ],
+          "parameters": {},
+          "typeVersion": 1.2
+        },
+        {
+          "id": "0e05e8b7-4cdb-4c41-883f-c8b12bb47f37",
+          "name": "Sticky Note17",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2380,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "25265f0f-9c8c-4717-ad43-428f3c758311",
+          "name": "Sticky Note18",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            2220,
+            760
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f2c434e3-ca7a-4c68-99b8-65f3c05008f0",
+          "name": "Sticky Note16",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            680,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a1f06eb0-7b8d-4610-87bc-f07f0506912b",
+          "name": "Sticky Note19",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1160,
+            -820
+          ],
+          "parameters": {
+            "content": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {},
+      "connections": {
+        "Lead": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sell": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "prompt": {
+          "main": [
+            [
+              {
+                "node": "story baseline",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Connect": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Explain": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Impress": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "gpt-4o1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "story rules",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "story plot",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "pick cards",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "story enhancement",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "story baseline",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "story timeline",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "edit notes",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "Sentiment Analysis",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "characters",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "story draft",
+                "type": "ai_languageModel",
+                "index": 0
+              },
+              {
+                "node": "story_final",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "$INPUTS$": {
+          "main": [
+            [
+              {
+                "node": "story rules",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convince": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Motivate": {
+          "main": [
+            [
+              {
+                "node": "prompt",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Aggregate": {
+          "main": [
+            [
+              {
+                "node": "story plot",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "characters": {
+          "main": [
+            [
+              {
+                "node": "pick cards",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "edit notes": {
+          "main": [
+            [
+              {
+                "node": "story_final",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "pick cards": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "rules json": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story rules",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story plot": {
+          "main": [
+            [
+              {
+                "node": "story timeline",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "json schema": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story baseline",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story draft": {
+          "main": [
+            [
+              {
+                "node": "edit notes",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story rules": {
+          "main": [
+            [
+              {
+                "node": "Sentiment Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story_final": {
+          "main": [
+            [
+              {
+                "node": "create_story_file",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "timeline json": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story timeline",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "character json": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "characters",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story baseline": {
+          "main": [
+            [
+              {
+                "node": "characters",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story timeline": {
+          "main": [
+            [
+              {
+                "node": "story draft",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [
+              {
+                "node": "Aggregate",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "story enhancement",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "edit notes json": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "edit notes",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "create_story_file": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story enhancement": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Sentiment Analysis": {
+          "main": [
+            [
+              {
+                "node": "Connect",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Convince",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Explain",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Impress",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Lead",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Motivate",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Sell",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "story enhancements json": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story enhancement",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "pick cards",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser1": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story plot",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser2": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story_final",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structured Output Parser3": {
+          "ai_outputParser": [
+            [
+              {
+                "node": "story draft",
+                "type": "ai_outputParser",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "When clicking ‘Test workflow’": {
+          "main": [
+            [
+              {
+                "node": "$INPUTS$",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 57,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 10
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.aggregate": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 20
+        },
+        "n8n-nodes-base.googleDrive": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.agent": {
+          "count": 10
+        },
+        "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.sentimentAnalysis": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.outputParserStructured": {
+          "count": 10
+        }
+      }
+    },
+    "user": {
+      "name": "Ian Dikhtiar",
+      "username": "ian-dikhtiar",
+      "bio": "",
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/5bf8e571dafcba53bfb9714253d714c87e9facbbd9d5260257d4c397f0896677?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 58,
+        "icon": "file:googleDrive.svg",
+        "name": "n8n-nodes-base.googleDrive",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googledrive/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Drive"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgODEgNzMiPjx1c2UgeGxpbms6aHJlZj0iI2EiIHg9Ii41IiB5PSIuNSIvPjxzeW1ib2wgaWQ9ImEiIG92ZXJmbG93PSJ2aXNpYmxlIj48ZyBmaWxsLXJ1bGU9Im5vbnplcm8iIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzAwNjZkYSIgZD0ibTYuMDQ4IDYxLjI2IDMuNTI4IDYuMDk0Yy43MzMgMS4yODMgMS43ODcgMi4yOTEgMy4wMjQgMy4wMjRsMTIuNi0yMS44MUgwYTguMyA4LjMgMCAwIDAgMS4xIDQuMTI0eiIvPjxwYXRoIGZpbGw9IiMwMGFjNDciIGQ9Ik00MCAyMi45MSAyNy40IDEuMWMtMS4yMzcuNzMzLTIuMjkxIDEuNzQxLTMuMDI0IDMuMDI0TDEuMSA0NC40NDVBOC4zIDguMyAwIDAgMCAwIDQ4LjU2OGgyNS4yeiIvPjxwYXRoIGZpbGw9IiNlYTQzMzUiIGQ9Ik02Ny40IDcwLjM3OGMxLjIzNy0uNzMzIDIuMjkxLTEuNzQxIDMuMDI0LTMuMDI0bDEuNDY2LTIuNTIgNy4wMS0xMi4xNDJhOC4zIDguMyAwIDAgMCAxLjEtNC4xMjRINTQuNzk4bDUuMzYzIDEwLjUzOHoiLz48cGF0aCBmaWxsPSIjMDA4MzJkIiBkPSJNNDAgMjIuOTEgNTIuNiAxLjFDNTEuMzYzLjM2NyA0OS45NDMgMCA0OC40NzcgMEgzMS41MjRjLTEuNDY2IDAtMi44ODcuNDEyLTQuMTI0IDEuMXoiLz48cGF0aCBmaWxsPSIjMjY4NGZjIiBkPSJNNTQuNzk5IDQ4LjU2OEgyNS4ybC0xMi42IDIxLjgxYzEuMjM3LjczMyAyLjY1NyAxLjEgNC4xMjQgMS4xaDQ2LjU1MmMxLjQ2NiAwIDIuODg3LS40MTIgNC4xMjQtMS4xeiIvPjxwYXRoIGZpbGw9IiNmZmJhMDAiIGQ9Ik02Ny4yNjIgMjQuMjg0IDU1LjYyNCA0LjEyNEM1NC44OTEgMi44NDEgNTMuODM3IDEuODMzIDUyLjYgMS4xTDQwIDIyLjkxbDE0LjggMjUuNjU5aDI1LjE1NWE4LjMgOC4zIDAgMCAwLTEuMS00LjEyNHoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "Google Drive",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 838,
+        "icon": "fa:mouse-pointer",
+        "name": "n8n-nodes-base.manualTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.manualworkflowtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "When clicking ‘Test workflow’",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "mouse-pointer",
+          "type": "icon"
+        },
+        "displayName": "Manual Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1119,
+        "icon": "fa:robot",
+        "name": "@n8n/n8n-nodes-langchain.agent",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain",
+              "Chat",
+              "Conversational",
+              "Plan and Execute",
+              "ReAct",
+              "Tools"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.agent/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Agents",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "AI Agent",
+          "color": "#404040"
+        },
+        "iconData": {
+          "icon": "robot",
+          "type": "icon"
+        },
+        "displayName": "AI Agent",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1179,
+        "icon": "fa:code",
+        "name": "@n8n/n8n-nodes-langchain.outputParserStructured",
+        "codex": {
+          "data": {
+            "alias": [
+              "json",
+              "zod"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.outputparserstructured/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Output Parsers"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Structured Output Parser"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Structured Output Parser",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1236,
+        "icon": "file:aggregate.svg",
+        "name": "n8n-nodes-base.aggregate",
+        "codex": {
+          "data": {
+            "alias": [
+              "Aggregate",
+              "Combine",
+              "Flatten",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.aggregate/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Aggregate"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjRkY2RDVBIiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTMyIDE0OGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDE0NmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJINDRjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6bTAgOTZjMC02LjYyNyA1LjM3My0xMiAxMi0xMmgxNDZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDQ0Yy02LjYyNyAwLTEyLTUuMzczLTEyLTEyem0wIDk2YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTQ2YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkg0NGMtNi42MjcgMC0xMi01LjM3My0xMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjxwYXRoIGQ9Ik03NCA3NmMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDExNi4yMTdjMTcuNjczIDAgMzIgMTQuMzI3IDMyIDMydjU2YzAgMjYuOTc4IDEwLjI3MiA1MS41NTcgMjcuMTE5IDcwLjAzOSA1LjA1NSA1LjU0NSA1LjA1NSAxNC4zNzcgMCAxOS45MjItMTYuODQ3IDE4LjQ4Mi0yNy4xMTkgNDMuMDYxLTI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMtMTQuMzI3IDMyLTMyIDMySDg2Yy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTE2LjIxN2M0NC4xODMgMCA4MC0zNS44MTcgODAtODB2LTU2YzAtMzAuOTI4IDI1LjA3Mi01NiA1Ni01NmE1Ljc4MyA1Ljc4MyAwIDAgMCA1Ljc4My01Ljc4M3YtMzYuNDM0YTUuNzgzIDUuNzgzIDAgMCAwLTUuNzgzLTUuNzgzYy0zMC45MjggMC01Ni0yNS4wNzItNTYtNTZ2LTU2YzAtNDQuMTgzLTM1LjgxNy04MC04MC04MEg4NmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0zNzYgMjQ0YzAtNi42MjcgNS4zNzMtMTIgMTItMTJoMTEyYzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MjRjMCA2LjYyNy01LjM3MyAxMi0xMiAxMkgzODhjLTYuNjI3IDAtMTItNS4zNzMtMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48L2c+PGRlZnM+PGNsaXBQYXRoIGlkPSJhIj48cGF0aCBmaWxsPSIjZmZmIiBkPSJNMCAwaDUxMnY1MTJIMHoiLz48L2NsaXBQYXRoPjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Aggregate",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1253,
+        "icon": "file:azure.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatAzureOpenAi",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatazureopenai/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Azure OpenAI Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTYiIGhlaWdodD0iMjQyIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTguOTcyJSIgeDI9IjM3LjE5MSUiIHkxPSI3LjQxMSUiIHkyPSIxMDMuNzYyJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iIzExNEE4QiIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA2NjlCQyIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iNTkuNzE5JSIgeDI9IjUyLjY5MSUiIHkxPSI1Mi4zMTMlIiB5Mj0iNTQuODY0JSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1vcGFjaXR5PSIuMyIvPjxzdG9wIG9mZnNldD0iNy4xJSIgc3RvcC1vcGFjaXR5PSIuMiIvPjxzdG9wIG9mZnNldD0iMzIuMSUiIHN0b3Atb3BhY2l0eT0iLjEiLz48c3RvcCBvZmZzZXQ9IjYyLjMlIiBzdG9wLW9wYWNpdHk9Ii4wNSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1vcGFjaXR5PSIwIi8+PC9saW5lYXJHcmFkaWVudD48bGluZWFyR3JhZGllbnQgaWQ9ImMiIHgxPSIzNy4yNzklIiB4Mj0iNjIuNDczJSIgeTE9IjQuNiUiIHkyPSI5OS45NzklIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjM0NDQkY0Ii8+PHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjMjg5MkRGIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHBhdGggZmlsbD0idXJsKCNhKSIgZD0iTTg1LjM0My4wMDNoNzUuNzUzTDgyLjQ1NyAyMzNhMTIuMDggMTIuMDggMCAwIDEtMTEuNDQyIDguMjE2SDEyLjA2QTEyLjA2IDEyLjA2IDAgMCAxIC42MzMgMjI1LjMwM0w3My44OTggOC4yMTlBMTIuMDggMTIuMDggMCAwIDEgODUuMzQzIDB6Ii8+PHBhdGggZmlsbD0iIzAwNzhENCIgZD0iTTE5NS40MjMgMTU2LjI4Mkg3NS4yOTdhNS41NiA1LjU2IDAgMCAwLTMuNzk2IDkuNjI3bDc3LjE5IDcyLjA0N2ExMi4xNCAxMi4xNCAwIDAgMCA4LjI4IDMuMjZoNjguMDJ6Ii8+PHBhdGggZmlsbD0idXJsKCNiKSIgZD0iTTg1LjM0My4wMDNhMTEuOTggMTEuOTggMCAwIDAtMTEuNDcxIDguMzc2TC43MjMgMjI1LjEwNWExMi4wNDUgMTIuMDQ1IDAgMCAwIDExLjM3IDE2LjExMmg2MC40NzVhMTIuOTMgMTIuOTMgMCAwIDAgOS45MjEtOC40MzdsMTQuNTg4LTQyLjk5MSA1Mi4xMDUgNDguNmExMi4zMyAxMi4zMyAwIDAgMCA3Ljc1NyAyLjgyOGg2Ny43NjZsLTI5LjcyMS04NC45MzUtODYuNjQzLjAyTDE2MS4zNy4wMDN6Ii8+PHBhdGggZmlsbD0idXJsKCNjKSIgZD0iTTE4Mi4wOTggOC4yMDdBMTIuMDYgMTIuMDYgMCAwIDAgMTcwLjY3LjAwM0g4Ni4yNDVjNS4xNzUgMCA5Ljc3MyAzLjMwMSAxMS40MjggOC4yMDRMMTcwLjk0IDIyNS4zYTEyLjA2MiAxMi4wNjIgMCAwIDEtMTEuNDI4IDE1LjkyaDg0LjQyOWExMi4wNjIgMTIuMDYyIDAgMCAwIDExLjQyNS0xNS45MnoiLz48L3N2Zz4="
+        },
+        "displayName": "Azure OpenAI Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1272,
+        "icon": "fa:balance-scale-left",
+        "name": "@n8n/n8n-nodes-langchain.sentimentAnalysis",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.sentimentanalysis/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Sentiment Analysis"
+        },
+        "iconData": {
+          "icon": "balance-scale-left",
+          "type": "icon"
+        },
+        "displayName": "Sentiment Analysis",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": []
+  }
+}

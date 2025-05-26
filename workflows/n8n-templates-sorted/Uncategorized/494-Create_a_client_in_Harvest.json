@@ -1,0 +1,213 @@
+{
+  "workflow": {
+    "id": 494,
+    "name": "Create a client in Harvest",
+    "views": 304,
+    "recentViews": 0,
+    "totalViews": 304,
+    "createdAt": "2020-07-13T09:08:31.217Z",
+    "description": "![workflow-screenshot](fileId:93)",
+    "workflow": {
+      "id": "120",
+      "name": "Create a client in Harvest",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Harvest",
+          "type": "n8n-nodes-base.harvest",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "name": "",
+            "resource": "client",
+            "operation": "create",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "harvestApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Harvest",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.harvest": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 225,
+        "icon": "file:harvest.png",
+        "name": "n8n-nodes-base.harvest",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.harvest/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/harvest/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Harvest"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Harvest",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 93,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/9174728ea5ec4b34ae49987b222538dd.png"
+      }
+    ]
+  }
+}

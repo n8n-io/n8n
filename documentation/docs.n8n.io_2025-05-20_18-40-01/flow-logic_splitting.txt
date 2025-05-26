@@ -1,0 +1,22 @@
+URL: https://docs.n8n.io/flow-logic/splitting/
+Scraped_At: 2025-05-20T18:43:09.695372
+
+Splitting workflows with conditional nodes
+#
+Splitting uses the
+IF
+or
+Switch
+nodes. It turns a single-branch workflow into a multi-branch workflow. This is a key piece of representing complex logic in n8n.
+Compare these workflows:
+This is the power of splitting and conditional nodes in n8n.
+Refer to the
+IF
+or
+Switch
+documentation for usage details.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

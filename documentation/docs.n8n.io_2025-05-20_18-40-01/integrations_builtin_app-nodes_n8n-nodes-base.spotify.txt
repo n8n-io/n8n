@@ -1,0 +1,85 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.spotify/
+Scraped_At: 2025-05-20T18:51:40.023718
+
+Spotify node
+#
+Use the Spotify node to automate work in Spotify, and integrate Spotify with other applications. n8n has built-in support for a wide range of Spotify features, including getting album and artist information.
+On this page, you'll find a list of operations the Spotify node supports and links to more resources.
+Credentials
+Refer to
+Spotify credentials
+for guidance on setting up authentication.
+Operations
+#
+Album
+Get an album by URI or ID.
+Get a list of new album releases.
+Get an album's tracks by URI or ID.
+Search albums by keyword.
+Artist
+Get an artist by URI or ID.
+Get an artist's albums by URI or ID.
+Get an artist's related artists by URI or ID.
+Get an artist's top tracks by URI or ID.
+Search artists by keyword.
+Library
+Get the user's liked tracks.
+My Data
+Get your followed artists.
+Player
+Add a song to your queue.
+Get your currently playing track.
+Skip to your next track.
+Pause your music.
+Skip to your previous song.
+Get your recently played tracks.
+Resume playback on the current active device.
+Set volume on the current active device.
+Start playing a playlist, artist, or album.
+Playlist
+Add tracks from a playlist by track and playlist URI or ID.
+Create a new playlist.
+Get a playlist by URI or ID.
+Get a playlist's tracks by URI or ID.
+Get a user's playlists.
+Remove tracks from a playlist by track and playlist URI or ID.
+Search playlists by keyword.
+Track
+Get a track by its URI or ID.
+Get audio features for a track by URI or ID.
+Search tracks by keyword
+Templates and examples
+#
+Add liked songs to a Spotify monthly playlist
+by Lucas
+View template details
+IOT Button Remote / Spotify Control Integration with MQTT
+by Hubschrauber
+View template details
+Download recently liked songs automatically with Spotify
+by Mario
+View template details
+Browse Spotify integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

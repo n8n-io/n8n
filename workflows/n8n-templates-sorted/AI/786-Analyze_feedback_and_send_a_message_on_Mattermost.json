@@ -1,0 +1,764 @@
+{
+  "workflow": {
+    "id": 786,
+    "name": "Analyze feedback and send a message on Mattermost",
+    "views": 708,
+    "recentViews": 0,
+    "totalViews": 708,
+    "createdAt": "2020-11-20T09:51:52.811Z",
+    "description": "This workflow analyzes the sentiments of the feedback provided by users and sends them to a Mattermost channel.\n\n![workflow-screenshot](fileId:346)\n\n**Typeform Trigger node:** Whenever a user submits a response to the Typeform, the Typeform Trigger node will trigger the workflow. The node returns the response that the user has submitted in the form.\n\n**Google Cloud Natural Language node:** This node analyses the sentiment of the response the user has provided and gives a score.\n\n**IF node:** The IF node uses the score provided by the Google Cloud Natural Language node and checks if the score is negative (smaller than 0). If the score is negative we get the result as True, otherwise False.\n\n**Mattermost node:** If the score is negative, the IF node returns true and the true branch of the IF node is executed. We connect the Mattermost node with the true branch of the IF node. Whenever the score of the sentiment analysis is negative, the node gets executed and a message is posted on a channel in Mattermost.\n\n**NoOp:** This node here is optional, as the absence of this node won't make a difference to the functioning of the workflow.\n\nThis workflow can be used by Product Managers to analyze the feedback of the product. The workflow can also be used by HR to analyze employee feedback. You can even use this node for sentiment analysis of Tweets.\n\nTo perform a sentiment analysis of Tweets, replace the Typeform Trigger node with the Twitter node.\n\n***Note:*** You will need a Trigger node or Start node to start the workflow.\n\nInstead of posting a message on Mattermost, you can save the results in a database or a Google Sheet, or Airtable. Replace the Mattermost node with (or add after the Mattermost node) the node of your choice to add the result to your database. \n\nYou can learn to build this workflow on the documentation page of the [Google Cloud Natural Language](https://docs.n8n.io/nodes/n8n-nodes-base.googleCloudNaturalLanguage/#google-cloud-natural-language) node.",
+    "workflow": {
+      "id": "133",
+      "name": "Analyze the sentiment of feedback and send a message on Mattermost",
+      "nodes": [
+        {
+          "name": "Typeform Trigger",
+          "type": "n8n-nodes-base.typeformTrigger",
+          "position": [
+            510,
+            260
+          ],
+          "webhookId": "ad8a87ef-d293-4e48-8d36-838d69ebce0f",
+          "parameters": {
+            "formId": ""
+          },
+          "credentials": {
+            "typeformApi": "typeform"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Google Cloud Natural Language",
+          "type": "n8n-nodes-base.googleCloudNaturalLanguage",
+          "position": [
+            710,
+            260
+          ],
+          "parameters": {
+            "content": "={{$node[\"Typeform Trigger\"].json[\"What did you think about the event?\"]}}",
+            "options": {}
+          },
+          "credentials": {
+            "googleCloudNaturalLanguageOAuth2Api": "cloud"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "IF",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            910,
+            260
+          ],
+          "parameters": {
+            "conditions": {
+              "number": [
+                {
+                  "value1": "={{$node[\"Google Cloud Natural Language\"].json[\"documentSentiment\"][\"score\"]}}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Mattermost",
+          "type": "n8n-nodes-base.mattermost",
+          "position": [
+            1110,
+            160
+          ],
+          "parameters": {
+            "message": "=You got a new feedback with a score of {{$node[\"Google Cloud Natural Language\"].json[\"documentSentiment\"][\"score\"]}}. Here is what it says:{{$node[\"Typeform Trigger\"].json[\"What did you think about the event?\"]}}",
+            "channelId": "4h1bz64cyifwxnzojkzh8hxh4a",
+            "attachments": [],
+            "otherOptions": {}
+          },
+          "credentials": {
+            "mattermostApi": "mattermost"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "NoOp",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1110,
+            360
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "IF": {
+          "main": [
+            [
+              {
+                "node": "Mattermost",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "NoOp",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Typeform Trigger": {
+          "main": [
+            [
+              {
+                "node": "Google Cloud Natural Language",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Cloud Natural Language": {
+          "main": [
+            [
+              {
+                "node": "IF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 1
+        },
+        "n8n-nodes-base.mattermost": {
+          "count": 1
+        },
+        "n8n-nodes-base.typeformTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.googleCloudNaturalLanguage": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 51,
+        "icon": "file:typeform.svg",
+        "name": "n8n-nodes-base.typeformTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Form"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.typeformtrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/typeform/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Typeform Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4Ljg4NzYgMC4wNzM4OTg0QzI0LjAzMTYgLTAuMzQ5NjE4IDI3LjcyNiAxLjAxNTY2IDMxLjcwMTIgNC45ODg0NkMzNS45OTMgOS4yNzc2NyAzOC44NDYzIDE0LjgzNjEgMzkuNjE1MiAyMC43NTdDNDAuNDcwOCAyNy4zNDE1IDM5LjI5NCAzMi4yNTUxIDM1LjY2OTcgMzUuODUyNUMzMi4yMDQgMzkuMjkyNCAyNy4xNDE5IDQwLjQyNyAyMC4zNzk3IDM5Ljg2MTdMMjAuMDk5OCAzOS44MzcxQzE0LjM0MTUgMzkuMzA3NyAxMC4yNjg2IDM3LjQxOTcgNi4zMjIzMyAzMy40MjMxQzIuMTA3MTEgMjkuMTU0IC0wLjExNDA5NCAyNC4zMDcgMC4wMDQ1MTUwMyAxOS4yMTk2QzAuMDYyNTI4MiAxNi43MjkgMC43NjgwNDYgMTQuNjA2MyAyLjEyODY3IDEyLjUyMzZDMy4wMjA2OCAxMS4xNTgyIDMuOTI2NTcgMTAuMDkzMSA1LjgyMTQ5IDguMTM5N0w2LjQ1Mzg5IDcuNDkxOTNMNy4xNTEgNi43ODUzNUMxMS42NDE4IDIuMjcxMjggMTQuNTk4NCAwLjQyNzA0MiAxOC44ODc2IDAuMDczODk4NFpNMzEuMzk1NSA1LjI5NDMyQzI3LjUwOTkgMS40MTEgMjMuOTQwMSAwLjA5MTc4OTggMTguOTIzMSAwLjUwNDg1M0MxNC42OTUgMC44NTI5NjYgMTEuNzkxMyAyLjcwMDEgNy4yNDcwNiA3LjMwMjcxTDYuOTE4MzIgNy42MzYyNUM0LjcwNDI2IDkuODg3MDQgMy42NjY2OSAxMS4wMzc4IDIuNzUyNzEgMTIuMzY4N0wyLjYxOTcyIDEyLjU2NDlMMi40OTA2OCAxMi43NjAxQzEuMTcyNjEgMTQuNzc3NyAwLjQ5Mjg3MyAxNi44MjI4IDAuNDM2ODEgMTkuMjI5NkMwLjMyMTE0MyAyNC4xOTA5IDIuNDkyMjggMjguOTI4NiA2LjYzMDAyIDMzLjExOTJDMTAuNTY2MyAzNy4xMDU4IDE0LjYxMDIgMzguOTQ1NiAyMC40MTU4IDM5LjQzMDhMMjAuNzAzOCAzOS40NTM5QzI3LjIwNzEgMzkuOTU0IDMyLjA1NTYgMzguODMwNCAzNS4zNjUgMzUuNTQ1NkMzOC44ODEyIDMyLjA1NTYgNDAuMDI2MSAyNy4yNzUxIDM5LjE4NjQgMjAuODEyN0MzOC40MzAxIDE0Ljk4OTEgMzUuNjIxNSA5LjUxNzczIDMxLjM5NTUgNS4yOTQzMlpNMjYuMDE0MSAxNC41NDlWMTYuNjYxNEgyMS41Mjc4VjI4Ljc2ODFIMTkuMjkzMVYxNi42NjE0SDE0LjgwNjhWMTQuNTQ5SDI2LjAxNDFaIiBmaWxsPSIjMjYyNjI3Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Typeform Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 55,
+        "icon": "file:mattermost.svg",
+        "name": "n8n-nodes-base.mattermost",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mattermost/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mattermost/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Mattermost"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4NSIgaGVpZ2h0PSI4NSIgc3R5bGU9Ii1tcy10cmFuc2Zvcm06cm90YXRlKDM2MGRlZyk7LXdlYmtpdC10cmFuc2Zvcm06cm90YXRlKDM2MGRlZykiIHRyYW5zZm9ybT0icm90YXRlKDM2MCkiPjxwYXRoIGZpbGw9IiMwMDU4Q0MiIGQ9Im00Mi42NDIuMDA0LjUzOC4wMTEtNS43NTMgNi44Yy0xMC42NSAxLjkyNS0xOS44NDcgOS4xOTctMjMuNDYgMTkuODc0LTUuMzc4IDE1Ljg4NSAzLjYzNSAzMy4yOSAyMC4xMzEgMzguODc0czM0LjIyOC0yLjc2NyAzOS42MDUtMTguNjUxYzMuNTUtMTAuNDg3LjgyOC0yMS42MzYtNi4xNzktMjkuNjFsLS4zMTItLjM0OS0uNDQyLTguOTI2YzE0LjUwNyAxMC41MyAyMS4xNjEgMjkuNjM4IDE1LjExMSA0Ny41MS03LjQ0NiAyMS45OTUtMzEuMzEyIDMzLjc4OC01My4zMDYgMjYuMzQzQzYuNTggNzQuNDM0LTUuMjE1IDUwLjU2OCAyLjIzIDI4LjU3NCA4LjIzIDEwLjg1MiAyNC44OS0uMjQ3IDQyLjY0MS4wMDR6TTE5MC40IDI4LjMxNHE4LjMzMSAwIDEzLjAxNyA0LjAwNiA0LjY4NiA0LjAwNSA0LjY4NiAxMi44MTV2MjQuMDNxLTIuODA1Ljg4Mi02LjgxIDEuNjgzLTQuMDA0LjgtOS4wNS44LTQuMDg1IDAtNy40OS0uNzJ0LTUuODQ2LTIuNDAzYTExLjMgMTEuMyAwIDAgMS0zLjc2Ny00LjMyNXEtMS4zMi0yLjY0NC0xLjMyLTYuNDg5dDEuNjQxLTYuNDQ4YTEyLjY2IDEyLjY2IDAgMCAxIDQuMjQ1LTQuMTY1cTIuNjA0LTEuNTYyIDUuODA4LTIuMjQzYTMwLjcgMzAuNyAwIDAgMSA2LjQwOC0uNjhxMi4zMjMgMCA1LjEyNy4yNHYtLjk2MnEwLTEuOTIxLS42NDEtMy4xMjRhNC44IDQuOCAwIDAgMC0xLjc2Mi0xLjg4MXEtMS4xMjMtLjY4Mi0yLjc2My0uOTIyYTI1IDI1IDAgMCAwLTMuNjQ2LS4yNHEtNC4zMjUgMC05LjIxIDEuNjgyLTEuMTI0LTIuMDg0LTEuNjgzLTMuOTI2LS41Ni0xLjg0MS0uNTYxLTQuNDA2IDMuNTI1LTEuMiA3LjA0OC0xLjc2IDMuNTI1LS41NjIgNi41NjktLjU2Mm0tMzAuMzI4LTEyLjIwMnEzLjI5NyAwIDYuMzM0LjQ4M2wyLjk1IDU0LjU3cS0zLjI5Ni40ODQtNi4yNDcuNDg0YTM1IDM1IDAgMCAxLTUuODEzLS40ODNsLTEuNTYzLTM5LjQ1NS0xMi42NyAyNy4yN3EtMS4yMTQuMTYxLTIuNTE3LjI4MS0xLjMuMTItMi42MDMuMTItMS4xMjcuMDAxLTIuMjU1LS4wOGExOSAxOSAwIDAgMS0yLjM0NC0uMzIybC0xMS44LTI3LjgzNS0xLjIxNSA0MC4wMmEzMS4zIDMxLjMgMCAwIDEtNS4zODEuNDg0cS0yLjc3NiAwLTUuNzI3LS40ODNsMi40My01NC41N2E0OC41IDQ4LjUgMCAwIDEgNi42ODEtLjQ4NHEzLjM4NSAwIDYuNjgyLjQ4M2wxNC4zMTkgMjkuNzE4IDE0Ljc1MS0yOS43MThxMi42OS0uNDgzIDUuOTg4LS40ODNtMTMwLjgzNCAxMi4yMDJxNC4zMjUgMCA3LjY4OSAxLjUyMiAzLjM2NSAxLjUyMiA1LjcyNyA0LjE2NiAyLjM2NCAyLjY0MiAzLjU2NiA2LjI4NyAxLjIgMy42NDYgMS4yIDcuODEgMCAxLjUyMy0uMTIgMy4wMDVhMjUgMjUgMCAwIDEtLjI4IDIuMzYzaC0yNi41OTRxLjMyMSA0LjgwNSAzLjM2NSA2Ljk2OHQ4LjAxIDIuMTYzcTIuNzI0IDAgNS41NjctLjUyMmEzMS42IDMxLjYgMCAwIDAgNS40MDctMS40OHEuODgyIDEuNjAxIDEuNTIyIDMuODQ0dC43MiA0LjgwNnEtNi4yNDcgMi40MDMtMTQuMDk4IDIuNDAzLTUuNzY2IDAtOS44OTItMS42MDItNC4xMjQtMS42MDItNi43MjgtNC40NDYtMi42MDQtMi44NDItMy44NDUtNi43NjktMS4yNDEtMy45MjQtMS4yNC04LjU3LS4wMDEtNC41NjUgMS4yOC04LjU3IDEuMjgtNC4wMDcgMy44MDUtNi45NyAyLjUyMy0yLjk2NCA2LjI0OC00LjY4NnQ4LjY5LTEuNzIyem0xMzYuMDkyIDBxNS4wNDYgMCA4LjgxIDEuNjgyIDMuNzY0IDEuNjg0IDYuMjUgNC42MDYgMi40ODEgMi45MjUgMy42ODQgNi45MjkgMS4yIDQuMDA1IDEuMjAxIDguNTcgMCA0LjU2Ny0xLjIwMSA4LjQ5MS0xLjIwMyAzLjkyNi0zLjY4NSA2Ljg0OC0yLjQ4NSAyLjkyNS02LjI0OSA0LjU2Ny0zLjc2NCAxLjY0MS04LjgxIDEuNjQyLTUuMDQ4IDAtOC43Ny0xLjY0Mi0zLjcyNi0xLjY0MS02LjE3LTQuNTY3LTIuNDQyLTIuOTIyLTMuNjg0LTYuODQ4dC0xLjI0MS04LjQ5cTAtNC41NjcgMS4yNDEtOC41NzEgMS4yNDItNC4wMDUgMy42ODUtNi45MjkgMi40NDItMi45MjMgNi4xNjgtNC42MDYgMy43MjQtMS42ODEgOC43Ny0xLjY4MnptNDEuMjc3IDBxMy4xMjMgMCA2LjE2Ny41NjFhMzkuMyAzOS4zIDAgMCAxIDYuMTY4IDEuNjgyIDIyIDIyIDAgMCAxLS44MDIgNC4zMjVxLS42NCAyLjI0NC0xLjUyIDMuOTI2YTMyIDMyIDAgMCAwLTQuMjQ3LTEuNDAyIDE5LjUgMTkuNSAwIDAgMC00Ljg4NS0uNjAxcS0yLjcyMyAwLTQuMjQ2Ljg0MS0xLjUyMi44NC0xLjUyMSAyLjY4MyAwIDEuNzYyIDEuMDggMi40ODQgMS4wODIuNzIxIDMuMDg0IDEuMzYxbDQuNTY2IDEuMzYzcTIuMjQ0LjY0IDQuMDQ1IDEuNTYxIDEuODAyLjkyMiAzLjA4NCAyLjI4MyAxLjI4MiAxLjM2MyAyLjAwMiAzLjM2NC43MjIgMi4wMDMuNzIyIDQuODg2IDAgMi45NjUtMS4yNDIgNS41MjctMS4yNDIgMi41NjQtMy42MDQgNC40NDUtMi4zNjQgMS44ODQtNS43MjggMi45NjQtMy4zNjQgMS4wODItNy42MSAxLjA4MmE0NyA0NyAwIDAgMS0zLjUyMy0uMTIgMjggMjggMCAwIDEtMy4wODQtLjQgMzYgMzYgMCAwIDEtMi45MjQtLjY4MSAzNiAzNiAwIDAgMS0zLjEyNC0xLjA0MiAyMyAyMyAwIDAgMSAuNzYtNC4zNjUgMjcuNSAyNy41IDAgMCAxIDEuNTYzLTQuMjg2cTIuNjQ0IDEuMDQyIDUuMDA3IDEuNTYyIDIuMzYyLjUyMiA0LjkyNi41MjEgMS4xMjEgMCAyLjQ0Mi0uMmE5IDkgMCAwIDAgMi40NDQtLjcyIDUuOCA1LjggMCAwIDAgMS44ODItMS4zNjNxLjc2MS0uODQuNzYtMi4yMDMgMC0xLjkyMi0xLjE2LTIuNzY0LTEuMTY0LS44NDEtMy4yNDQtMS40ODFsLTQuOTY3LTEuNDQycS00LjQ4Ni0xLjI4Mi03LjAwOC0zLjgwNS0yLjUyNC0yLjUyMy0yLjUyNC03LjU3IDAtNi4wODYgNC4zNjUtOS41MzF0MTEuODk2LTMuNDQ1TTI1Ni45NTIgMTcuMTh2MTIuMDk1aDkuNjkzcS4yNCAxLjIwMS4zMiAyLjE2M3QuMDggMi4wMDNxMCAxLjEyLS4wOCAyLjE2MmEyMiAyMiAwIDAgMS0uMzIgMi4zMjNoLTkuNjkzdjE2LjI2MXEwIDIuNDgzLjQwMiA0LjAwNS40IDEuNTIgMS4xNiAyLjQwNGEzLjgzIDMuODMgMCAwIDAgMS44ODMgMS4ycTEuMTIyLjMyMSAyLjY0My4zMjEgMS4yMDMgMCAyLjM2NC0uMnQyLjA0Mi0uMzZhMTUuNyAxNS43IDAgMCAxIC44IDMuMTYzcS4yNDMgMS42NDMuMjQyIDIuOTI0IDAgLjg4MS0uMDQgMS40ODNhMTYgMTYgMCAwIDEtLjEyIDEuMTZxLTMuNjg1Ljg4Mi03LjYxLjg4LTcuMjkgMC0xMS4xMzQtMy40MDItMy44NDYtMy40MDUtMy44NDYtMTEuMDk1VjM3LjkyNmgtNS4yMDZsLS40MDEtMS42MDIgMTQuOTgtMTkuMTQ0em0tMzAuMDUyIDB2MTIuMDk1aDkuNjkycS4yNCAxLjIwMS4zMjEgMi4xNjMuMDc5Ljk2MS4wNzkgMi4wMDMgMCAxLjEyLS4wNzkgMi4xNjJhMjIgMjIgMCAwIDEtLjMyMSAyLjMyM0gyMjYuOXYxNi4yNjFxMCAyLjQ4My40MDEgNC4wMDUuNCAxLjUyIDEuMTYgMi40MDRhMy44MyAzLjgzIDAgMCAwIDEuODgzIDEuMnExLjEyMy4zMjEgMi42NDMuMzIxIDEuMjAyIDAgMi4zNjQtLjJ0Mi4wNDItLjM2YTE1LjcgMTUuNyAwIDAgMSAuODAyIDMuMTYzcS4yNCAxLjY0My4yNCAyLjkyNCAwIC44ODEtLjA0IDEuNDgzLS4wNC42LS4xMjEgMS4xNmEzMi42IDMyLjYgMCAwIDEtNy42MDkuODhxLTcuMjkgMC0xMS4xMzQtMy40MDItMy44NDUtMy40MDUtMy44NDUtMTEuMDk1VjM3LjkyNmgtNS4yMDdsLS40LTEuNjAyIDE0Ljk3OS0xOS4xNDR6bTEwNy44NCAxMS42MTRxLjgwMSAwIDEuODQyLjA4MSAxLjA0LjA4IDEuNTIyLjI0LjE2LjgwMS4yNCAxLjg0Mi4wODEgMS4wNDIuMDggMi4xNjQgMCAxLjM2LS4xMiAyLjk2M2EyMSAyMSAwIDAgMS0uNDQgMy4wNDMgMTEgMTEgMCAwIDAtMS45NjItLjE2aC0xLjMyMnEtMS4zNjIgMC0zLjA0NS4yOC0xLjY4LjI4Mi0zLjIwNCAxLjQ4NC0xLjUyMiAxLjItMi41MjIgMy42MDQtMS4wMDIgMi40MDMtMS4wMDIgNi43Mjl2MTkuNzA1cS0xLjQ0MS4yMzktMi44ODQuMzE5YTQ4IDQ4IDAgMCAxLTUuNTY3IDAgMzAgMzAgMCAwIDEtMi45MjMtLjMyVjI5LjI3NnExLjIwMS0uMjQgMi4yODItLjM2IDEuMDgyLS4xMiAyLjM2NC0uMTIgMS4yMDMgMCAyLjM2Mi4xNiAxLjE2My4xNiAyLjI4My40LjI0MS40MDEuNDQxIDEuMTYyLjIuNzYyLjM2MSAxLjYwMnQuMjggMS42ODNsLjIgMS40MDFxMS43NjQtMi40ODMgNC4zMjUtNC40NDUgMi41NjUtMS45NjQgNi40MDgtMS45NjR6bTU1LjM5NS0uNDhxNy4wNSAwIDEwLjM3MyAzLjg4NiAzLjMyNCAzLjg4NCAzLjMyNCAxMi4xMzV2MjYuMzUzcS0yLjg4My40OC01LjY4Ny40OHQtNS42ODYtLjQ4di0yMy4zOXEwLTQuMzI2LTEuMDgzLTYuNjQ3LTEuMDgtMi4zMjQtNC4zNjUtMi4zMjQtMS4zNjIgMC0yLjY4Mi40LTEuMzIzLjQtMi40MDQgMS40ODItMS4wOCAxLjA4LTEuNzYzIDMuMDQ1Yy0uNDU0IDEuMzA2LS42OCAzLjAwNC0uNjggNS4wODV2MjIuMzQ5YTM0LjYgMzQuNiAwIDAgMS01LjY4OC40OCAzNC42IDM0LjYgMCAwIDEtNS42ODgtLjQ4di0yMy4zOXEwLTQuMzI2LTEuMDgtNi42NDctMS4wODItMi4zMjQtNC4zNjYtMi4zMjRhOS43IDkuNyAwIDAgMC0yLjcyNC40cS0xLjM2LjQtMi40NDMgMS41NjItMS4wODEgMS4xNjEtMS43MjEgMy4yNDUtLjY0MiAyLjA4MS0uNjQyIDUuNDQ2djIxLjcwOHEtMi44ODMuNDgtNS42ODcuNDgtMi44MDMgMC01LjY4Ni0uNDhWMjkuMjc1YTIyIDIyIDAgMCAxIDIuMjQyLS4zNnExLjEyMS0uMTIgMi40ODQtLjEyYTIxIDIxIDAgMCAxIDIuNDAyLjEycTEuMDQyLjEyIDIuMTYzLjM2LjI0LjQwMS40NCAxLjE2MnQuMzYxIDEuNjAyLjI4IDEuNjQycS4xMi44MDEuMjAxIDEuMzYxLjY0LTEuMiAxLjY4Mi0yLjQwMyAxLjA0MS0xLjIgMi40ODMtMi4xNjJhMTMuNSAxMy41IDAgMCAxIDMuMjQ0LTEuNTYycTEuODAyLS42IDQuMDQ1LS42MDEgOS42OTIgMCAxMi40MTYgNy4zNyAxLjYtMi45NjQgNC41MjYtNS4xNjcgMi45MjMtMi4yMDMgNy40MS0yLjIwM3ptMTEwLjMzLTExLjEzNHYxMi4wOTVoOS42OTJhMTkgMTkgMCAwIDEgLjMyMSAyLjE2M3EuMDguOTYxLjA4IDIuMDAzYTI4IDI4IDAgMCAxLS4wOCAyLjE2MiAyMiAyMiAwIDAgMS0uMzIgMi4zMjNoLTkuNjkydjE2LjI2MXEwIDIuNDgzLjQgNC4wMDUuNCAxLjUyIDEuMTYxIDIuNDA0YTMuODMgMy44MyAwIDAgMCAxLjg4MyAxLjJxMS4xMjIuMzIxIDIuNjQzLjMyMSAxLjIgMCAyLjM2NC0uMiAxLjE2LS4yIDIuMDQxLS4zNmExNS41IDE1LjUgMCAwIDEgLjgwMSAzLjE2MyAyMC4yIDIwLjIgMCAwIDEgLjIgNC40MDcgMTUgMTUgMCAwIDEtLjExOSAxLjE2cS0zLjY4NC44ODItNy42MS44OC03LjI4OSAwLTExLjEzNC0zLjQwMi0zLjg0NS0zLjQwNi0zLjg0NS0xMS4wOTVWMzcuOTI2aC01LjIwNmwtLjQwMS0xLjYwMiAxNC45NzktMTkuMTQ0em0tNzMuNDY3IDIwLjAyNXEtNC40MDYgMC02LjM2OCAzLjMyNS0xLjk2NCAzLjMyNC0xLjk2NCA5LjU3MnQxLjk2NCA5LjU3MnExLjk2MiAzLjMyNCA2LjM2OCAzLjMyNCA0LjQ4NiAwIDYuNDQ3LTMuMzI0IDEuOTYzLTMuMzI0IDEuOTYzLTkuNTcydC0xLjk2My05LjU3MnEtMS45NjEtMy4zMjUtNi40NDctMy4zMjVNMTkyLjk2MyA1MS4zMDRxLTMuOTI1IDAtNi4yMDggMS40MDF0LTIuMjgzIDQuNTI2cTAgMi4wODMuODgyIDMuMjA0Ljg4MSAxLjEyMSAyLjEyMiAxLjY0MWE4LjcgOC43IDAgMCAwIDIuNjQzLjY0MnExLjQwNC4xMiAyLjQ0My4xMiAxLjIwMyAwIDIuNDAzLS4yYTEzNiAxMzYgMCAwIDAgMi4wODQtLjM2MVY1MS43MDRxLS45NjEtLjE2LTIuMDg0LS4yOC0xLjEyLS4xMi0yLjAwMi0uMTJNNTQuOTc2IDMuODg1Yy4xOTUuMDY3LjM1My4xOS40NjcuMzQzbC4wNjMuMDk2LjAyNC4wMzguMDIuMDQ0Yy4wNTYuMTA2LjEwMy4yMjYuMTI1LjM3NS4wNC4yNzEuMDYuODgyLjA3IDEuNTNsLjAwMy4zOTIuMDAyLjM4NnYuNjk5Yy0uMDAxLjM2OC0uMDA0LjYzMy0uMDA0LjY4N3YuMDFsLjE2NSA2LjIyMi4yNDQgNy4xOC4zMDUgMTIuNDh2LjA4NGMtLjAwMy43MjYtLjE1NCA1LjkzMy0zLjg1IDkuNTUzLTMuOTggMy45LTguODY4IDMuNTQyLTEyLjA0OCAyLjQ2Ni0zLjE4LTEuMDc3LTcuMjgtMy43NjMtOC4wNzQtOS4yNzgtLjc3OC01LjQxIDIuNjYzLTkuODI1IDIuNzkzLTkuOTlsLjAwMy0uMDA0IDcuODIzLTkuNzI4IDQuNTU2LTUuNTU1IDMuOTEtNC44NDJzMS43OTUtMi40MDQgMi4zMDYtMi45cS4xMDItLjA5Ny4yMDUtLjE1N2wuMTAyLS4wNTUuMDc1LS4wMzguMDEzLS4wMDVhLjk3Ljk3IDAgMCAxIC43MDItLjAzM20yMzUuNzcgMzMuMDhxLTQuMDA1IDAtNi4wODggMi4yNDMtMi4wODEgMi4yNDMtMi40ODMgNi4zMjloMTYuMThxLS4xNi0zLjg0Ni0yLjEyMy02LjIwOC0xLjk2Mi0yLjM2NC01LjQ4Ny0yLjM2NXoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsIDAsIDAsIDApIiBkPSJNMCAwaDUxMnY4NUgweiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Mattermost",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 404,
+        "icon": "file:googlecloudnaturallanguage.png",
+        "name": "n8n-nodes-base.googleCloudNaturalLanguage",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlecloudnaturallanguage/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Analytics"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Cloud Natural Language"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAAB5ElEQVRogeXXwUrDQBAG4OIT6N2bb+ALeJZQcHP0po/RqgSEJPWNPPoSrSKCeLdNFaSllHgKBE2a2ZnZmW12YK9/5uu/pO1gQBjz8H0W50UpeSj7kkYaqgrXxsZ5UZrJ11VQYLGWtZHiaG2gKFgbJ47WhomCtVHiaG2QKFgbI47WhoiCtRHiaG2AKBjygLahLk7JxWmT8oCyWDSaOgFDcp2127UYBU3NtcJeJItDrsWwaGquk3abFqsvREVD8snoOF9GLsBcTdvksrfbtRB2TLaw+0DHzzi0yYtHH8D11kDg0bQ06dwezH3lKOAKDQVbX+04X658Azdl7AK3odnatW0AczD5nWgs1ldwE7r34FY0Bes7+C/aORg7nOB/6BDAdXQwYJPNwwJXLQ/iyc9xn19a9dP7r6VW8GVWHPUd3OufliCwj/+WuMCN2CDBGLTv4J3YIMG2aOpCLl9aICwVvN5sy/VmS4ZWOSJgGzTkWnI0a5trhQ0SDEX7CEZhgwRD0VQc5yFhoWCTfqpD2cBQdDSa9QMLBatf7fFsxQbeBzQr1gasgR7evT6xg31GO8HagsXQt2/XzsA+op1iMWCX6PP7jxPnYAzapPP9bBcLjvOijG5e9hNLQjNhh8n7qTgYC9du9hf86m67ra1foAAAAABJRU5ErkJggg=="
+        },
+        "displayName": "Google Cloud Natural Language",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 10,
+            "name": "Analytics"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 17,
+        "name": "HR"
+      },
+      {
+        "id": 18,
+        "name": "Product"
+      },
+      {
+        "id": 25,
+        "name": "AI"
+      }
+    ],
+    "image": [
+      {
+        "id": 346,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/aefdd6ef2ed746478bc9694641ab7a71.png"
+      }
+    ]
+  }
+}

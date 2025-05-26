@@ -1,0 +1,11 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.n8ntrainingcustomermessenger/
+Scraped_At: 2025-05-20T18:50:04.103144
+
+Customer Messenger (n8n Training) node
+#
+Use this node only for the n8n new user onboarding tutorial. It provides no further functionality.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

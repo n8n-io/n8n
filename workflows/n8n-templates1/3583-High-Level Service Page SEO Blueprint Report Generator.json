@@ -1,0 +1,1903 @@
+{
+  "workflow": {
+    "id": 3583,
+    "name": "High-Level Service Page SEO Blueprint Report Generator",
+    "views": 5040,
+    "recentViews": 296,
+    "totalViews": 5040,
+    "createdAt": "2025-04-17T10:36:18.449Z",
+    "description": "## Introduction\nThe \"High-Level Service Page SEO Blueprint Report\" workflow is a powerful, AI-driven solution designed to generate comprehensive SEO content strategies for service-based businesses.\n\nBy analyzing competitor websites and user intent, this workflow creates a detailed blueprint that outlines the optimal structure, content, and conversion elements for a service page. The workflow leverages the JINA Reader API to extract content from competitor websites and uses Google Gemini AI to perform deep analysis across multiple dimensions: competitor content structure, user intent, strategic opportunities, and conversion optimization.\n\nThe final output is a professionally formatted Markdown document that provides actionable guidance for creating a high-performing service page that satisfies both user needs and search engine requirements. This workflow eliminates the time-consuming process of manually analyzing competitors and developing content strategies, providing a data-driven foundation for service page creation that would typically require hours of expert analysis.\n\n## Who is this for?\nThis workflow is designed for digital marketers, SEO specialists, content strategists, and web developers who need to create or optimize service pages for businesses. It's particularly valuable for marketing agencies and freelancers who regularly develop content strategies for clients across various industries. \n\nUsers should have a basic understanding of SEO concepts, content marketing, and website structure. While technical SEO knowledge is beneficial, the workflow is designed to provide comprehensive guidance even for those with intermediate-level expertise. \n\nThe ideal user is someone who wants to streamline their content planning process and ensure their service pages are built on data-driven insights rather than guesswork.\n\n## What problem is this workflow solving?\nCreating effective service pages that rank well in search engines while converting visitors is a complex challenge that typically requires extensive competitive research, content planning, and conversion optimization expertise. This workflow addresses several key pain points:\n\n1. **Time-consuming competitor analysis**: Manually analyzing multiple competitor websites to identify content patterns, heading structures, and meta tag strategies can take hours.\n\n2. **Difficulty identifying content gaps**: Determining what topics competitors are missing that could provide a competitive advantage requires deep analysis and industry knowledge.\n\n3. **Balancing SEO and conversion elements**: Creating content that satisfies both search engines and user needs while driving conversions is a delicate balance that many struggle to achieve.\n\n4. **Lack of structured approach**: Many content creators work without a comprehensive blueprint, leading to inconsistent results and missed opportunities.\n\n5. **Difficulty translating analysis into actionable recommendations**: Even when analysis is performed, turning those insights into a concrete content plan can be challenging.\n\nThis workflow automates these processes, providing a structured, data-driven approach to service page creation that saves hours of research and planning time.\n\n## What this workflow does\n### Overview\nThe workflow takes a list of competitor URLs and a target keyword as input, then performs a multi-stage analysis to generate a comprehensive service page blueprint. It extracts and analyzes competitor content, evaluates user intent, identifies strategic opportunities, and creates detailed recommendations for page structure, content, and conversion elements. \n\nThe final output is a professionally formatted Markdown document that serves as a complete roadmap for creating an effective service page.\n\n### Process\n1. **Data Collection**: The workflow begins with a form that collects essential information: competitor URLs, target keyword, services offered, brand name, and whether the page is a homepage.\n\n2. **Competitor Content Extraction**: The workflow processes each competitor URL, using the JINA Reader API to extract the HTML content from each site.\n\n3. **Content Structure Analysis**: For each competitor site, the workflow extracts and analyzes heading structures, meta tags, schema markup, and recurring phrases (n-grams).\n\n4. **Competitor Analysis Report**: The AI synthesizes the competitive data to identify patterns in meta titles/descriptions, common outline sections, key heading concepts, and structural elements.\n\n5. **User Intent Analysis**: The workflow analyzes the target keyword to determine primary and secondary user intents, user personas, and their position in the buyer's journey.\n\n6. **Gap Analysis**: The AI identifies content overlaps (\"table stakes\"), content gaps (opportunities), SEO keyword priorities, and potential UX/conversion advantages.\n\n7. **Page Outline Generation**: Based on the previous analyses, the workflow creates an optimal page structure with H1, H2s, H3s, and potentially H4s, with justifications for each section.\n\n8. **UX & Conversion Recommendations**: The workflow adds detailed recommendations for calls-to-action, trust signals, copywriting tone, visual elements, and risk reversal strategies.\n\n9. **Final Blueprint Creation**: All analyses and recommendations are compiled into a comprehensive, well-structured Markdown document that serves as a complete service page blueprint.\n\n## Setup\n1. Download or import the \"High-Level Service Page SEO Blueprint Report\" workflow JSON file into your n8n instance.\n\n2. Create a JINA Reader API key by visiting [https://jina.ai/api-dashboard/key-manager](https://jina.ai/api-dashboard/key-manager). You can claim a free API key that allows up to 1 million tokens.\n\n3. Set up Google Gemini (PaLM) credentials by following the guide at [https://docs.n8n.io/integrations/builtin/credentials/googleai/#using-geminipalm-api-key](https://docs.n8n.io/integrations/builtin/credentials/googleai/#using-geminipalm-api-key).\n\n4. Update the \"Edit Fields\" node with:\n   - Your JINA Reader API Key\n   - Adjust the \"Waiting Time\" to 20 seconds if using the free Google Gemini API tier (which limits to 5 requests per minute)\n   - Optionally change the Gemini model if needed\n\n5. Activate the workflow and start the form trigger.\n\n6. Complete the form with:\n   - Competitors (up to 5 direct competitor URLs)\n   - Target Keyword (the query related to your service)\n   - Services Offered (details of your complete service offerings)\n   - Brand Name (your company name)\n   - Whether the page is a homepage\n\n7. After processing, download the generated .txt file, which contains the blueprint in Markdown format.\n\n## How to customize this workflow to your needs\n1. **Adjust AI parameters**: Modify the temperature settings in the Google Gemini Chat Model nodes to control creativity vs. precision in the AI outputs.\n\n2. **Customize extraction logic**: Edit the \"Extract HTML Elements\" code node to focus on specific HTML elements that are most relevant to your industry or content type.\n\n3. **Modify analysis prompts**: Customize the prompts in the various analysis nodes to focus on specific aspects of SEO or content strategy that are most important for your use case.\n\n4. **Add industry-specific guidance**: Enhance the prompts with industry-specific instructions or examples to make the output more relevant to particular sectors.\n\n5. **Integrate with content management systems**: Extend the workflow to automatically send the blueprint to content management systems, project management tools, or document storage platforms.\n\n6. **Add competitor scoring**: Implement a scoring system to evaluate and rank competitors based on specific criteria relevant to your strategy.\n\n7. **Expand the analysis**: Add additional analysis nodes to evaluate other aspects of competitor websites, such as page speed, mobile-friendliness, or backlink profiles.",
+    "workflow": {
+      "id": "WETMyIJCbD3et6Rh",
+      "meta": {
+        "instanceId": "ddfdf733df99a65c801a91865dba5b7c087c95cc22a459ff3647e6deddf2aee6"
+      },
+      "name": "High-Level Service Page SEO Blueprint Report",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "49aa0dd2-1d64-4047-9988-8e4f386d557a",
+          "name": "Convert URLs to Items",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            600,
+            500
+          ],
+          "parameters": {
+            "jsCode": "// Get the raw input string from the \"Start\" node\nconst input = $('Start').item.json.Competitors;\n\n// Split the string by line breaks and filter out any empty lines\nconst urls = input\n  .split('\\n')\n  .map(url => url.trim())\n  .filter(url => url.length > 0);\n\n// Return the array as output with \"competitor_url\" field\nreturn urls.map(url => ({ json: { competitor_url: url } }));"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "ec7b74db-43fc-4041-b63e-02ff21b9442e",
+          "name": "Start",
+          "type": "n8n-nodes-base.formTrigger",
+          "position": [
+            240,
+            500
+          ],
+          "webhookId": "dafbc2ba-7397-4f83-b84d-630294e636b0",
+          "parameters": {
+            "options": {},
+            "formTitle": "Competitors Analysis for Service-Based Queries",
+            "formFields": {
+              "values": [
+                {
+                  "fieldType": "textarea",
+                  "fieldLabel": "Competitors",
+                  "placeholder": "competitor1.com\ncompetitor2.com",
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "Target Keyword",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "textarea",
+                  "fieldLabel": "Services Offered",
+                  "requiredField": true
+                },
+                {
+                  "fieldLabel": "Brand Name",
+                  "requiredField": true
+                },
+                {
+                  "fieldType": "dropdown",
+                  "fieldLabel": "Is Homepage?",
+                  "fieldOptions": {
+                    "values": [
+                      {
+                        "option": "Yes"
+                      },
+                      {
+                        "option": "No"
+                      }
+                    ]
+                  }
+                }
+              ]
+            },
+            "formDescription": "Generate a high-level service page content blueprint report to follow to beat the competition. \n\nNote: Do not add more than 5 competitors otherwise this could dilute the context and quality of the final report."
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "c517d397-4962-4281-962e-a57e3a12bea0",
+          "name": "Loop Over Items",
+          "type": "n8n-nodes-base.splitInBatches",
+          "position": [
+            880,
+            500
+          ],
+          "parameters": {
+            "options": {}
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "ac532215-626d-4690-9c99-d11f09fa86dc",
+          "name": "Get URL HTML",
+          "type": "n8n-nodes-base.httpRequest",
+          "onError": "continueErrorOutput",
+          "maxTries": 5,
+          "position": [
+            1100,
+            340
+          ],
+          "parameters": {
+            "url": "=https://r.jina.ai/{{ $json.competitor_url }}",
+            "options": {},
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Edit Fields').first().json['JINA Reader API Key'] }}"
+                },
+                {
+                  "name": "X-Return-Format",
+                  "value": "html"
+                }
+              ]
+            }
+          },
+          "executeOnce": false,
+          "retryOnFail": true,
+          "typeVersion": 4.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "ed03887c-9996-4dfb-b46a-a745bc64864a",
+          "name": "Extract HTML Elements",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1300,
+            340
+          ],
+          "parameters": {
+            "jsCode": "// Function to remove inner HTML tags and decode common HTML entities\nfunction cleanText(text) {\n  // Remove any HTML tags inside the text\n  let cleaned = text.replace(/<\\/?[^>]+(>|$)/g, '');\n\n  // Decode common HTML entities\n  cleaned = cleaned\n    .replace(/&nbsp;/g, ' ')  // Non-breaking space\n    .replace(/&amp;/g, '&')   // Ampersand\n    .replace(/&quot;/g, '\"')  // Double quote\n    .replace(/&lt;/g, '<')    // Less-than\n    .replace(/&gt;/g, '>')    // Greater-than\n    .replace(/&#8217;/g, \"'\")  // Right single quotation mark\n    .replace(/&#8220;/g, '\"')  // Left double quotation mark\n    .replace(/&#8221;/g, '\"')  // Right double quotation mark\n    .replace(/&rsquo;/g, \"'\")  // Right single quotation mark\n    .replace(/&lsquo;/g, \"'\")  // Left single quotation mark\n    .replace(/&rdquo;/g, '\"')  // Right double quotation mark\n    .replace(/&ldquo;/g, '\"')  // Left double quotation mark\n    .replace(/&mdash;/g, '\u2014')  // Em dash\n    .replace(/&ndash;/g, '\u2013')  // En dash\n    .replace(/&hellip;/g, '\u2026') // Ellipsis\n    .replace(/&#(\\d+);/g, (match, dec) => String.fromCharCode(dec)); // Handle numeric entities\n\n  return cleaned.trim();  // Remove extra whitespace\n}\n\n// Function to generate n-grams from text\nfunction generateNgrams(text, n) {\n  // Convert text to lowercase and split into words\n  const words = text.toLowerCase()\n    .replace(/[^\\w\\s]|_/g, ' ')  // Replace punctuation and underscores with spaces\n    .replace(/\\s+/g, ' ')        // Replace multiple spaces with a single space\n    .trim()                       // Remove leading/trailing spaces\n    .split(' ');                  // Split into words\n  \n  // Filter out stop words and very short words (optional)\n  const filteredWords = words.filter(word => word.length > 1);\n  \n  // Generate n-grams\n  const ngrams = [];\n  for (let i = 0; i <= filteredWords.length - n; i++) {\n    ngrams.push(filteredWords.slice(i, i + n).join(' '));\n  }\n  \n  return ngrams;\n}\n\n// Function to count n-grams\nfunction countNgrams(textArray, n) {\n  const ngramCounts = {};\n  \n  textArray.forEach(text => {\n    const ngrams = generateNgrams(text, n);\n    \n    ngrams.forEach(ngram => {\n      ngramCounts[ngram] = (ngramCounts[ngram] || 0) + 1;\n    });\n  });\n  \n  // Convert to array of objects and sort by count (descending)\n  return Object.entries(ngramCounts)\n    .map(([phrase, count]) => ({ phrase, count }))\n    .sort((a, b) => b.count - a.count);\n}\n\n// Initialize an array to store the results for each item\nlet results = [];\n\n// Iterate through all items (each item corresponds to one URL in the loop)\nitems.forEach(item => {\n  // Get the raw HTML content for the current item\n  const html = item.json.data || '';  // Ensure you're getting the correct field where HTML is stored\n\n  // Initialize arrays to store the extracted outline\n  let outline = [];\n  let meta = {};\n  let schemas = [];\n  let headingTexts = []; // Store all heading texts for n-gram analysis\n\n  // Store all headings with their positions to maintain original order\n  let headingsWithPositions = [];\n  \n  // Extract heading content with a more robust approach\n  for (let i = 1; i <= 6; i++) {\n    // This regex pattern matches h1-h6 tags, capturing everything between opening and closing tags\n    // even if there are nested elements\n    const pattern = new RegExp(`<h${i}[^>]*>((?:.|\\n)*?)<\\/h${i}>`, 'gi');\n    let match;\n    \n    while ((match = pattern.exec(html)) !== null) {\n      const fullContent = match[1];\n      const cleanedText = cleanText(fullContent);\n      \n      // Only add non-empty headings\n      if (cleanedText && cleanedText.trim().length > 0) {\n        headingsWithPositions.push({\n          position: match.index,\n          level: i,\n          tag: `h${i}`,\n          text: cleanedText\n        });\n        \n        // Add to headingTexts for n-gram analysis\n        headingTexts.push(cleanedText);\n      }\n    }\n  }\n  \n  // Sort headings by their position in the HTML to maintain the original order\n  headingsWithPositions.sort((a, b) => a.position - b.position);\n  \n  // Process the sorted headings\n  headingsWithPositions.forEach(heading => {\n    // Build the outline based on the heading level with dot-based indentation\n    const indentation = '.'.repeat(heading.level - 1);  // No dots for H1, one for H2, etc.\n    outline.push(`${indentation}${heading.tag.toUpperCase()}: ${heading.text}`);\n  });\n\n  // Generate n-grams (2-gram, 3-gram, and 4-gram) from all headings\n  const ngrams = {\n    '2gram': countNgrams(headingTexts, 2),\n    '3gram': countNgrams(headingTexts, 3),\n    '4gram': countNgrams(headingTexts, 4)\n  };\n  \n  // Filter out n-grams with only one occurrence (optional)\n  // This can be adjusted based on preference\n  const filteredNgrams = {\n    '2gram': ngrams['2gram'].filter(item => item.count > 1),\n    '3gram': ngrams['3gram'].filter(item => item.count > 1),\n    '4gram': ngrams['4gram'].filter(item => item.count > 1)\n  };\n\n  // Extract title tag\n  const titleMatch = html.match(/<title>(.*?)<\\/title>/i);\n  if (titleMatch && titleMatch[1]) {\n    meta.title = cleanText(titleMatch[1]);\n  }\n\n  // Extract meta tags\n  const metaTags = [\n    { name: 'description', regex: /<meta\\s+name=\"description\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'canonical', regex: /<link\\s+rel=\"canonical\"\\s+href=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:locale', regex: /<meta\\s+property=\"og:locale\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:type', regex: /<meta\\s+property=\"og:type\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:title', regex: /<meta\\s+property=\"og:title\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:description', regex: /<meta\\s+property=\"og:description\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:url', regex: /<meta\\s+property=\"og:url\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:site_name', regex: /<meta\\s+property=\"og:site_name\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'article:publisher', regex: /<meta\\s+property=\"article:publisher\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'article:modified_time', regex: /<meta\\s+property=\"article:modified_time\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:image', regex: /<meta\\s+property=\"og:image\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:image:width', regex: /<meta\\s+property=\"og:image:width\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:image:height', regex: /<meta\\s+property=\"og:image:height\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'og:image:type', regex: /<meta\\s+property=\"og:image:type\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'twitter:card', regex: /<meta\\s+name=\"twitter:card\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'twitter:title', regex: /<meta\\s+name=\"twitter:title\"\\s+content=\"([^\"]*)\"[^>]*>/i },\n    { name: 'twitter:site', regex: /<meta\\s+name=\"twitter:site\"\\s+content=\"([^\"]*)\"[^>]*>/i }\n  ];\n\n  // Extract each meta tag\n  metaTags.forEach(tag => {\n    const match = html.match(tag.regex);\n    if (match && match[1]) {\n      meta[tag.name] = cleanText(match[1]);\n    }\n  });\n\n  // Extract all meta tags with name or property attributes (more general approach)\n  const generalMetaRegex = /<meta\\s+(?:name|property)=\"([^\"]*)\"\\s+content=\"([^\"]*)\"[^>]*>/gi;\n  let metaMatch;\n  while ((metaMatch = generalMetaRegex.exec(html)) !== null) {\n    const name = metaMatch[1];\n    const content = cleanText(metaMatch[2]);\n    \n    // Only add if not already captured and has content\n    if (content && !meta[name]) {\n      meta[name] = content;\n    }\n  }\n\n  // Extract JSON-LD schema data\n  const schemaRegex = /<script\\s+type=\"application\\/ld\\+json\"[^>]*>([\\s\\S]*?)<\\/script>/gi;\n  let schemaMatch;\n  \n  while ((schemaMatch = schemaRegex.exec(html)) !== null) {\n    try {\n      const schemaText = schemaMatch[1].trim();\n      if (schemaText) {\n        const schemaData = JSON.parse(schemaText);\n        schemas.push(schemaData);\n      }\n    } catch (e) {\n      // If JSON parsing fails, add the raw text\n      schemas.push({ raw: schemaMatch[1].trim() });\n    }\n  }\n\n  // Add the outline, meta, schema, and ngrams for the current item to the results array\n  results.push({\n    json: {\n      outline: outline,  // Array containing the hierarchy of headings with dot-based indentation\n      meta: Object.keys(meta).length > 0 ? meta : undefined,  // Only include if meta tags were found\n      schema: schemas.length > 0 ? schemas : undefined,  // Only include if schema data was found\n      ngrams: headingTexts.length > 0 ? filteredNgrams : undefined  // Only include if headings were found\n    }\n  });\n});\n\n// Return the results for all items (all URLs in the loop)\nreturn results;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9c873ba5-84b2-4366-ac96-a1380ce66701",
+          "name": "Set URL Data",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1480,
+            340
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "186daf52-90b2-4608-9c94-243187069bf4",
+                  "name": "Competitor URL",
+                  "type": "string",
+                  "value": "={{ $('Loop Over Items').item.json.competitor_url }}"
+                },
+                {
+                  "id": "3bb3057c-d84f-4eac-8da2-22740a2c293c",
+                  "name": "Outline",
+                  "type": "string",
+                  "value": "={{ JSON.stringify($json.outline) }}"
+                },
+                {
+                  "id": "53c1b42c-14ce-48a0-8802-5b175d7ab127",
+                  "name": "Meta",
+                  "type": "string",
+                  "value": "={{ JSON.stringify($json.meta) }}"
+                },
+                {
+                  "id": "ca84a96b-f370-42b6-9f4d-a1e4d1ab066a",
+                  "name": "Ngrams",
+                  "type": "string",
+                  "value": "={{ JSON.stringify($json.ngrams) }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "5fae604a-d44d-4022-905a-51742ab23144",
+          "name": "Code",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1100,
+            520
+          ],
+          "parameters": {
+            "jsCode": "let output = '';\n\nfor (const [index, item] of items.entries()) {\n  const data = item.json;\n\n  const formatField = (value) => {\n    if (typeof value === 'string') {\n      try {\n        const parsed = JSON.parse(value);\n        return JSON.stringify(parsed, null, 2); // Pretty print with 2-space indent\n      } catch {\n        return value; // Not JSON, return as-is\n      }\n    }\n    return value;\n  };\n\n  output += `<competitor${index + 1}>\\n`;\n  output += `  <competitor url>\\n    ${data[\"Competitor URL\"]}\\n  </competitor url>\\n\\n`;\n  output += `  <outline>\\n    ${formatField(data[\"Outline\"])}\\n  </outline>\\n\\n`;\n  output += `  <meta>\\n${formatField(data[\"Meta\"])}\\n  </meta>\\n\\n`;\n  output += `  <ngrams>\\n${formatField(data[\"Ngrams\"])}\\n  </ngrams>\\n`;\n  output += `</competitor${index + 1}>\\n\\n`;\n}\n\nreturn [\n  {\n    json: {\n      competitors_data: output.trim()\n    }\n  }\n];\n"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "a2d9be92-5a1e-448c-a4c8-e7ca8d6ce8ca",
+          "name": "Edit Fields1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1300,
+            520
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "27ea4c8c-3cd1-47e4-9f22-a4bd5b4b6b3a",
+                  "name": "competitors_data",
+                  "type": "string",
+                  "value": "={{ $json.competitors_data }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "715317ae-e896-48cf-b732-31a0a1ee7999",
+          "name": "Google Gemini Chat Model",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            320,
+            880
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.4
+            },
+            "modelName": "=models/{{ $('Edit Fields').first().json['Google Gemini Model'] }}"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "E9AQr0xc0FLNxbSQ",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e96eeecb-9b82-4cba-bf2c-3c5041b724b1",
+          "name": "Wait",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            940,
+            720
+          ],
+          "webhookId": "2231c6d5-575e-46be-b1e3-6fac3af1a830",
+          "parameters": {
+            "amount": "={{ $('Edit Fields').first().json['Waiting Time (Seconds)'] }}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "998ac0b0-d3e6-4e4a-b8a6-ae8994dbfa58",
+          "name": "Google Gemini Chat Model1",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            1040,
+            920
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.4
+            },
+            "modelName": "=models/{{ $('Edit Fields').first().json['Google Gemini Model'] }}"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "E9AQr0xc0FLNxbSQ",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "6ee11671-eb61-4d9f-a4f3-93898809d4e1",
+          "name": "Set Competitor Analysis",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            740,
+            720
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "5f9f0ff2-7e00-449a-a5c4-14233315125a",
+                  "name": "Competitor Analysis Report",
+                  "type": "string",
+                  "value": "={{ $json.text.replace(/[\\s\\S]*<competitor_analysis_report>/, '').replace(/<\\/competitor_analysis_report>[\\s\\S]*/, '') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "728cf9c2-7988-4b23-8e00-7511a0f10858",
+          "name": "Set User Intent Analysis",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1480,
+            720
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "c5b72bf5-a084-4dfe-aad8-d77c64138c54",
+                  "name": "User Intent Analysis Report",
+                  "type": "string",
+                  "value": "={{ $json.text.replace(/[\\s\\S]*<user_intent_report>/, '').replace(/<\\/user_intent_report>[\\s\\S]*/, '') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ecf01be1-fe6a-49f2-836f-8fb2c37a5da5",
+          "name": "Wait1",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1660,
+            720
+          ],
+          "webhookId": "2231c6d5-575e-46be-b1e3-6fac3af1a830",
+          "parameters": {
+            "amount": "={{ $('Edit Fields').first().json['Waiting Time (Seconds)'] }}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "8ac6dc7a-d32f-4366-9b21-fb20aaf1043f",
+          "name": "Google Gemini Chat Model2",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            420,
+            1220
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.4
+            },
+            "modelName": "=models/{{ $('Edit Fields').first().json['Google Gemini Model'] }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ac65fd5d-6e4b-47cc-a8e2-778295651723",
+          "name": "Competitors Analysis",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            400,
+            720
+          ],
+          "parameters": {
+            "text": "=<target_query>{{ $('Start').first().json['Target Keyword'] }}</target_query>\n<competitors_data>\n{{ $json.competitors_data }}\n</competitors_data>",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are a Data Analyst specializing in SEO and Content Structure Analysis. Your task is to meticulously analyze the provided data from top-ranking competitor pages for a specific target query. Focus on identifying recurring patterns, themes, and structural elements.\n\nAnalyze the following inputs:\n<target_query>{target_query}</target_query>\n<competitors_data>\n{competitors_data}\n</competitors_data>\n\nBased on your analysis, generate a report summarizing:\n1. **List of Competitors**: Create a numbered coding system for competitors by assigning each competitor a unique code (e.g., C1, C2, C3) followed by their full brand name. For example: 'C1 = Nike, C2 = Adidas, C3 = Under Armour'. This coding system will be used for efficient reference throughout the remainder of the report.\n2.  **Meta Title & Description Trends:** Common keywords, angles (e.g., benefit-driven, location-focused, speed-focused), and calls-to-action observed.\n3.  **Common Outline Sections/Topics:** Identify frequently recurring sections (based on H2s/H3s) across competitors (e.g., \"What is X?\", \"Our Process\", \"Pricing\", \"Why Choose Us\", \"FAQs\", specific service features/types).\n4.  **Key Heading Concepts (from N-grams):** List the most prominent and recurring 2, 3, and 4-word phrases found in competitor headings. Highlight concepts that appear critical for demonstrating topic relevance.\n5.  **Structural & Content Element Observations:** Note any common patterns in page structure (e.g., typical flow of sections), use of specific elements (e.g., lists, tables, videos, forms, calculators), and perceived content depth/length.\n\nStructure your entire output within a single XML tag: <competitor_analysis_report>"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "97d45dd2-4278-4294-8759-7b076e41d684",
+          "name": "User Intent Analysis",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1140,
+            720
+          ],
+          "parameters": {
+            "text": "=<target_query>{{ $('Start').first().json['Target Keyword'] }}</target_query>",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are a User Experience (UX) Researcher and Intent Analyst. Your task is to analyze the provided target query to understand the underlying user needs and expectations, completely independent of any competitor implementations.\n\nAnalyze the following input:\n<target_query>{target_query}</target_query>\n\nGenerate a report based *only* on the query, covering:\n1.  **Primary User Intent:** What is the main goal? (Informational, Navigational, Transactional, Commercial Investigation).\n2.  **Secondary Intents:** What related questions or needs might the user have?\n3.  **Implicit User Persona:** Describe the likely searcher (e.g., role, pain points, context).\n4.  **Stage in Buyer's Journey:** (Awareness, Consideration, Decision).\n5.  **Expected Services/Content:** What specific services or information types would this user logically expect to find on a page satisfying their intent?\n6.  **Problem/Solution Framing:** How should the user's core problem be articulated, and how should a service be positioned as the solution for this specific query?\n\nStructure your entire output within a single XML tag: <user_intent_report>"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "731d7b56-fa16-4f7d-a1af-f7908664e477",
+          "name": "Synthesis & Gap Analysis",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            500,
+            1060
+          ],
+          "parameters": {
+            "text": "=<target_query>{{ $('Start').first().json['Target Keyword'] }}</target_query>\n<competitor_analysis_report>\n{{ $('Set Competitor Analysis').first().json['Competitor Analysis Report'] }}\n</competitor_analysis_report>\n<user_intent_report>\n{{ $('Set User Intent Analysis').first().json['User Intent Analysis Report'] }}\n</user_intent_report>",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are an SEO Content Strategist and UX Architect. Your task is to synthesize the findings from the competitor analysis and the user intent analysis to identify strategic opportunities.\n\nAnalyze the following inputs:\n<target_query>{target_query}</target_query>\n<competitor_analysis_report>\n{competitor_analysis_report}\n</competitor_analysis_report>\n<user_intent_report>\n{user_intent_report}\n</user_intent_report>\n\nGenerate a synthesis report identifying:\n1.  **Content Overlaps (\"Table Stakes\"):** List the topics, sections, and information points that are BOTH expected by users (from user intent report) AND commonly covered by competitors (from competitor analysis). These are essential baseline requirements.\n2.  **Content & UX Gaps (Opportunities):** Identify user needs/expectations (from user intent report) that competitors are NOT addressing well or are missing entirely (based on competitor analysis). Highlight areas where you can provide superior value or a better user experience.\n3.  **SEO Keyword/Topic Priorities:** Based on both competitor heading N-grams/themes and user intent, list the most critical keywords, concepts, and semantic topics that the page structure and content must address for relevance and ranking potential.\n4.  **Potential UX/Conversion Advantages:** Suggest high-level ways to improve upon common competitor weaknesses in presentation, clarity, navigation, or calls-to-action, based on the combined analysis.\n\nStructure your entire output within a single XML tag: <synthesis_and_gap_analysis>"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "144f8050-c395-4f02-a786-5dca80bf1f3b",
+          "name": "Set Synthesis & Gap Analysis",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            840,
+            1060
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "4d580b58-4843-43c1-9aa2-a46d82842465",
+                  "name": "Synthesis & Gap Analysis",
+                  "type": "string",
+                  "value": "={{ $json.text.replace(/[\\s\\S]*<synthesis_and_gap_analysis>/, '').replace(/<\\/synthesis_and_gap_analysis>[\\s\\S]*/, '') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9b5739a8-ac4a-47c5-882d-5f8ecfe08831",
+          "name": "Wait2",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1020,
+            1060
+          ],
+          "webhookId": "2231c6d5-575e-46be-b1e3-6fac3af1a830",
+          "parameters": {
+            "amount": "={{ $('Edit Fields').first().json['Waiting Time (Seconds)'] }}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "0282d60c-c030-4ccd-8716-dd56bbc636e2",
+          "name": "Google Gemini Chat Model3",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            1160,
+            1260
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.4
+            },
+            "modelName": "=models/{{ $('Edit Fields').first().json['Google Gemini Model'] }}"
+          },
+          "credentials": {
+            "googlePalmApi": {
+              "id": "E9AQr0xc0FLNxbSQ",
+              "name": "Google Gemini(PaLM) Api account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1f156e28-7b4c-441d-9626-7762d47acd93",
+          "name": "Ideal Page Outline Generation",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1200,
+            1060
+          ],
+          "parameters": {
+            "text": "=<target_query>{{ $('Start').first().json['Target Keyword'] }}</target_query>\n<synthesis_and_gap_analysis>\n{{ $('Set Synthesis & Gap Analysis').first().json['Synthesis & Gap Analysis'] }}\n</synthesis_and_gap_analysis>\n<is_homepage>{{ $('Start').first().json['Is Homepage?'] }}</is_homepage>\n<brand_name>{{ $('Start').first().json['Brand Name'] }}</brand_name>\n<services_offered>\n{{ $('Start').first().json['Services Offered'] }}\n</services_offered>",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are an SEO Content Architect, Information Designer, **and Conversion-Focused Structuring Expert.** Your task is to create the optimal page outline (H1, H2s, H3s, potentially H4s) for the target query, based on the strategic insights from the synthesis and gap analysis. The outline must satisfy user intent, incorporate SEO best practices derived from competitors, provide a logical user experience, **and be structured to effectively persuade and convert visitors.**\n\nAnalyze the following inputs:\n<target_query>{target_query}</target_query>\n<synthesis_and_gap_analysis>\n{synthesis_and_gap_analysis}\n</synthesis_and_gap_analysis>\n<is_homepage>{is_homepage}</is_homepage>\n<brand_name>{brand_name}</brand_name>\n<services_offered>{services_offered}</services_offered>\n\nBased on the inputs, generate a recommended page outline:\n1.  **H1:** Propose a compelling, keyword-rich, **and benefit-oriented** H1 tag.\n2.  **Logical & Persuasive Section Flow (H2s):** Structure the main sections (H2s) in a sequence that guides the user naturally (e.g., addressing the problem, introducing the solution/value proposition, detailing the service & benefits, building trust/credibility, addressing potential objections, clear call to action path).\n    *   Incorporate the \"Table Stakes\" sections identified in the synthesis.\n    *   Strategically place sections that address the identified \"Gaps\" to offer unique value.\n    *   **Ensure key persuasive elements are included as distinct sections or integrated strategically:** Strong Value Proposition, Key Benefits/Outcomes, Social Proof (e.g., Testimonials/Case Studies placeholder), How it Works/Process, Pricing/Investment (or how pricing is determined), Why Choose Us/Unique Differentiators.\n3.  **Detailed Sub-sections (H3s/H4s):** Flesh out each H2 section with relevant H3s (and H4s if needed) that cover specific details, features, benefits, process steps, etc. Naturally weave in the \"SEO Keyword/Topic Priorities\" identified in the synthesis within these headings. **Ensure H3s under benefit/value sections clearly articulate positive outcomes for the user.**\n4.  **Homepage Consideration:** If <is_homepage> is \"Yes\", adjust the structure to be broader, potentially summarizing multiple services and directing users deeper, while still strongly addressing the core <target_query> intent **and presenting a compelling overall brand value proposition.** If \"No\", keep it focused specifically on the service related to the query.\n5.  **Justification:** Briefly explain the rationale behind the placement and content focus of major H2 sections, linking back to user intent, competitor insights, gap-filling, **and persuasive flow.**\n\nStructure your entire output within a single XML tag: <recommended_page_outline>"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "95003089-66bc-4c5c-b281-71009be099ea",
+          "name": "Set Page Outline",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1560,
+            1060
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7c205f79-bdaf-4fd5-8fae-14713a0d2eff",
+                  "name": "Page Outline",
+                  "type": "string",
+                  "value": "={{ $json.text.replace(/[\\s\\S]*<recommended_page_outline>/, '').replace(/<\\/recommended_page_outline>[\\s\\S]*/, '') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "e101cf81-973a-44af-8c7c-3c316398ccda",
+          "name": "Wait3",
+          "type": "n8n-nodes-base.wait",
+          "position": [
+            1740,
+            1060
+          ],
+          "webhookId": "2231c6d5-575e-46be-b1e3-6fac3af1a830",
+          "parameters": {
+            "amount": "={{ $('Edit Fields').first().json['Waiting Time (Seconds)'] }}"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "bd098536-18dd-4f23-98da-d86c3f0baf2a",
+          "name": "Google Gemini Chat Model4",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            500,
+            1540
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.4
+            },
+            "modelName": "=models/{{ $('Edit Fields').first().json['Google Gemini Model'] }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5429f86e-2883-4547-a69f-dd8c356b0247",
+          "name": "UX, Conversion & Copywriting Enhancement",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            600,
+            1400
+          ],
+          "parameters": {
+            "text": "=<target_query>{{ $('Start').first().json['Target Keyword'] }}</target_query>\n<recommended_page_outline>\n{{ $('Set Page Outline').first().json['Page Outline'] }}\n</recommended_page_outline>\n<user_intent_report>\n{{ $('Set User Intent Analysis').first().json['User Intent Analysis Report'] }}\n</user_intent_report>\n<brand_name>{{ $('Start').first().json['Brand Name'] }}</brand_name>\n<services_offered>\n{{ $('Start').first().json['Services Offered'] }}\n</services_offered>",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are a Conversion Rate Optimization (CRO) Specialist and UX Copywriter. Your task is to take the recommended page outline and layer on specific, actionable recommendations to maximize user experience, conversions, and persuasive communication.\n\nAnalyze the following inputs:\n<target_query>{target_query}</target_query>\n<recommended_page_outline>\n{recommended_page_outline}\n</recommended_page_outline>\n<user_intent_report>\n{user_intent_report} <!-- Reference for user needs/pain points -->\n</user_intent_report>\n<brand_name>{brand_name}</brand_name>\n<services_offered>{services_offered}</services_offered> <!-- Reference for service specifics -->\n\nBased on the inputs, provide detailed recommendations covering:\n1.  **Calls-to-Action (CTAs):**\n    *   Suggest specific wording for Primary and Secondary CTAs relevant to the service and user journey stage.\n    *   Recommend optimal placement within the proposed outline (e.g., above the fold, after key sections, end of page).\n    *   Advise on visual prominence/design.\n2.  **Trust Signals:** Recommend specific types of trust signals (e.g., testimonials, case studies, logos, certifications, guarantees, team bios) and suggest where they should be integrated into the outline structure. Tailor suggestions to the likely concerns of the user persona identified in the <user_intent_report>.\n3.  **Copywriting & Tone:**\n    *   Advise on the overall tone of voice (e.g., professional, empathetic, urgent, reassuring) suitable for the <target_query> and <brand_name>.\n    *   Emphasize using benefit-driven language (translating service features into user outcomes) throughout the content. Provide examples related to <services_offered>.\n    *   Suggest how to address user pain points (from <user_intent_report>) directly in the copy.\n4.  **Visual & Interactive Elements:** Recommend types of visuals (e.g., high-quality photos, videos, infographics, icons) or interactive elements (e.g., calculators, quizzes, forms) that would enhance understanding, engagement, and trust, suggesting where they fit within the outline.\n5.  **Risk Reversal:** Suggest potential guarantees, free consultations, trials, or clear explanations of processes that can reduce perceived risk for the user.\n6.  **Readability & UX:** Reinforce the importance of short paragraphs, bullet points, clear headings (already outlined), whitespace, and mobile responsiveness.\n\nStructure your entire output within a single XML tag: <ux_conversion_copy_recommendations>"
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "4478e4a6-604b-4a5c-a7a8-bfadcbf0103d",
+          "name": "Set UX & Conversions Enhancements",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            960,
+            1400
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "a35489c5-7db5-4d5e-8a3a-9a27ea21c241",
+                  "name": "UX & Conversions Enhancements",
+                  "type": "string",
+                  "value": "={{ $json.text.replace(/[\\s\\S]*<ux_conversion_copy_recommendations>/, '').replace(/<\\/ux_conversion_copy_recommendations>[\\s\\S]*/, '') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1e9482a5-6b59-456c-8a92-49cdea47e973",
+          "name": "Google Gemini Chat Model5",
+          "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+          "position": [
+            1100,
+            1560
+          ],
+          "parameters": {
+            "options": {
+              "temperature": 0.4
+            },
+            "modelName": "=models/{{ $('Edit Fields').first().json['Google Gemini Model'] }}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "de163dd6-9e8b-462e-a125-84dfdfbff8ab",
+          "name": "Final Service Page Blueprint",
+          "type": "@n8n/n8n-nodes-langchain.chainLlm",
+          "position": [
+            1160,
+            1400
+          ],
+          "parameters": {
+            "text": "=<target_query>{{ $('Start').first().json['Target Keyword'] }}</target_query>\n<brand_name>{{ $('Start').first().json['Brand Name'] }}</brand_name>\n<services_offered>\n{{ $('Start').first().json['Services Offered'] }}\n</services_offered>\n<is_homepage>{{ $('Start').first().json['Is Homepage?'] }}</is_homepage>\n<competitor_analysis_report>\n{{ $('Set Competitor Analysis').first().json['Competitor Analysis Report'] }}\n</competitor_analysis_report>\n<user_intent_report>\n{{ $('Set User Intent Analysis').first().json['User Intent Analysis Report'] }}\n</user_intent_report>\n<synthesis_and_gap_analysis>\n{{ $('Set Synthesis & Gap Analysis').first().json['Synthesis & Gap Analysis'] }}\n</synthesis_and_gap_analysis>\n<recommended_page_outline>\n{{ $('Set Page Outline').first().json['Page Outline'] }}\n</recommended_page_outline>\n<ux_conversion_copy_recommendations>\n{{ $json['UX & Conversions Enhancements'] }}\n</ux_conversion_copy_recommendations>",
+            "messages": {
+              "messageValues": [
+                {
+                  "message": "=You are a Senior Digital Marketing Strategist. Your final task is to compile all the preceding analyses and recommendations into a single, comprehensive, and actionable Service Page Blueprint. This document will serve as the definitive guide for creating the page.\n\nImportant Context: Remember, this blueprint is for a service page. While comprehensive analysis is crucial, the final page structure and content recommendations should prioritize clarity, conciseness, and a direct path towards user action or conversion, rather than exhaustive detail suitable for a long-form blog post.\n\nConsolidate the following inputs:\n<target_query>{target_query}</target_query>\n<brand_name>{brand_name}</brand_name>\n<services_offered>{services_offered}</services_offered>\n<is_homepage>{is_homepage}</is_homepage>\n<competitor_analysis_report>\n{competitor_analysis_report}\n</competitor_analysis_report>\n<user_intent_report>\n{user_intent_report}\n</user_intent_report>\n<synthesis_and_gap_analysis>\n{synthesis_and_gap_analysis}\n</synthesis_and_gap_analysis>\n<recommended_page_outline>\n{recommended_page_outline}\n</recommended_page_outline>\n<ux_conversion_copy_recommendations>\n{ux_conversion_copy_recommendations}\n</ux_conversion_copy_recommendations>\n\n**Output Requirements:**\n\n*   Generate the final blueprint entirely in **Markdown format**.\n*   Enclose the *entire* Markdown output within a single XML tag: `<final_service_page_blueprint>`.\n*   **Do NOT use any XML tags *inside* the `<final_service_page_blueprint>` tag.** Use Markdown headings (`#`, `##`, `###`) to structure the content as specified below.\n*   Ensure the final output is highly readable, well-organized, and suitable for direct presentation to a client.\n\n**Blueprint Structure (Use Markdown Headings):**\n\n#   **1. Executive Summary**\n    *   Briefly state the target query, the primary user intent, and the overall strategy for the page (e.g., \"Create a focused service page for '{target_query}' targeting users with [primary intent]. The strategy is to highlight [key benefit/service aspect], address the common gap of [identified gap], aiming to outperform competitors by offering [unique value proposition] and convert users seeking [user goal].\"). Reference `{brand_name}` where appropriate.\n\n#   **2. User Intent Deep Dive**\n    *   Summarize the key findings from the `<user_intent_report>`.\n    *   Clearly state Primary and Secondary Intents.\n    *   Describe the Target User Persona(s).\n    *   Identify the typical User Journey Stage(s).\n    *   List the Core User Needs and Pain Points this page must address.\n\n#   **3. Competitor Landscape Summary**\n    *   Summarize the key findings from the `<competitor_analysis_report>`.\n    *   Highlight common tactics, topics covered, and keywords targeted by top competitors.\n    *   Describe typical page structures and common elements observed (e.g., types of CTAs, content sections, trust signals used).\n\n#   **4. Strategic Opportunities & Gaps**\n    *   Summarize the core findings from the `<synthesis_and_gap_analysis>`.\n    *   Identify key content/feature overlaps between user intent and competitor offerings.\n    *   Pinpoint specific content, angle, or feature gaps the `{brand_name}` page can exploit for differentiation.\n    *   List the priority SEO elements (keywords, themes, E-E-A-T considerations) based on the analysis.\n\n#   **5. Recommended Page Outline**\n    *   **Page Structure:**\n        *   Present the recommended page structure derived from `<recommended_page_outline>`.\n        *   Use nested Markdown headings (`H1`, `H2`, `H3`, `H4`) to represent the hierarchy.\n        *   Use indentation (e.g., two spaces per level) for visual clarity.\n        *   **Example Structure Format (Illustrates Formatting Only):**\n            H1: Primary Heading\n              H2: First Subheading\n              H2: Second Subheading\n                H3: First Sub-subheading under Second H2\n                H3: Second Sub-subheading under Second H2\n                  H4: Detail under Second H3\n              H2: Third Subheading\n    *   **Heading Justifications:**\n        *   Immediately following the structure, provide a list detailing the justification/purpose for *each* heading included in the structure above. Reference the heading text clearly. (e.g., \"**H1: [Actual H1 Text]:** Justification for H1...\" \"**H2: [Actual H2 Text]:** Justification for H2...\")\n\n#   **6. UX, Conversion & Copywriting Plan**\n    *   Consolidate and present the detailed recommendations from `<ux_conversion_copy_recommendations>`.\n    *   Use subheadings (e.g., `## Calls to Action (CTAs)`, `## Trust Signals`, `## Copywriting & Tone of Voice`, `## Visual Elements`, `## Risk Reversal`, `## Readability & Accessibility`) for clarity.\n    *   Ensure recommendations are actionable and specific to this service page.\n\n#   **7. Key Success Factors**\n    *   Conclude with a bulleted list summarizing the 3-5 most critical elements required for this page's success.\n    *   Focus on factors directly related to satisfying user intent, achieving SEO goals (ranking), and driving conversions based on the preceding analysis."
+                }
+              ]
+            },
+            "promptType": "define"
+          },
+          "typeVersion": 1.5
+        },
+        {
+          "id": "35812205-2573-4c30-9c66-168b7af5a530",
+          "name": "Edit Fields2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1520,
+            1400
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "4ec86dd3-14e7-420b-94f0-2e13b11ec622",
+                  "name": "Final Blueprint",
+                  "type": "string",
+                  "value": "={{ $json.text.replace(/[\\s\\S]*<final_service_page_blueprint>/, '').replace(/<\\/final_service_page_blueprint>[\\s\\S]*/, '') }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "780a5e01-6f26-43da-b650-5cd3cdf1cfa0",
+          "name": "Convert to File",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            1740,
+            1400
+          ],
+          "parameters": {
+            "options": {
+              "fileName": "Blueprint.txt"
+            },
+            "operation": "toText",
+            "sourceProperty": "Final Blueprint"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "008ec54d-0791-41b0-bad6-38db3ae42bde",
+          "name": "Edit Fields",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            420,
+            500
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "d279426b-1764-4989-9202-9bab9ce295fa",
+                  "name": "JINA Reader API Key",
+                  "type": "string",
+                  "value": "YOUR_API_KEY"
+                },
+                {
+                  "id": "74cc4b3d-6256-453c-ac16-f860c01549ec",
+                  "name": "Google Gemini Model",
+                  "type": "string",
+                  "value": "gemini-2.5-pro-preview-03-25"
+                },
+                {
+                  "id": "eaa9f0cb-478e-4ebc-972a-8e8bd4945602",
+                  "name": "Waiting Time (Seconds)",
+                  "type": "string",
+                  "value": "1"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "54ad00ab-6e54-49a2-a8dc-5d258e6ae64a",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "width": 1020,
+            "height": 460,
+            "content": "## Generate High-Level Service Page Blueprint Report\nThis powerful workflow generates comprehensive SEO blueprints for service pages by analyzing competitor websites and user intent. By examining the structure, headings, and meta information of top-ranking competitors for a specific target keyword, the workflow creates a detailed content strategy tailored to your brand and services, designed to outperform the competition and maximize conversions.\n\n### Setup Instructions:\n1. Create a new Jina Reader API key [here](https://jina.ai/api-dashboard/key-manager). You can claim a free API key, which allow you to use up to 1m tokens for free.  \n2. Create a new Google Gemini(PaLM) credentials by following the guide [here](https://docs.n8n.io/integrations/builtin/credentials/googleai/#using-geminipalm-api-key). Please note, if you are using the free tier, you need to set the \"Waiting Time\" to 20s as the free tier allow a maximum of 5 requests per minute.\n3. Update the node \"Set Fields\" with your Jina API Key. Change the Waiting Time to \"20\" if using free Google Gemini API key. You can change the Gemini model from here as well, in the case Gemini make changes to their Gemini models.\n4. Start the form trigger and answer to the following questions:\n4.1. Competitors: A list of direct competitors. Up to 5, use their direct service page URL.\n4.2. Target Keyword: The query related with your service. (E.g. International accounting services, Chicago cleaning services, etc...)\n4.3. Services Offered: Details your complete service offerings. This will be ensure the outline recommended align with your services.\n4.4. Brand Name: The name of your brand, your company name.\n4.5. Homepage: If you try to rank for a homepage, check that box.\n5. Download the .txt file generated at the end, copy/paste it's content (Markdown format) and copy it [here](https://markdownlivepreview.com/). You can after copy/paste the rendered results in Gdocs and share with your client/team.\n\nYou can see a demo of the report [here](https://docs.google.com/document/d/1XDJV3zNB7cLPBzaMXstzEl7ZvPrjiuBbet5C5ZlC4bo/edit). "
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "443f606c-8007-41cd-959e-71d17bbabec5",
+      "connections": {
+        "Code": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait": {
+          "main": [
+            [
+              {
+                "node": "User Intent Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Start": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait1": {
+          "main": [
+            [
+              {
+                "node": "Synthesis & Gap Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait2": {
+          "main": [
+            [
+              {
+                "node": "Ideal Page Outline Generation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Wait3": {
+          "main": [
+            [
+              {
+                "node": "UX, Conversion & Copywriting Enhancement",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields": {
+          "main": [
+            [
+              {
+                "node": "Convert URLs to Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields1": {
+          "main": [
+            [
+              {
+                "node": "Competitors Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Edit Fields2": {
+          "main": [
+            [
+              {
+                "node": "Convert to File",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get URL HTML": {
+          "main": [
+            [
+              {
+                "node": "Extract HTML Elements",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set URL Data": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Loop Over Items": {
+          "main": [
+            [
+              {
+                "node": "Code",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get URL HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Page Outline": {
+          "main": [
+            [
+              {
+                "node": "Wait3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Competitors Analysis": {
+          "main": [
+            [
+              {
+                "node": "Set Competitor Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "User Intent Analysis": {
+          "main": [
+            [
+              {
+                "node": "Set User Intent Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert URLs to Items": {
+          "main": [
+            [
+              {
+                "node": "Loop Over Items",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract HTML Elements": {
+          "main": [
+            [
+              {
+                "node": "Set URL Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Competitor Analysis": {
+          "main": [
+            [
+              {
+                "node": "Wait",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Competitors Analysis",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set User Intent Analysis": {
+          "main": [
+            [
+              {
+                "node": "Wait1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Synthesis & Gap Analysis": {
+          "main": [
+            [
+              {
+                "node": "Set Synthesis & Gap Analysis",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model1": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "User Intent Analysis",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model2": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Synthesis & Gap Analysis",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model3": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Ideal Page Outline Generation",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model4": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "UX, Conversion & Copywriting Enhancement",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Google Gemini Chat Model5": {
+          "ai_languageModel": [
+            [
+              {
+                "node": "Final Service Page Blueprint",
+                "type": "ai_languageModel",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Final Service Page Blueprint": {
+          "main": [
+            [
+              {
+                "node": "Edit Fields2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set Synthesis & Gap Analysis": {
+          "main": [
+            [
+              {
+                "node": "Wait2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Ideal Page Outline Generation": {
+          "main": [
+            [
+              {
+                "node": "Set Page Outline",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set UX & Conversions Enhancements": {
+          "main": [
+            [
+              {
+                "node": "Final Service Page Blueprint",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "UX, Conversion & Copywriting Enhancement": {
+          "main": [
+            [
+              {
+                "node": "Set UX & Conversions Enhancements",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 29,
+    "workflowInfo": {
+      "nodeCount": 33,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 9
+        },
+        "n8n-nodes-base.code": {
+          "count": 3
+        },
+        "n8n-nodes-base.wait": {
+          "count": 4
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 1
+        },
+        "n8n-nodes-base.formTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 1
+        },
+        "n8n-nodes-base.convertToFile": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitInBatches": {
+          "count": 1
+        },
+        "@n8n/n8n-nodes-langchain.chainLlm": {
+          "count": 6
+        },
+        "@n8n/n8n-nodes-langchain.lmChatGoogleGemini": {
+          "count": 6
+        }
+      }
+    },
+    "user": {
+      "name": "Custom Workflows AI",
+      "username": "customworkflowsai",
+      "bio": "We specializes in crafting tailored automation solutions that help businesses streamline their operations and boost productivity. With expertise in creating custom n8n workflows, we transform complex business processes into seamless, automated systems that save time and reduce manual effort.",
+      "verified": true,
+      "links": [
+        "https://customworkflows.ai"
+      ],
+      "avatar": "https://gravatar.com/avatar/8b94720cd9c980204474d25605eb1bd96393f7e0bf0cb9c6e2b36b92262fa778?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "\ud83e\uddec",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "\u270d\ufe0f",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "\ud83e\uddfe",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "\ud83d\udef3",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " \ud83e\udea2",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "\u26a1\ufe0f",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "\ud83d\udcdc",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "\ud83c\udfa8",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "\ud83e\udd16",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "\ud83e\uddf0",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "\ud83e\udd84",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "\ud83c\udfa1",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "\u2728",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "\ud83e\udd1f",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "\ud83d\udef5",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "\ud83c\udfed",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "\u2600\ufe0f",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "\ud83d\udce1",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "\ud83e\uddfe",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "\ud83d\udd17",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "\u2699\ufe0f",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "\ud83d\udc65",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "\u26a1\ufe0f",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "\ud83d\udca1",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "\ud83d\udcf1",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "\ud83d\udcf9",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "\ud83e\udd16",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "\ud83e\uddf0",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "\ud83d\udcc8",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "\ud83c\udfa1",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "\ud83c\udf96",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "\ud83d\udef5",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 39,
+        "icon": "fa:sync",
+        "name": "n8n-nodes-base.splitInBatches",
+        "codex": {
+          "data": {
+            "alias": [
+              "Loop",
+              "Concatenate",
+              "Batch",
+              "Split",
+              "Split In Batches"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " \ud83d\udd78\ufe0f",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "\ud83c\udf96",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitinbatches/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Loop Over Items",
+          "color": "#007755"
+        },
+        "iconData": {
+          "icon": "sync",
+          "type": "icon"
+        },
+        "displayName": "Loop Over Items (Split in Batches)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 514,
+        "icon": "fa:pause-circle",
+        "name": "n8n-nodes-base.wait",
+        "codex": {
+          "data": {
+            "alias": [
+              "pause",
+              "sleep",
+              "delay",
+              "timeout"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "\ud83d\udc65",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "Wait",
+          "color": "#804050"
+        },
+        "iconData": {
+          "icon": "pause-circle",
+          "type": "icon"
+        },
+        "displayName": "Wait",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1123,
+        "icon": "fa:link",
+        "name": "@n8n/n8n-nodes-langchain.chainLlm",
+        "codex": {
+          "data": {
+            "alias": [
+              "LangChain"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.chainllm/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Chains",
+                "Root Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Basic LLM Chain",
+          "color": "#909298"
+        },
+        "iconData": {
+          "icon": "link",
+          "type": "icon"
+        },
+        "displayName": "Basic LLM Chain",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      },
+      {
+        "id": 1225,
+        "icon": "file:form.svg",
+        "name": "n8n-nodes-base.formTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "table",
+              "submit",
+              "post"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.formtrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Other Trigger Nodes"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "On form submission"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0NiIgaGVpZ2h0PSI0MCIgZmlsbD0ibm9uZSI+PHBhdGggZmlsbD0iIzAwQjdCQyIgZmlsbC1ydWxlPSJldmVub2RkIiBkPSJNMzQuOTc4IDM3LjczMmExLjU2IDEuNTYgMCAwIDEtMS41NjIgMS41NjNINi4yNmExLjU2IDEuNTYgMCAwIDEtMS41NjMtMS41NjNWOS42MDdjMC0uNDA1LjE1Ny0uNzk0LjQzOC0xLjA4Nmw2LjMwNC02LjUzMXY1LjM0NEg4LjIxM2ExLjE3MiAxLjE3MiAwIDEgMCAwIDIuMzQzaDQuNDNhMS4xNyAxLjE3IDAgMCAwIDEuMTcxLTEuMTcxVi4yMzJoMTkuNjAyYTEuNTYgMS41NiAwIDAgMSAxLjU2MiAxLjU2M3YxMC4zMjdsLTIuODYgMi44Ni04LjI1MiA4LjI3NmE0MTMuMDA2IDQxMy4wMDYgMCAwIDEtMS42NTQgMS42NjJsLS4zMzcuMzM3YTIgMiAwIDAgMC0uNTU3IDEuMDhMMjAuMyAzMS45MjJjLS4xMDguNjM4LS4yMTUgMS4wNzkuMjExIDEuNDE4LjQwMy4zMi45LjE3NCAxLjU0LjA2Nmw1LjQwOC0uOTI4YTIgMiAwIDAgMCAxLjA4LS41NTZsNi40NC02LjQyOXptLTI0LjAzLTIxLjI2NWExLjE4IDEuMTggMCAwIDAgMS4xNzEgMS4xNzJoMTMuMTYzYTEuMTcyIDEuMTcyIDAgMSAwIDAtMi4zNDRIMTIuMTE5YTEuMTcgMS4xNyAwIDAgMC0xLjE3MiAxLjE3Mm03LjI5NCAxNC43NjZhMS4xNyAxLjE3IDAgMCAwLTEuMTcyLTEuMTcySDEyLjEyYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNC45NTFhMS4xNyAxLjE3IDAgMCAwIDEuMTcyLTEuMTcybS44Ni03LjM5MWExLjE3IDEuMTcgMCAwIDAtMS4xNzItMS4xNzJoLTUuODExYTEuMTcyIDEuMTcyIDAgMSAwIDAgMi4zNDNoNS44MWExLjE2NCAxLjE2NCAwIDAgMCAxLjE3My0xLjE3MSIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0iIzAwQjdCQyIgZD0ibTMzLjUzMiAxNi4zOTcgNC4yODktNC4yODkgMy43NTggMy43MSAxLjYxNy0xLjYxNiAyLjI1OCAyLjI1N2MuMjE4LjIxOC4zNC41MTMuMzQzLjgyLS4wMDIuMzExLS4xMjUuNjA4LS4zNDQuODNsLTYuODA0IDYuNzk2YTEuMTMgMS4xMyAwIDAgMS0uODI4LjM0MyAxLjE1IDEuMTUgMCAwIDEtLjgyOC0uMzQzIDEuMTggMS4xOCAwIDAgMSAwLTEuNjU3bDUuOTc2LTUuOTY4LTEuMzEyLTEuMzEzLTEuMzgzIDEuNDE0LTEzLjE0OSAxMy4xMjUtNC42MTcuNzgyLjc4Mi00LjYxNy4zMzYtLjMzNyAyLjU2MiAyLjU1NWExLjEgMS4xIDAgMCAwIC44MjguMzQ0Yy4zMTIuMDA1LjYxMi0uMTIuODI4LS4zNDRhMS4xOCAxLjE4IDAgMCAwIDAtMS42NTZsLTIuNTYyLTIuNTYyek00NC43MzYgMTIuMjRjMCAuNDE0LS4xNjMuODEtLjQ1NCAxLjEwMmwtLjkyMi45MTQtMy44NTItMy44MjguOTMtLjkzYTEuNTYzIDEuNTYzIDAgMCAxIDIuMjAzIDBsMS42NCAxLjY0MWMuMjkxLjI5My40NTUuNjkuNDU1IDEuMTAyIi8+PC9zdmc+"
+        },
+        "displayName": "n8n Form Trigger",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1234,
+        "icon": "file:convertToFile.svg",
+        "name": "n8n-nodes-base.convertToFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "encode",
+              "encoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "RTF",
+              "64",
+              "Base64"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Convert to File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjc2MTkgMkMxMy4yNDM3IDIgMTIuODIzNiAyLjQyMDA5IDEyLjgyMzYgMi45MzgzMVYxNS4yNTI2QzEzLjMxOTkgMTUuNDY0MyAxMy43ODUxIDE1Ljc3MiAxNC4xOTEgMTYuMTc1N0wyMS4yMjgzIDIzLjE3MzlDMjIuMDU0OCAyMy45OTU4IDIyLjUxOTUgMjUuMTEzMiAyMi41MTk1IDI2LjI3ODhDMjIuNTE5NSAyNy40NDQzIDIyLjA1NDggMjguNTYxOCAyMS4yMjgzIDI5LjM4MzdMMTQuMTkxIDM2LjM4MTlDMTMuNzg1IDM2Ljc4NTYgMTMuMzE5OSAzNy4wOTMyIDEyLjgyMzYgMzcuMzA1VjM3LjM1MjdDMTIuODIzNiAzNy44NzA5IDEzLjI0MzcgMzguMjkxIDEzLjc2MTkgMzguMjkxSDM5LjA2MTdDMzkuNTc5OSAzOC4yOTEgNDAgMzcuODcwOSA0MCAzNy4zNTI3TDQwIDE1Ljc5NEgyNy4xNDQzQzI2LjYyNjEgMTUuNzk0IDI2LjIwNiAxNS4zNzM5IDI2LjIwNiAxNC44NTU3VjJIMTMuNzYxOVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTI4Ljg2NDUgMkMyOC43NzgxIDIgMjguNzA4MSAyLjA3MDAyIDI4LjcwODEgMi4xNTYzOVYxMi44MjI3QzI4LjcwODEgMTMuMDgxOCAyOC45MTgyIDEzLjI5MTkgMjkuMTc3MyAxMy4yOTE5SDM5Ljg0MzZDMzkuOTMgMTMuMjkxOSA0MCAxMy4yMjE5IDQwIDEzLjEzNTVMNDAgMTIuNjI2M0M0MCAxMi4zNzc4IDM5LjkwMTQgMTIuMTM5NSAzOS43MjYgMTEuOTYzNkwzMC4wNjEgMi4yNzU2MUMyOS44ODUgMi4wOTkxNiAyOS42NDYgMiAyOS4zOTY3IDJIMjguODY0NVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTkuNzcyNjggMzQuNjAwM0M5LjA0MTg2IDMzLjg2NTQgOS4wNDUxNyAzMi42NzcyIDkuNzgwMDcgMzEuOTQ2NEwxMy42MzE1IDI4LjExNjNMMC45MzgzMTEgMjguMTE2M0MwLjQyMDA5NiAyOC4xMTYzIC0yLjI2NTE5ZS0wOCAyNy42OTYyIDAgMjcuMTc4TDguMjAyOTdlLTA4IDI1LjMwMTRDMS4wNDY4MmUtMDcgMjQuNzgzMiAwLjQyMDA5NSAyNC4zNjMxIDAuOTM4MzExIDI0LjM2MzFIMTMuNTUyOUw5Ljc4MDA3IDIwLjYxMTJDOS4wNDUxNyAxOS44ODA0IDkuMDQxODYgMTguNjkyMiA5Ljc3MjY4IDE3Ljk1NzNDMTAuNTAzNSAxNy4yMjI0IDExLjY5MTcgMTcuMjE5MSAxMi40MjY2IDE3Ljk0OTlMMTkuNDYzOSAyNC45NDgxQzE5LjgxODEgMjUuMzAwNCAyMC4wMTczIDI1Ljc3OTMgMjAuMDE3MyAyNi4yNzg4QzIwLjAxNzMgMjYuNzc4MyAxOS44MTgxIDI3LjI1NzIgMTkuNDYzOSAyNy42MDk1TDEyLjQyNjYgMzQuNjA3N0MxMS42OTE3IDM1LjMzODUgMTAuNTAzNSAzNS4zMzUyIDkuNzcyNjggMzQuNjAwM1oiIGZpbGw9IiMzQTQyRTkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Convert to File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1262,
+        "icon": "file:google.svg",
+        "name": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchatgooglegemini/"
+                }
+              ]
+            },
+            "categories": [
+              "AI",
+              "Langchain"
+            ],
+            "subcategories": {
+              "AI": [
+                "Language Models",
+                "Root Nodes"
+              ],
+              "Language Models": [
+                "Chat Models (Recommended)"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Google Gemini Chat Model"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB2aWV3Qm94PSIwIDAgNDggNDgiPjxkZWZzPjxwYXRoIGlkPSJhIiBkPSJNNDQuNSAyMEgyNHY4LjVoMTEuOEMzNC43IDMzLjkgMzAuMSAzNyAyNCAzN2MtNy4yIDAtMTMtNS44LTEzLTEzczUuOC0xMyAxMy0xM2MzLjEgMCA1LjkgMS4xIDguMSAyLjlsNi40LTYuNEMzNC42IDQuMSAyOS42IDIgMjQgMiAxMS44IDIgMiAxMS44IDIgMjRzOS44IDIyIDIyIDIyYzExIDAgMjEtOCAyMS0yMiAwLTEuMy0uMi0yLjctLjUtNCIvPjwvZGVmcz48Y2xpcFBhdGggaWQ9ImIiPjx1c2UgeGxpbms6aHJlZj0iI2EiIG92ZXJmbG93PSJ2aXNpYmxlIi8+PC9jbGlwUGF0aD48cGF0aCBmaWxsPSIjRkJCQzA1IiBkPSJNMCAzN1YxMWwxNyAxM3oiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiNFQTQzMzUiIGQ9Im0wIDExIDE3IDEzIDctNi4xTDQ4IDE0VjBIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiMzNEE4NTMiIGQ9Im0wIDM3IDMwLTIzIDcuOSAxTDQ4IDB2NDhIMHoiIGNsaXAtcGF0aD0idXJsKCNiKSIvPjxwYXRoIGZpbGw9IiM0Mjg1RjQiIGQ9Ik00OCA0OCAxNyAyNGwtNC0zIDM1LTEweiIgY2xpcC1wYXRoPSJ1cmwoI2IpIi8+PC9zdmc+"
+        },
+        "displayName": "Google Gemini Chat Model",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 25,
+            "name": "AI"
+          },
+          {
+            "id": 26,
+            "name": "Langchain"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 25,
+        "name": "AI"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

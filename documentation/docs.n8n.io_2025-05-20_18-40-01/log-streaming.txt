@@ -1,0 +1,98 @@
+URL: https://docs.n8n.io/log-streaming/
+Scraped_At: 2025-05-20T19:09:25.198156
+
+Log streaming
+#
+Feature availability
+Log streaming is available on Enterprise Self-hosted and Cloud plans.
+Log streaming allows you to send events from n8n to your own logging tools. This allows you to manage your n8n monitoring in your own alerting and logging processes.
+Set up log streaming
+#
+To use log streaming, you have to add a streaming destination.
+Navigate to
+Settings
+>
+Log Streaming
+.
+Select
+Add new destination
+.
+Choose your destination type. n8n opens the
+New Event Destination
+modal.
+In the
+New Event Destination
+modal, enter the configuration information for your event destination. These depend on the type of destination you're using.
+Select
+Events
+to choose which events to stream.
+Select
+Save
+.
+Self-hosted users
+If you self-host n8n, you can configure additional log streaming behavior using
+Environment variables
+.
+Events
+#
+The following events are available. You can choose which events to stream in
+Settings
+>
+Log Streaming
+>
+Events
+.
+Workflow
+Started
+Success
+Failed
+Node executions
+Started
+Finished
+Audit
+User signed up
+User updated
+User deleted
+User invited
+User invitation accepted
+User re-invited
+User email failed
+User reset requested
+User reset
+User credentials created
+User credentials shared
+User credentials updated
+User credentials deleted
+User API created
+User API deleted
+Package installed
+Package updated
+Package deleted
+Workflow created
+Workflow deleted
+Workflow updated
+AI node logs
+Memory get messages
+Memory added message
+Output parser get instructions
+Output parser parsed
+Retriever get relevant documents
+Embeddings embedded document
+Embeddings embedded query
+Document processed
+Text splitter split
+Tool called
+Vector store searched
+LLM generated
+Vector store populated
+Destinations
+#
+n8n supports three destination types:
+A syslog server
+A generic webhook
+A Sentry client
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

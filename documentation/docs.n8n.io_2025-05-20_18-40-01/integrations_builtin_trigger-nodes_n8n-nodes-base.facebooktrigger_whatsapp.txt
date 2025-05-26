@@ -1,0 +1,73 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebooktrigger/whatsapp/
+Scraped_At: 2025-05-20T19:06:19.362219
+
+Facebook Trigger WhatsApp Business Account object
+#
+Use this object to receive updates when your WhatsApp Business Account (WABA) changes. Refer to
+Facebook Trigger
+for more information on the trigger itself.
+Use WhatsApp trigger
+n8n recommends using the
+WhatsApp Trigger node
+with the
+WhatsApp credentials
+instead of the Facebook Trigger node. That trigger node includes twice the events to subscribe to.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Facebook Trigger integrations
+page.
+Prerequisites
+#
+This Object requires some configuration in your app and WhatsApp account before you can use the trigger:
+Subscribe your app under your WhatsApp business account. You must subscribe an app owned by your business. Apps shared with your business can't receive webhook notifications.
+If you are working as a Solution Partner, make sure your app has completed App Review and requested the
+whatsapp_business_management
+permission.
+Trigger configuration
+#
+To configure the trigger with this Object:
+Select the
+Credential to connect with
+. Select an existing or create a new
+Facebook App credential
+.
+Enter the
+APP ID
+of the app connected to your credential. Refer to the
+Facebook App credential
+documentation for more information.
+Select
+WhatsApp Business Account
+as the
+Object
+.
+Field Names or IDs
+: By default, the node will trigger on all the available events using the
+*
+wildcard filter. If you'd like to limit the events, use the
+X
+to remove the star and use the dropdown or an expression to select the updates you're interested in. Options include:
+Message Template Status Update
+Phone Number Name Update
+Phone Number Quality Update
+Account Review Update
+Account Update
+In
+Options
+, turn on the toggle to
+Include Values
+. This Object type fails without the option enabled.
+Refer to
+Webhooks for WhatsApp Business Accounts
+and Meta's
+WhatsApp Business Account
+Graph API reference for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

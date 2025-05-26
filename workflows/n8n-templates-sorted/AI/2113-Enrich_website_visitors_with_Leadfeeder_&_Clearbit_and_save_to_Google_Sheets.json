@@ -1,0 +1,1752 @@
+{
+  "workflow": {
+    "id": 2113,
+    "name": "Enrich website visitors with Leadfeeder & Clearbit and save to Google Sheets",
+    "views": 870,
+    "recentViews": 0,
+    "totalViews": 870,
+    "createdAt": "2024-02-21T18:04:56.018Z",
+    "description": "# Use Case\nWhen trying to maximize your outreach, website visitors are often an overlooked source of qualified new leads. This workflow allows your to track and enrich new website visitors and saves them to a Google Sheet once they meet a pre-defined criteria.\n# What this workflow does\nThis workflow fires once a day and gets all your leads saved in Leadfeeder. It then takes the leads that meet a pre-defined engagement criteria, e.g. that they visited your site 3 times, and enriches them additionally with Clearbit. From there it filters the leads again by a criteria on the company, e.g. a minimum employee count, and saves matching leads into a Google Sheet document.\n# Setup\n1. Add your **Leedfeeder** credentials. The name should be `Authorization` and the value `Token token=yourapitoken`. You can find your token via **Settings -&gt; Personal -&gt; API-Token**\n2. Add your **Google Sheet** credentials\n3. Save the **Leedfeeder** account names you want to use in the `Setup` node\n4. Copy the [Google Sheets Template](https://docs.google.com/spreadsheets/d/1a2gfBjZZpN0jiD7apR8fPplRp2aPHVy2_5lp4Yzp778/edit?usp=sharing) and add its URL to the `Setup` node\n# How to adjust this to your needs\n- Adjust and/or remove the engagement and company criteria\n- Add more ways to enrich a company\n# Potential ideas to enhance the use of this workflow\n- Automatically reach out to users that meet the criteria / that get added to the sheet\n- Create a workflow that finds the right employee in companies that are identified by this workflow",
+    "workflow": {
+      "meta": {
+        "instanceId": "257476b1ef58bf3cb6a46e65fac7ee34a53a5e1a8492d5c6e4da5f87c9b82833",
+        "templateId": "2113"
+      },
+      "nodes": [
+        {
+          "id": "2e93b7a1-f22c-4e34-8bbe-09763d428ab6",
+          "name": "Get Leads",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1040,
+            522
+          ],
+          "parameters": {
+            "url": "=https://api.leadfeeder.com/accounts/{{ $json.id }}/leads",
+            "options": {},
+            "sendQuery": true,
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "queryParameters": {
+              "parameters": [
+                {
+                  "name": "start_date",
+                  "value": "={{ $now.minus(1, 'day').toFormat('yyyy-MM-dd') }}"
+                },
+                {
+                  "name": "end_date",
+                  "value": "={{ $now.toFormat('yyyy-MM-dd') }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "xipzlNJVo73gB17T",
+              "name": "Leapfeeder Token"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "0274033f-582a-40f6-9c08-161a81cfb2ab",
+          "name": "Filter Leads by company criteria",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            640,
+            762.4643026004727
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "077363ca-c785-497c-bae9-24829bb321cd",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $json.metrics.employees }}",
+                  "rightValue": 100
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "918af2ea-38ab-4d36-abf0-628119216835",
+          "name": "Enrich company",
+          "type": "n8n-nodes-base.clearbit",
+          "position": [
+            420,
+            762
+          ],
+          "parameters": {
+            "domain": "={{ $json.attributes.website_url }}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "clearbitApi": {
+              "id": "cKDImrinp9tg0ZHW",
+              "name": "Clearbit account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5ee23d2a-5eb6-4edd-8668-6053294d26cb",
+          "name": "Setup",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            640,
+            282.4643026004727
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "7b5f7c85-7455-439a-8427-7b45c67c7903",
+                  "name": "Leadfeeder Accounts",
+                  "type": "array",
+                  "value": "=[\"n8n\",\"someOtherAccount\"]"
+                },
+                {
+                  "id": "61e2ddbd-380e-4b6e-8652-048b948994e5",
+                  "name": "Google Sheets URL",
+                  "type": "string",
+                  "value": "https://docs.google.com/spreadsheets/d/1a2gfBjZZpN0jiD7apR8fPplRp2aPHVy2_5lp4Yzp778/edit?usp=sharing"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.3
+        },
+        {
+          "id": "425b3030-d745-4fe0-a489-c6d79f1d6dca",
+          "name": "Get all Leedfeeder accounts",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            420,
+            522.4643026004727
+          ],
+          "parameters": {
+            "url": "https://api.leadfeeder.com/accounts",
+            "options": {},
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth"
+          },
+          "credentials": {
+            "httpHeaderAuth": {
+              "id": "xipzlNJVo73gB17T",
+              "name": "Leapfeeder Token"
+            }
+          },
+          "typeVersion": 4.1
+        },
+        {
+          "id": "2a547ddc-131d-4628-83f1-516d07dddde9",
+          "name": "Only for wanted accounts",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            840,
+            522.4643026004727
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "7c08f7c1-b6d4-47cc-91f8-e55a6d800eb3",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $('Setup').first().json[\"Leadfeeder Accounts\"].includes($json.attributes.name) }}",
+                  "rightValue": "n8n"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "8083e9c2-ffcd-4060-87eb-f726349d1bc3",
+          "name": "Split out accounts",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            640,
+            522.4643026004727
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "59696b1e-ff16-49d4-abc2-d830ce612fb5",
+          "name": "Split Out Leads",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            1220,
+            522.4643026004727
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "data"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "0618bc71-d8b3-4f8e-891b-127a391994fe",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            799.9999999999991,
+            208.53380614657158
+          ],
+          "parameters": {
+            "color": 6,
+            "width": 370.00000000000045,
+            "height": 239.93049645390096,
+            "content": "### Setup\n1. Add your **Leedfeeder** credentials. The name should be `Authorization` and the value `Token token=yourapitoken`. You can find your token via **Settings -> Personal -> API-Token**\n2. Add your **Google Sheet** credentials\n3. Save the **Leedfeeder** account names you want to use in the `Setup` node\n4. Copy the [Google Sheets Template](https://docs.google.com/spreadsheets/d/1a2gfBjZZpN0jiD7apR8fPplRp2aPHVy2_5lp4Yzp778/edit?usp=sharing) and add its URL to the `Setup` node"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c23e9507-6413-4343-add3-ee1539b424fd",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            420,
+            282.4643026004727
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 7
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "68f4a72e-c857-4e7c-8176-5e2494be2553",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1380,
+            466.4643026004727
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 193,
+            "height": 220,
+            "content": "Adjust your engagement criteria here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "648ef9d3-1ea7-42ff-9c80-16f05e9ff7f6",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            600,
+            707.4643026004727
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 193,
+            "height": 215,
+            "content": "Adjust your company criteria here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "bc1e5cb1-fb6b-45a8-a23b-b3d890b7cc79",
+          "name": "Filter leads by engagement",
+          "type": "n8n-nodes-base.filter",
+          "position": [
+            1420,
+            522.4643026004727
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "b97c4134-48e9-4a55-b002-5db3e4304e0d",
+                  "operator": {
+                    "type": "number",
+                    "operation": "gt"
+                  },
+                  "leftValue": "={{ $json.attributes.visits }}",
+                  "rightValue": 3
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "9c59a495-7fc6-4d11-b15c-0e72c9f33164",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            380,
+            240
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 193,
+            "height": 186.77446808510643,
+            "content": "Adjust the schedule here"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9ee5c6ac-544b-42fa-9432-92ae45ee40dd",
+          "name": "Save leads to Google Sheets",
+          "type": "n8n-nodes-base.googleSheets",
+          "position": [
+            840,
+            762.4643026004727
+          ],
+          "parameters": {
+            "columns": {
+              "value": {
+                "name": "={{ $json.name }}",
+                "domain": "={{ $json.domain }}",
+                "visits": "={{ $('Split Out Leads').item.json.attributes.visits }}",
+                "quality": "={{ $('Split Out Leads').item.json.attributes.quality }}",
+                "twitter": "={{ $json.twitter.handle ? $json.twitter.handle : $('Split Out Leads').item.json.attributes.twitter_handle  }}",
+                "linkedin": "={{ $json.linkedin.handle ? $json.linkedin.handle  : $('Split Out Leads').item.json.attributes.linkedin_handle  }}",
+                "employees": "={{ $json.metrics.employees ? $json.metrics.employees :  $('Split Out Leads').item.json.attributes.employee_count }}",
+                "description": "={{ $json.description }}"
+              },
+              "schema": [
+                {
+                  "id": "domain",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "domain",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "name",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "name",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "description",
+                  "type": "string",
+                  "display": true,
+                  "removed": false,
+                  "required": false,
+                  "displayName": "description",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "employees",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "employees",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "twitter",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "twitter",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "linkedin",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "linkedin",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "quality",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "quality",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                },
+                {
+                  "id": "visits",
+                  "type": "string",
+                  "display": true,
+                  "required": false,
+                  "displayName": "visits",
+                  "defaultMatch": false,
+                  "canBeUsedToMatch": true
+                }
+              ],
+              "mappingMode": "defineBelow",
+              "matchingColumns": [
+                "domain"
+              ]
+            },
+            "options": {},
+            "operation": "appendOrUpdate",
+            "sheetName": {
+              "__rl": true,
+              "mode": "list",
+              "value": "gid=0",
+              "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1a2gfBjZZpN0jiD7apR8fPplRp2aPHVy2_5lp4Yzp778/edit#gid=0",
+              "cachedResultName": "Visitors"
+            },
+            "documentId": {
+              "__rl": true,
+              "mode": "url",
+              "value": "={{ $('Setup').first().json[\"Google Sheets URL\"] }}"
+            }
+          },
+          "credentials": {
+            "googleSheetsOAuth2Api": {
+              "id": "9",
+              "name": "Nik's Google"
+            }
+          },
+          "typeVersion": 4.2
+        }
+      ],
+      "pinData": {
+        "Get Leads": [
+          {
+            "data": [
+              {
+                "id": "400360f2-6131-11e5-90dc-638a476d8c19_6xeTMh2VfiAzFd86n7GNJ3",
+                "type": "leads",
+                "attributes": {
+                  "name": "Leadfeeder Inc.",
+                  "phone": "+358504303422",
+                  "status": "new",
+                  "visits": 10,
+                  "quality": 6,
+                  "revenue": null,
+                  "assignee": null,
+                  "industry": "N/A",
+                  "logo_url": "https://logos.leadfeeder.com/123/logo.png",
+                  "emailed_to": null,
+                  "business_id": null,
+                  "website_url": "https://www.leadfeeder.com",
+                  "facebook_url": "https://www.facebook.com/Leadfeeder",
+                  "linkedin_url": "https://www.linkedin.com/company/leadfeeder",
+                  "twitter_handle": "Leadfeeder",
+                  "last_visit_date": "2015-09-21",
+                  "first_visit_date": "2015-09-18",
+                  "view_in_leadfeeder": "https://app.leadfeeder.com/link/9088f1ad86"
+                },
+                "relationships": {
+                  "location": {
+                    "data": {
+                      "id": "6xeTMh2VfiAzFd86n7GNJ3",
+                      "type": "locations"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "40157512-6131-11e5-90dc-638a476d8c19_6xeTMh2VfiAzFd86n7GNJ3",
+                "type": "leads",
+                "attributes": {
+                  "name": "Organic Mint",
+                  "tags": [
+                    "tag1",
+                    "tag2"
+                  ],
+                  "phone": null,
+                  "status": "new",
+                  "visits": 15,
+                  "quality": 4,
+                  "revenue": "EUR 395752792.0",
+                  "assignee": "user@company.com",
+                  "industry": "N/A",
+                  "logo_url": "https://logos.leadfeeder.com/123/logo.png",
+                  "emailed_to": "user@example.com,user@company.com",
+                  "business_id": "KVK Number 123",
+                  "crm_lead_id": 110,
+                  "website_url": "https://www.organicmint.com",
+                  "facebook_url": null,
+                  "linkedin_url": null,
+                  "employee_count": 550,
+                  "twitter_handle": null,
+                  "employees_range": {
+                    "max": 550,
+                    "min": 501
+                  },
+                  "last_visit_date": "2015-09-21",
+                  "first_visit_date": "2015-09-18",
+                  "view_in_leadfeeder": "https://app.leadfeeder.com/link/9088f1ad85",
+                  "crm_organization_id": null
+                },
+                "relationships": {
+                  "location": {
+                    "data": {
+                      "id": "6xeTMh2VfiAzFd86n7GNJ3",
+                      "type": "locations"
+                    }
+                  }
+                }
+              }
+            ],
+            "links": {
+              "last": "https://api.leadfeeder.com/accounts/6002/leads?end_date=2015-09-22&page%5Bnumber%5D=2&page%5Bsize%5D=2&start_date=2015-09-11",
+              "next": "https://api.leadfeeder.com/accounts/6002/leads?end_date=2015-09-22&page%5Bnumber%5D=2&page%5Bsize%5D=2&start_date=2015-09-11",
+              "self": "https://api.leadfeeder.com/accounts/6002/leads?end_date=2015-09-22&page%5Bnumber%5D=1&page%5Bsize%5D=10&start_date=2015-09-11"
+            },
+            "included": [
+              {
+                "id": "6xeTMh2VfiAzFd86n7GNJ3",
+                "type": "locations",
+                "attributes": {
+                  "city": "Helsinki",
+                  "region": "Uusimaa",
+                  "country": "Finland",
+                  "state_code": null,
+                  "region_code": null,
+                  "country_code": "FI"
+                }
+              }
+            ]
+          }
+        ],
+        "Enrich company": [
+          {
+            "id": "fea80fd1-c0f5-4d45-afa2-cb3f33a676b8",
+            "geo": {
+              "lat": 60.162394,
+              "lng": 24.9350836,
+              "city": "Helsinki",
+              "state": null,
+              "country": "Finland",
+              "stateCode": null,
+              "postalCode": "00120",
+              "streetName": "Uudenmaankatu",
+              "subPremise": null,
+              "countryCode": "FI",
+              "streetNumber": "100",
+              "streetAddress": "100 Uudenmaankatu"
+            },
+            "logo": "https://logo.clearbit.com/leadfeeder.com",
+            "name": "Leadfeeder",
+            "site": {
+              "phoneNumbers": [
+                "+358 46 764115063",
+                "+358 45 71996373",
+                "+1 800-224-6059"
+              ],
+              "emailAddresses": [
+                "team@leadfeeder.com"
+              ]
+            },
+            "tags": [
+              "Information Technology & Services",
+              "Telemarketing",
+              "Call Center",
+              "Business Management and Planning",
+              "Technology",
+              "B2B",
+              "SAAS"
+            ],
+            "tech": [
+              "amazon_ses",
+              "aws_route_53",
+              "google_apps",
+              "google_tag_manager",
+              "visual_website_optimizer",
+              "google_maps",
+              "google_analytics",
+              "stripe",
+              "appnexus",
+              "rabbitmq",
+              "dstillery",
+              "openx",
+              "mediamath",
+              "okta",
+              "pubmatic",
+              "apache_spark",
+              "rubicon_project",
+              "salesforce",
+              "microsoft_dynamics",
+              "google_search_appliance",
+              "bluekai",
+              "github",
+              "zoho_crm",
+              "unbounce",
+              "liferay",
+              "postgresql",
+              "mysql",
+              "aws_iam",
+              "pipedrive",
+              "atlassian_jira",
+              "apache_cassandra"
+            ],
+            "type": "private",
+            "phone": "+358 46 764115063",
+            "domain": "leadfeeder.com",
+            "parent": {
+              "domain": null
+            },
+            "ticker": null,
+            "metrics": {
+              "raised": 4900000,
+              "employees": 210,
+              "marketCap": null,
+              "alexaUsRank": null,
+              "trafficRank": "high",
+              "annualRevenue": null,
+              "fiscalYearEnd": null,
+              "employeesRange": "51-250",
+              "alexaGlobalRank": 27194,
+              "estimatedAnnualRevenue": "$10M-$50M"
+            },
+            "twitter": {
+              "id": "1073300916",
+              "bio": "Leadfeeder shows you the companies visiting your website. Install the Leadfeeder Tracker & connect to Google Analytics. Try Leadfeeder Premium free for 14 days.",
+              "site": "https://t.co/CYhY1hHFZi",
+              "avatar": "https://pbs.twimg.com/profile_images/929961392261693440/Stt2t1K-_normal.jpg",
+              "handle": "Leadfeeder",
+              "location": "Helsinki, Finland",
+              "followers": 4302,
+              "following": 200
+            },
+            "category": {
+              "sector": "Industrials",
+              "sicCode": "73",
+              "gicsCode": "20201060",
+              "industry": "Professional Services",
+              "naicsCode": "56",
+              "sic4Codes": [
+                "7389"
+              ],
+              "naics6Codes": [
+                "561422"
+              ],
+              "subIndustry": "Professional Services",
+              "industryGroup": "Commercial & Professional Services",
+              "naics6Codes2022": [
+                "561422"
+              ]
+            },
+            "facebook": {
+              "likes": 3206,
+              "handle": "leadfeeder"
+            },
+            "linkedin": {
+              "handle": "company/leadfeeder"
+            },
+            "location": "Uudenmaankatu 100, 00120 Helsinki, Finland",
+            "timeZone": "Europe/Helsinki",
+            "indexedAt": "2024-02-08T18:10:40.453Z",
+            "legalName": null,
+            "utcOffset": 2,
+            "crunchbase": {
+              "handle": "organization/leadfeeder"
+            },
+            "description": "Leadfeeder is a lead generation tool for B2B companies. You can turn your website visitors into sales leads by discovering the companies that visit your website and what they do there. Generating good sales leads is important. There are many potential ...",
+            "foundedYear": null,
+            "identifiers": {
+              "usCIK": null,
+              "usEIN": null
+            },
+            "domainAliases": [
+              "leadfeeder.nl",
+              "leadfeeder.info",
+              "leadfeeder.pl",
+              "leadfeeder.us",
+              "leadfeeder.ch",
+              "lfeeder.com",
+              "leadfeeder.fi",
+              "leadfeeder.es"
+            ],
+            "emailProvider": false,
+            "techCategories": [
+              "email_delivery_service",
+              "dns",
+              "productivity",
+              "tag_management",
+              "website_optimization",
+              "geolocation",
+              "analytics",
+              "payment",
+              "advertising",
+              "data_management",
+              "security",
+              "data_processing",
+              "crm",
+              "marketing_automation",
+              "content_management_system",
+              "database",
+              "project_management_software"
+            ],
+            "ultimateParent": {
+              "domain": null
+            }
+          },
+          {
+            "id": "bd960361-64c4-4f23-b24b-5d2284a9b4e4",
+            "geo": {
+              "lat": 42.2010397,
+              "lng": -71.0009158,
+              "city": "Braintree",
+              "state": "Massachusetts",
+              "country": "United States",
+              "stateCode": "MA",
+              "postalCode": "02184",
+              "streetName": "Pearl Street",
+              "subPremise": null,
+              "countryCode": "US",
+              "streetNumber": "125",
+              "streetAddress": "125 Pearl Street"
+            },
+            "logo": "https://logo.clearbit.com/vermints.com",
+            "name": "VerMints",
+            "site": {
+              "phoneNumbers": [
+                "+1 800-367-4442",
+                "+1 781-340-4440"
+              ],
+              "emailAddresses": [
+                "gary@vermints.com",
+                "feedback@vermints.com",
+                "wholesale@vermints.com"
+              ]
+            },
+            "tags": [
+              "Food",
+              "Candy",
+              "E-commerce",
+              "Manufacturing",
+              "Food Manufacturing",
+              "B2C"
+            ],
+            "tech": [
+              "facebook_connect",
+              "google_analytics",
+              "cloud_flare",
+              "facebook_advertiser",
+              "bigcommerce",
+              "google_tag_manager",
+              "adobe_dynamic_tag_management",
+              "appnexus",
+              "openx",
+              "the_trade_desk",
+              "pubmatic",
+              "rubicon_project",
+              "bluekai",
+              "matomo",
+              "aggregate_knowledge"
+            ],
+            "type": "private",
+            "phone": "+1 800-367-4442",
+            "domain": "vermints.com",
+            "parent": {
+              "domain": null
+            },
+            "ticker": null,
+            "metrics": {
+              "raised": null,
+              "employees": 5,
+              "marketCap": null,
+              "alexaUsRank": null,
+              "trafficRank": "very_low",
+              "annualRevenue": null,
+              "fiscalYearEnd": null,
+              "employeesRange": "1-10",
+              "alexaGlobalRank": 7316867,
+              "estimatedAnnualRevenue": "$0-$1M"
+            },
+            "twitter": {
+              "id": "46449053",
+              "bio": "#Organic, #glutenfree, #GMOfree, #vegan, #nutfree & #kosher mints. The best mints on earth, made from nature and nature only.",
+              "site": "https://t.co/d9rBNvmHqo",
+              "avatar": "https://pbs.twimg.com/profile_images/1323280146502164486/Nave3hYb_normal.jpg",
+              "handle": "VerMints",
+              "location": "USA",
+              "followers": 2283,
+              "following": 484
+            },
+            "category": {
+              "sector": "Consumer Staples",
+              "sicCode": "54",
+              "gicsCode": "30202030",
+              "industry": "Food Products",
+              "naicsCode": "31",
+              "sic4Codes": [
+                "5441"
+              ],
+              "naics6Codes": [
+                "311340"
+              ],
+              "subIndustry": "Packaged Foods & Meats",
+              "industryGroup": "Food, Beverage & Tobacco",
+              "naics6Codes2022": [
+                "311340"
+              ]
+            },
+            "facebook": {
+              "likes": 1890,
+              "handle": "115824945738"
+            },
+            "linkedin": {
+              "handle": "company/vermints-inc."
+            },
+            "location": "125 Pearl St, Braintree, MA 02184, USA",
+            "timeZone": "America/New_York",
+            "indexedAt": "2024-02-04T03:04:43.285Z",
+            "legalName": null,
+            "utcOffset": -5,
+            "crunchbase": {
+              "handle": null
+            },
+            "description": "VerMints is a leading manufacturer of organic breath mints and pastilles. All six flavors PepperMint, Wintergreen, Cinnamon, GingerMint, Chai and Cafe Express are certified organic, non GMO, gluten free and kosher. VerMints are True Mints. They are hon...",
+            "foundedYear": 2001,
+            "identifiers": {
+              "usCIK": null,
+              "usEIN": null
+            },
+            "domainAliases": [],
+            "emailProvider": false,
+            "techCategories": [
+              "authentication_services",
+              "analytics",
+              "dns",
+              "advertising",
+              "ecommerce",
+              "tag_management",
+              "data_management"
+            ],
+            "ultimateParent": {
+              "domain": null
+            }
+          }
+        ],
+        "Get all Leedfeeder accounts": [
+          {
+            "data": [
+              {
+                "id": "233695",
+                "type": "accounts",
+                "attributes": {
+                  "name": "n8n",
+                  "on_trial": true,
+                  "timezone": "Europe/Berlin",
+                  "subscription": "premium",
+                  "subscription_addons": [
+                    "guard",
+                    "google_data_studio"
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "connections": {
+        "Setup": {
+          "main": [
+            [
+              {
+                "node": "Get all Leedfeeder accounts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Leads": {
+          "main": [
+            [
+              {
+                "node": "Split Out Leads",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Enrich company": {
+          "main": [
+            [
+              {
+                "node": "Filter Leads by company criteria",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split Out Leads": {
+          "main": [
+            [
+              {
+                "node": "Filter leads by engagement",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Setup",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Split out accounts": {
+          "main": [
+            [
+              {
+                "node": "Only for wanted accounts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Only for wanted accounts": {
+          "main": [
+            [
+              {
+                "node": "Get Leads",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter leads by engagement": {
+          "main": [
+            [
+              {
+                "node": "Enrich company",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get all Leedfeeder accounts": {
+          "main": [
+            [
+              {
+                "node": "Split out accounts",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Leads by company criteria": {
+          "main": [
+            [
+              {
+                "node": "Save leads to Google Sheets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 15,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.filter": {
+          "count": 3
+        },
+        "n8n-nodes-base.clearbit": {
+          "count": 1
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 2
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 4
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.googleSheets": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Niklas Hatje",
+      "username": "nik8n",
+      "bio": "Product Manager at n8n - Responsible for the creator program",
+      "verified": true,
+      "links": [
+        "https://www.linkedin.com/in/niklashatje/"
+      ],
+      "avatar": "https://gravatar.com/avatar/e16a4426e166713c34626bdde856b1cd15bb6787481a7ead9b74318f19e6259d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 18,
+        "icon": "file:googleSheets.svg",
+        "name": "n8n-nodes-base.googleSheets",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Sheet",
+              "Spreadsheet",
+              "GS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/love-at-first-sight-ricardos-n8n-journey/",
+                  "icon": "❤️",
+                  "label": "Love at first sight: Ricardo’s n8n journey"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/your-business-doesnt-need-you-to-operate/",
+                  "icon": " 🖥️",
+                  "label": "Hey founders! Your business doesn't need you to operate"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-honest-burgers-use-automation-to-save-100k-per-year/",
+                  "icon": "🍔",
+                  "label": "How Honest Burgers Use Automation to Save $100k per year"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.googlesheets/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\",\"output\"]",
+        "defaults": {
+          "name": "Google Sheets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNS42OSAxIDUyIDE3LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0OC4yOTMgNjBIMTIuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDkgNTYuMzEyVjQuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTIuNzA3IDF6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM1LjY5IDEgNTIgMTcuMjI1SDM5LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzkuMjExIDE3LjIyNSA1MiAyMi40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTIwLjEyIDMxLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMS42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzEuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjxwYXRoIGZpbGw9IiMyOEI0NDYiIGQ9Ik0zNC42OSAwIDUxIDE2LjIyNXYzOS4wODdhMy42NyAzLjY3IDAgMCAxLTEuMDg0IDIuNjFBMy43IDMuNyAwIDAgMSA0Ny4yOTMgNTlIMTEuNzA3YTMuNyAzLjcgMCAwIDEtMi42MjMtMS4wNzhBMy42NyAzLjY3IDAgMCAxIDggNTUuMzEyVjMuNjg4YTMuNjcgMy42NyAwIDAgMSAxLjA4NC0yLjYxQTMuNyAzLjcgMCAwIDEgMTEuNzA3IDB6Ii8+PHBhdGggZmlsbD0iIzZBQ0U3QyIgZD0iTTM0LjY5IDAgNTEgMTYuMjI1SDM4LjM5N2MtMi4wNTQgMC0zLjcwNy0xLjgyOS0zLjcwNy0zLjg3MnoiLz48cGF0aCBmaWxsPSIjMjE5QjM4IiBkPSJNMzguMjExIDE2LjIyNSA1MSAyMS40OHYtNS4yNTV6Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTE5LjEyIDMwLjk3NWMwLS44MTcuNjYyLTEuNDc1IDEuNDgzLTEuNDc1aDE3Ljc5NGMuODIxIDAgMS40ODIuNjU4IDEuNDgyIDEuNDc1djE1LjQ4N2MwIC44MTgtLjY2MSAxLjQ3NS0xLjQ4MiAxLjQ3NUgyMC42MDNhMS40NzYgMS40NzYgMCAwIDEtMS40ODItMS40NzRWMzAuOTc0em0yLjIyNSAxLjQ3NWg2LjY3MnYyLjIxMmgtNi42NzJ6bTAgNS4xNjJoNi42NzJ2Mi4yMTNoLTYuNjcyem0wIDUuMTYzaDYuNjcydjIuMjEyaC02LjY3MnptOS42MzgtMTAuMzI1aDYuNjcydjIuMjEyaC02LjY3MnptMCA1LjE2Mmg2LjY3MnYyLjIxM2gtNi42NzJ6bTAgNS4xNjNoNi42NzJ2Mi4yMTJoLTYuNjcyeiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Google Sheets",
+        "typeVersion": 5,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 218,
+        "icon": "file:clearbit.svg",
+        "name": "n8n-nodes-base.clearbit",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clearbit/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clearbit/"
+                }
+              ]
+            },
+            "categories": [
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Clearbit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI3MiIgaGVpZ2h0PSI3MiI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iNTAlIiB4Mj0iMTAwJSIgeTE9IjAlIiB5Mj0iMTAwJSI+PHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI0RFRjJGRSIvPjxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI0RCRjFGRSIvPjwvbGluZWFyR3JhZGllbnQ+PGxpbmVhckdyYWRpZW50IGlkPSJiIiB4MT0iMCUiIHgyPSI1MCUiIHkxPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiM1N0JDRkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiM1MUI1RkQiLz48L2xpbmVhckdyYWRpZW50PjxsaW5lYXJHcmFkaWVudCBpZD0iYyIgeDE9IjM3LjUlIiB4Mj0iNjIuNSUiIHkxPSIwJSIgeTI9IjEwMCUiPjxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiMxQ0E3RkQiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9IiMxNDhDRkMiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9InVybCgjYSkiIGQ9Ik03MiAzNnYxNi43N2wtLjAwNC44NjhjLS4wNiA2LjAzNS0uNzUgOC4zNTMtMiAxMC42ODhhMTMuNjMgMTMuNjMgMCAwIDEtNS42NyA1LjY3bC0uMzI2LjE3MUM2MS42NTggNzEuMzY0IDU5LjE2IDcyIDUyLjc3IDcySDM2VjM2eiIvPjxwYXRoIGZpbGw9InVybCgjYikiIGQ9Ik02NC4zMjYgMi4wMDNhMTMuNjMgMTMuNjMgMCAwIDEgNS42NyA1LjY3bC4xNzEuMzI3QzcxLjM2NCAxMC4zNDIgNzIgMTIuODQgNzIgMTkuMjNWMzZIMzZWMGgxNi43N2M2LjY4NyAwIDkuMTEyLjY5NiAxMS41NTYgMi4wMDMiLz48cGF0aCBmaWxsPSJ1cmwoI2MpIiBkPSJNMzYgMHY3MkgxOS4yM2wtLjg2OC0uMDA0Yy02LjAzNS0uMDYtOC4zNTMtLjc1LTEwLjY4OC0yYTEzLjYzIDEzLjYzIDAgMCAxLTUuNjctNS42N0wxLjgzMiA2NEMuNjM2IDYxLjY1OCAwIDU5LjE2IDAgNTIuNzdWMTkuMjNjMC02LjY4Ny42OTYtOS4xMTIgMi4wMDMtMTEuNTU2YTEzLjYzIDEzLjYzIDAgMCAxIDUuNjctNS42N0w4IDEuODMyQzEwLjM0Mi42MzYgMTIuODQgMCAxOS4yMyAweiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Clearbit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 844,
+        "icon": "fa:filter",
+        "name": "n8n-nodes-base.filter",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The Filter node can be used to filter items based on a condition. If the condition is met, the item will be passed on to the next node. If the condition is not met, the item will be omitted. Conditions can be combined together by AND(meet all conditions), or OR(meet at least one condition).",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.filter/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Filter",
+          "color": "#229eff"
+        },
+        "iconData": {
+          "icon": "filter",
+          "type": "icon"
+        },
+        "displayName": "Filter",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": []
+  }
+}

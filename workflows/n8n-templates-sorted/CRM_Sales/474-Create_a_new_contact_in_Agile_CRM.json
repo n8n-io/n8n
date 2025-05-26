@@ -1,0 +1,212 @@
+{
+  "workflow": {
+    "id": 474,
+    "name": "Create a new contact in Agile CRM",
+    "views": 549,
+    "recentViews": 0,
+    "totalViews": 549,
+    "createdAt": "2020-07-10T12:23:55.645Z",
+    "description": "![workflow-screenshot](fileId:75)",
+    "workflow": {
+      "id": "96",
+      "name": "Create a new contact in Agile CRM",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "AgileCRM",
+          "type": "n8n-nodes-base.agileCrm",
+          "position": [
+            450,
+            300
+          ],
+          "parameters": {
+            "operation": "create",
+            "additionalFields": {
+              "lastName": "",
+              "firstName": ""
+            }
+          },
+          "credentials": {
+            "agileCrmApi": ""
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "AgileCRM",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.agileCrm": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "tanaypant",
+      "username": "tanay1337",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/0cef0266ab81fd7159b2d3d681aeb30fe1953b287de10f3e6d60e58d866ad0b0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 313,
+        "icon": "file:agilecrm.png",
+        "name": "n8n-nodes-base.agileCrm",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.agilecrm/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/agileCrm/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Agile CRM"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAMAAAANIilAAAABTVBMVEVAneNAneNAneP///8/neQ/neMfjN5uteZCnuMljuCmz+1Dn+X///3///sei90aid1BnuUwleM6muRFn+M0l+IqkuIdi98Xh9xBn+U2mOQ8nOMrk+InkOEijuApkN7w+Pldq+VjreMlkONKoeE/mt7y+fv0+frq9PnS5/Ov1e09nOUyl+NLouIulOI8meAljt8bid/8//vj8fja6/Sy1u6hze2AvOd6ueZBnOAgjOAylN8uk94kjdz7/PrJ4/TF4fOn0u6lzuuFv+mKwug/nuZ0tuU2meJRpOEukd0PhN0gi9v3+/vs9frm8fbU6PbL5vS73PC42vCVyu+Yyeydy+uTxuqPw+pmsOY6m+VqseRVp+NGn+AUhtwOgtnd7fa+4PTH5PKf0PGk0PBzuOo3muVssuRZp+Q1lt3n8fne7vix1/K/3fC/3e+mz+8AdtXkFxw0AAAAAnRSTlPy5YB5WPAAAAMiSURBVEjH7dfXUuMwFAZg1kc2Yi2XxHac3kMgnRRS6b3D0ntZyvb3v1yZakIcArnZmeW/yIzH+nykE40S93zqeW8oZbpIT08X9gP/9xjJt5/vwjjhStpsyaRdfjPGSdFbUSKRCK45NITfgnmXVBk+/RaI9QeWBzYPFjUn6hjz3vmdODxGGDzMsbhD7JQOBww0srr+Y2wFaPrL+p6zI8yLczEAMjo5V89m/dHe8SHKpyQ77gDzvggdHej1SR43ixKuqh4ZvdXodSwn5+lM85Wj+68IybJvsQhAglX+NYywPkHrRh2mkYpNXwdYmXe1wwjR/RROCUD2dR6ZV+KpxwEmJdwOYzbsON4CGPzjTciMWetlgJO6vQ3mvY3g5ugIIWvDwUbVLZuKu2p5gN2wJZYTudSG8LAvfl01qomnaWJpHGBHRBYY26XykMEC8Rgx/FhoMfzUNW4GoNhAqCVG09KUsZUmQoeMEirFjces76rsQzu0IMBaPdEa87kZo1pU70uqtqwU3V4G2jjH42DPAYE1zjbLtsAoHR0B2JDCTsa47bTp0W1hKFN7HOgNAZzWmVnOi/ALLF4AFBoe5X6WlEvB/fTTmsVJuqb48kkpyKlKE551x4Ds5rBpTdijKY+Xcm4D7kK2smn+OfbuE1jNup938+kK2yoxACGfF4zG+FX8DHO01TuS5WnlPCoBDEQzmYNxYvRx+hkWvwB85RiraL0CkNDCrCt8PEyABPsQMuNzin1WluXos38usgzC7uNBWlpEzZWHRWyFWf9WPuIxbuNwagjiGZcZ+8oEilaYEnuaVe96bFe/w1LKZsbpOQGWMh5r7XYh5g6nV5uxO3sGMLGAqG4fpGYCEFNUM8a+EACZWdh7TTsXJgmM+t1mjJBYBBDKum9vmmEtI9uPIv20tQ5sxnQP+Y2Dvng9Lzo4q4g5/1UAoOC/bDoMFK12RrUwMH7++3PrTJRKRoH+ipdvwgyv+TdH4PUUUlX+5QGoqI65i4LQVgqF7Vof3+r0xNOa4+a6t01mQjecqlj+Ytg9fW3i0y4Z9I//G/rAH/geM12kq9fBv9egdVYrT7L2AAAAAElFTkSuQmCC"
+        },
+        "displayName": "Agile CRM",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 75,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/41ec8ed0aaf84bbea09eab38114c00af.png"
+      }
+    ]
+  }
+}

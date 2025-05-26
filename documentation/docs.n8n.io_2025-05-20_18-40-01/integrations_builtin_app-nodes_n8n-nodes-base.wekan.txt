@@ -1,0 +1,74 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.wekan/
+Scraped_At: 2025-05-20T18:52:38.349467
+
+Wekan node
+#
+Use the Wekan node to automate work in Wekan, and integrate Wekan with other applications. n8n has built-in support for a wide range of Wekan features, including creating, updating, deleting, and getting boards and cards.
+On this page, you'll find a list of operations the Wekan node supports and links to more resources.
+Credentials
+Refer to
+Wekan credentials
+for guidance on setting up authentication.
+Operations
+#
+Board
+Create a new board
+Delete a board
+Get the data of a board
+Get all user boards
+Card
+Create a new card
+Delete a card
+Get a card
+Get all cards
+Update a card
+Card Comment
+Create a comment on a card
+Delete a comment from a card
+Get a card comment
+Get all card comments
+Checklist
+Create a new checklist
+Delete a checklist
+Get the data of a checklist
+Returns all checklists for the card
+Checklist Item
+Delete a checklist item
+Get a checklist item
+Update a checklist item
+List
+Create a new list
+Delete a list
+Get the data of a list
+Get all board lists
+Templates and examples
+#
+Browse Wekan integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Load all the parameters for the node
+#
+To load all the parameters, for example, Author ID, you need to give admin permissions to the user. Refer to the
+Wekan documentation
+to learn how to change permissions.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

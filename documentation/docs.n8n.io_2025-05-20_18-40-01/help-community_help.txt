@@ -1,0 +1,48 @@
+URL: https://docs.n8n.io/help-community/help/
+Scraped_At: 2025-05-20T18:43:16.393011
+
+Get help with n8n
+#
+If you need more help with n8n, you can ask for support in the
+forum
+. This is the best source of answers, as both the n8n support team and community members can help.
+If your Cloud instance is having issues, or if you're an enterprise customer who needs support, you can contact
+help@n8n.io
+.
+Use the About n8n debug tool
+#
+Whether you're posting to the forum or emailing customer support, you'll get help faster if you provide details about your n8n instance in your first post or email.
+The fastest way to do this is to use the
+About n8n
+debug tool:
+Open the left-side panel.
+Select
+Help
+.
+Select
+About n8n
+.
+The
+About n8n
+modal opens to display your current information.
+Select
+Copy debug information
+to copy your information.
+n8n recommends pasting this information into your forum post or support email.
+Don't see
+Copy debug
+?
+The
+Copy debug
+option is available beginning in n8n version 1.49.0.
+If you're using an earlier version of n8n, n8n recommends manually providing this information:
+n8n version
+Database
+n8n EXECUTIONS_PROCESS setting
+Running n8n via (Docker, npm, n8n cloud)
+Operating system
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

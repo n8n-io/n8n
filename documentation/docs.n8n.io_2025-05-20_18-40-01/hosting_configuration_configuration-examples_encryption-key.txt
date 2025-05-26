@@ -1,0 +1,30 @@
+URL: https://docs.n8n.io/hosting/configuration/configuration-examples/encryption-key/
+Scraped_At: 2025-05-20T18:43:31.431642
+
+Set a custom encryption key
+#
+n8n creates a random encryption key automatically on the first launch and saves
+it in the
+~/.n8n
+folder. n8n uses that key to encrypt the credentials before
+they get saved to the database. If the key isn't yet in the settings file,
+you can set it using an environment variable, so that n8n 
+uses your custom key instead of generating a new one.
+In
+queue mode
+, you must specify the encryption key environment variable for all workers.
+1
+export
+N8N_ENCRYPTION_KEY
+=
+<SOME
+RANDOM
+STRING>
+Refer to
+Environment variables reference
+for more information on this variable.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

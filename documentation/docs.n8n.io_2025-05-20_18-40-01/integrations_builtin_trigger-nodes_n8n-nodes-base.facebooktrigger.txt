@@ -1,0 +1,62 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebooktrigger/
+Scraped_At: 2025-05-20T19:06:02.353433
+
+Facebook Trigger node
+#
+Facebook
+is a social networking site to connect and share with family and friends online.
+Use the Facebook Trigger node to trigger a workflow when events occur in Facebook.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Facebook Trigger integrations
+page.
+Objects
+#
+Ad Account
+: Get updates for certain ads changes.
+Application
+: Get updates sent to the application.
+Certificate Transparency
+: Get updates when new security certificates are generated for your subscribed domains, including new certificates and potential phishing attempts.
+Activity and events in a
+Group
+Instagram
+: Get updates when someone comments on the Media objects of your app users; @mentions your app users; or when Stories of your app users expire.
+Link
+: Get updates about the links for rich previews by an external provider
+Page
+updates
+Permissions
+: Updates when granting or revoking permissions
+User
+profile updates
+WhatsApp Business Account
+Use WhatsApp Trigger
+n8n recommends using the
+WhatsApp Trigger node
+with the
+WhatsApp credentials
+instead of the Facebook Trigger node for these events. The WhatsApp Trigger node has more events to listen to.
+Workplace Security
+For each
+Object
+, use the
+Field Names or IDs
+dropdown to select more details on what data to receive. Refer to the linked pages for more details.
+Related resources
+#
+View
+example workflows and related content
+on n8n's website.
+Refer to Meta's
+Graph API documentation
+for details about their API.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

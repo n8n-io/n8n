@@ -1,0 +1,46 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.segment/
+Scraped_At: 2025-05-20T18:51:20.055200
+
+Segment node
+#
+Use the Segment node to automate work in Segment, and integrate Segment with other applications. n8n has built-in support for a wide range of Segment features, including adding users to groups, creating identities, and tracking activities.
+On this page, you'll find a list of operations the Segment node supports and links to more resources.
+Credentials
+Refer to
+Segment credentials
+for guidance on setting up authentication.
+Operations
+#
+Group
+Add a user to a group
+Identify
+Create an identity
+Track
+Record the actions your users perform. Every action triggers an event, which can also have associated properties.
+Record page views on your website, along with optional extra information about the page being viewed.
+Templates and examples
+#
+Browse Segment integration templates
+, or
+search all templates
+What to do if your operation isn't supported
+#
+If this node doesn't support the operation you want to do, you can use the
+HTTP Request node
+to call the service's API.
+You can use the credential you created for this service in the HTTP Request node:
+In the HTTP Request node, select
+Authentication
+>
+Predefined Credential Type
+.
+Select the service you want to connect to.
+Select your credential.
+Refer to
+Custom API operations
+for more information.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

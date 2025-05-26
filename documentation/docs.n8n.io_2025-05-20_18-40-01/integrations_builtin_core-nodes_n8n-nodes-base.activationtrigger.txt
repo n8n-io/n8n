@@ -1,0 +1,45 @@
+URL: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.activationtrigger/
+Scraped_At: 2025-05-20T18:55:23.467278
+
+Activation Trigger node
+#
+The Activation Trigger node gets triggered when an event gets fired by n8n or a workflow.
+Warning
+n8n has deprecated the Activation Trigger node and replaced it with two new nodes: the
+n8n Trigger node
+and the
+Workflow Trigger node
+. For more details, check out the entry in the
+breaking changes
+page.
+Keep in mind
+If you want to use the Activation Trigger node for a workflow, add the node to the workflow. You don't have to create a separate workflow.
+The Activation Trigger node gets triggered for the workflow that it gets added to. You can use the Activation Trigger node to trigger a workflow to notify the state of the workflow.
+Node parameters
+#
+Events
+Activation
+: Run when the workflow gets activated
+Start
+: Run when n8n starts or restarts
+Update
+: Run when the workflow gets saved while it's active
+Templates and examples
+#
+Host your own Uptime Monitoring with Scheduled Triggers
+by Jimleuk
+View template details
+Automated Work Attendance with Location Triggers
+by Rui Borges
+View template details
+Auto Invoice & Receipt OCR to Google Sheets – Drive, Gmail, & Telegram Triggers
+by Daniel Ng
+View template details
+Browse Activation Trigger integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

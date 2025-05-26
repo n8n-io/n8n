@@ -1,0 +1,264 @@
+{
+  "workflow": {
+    "id": 1114,
+    "name": "Create, update and get a task in Microsoft To Do",
+    "views": 2654,
+    "recentViews": 0,
+    "totalViews": 2654,
+    "createdAt": "2021-06-07T10:02:36.504Z",
+    "description": "This workflow allows you to create, update and get a task in Microsoft To Do.\n\n![workflow-screenshot](fileId:507)\n\n**Microsoft To Do node:** This node will create a task with the importance `High` in the Tasks list. You can select a different list as well as the importance level.\n\n**Microsoft To Do1 node:** This node will update the status of the task that we created in the previous node.\n\n**Microsoft To Do2 node:** This node will get the task that we created earlier.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Microsoft To Do",
+          "type": "n8n-nodes-base.microsoftToDo",
+          "position": [
+            450,
+            200
+          ],
+          "parameters": {
+            "title": "Document Microsoft To Do node",
+            "operation": "create",
+            "taskListId": "AQMkADAwATNiZmYAZC0zOTkAMy02ZWZjLTAwAi0wMAoALgAAA3i1fHMTrftIhQBzhywL64UBAFB0wRiJW1FJmmlvlAkVFQA-AAACARIAAAA=",
+            "additionalFields": {
+              "importance": "high"
+            }
+          },
+          "credentials": {
+            "microsoftToDoOAuth2Api": "Microsoft OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Microsoft To Do1",
+          "type": "n8n-nodes-base.microsoftToDo",
+          "position": [
+            650,
+            200
+          ],
+          "parameters": {
+            "taskId": "={{$json[\"id\"]}}",
+            "operation": "update",
+            "taskListId": "={{$node[\"Microsoft To Do\"].parameter[\"taskListId\"]}}",
+            "updateFields": {
+              "status": "inProgress"
+            }
+          },
+          "credentials": {
+            "microsoftToDoOAuth2Api": "Microsoft OAuth Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Microsoft To Do2",
+          "type": "n8n-nodes-base.microsoftToDo",
+          "position": [
+            850,
+            200
+          ],
+          "parameters": {
+            "taskId": "={{$json[\"id\"]}}",
+            "taskListId": "={{$node[\"Microsoft To Do\"].parameter[\"taskListId\"]}}"
+          },
+          "credentials": {
+            "microsoftToDoOAuth2Api": "Microsoft OAuth Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Microsoft To Do": {
+          "main": [
+            [
+              {
+                "node": "Microsoft To Do1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Microsoft To Do1": {
+          "main": [
+            [
+              {
+                "node": "Microsoft To Do2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Microsoft To Do",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.microsoftToDo": {
+          "count": 3
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 493,
+        "icon": "file:todo.svg",
+        "name": "n8n-nodes-base.microsoftToDo",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.microsofttodo/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/microsoft/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Microsoft To Do"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0iIzE4NWFiZCIgZD0iTTMuNzEzIDcuODU0LjM5NCAxMS4xNzJhMS4xNyAxLjE3IDAgMCAwIDAgMS42NTVMNS4zNjcgMTcuOGw0Ljk3NC00Ljk3NC00Ljk3NC00Ljk3MmExLjE3IDEuMTcgMCAwIDAtMS42NTQgMCIvPjxwYXRoIGZpbGw9IiM0MWE1ZWUiIGQ9Im0yMy42MDYgNi4yLTMuMzE4LTMuMzJhMS4xNyAxLjE3IDAgMCAwLTEuNjU1IDBsLTQuMTQ2IDQuMTQ2TDkuNTEzIDEybC00LjE0NiA0LjE0NmExLjE3IDEuMTcgMCAwIDAgMCAxLjY1NWwzLjMxOSAzLjMxOGExLjE3IDEuMTcgMCAwIDAgMS42NTUgMGw0LjE0Ni00LjE0NkwxOS40NiAxMmw0LjE0Ni00LjE0NmExLjE3IDEuMTcgMCAwIDAgMC0xLjY1NCIvPjxwYXRoIGZpbGw9Im5vbmUiIGQ9Ik0wIDBoMjR2MjRIMHoiLz48L3N2Zz4="
+        },
+        "displayName": "Microsoft To Do",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 507,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/4d6975ae8def4c279bf9cc01f26dd966.png"
+      }
+    ]
+  }
+}

@@ -1,0 +1,35 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.signl4/
+Scraped_At: 2025-05-20T18:51:29.664363
+
+SIGNL4 node
+#
+Use the SIGNL4 node to automate work in SIGNL4, and integrate SIGNL4 with other applications. n8n supports sending and resolving alerts with SIGNL4.
+On this page, you'll find a list of operations the SIGNL4 node supports and links to more resources.
+Credentials
+Refer to
+SIGNL4 credentials
+for guidance on setting up authentication.
+Operations
+#
+Alert
+Send an alert
+Resolve an alert
+Templates and examples
+#
+Monitor a file for changes and send an alert
+by Ron
+View template details
+Send weather alerts to your mobile phone with OpenWeatherMap and SIGNL4
+by Ron
+View template details
+Send TheHive Alerts Using SIGNL4
+by Ron
+View template details
+Browse SIGNL4 integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

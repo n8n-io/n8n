@@ -1,0 +1,57 @@
+URL: https://docs.n8n.io/integrations/community-nodes/installation/verified-install/
+Scraped_At: 2025-05-20T19:08:20.590645
+
+Install verified community nodes in the n8n app
+#
+Limited to n8n instance owners
+Only the n8n instance owner can install and manage verified community nodes. The instance owner is the person who sets up and manages user management. All members of an n8n instance can use already installed community nodes in their workflows.
+Admin accounts can also uninstall any community node, verified or unverified. This helps them remove problematic nodes that may affect the instance's health and functionality.
+Install a community node
+#
+To install a
+verified community node
+:
+Go to the
+Canvas
+and open the
+nodes panel
+(either by selecting '+' or pressing
+Tab
+).
+Search
+for the node that you're looking for. If there is a matching verified community node, you will see a
+More from the community
+section at the bottom of the nodes panel.
+Select the node you want to install. This takes you to a detailed view of the node, showing all the supported actions.
+Select
+install
+. This will install the node for your instance and enable all members to use it in their workflows.
+You can now add the node to your workflows.
+Enable installation of verified community nodes
+Some users may not want to show verified community nodes in the nodes panel of their instances. On n8n cloud, instance owners can toggle this in the
+Cloud Admin Panel
+. Self-hosted users can use
+environment variables
+to control the availability of this feature.
+Uninstall a community node
+#
+To uninstall a community node:
+Go to
+Settings
+>
+Community nodes
+.
+On the node you want to install, select
+Options
+.
+Select
+Uninstall package
+.
+Select
+Uninstall Package
+in the confirmation modal.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

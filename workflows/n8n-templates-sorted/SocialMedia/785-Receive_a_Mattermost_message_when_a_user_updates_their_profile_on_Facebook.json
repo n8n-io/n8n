@@ -1,0 +1,317 @@
+{
+  "workflow": {
+    "id": 785,
+    "name": "Receive a Mattermost message when a user updates their profile on Facebook",
+    "views": 2832,
+    "recentViews": 0,
+    "totalViews": 2832,
+    "createdAt": "2020-11-20T06:53:19.361Z",
+    "description": "![workflow-screenshot](fileId:310)",
+    "workflow": {
+      "id": "131",
+      "name": "Receive a Mattermost message when a user updates their profile on Facebook",
+      "nodes": [
+        {
+          "name": "Facebook Trigger",
+          "type": "n8n-nodes-base.facebookTrigger",
+          "position": [
+            590,
+            260
+          ],
+          "webhookId": "14ba2eea-04a1-4659-b83e-0090ba480452",
+          "parameters": {
+            "appId": "",
+            "options": {
+              "includeValues": true
+            }
+          },
+          "credentials": {
+            "facebookGraphAppApi": "facebook"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Mattermost",
+          "type": "n8n-nodes-base.mattermost",
+          "position": [
+            790,
+            260
+          ],
+          "parameters": {
+            "message": "=The user with uid {{$node[\"Facebook Trigger\"].json[\"uid\"]}} changed their {{$node[\"Facebook Trigger\"].json[\"changes\"][0][\"field\"]}} to {{$node[\"Facebook Trigger\"].json[\"changes\"][0][\"value\"][\"page\"]}}.",
+            "channelId": "13fx8838gtbj3d41a6a7c1w7fe",
+            "attachments": [],
+            "otherOptions": {}
+          },
+          "credentials": {
+            "mattermostApi": "mattermost"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Facebook Trigger": {
+          "main": [
+            [
+              {
+                "node": "Mattermost",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 3,
+      "nodeTypes": {
+        "n8n-nodes-base.mattermost": {
+          "count": 1
+        },
+        "n8n-nodes-base.facebookTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 55,
+        "icon": "file:mattermost.svg",
+        "name": "n8n-nodes-base.mattermost",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mattermost/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mattermost/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Mattermost"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4NSIgaGVpZ2h0PSI4NSIgc3R5bGU9Ii1tcy10cmFuc2Zvcm06cm90YXRlKDM2MGRlZyk7LXdlYmtpdC10cmFuc2Zvcm06cm90YXRlKDM2MGRlZykiIHRyYW5zZm9ybT0icm90YXRlKDM2MCkiPjxwYXRoIGZpbGw9IiMwMDU4Q0MiIGQ9Im00Mi42NDIuMDA0LjUzOC4wMTEtNS43NTMgNi44Yy0xMC42NSAxLjkyNS0xOS44NDcgOS4xOTctMjMuNDYgMTkuODc0LTUuMzc4IDE1Ljg4NSAzLjYzNSAzMy4yOSAyMC4xMzEgMzguODc0czM0LjIyOC0yLjc2NyAzOS42MDUtMTguNjUxYzMuNTUtMTAuNDg3LjgyOC0yMS42MzYtNi4xNzktMjkuNjFsLS4zMTItLjM0OS0uNDQyLTguOTI2YzE0LjUwNyAxMC41MyAyMS4xNjEgMjkuNjM4IDE1LjExMSA0Ny41MS03LjQ0NiAyMS45OTUtMzEuMzEyIDMzLjc4OC01My4zMDYgMjYuMzQzQzYuNTggNzQuNDM0LTUuMjE1IDUwLjU2OCAyLjIzIDI4LjU3NCA4LjIzIDEwLjg1MiAyNC44OS0uMjQ3IDQyLjY0MS4wMDR6TTE5MC40IDI4LjMxNHE4LjMzMSAwIDEzLjAxNyA0LjAwNiA0LjY4NiA0LjAwNSA0LjY4NiAxMi44MTV2MjQuMDNxLTIuODA1Ljg4Mi02LjgxIDEuNjgzLTQuMDA0LjgtOS4wNS44LTQuMDg1IDAtNy40OS0uNzJ0LTUuODQ2LTIuNDAzYTExLjMgMTEuMyAwIDAgMS0zLjc2Ny00LjMyNXEtMS4zMi0yLjY0NC0xLjMyLTYuNDg5dDEuNjQxLTYuNDQ4YTEyLjY2IDEyLjY2IDAgMCAxIDQuMjQ1LTQuMTY1cTIuNjA0LTEuNTYyIDUuODA4LTIuMjQzYTMwLjcgMzAuNyAwIDAgMSA2LjQwOC0uNjhxMi4zMjMgMCA1LjEyNy4yNHYtLjk2MnEwLTEuOTIxLS42NDEtMy4xMjRhNC44IDQuOCAwIDAgMC0xLjc2Mi0xLjg4MXEtMS4xMjMtLjY4Mi0yLjc2My0uOTIyYTI1IDI1IDAgMCAwLTMuNjQ2LS4yNHEtNC4zMjUgMC05LjIxIDEuNjgyLTEuMTI0LTIuMDg0LTEuNjgzLTMuOTI2LS41Ni0xLjg0MS0uNTYxLTQuNDA2IDMuNTI1LTEuMiA3LjA0OC0xLjc2IDMuNTI1LS41NjIgNi41NjktLjU2Mm0tMzAuMzI4LTEyLjIwMnEzLjI5NyAwIDYuMzM0LjQ4M2wyLjk1IDU0LjU3cS0zLjI5Ni40ODQtNi4yNDcuNDg0YTM1IDM1IDAgMCAxLTUuODEzLS40ODNsLTEuNTYzLTM5LjQ1NS0xMi42NyAyNy4yN3EtMS4yMTQuMTYxLTIuNTE3LjI4MS0xLjMuMTItMi42MDMuMTItMS4xMjcuMDAxLTIuMjU1LS4wOGExOSAxOSAwIDAgMS0yLjM0NC0uMzIybC0xMS44LTI3LjgzNS0xLjIxNSA0MC4wMmEzMS4zIDMxLjMgMCAwIDEtNS4zODEuNDg0cS0yLjc3NiAwLTUuNzI3LS40ODNsMi40My01NC41N2E0OC41IDQ4LjUgMCAwIDEgNi42ODEtLjQ4NHEzLjM4NSAwIDYuNjgyLjQ4M2wxNC4zMTkgMjkuNzE4IDE0Ljc1MS0yOS43MThxMi42OS0uNDgzIDUuOTg4LS40ODNtMTMwLjgzNCAxMi4yMDJxNC4zMjUgMCA3LjY4OSAxLjUyMiAzLjM2NSAxLjUyMiA1LjcyNyA0LjE2NiAyLjM2NCAyLjY0MiAzLjU2NiA2LjI4NyAxLjIgMy42NDYgMS4yIDcuODEgMCAxLjUyMy0uMTIgMy4wMDVhMjUgMjUgMCAwIDEtLjI4IDIuMzYzaC0yNi41OTRxLjMyMSA0LjgwNSAzLjM2NSA2Ljk2OHQ4LjAxIDIuMTYzcTIuNzI0IDAgNS41NjctLjUyMmEzMS42IDMxLjYgMCAwIDAgNS40MDctMS40OHEuODgyIDEuNjAxIDEuNTIyIDMuODQ0dC43MiA0LjgwNnEtNi4yNDcgMi40MDMtMTQuMDk4IDIuNDAzLTUuNzY2IDAtOS44OTItMS42MDItNC4xMjQtMS42MDItNi43MjgtNC40NDYtMi42MDQtMi44NDItMy44NDUtNi43NjktMS4yNDEtMy45MjQtMS4yNC04LjU3LS4wMDEtNC41NjUgMS4yOC04LjU3IDEuMjgtNC4wMDcgMy44MDUtNi45NyAyLjUyMy0yLjk2NCA2LjI0OC00LjY4NnQ4LjY5LTEuNzIyem0xMzYuMDkyIDBxNS4wNDYgMCA4LjgxIDEuNjgyIDMuNzY0IDEuNjg0IDYuMjUgNC42MDYgMi40ODEgMi45MjUgMy42ODQgNi45MjkgMS4yIDQuMDA1IDEuMjAxIDguNTcgMCA0LjU2Ny0xLjIwMSA4LjQ5MS0xLjIwMyAzLjkyNi0zLjY4NSA2Ljg0OC0yLjQ4NSAyLjkyNS02LjI0OSA0LjU2Ny0zLjc2NCAxLjY0MS04LjgxIDEuNjQyLTUuMDQ4IDAtOC43Ny0xLjY0Mi0zLjcyNi0xLjY0MS02LjE3LTQuNTY3LTIuNDQyLTIuOTIyLTMuNjg0LTYuODQ4dC0xLjI0MS04LjQ5cTAtNC41NjcgMS4yNDEtOC41NzEgMS4yNDItNC4wMDUgMy42ODUtNi45MjkgMi40NDItMi45MjMgNi4xNjgtNC42MDYgMy43MjQtMS42ODEgOC43Ny0xLjY4MnptNDEuMjc3IDBxMy4xMjMgMCA2LjE2Ny41NjFhMzkuMyAzOS4zIDAgMCAxIDYuMTY4IDEuNjgyIDIyIDIyIDAgMCAxLS44MDIgNC4zMjVxLS42NCAyLjI0NC0xLjUyIDMuOTI2YTMyIDMyIDAgMCAwLTQuMjQ3LTEuNDAyIDE5LjUgMTkuNSAwIDAgMC00Ljg4NS0uNjAxcS0yLjcyMyAwLTQuMjQ2Ljg0MS0xLjUyMi44NC0xLjUyMSAyLjY4MyAwIDEuNzYyIDEuMDggMi40ODQgMS4wODIuNzIxIDMuMDg0IDEuMzYxbDQuNTY2IDEuMzYzcTIuMjQ0LjY0IDQuMDQ1IDEuNTYxIDEuODAyLjkyMiAzLjA4NCAyLjI4MyAxLjI4MiAxLjM2MyAyLjAwMiAzLjM2NC43MjIgMi4wMDMuNzIyIDQuODg2IDAgMi45NjUtMS4yNDIgNS41MjctMS4yNDIgMi41NjQtMy42MDQgNC40NDUtMi4zNjQgMS44ODQtNS43MjggMi45NjQtMy4zNjQgMS4wODItNy42MSAxLjA4MmE0NyA0NyAwIDAgMS0zLjUyMy0uMTIgMjggMjggMCAwIDEtMy4wODQtLjQgMzYgMzYgMCAwIDEtMi45MjQtLjY4MSAzNiAzNiAwIDAgMS0zLjEyNC0xLjA0MiAyMyAyMyAwIDAgMSAuNzYtNC4zNjUgMjcuNSAyNy41IDAgMCAxIDEuNTYzLTQuMjg2cTIuNjQ0IDEuMDQyIDUuMDA3IDEuNTYyIDIuMzYyLjUyMiA0LjkyNi41MjEgMS4xMjEgMCAyLjQ0Mi0uMmE5IDkgMCAwIDAgMi40NDQtLjcyIDUuOCA1LjggMCAwIDAgMS44ODItMS4zNjNxLjc2MS0uODQuNzYtMi4yMDMgMC0xLjkyMi0xLjE2LTIuNzY0LTEuMTY0LS44NDEtMy4yNDQtMS40ODFsLTQuOTY3LTEuNDQycS00LjQ4Ni0xLjI4Mi03LjAwOC0zLjgwNS0yLjUyNC0yLjUyMy0yLjUyNC03LjU3IDAtNi4wODYgNC4zNjUtOS41MzF0MTEuODk2LTMuNDQ1TTI1Ni45NTIgMTcuMTh2MTIuMDk1aDkuNjkzcS4yNCAxLjIwMS4zMiAyLjE2M3QuMDggMi4wMDNxMCAxLjEyLS4wOCAyLjE2MmEyMiAyMiAwIDAgMS0uMzIgMi4zMjNoLTkuNjkzdjE2LjI2MXEwIDIuNDgzLjQwMiA0LjAwNS40IDEuNTIgMS4xNiAyLjQwNGEzLjgzIDMuODMgMCAwIDAgMS44ODMgMS4ycTEuMTIyLjMyMSAyLjY0My4zMjEgMS4yMDMgMCAyLjM2NC0uMnQyLjA0Mi0uMzZhMTUuNyAxNS43IDAgMCAxIC44IDMuMTYzcS4yNDMgMS42NDMuMjQyIDIuOTI0IDAgLjg4MS0uMDQgMS40ODNhMTYgMTYgMCAwIDEtLjEyIDEuMTZxLTMuNjg1Ljg4Mi03LjYxLjg4LTcuMjkgMC0xMS4xMzQtMy40MDItMy44NDYtMy40MDUtMy44NDYtMTEuMDk1VjM3LjkyNmgtNS4yMDZsLS40MDEtMS42MDIgMTQuOTgtMTkuMTQ0em0tMzAuMDUyIDB2MTIuMDk1aDkuNjkycS4yNCAxLjIwMS4zMjEgMi4xNjMuMDc5Ljk2MS4wNzkgMi4wMDMgMCAxLjEyLS4wNzkgMi4xNjJhMjIgMjIgMCAwIDEtLjMyMSAyLjMyM0gyMjYuOXYxNi4yNjFxMCAyLjQ4My40MDEgNC4wMDUuNCAxLjUyIDEuMTYgMi40MDRhMy44MyAzLjgzIDAgMCAwIDEuODgzIDEuMnExLjEyMy4zMjEgMi42NDMuMzIxIDEuMjAyIDAgMi4zNjQtLjJ0Mi4wNDItLjM2YTE1LjcgMTUuNyAwIDAgMSAuODAyIDMuMTYzcS4yNCAxLjY0My4yNCAyLjkyNCAwIC44ODEtLjA0IDEuNDgzLS4wNC42LS4xMjEgMS4xNmEzMi42IDMyLjYgMCAwIDEtNy42MDkuODhxLTcuMjkgMC0xMS4xMzQtMy40MDItMy44NDUtMy40MDUtMy44NDUtMTEuMDk1VjM3LjkyNmgtNS4yMDdsLS40LTEuNjAyIDE0Ljk3OS0xOS4xNDR6bTEwNy44NCAxMS42MTRxLjgwMSAwIDEuODQyLjA4MSAxLjA0LjA4IDEuNTIyLjI0LjE2LjgwMS4yNCAxLjg0Mi4wODEgMS4wNDIuMDggMi4xNjQgMCAxLjM2LS4xMiAyLjk2M2EyMSAyMSAwIDAgMS0uNDQgMy4wNDMgMTEgMTEgMCAwIDAtMS45NjItLjE2aC0xLjMyMnEtMS4zNjIgMC0zLjA0NS4yOC0xLjY4LjI4Mi0zLjIwNCAxLjQ4NC0xLjUyMiAxLjItMi41MjIgMy42MDQtMS4wMDIgMi40MDMtMS4wMDIgNi43Mjl2MTkuNzA1cS0xLjQ0MS4yMzktMi44ODQuMzE5YTQ4IDQ4IDAgMCAxLTUuNTY3IDAgMzAgMzAgMCAwIDEtMi45MjMtLjMyVjI5LjI3NnExLjIwMS0uMjQgMi4yODItLjM2IDEuMDgyLS4xMiAyLjM2NC0uMTIgMS4yMDMgMCAyLjM2Mi4xNiAxLjE2My4xNiAyLjI4My40LjI0MS40MDEuNDQxIDEuMTYyLjIuNzYyLjM2MSAxLjYwMnQuMjggMS42ODNsLjIgMS40MDFxMS43NjQtMi40ODMgNC4zMjUtNC40NDUgMi41NjUtMS45NjQgNi40MDgtMS45NjR6bTU1LjM5NS0uNDhxNy4wNSAwIDEwLjM3MyAzLjg4NiAzLjMyNCAzLjg4NCAzLjMyNCAxMi4xMzV2MjYuMzUzcS0yLjg4My40OC01LjY4Ny40OHQtNS42ODYtLjQ4di0yMy4zOXEwLTQuMzI2LTEuMDgzLTYuNjQ3LTEuMDgtMi4zMjQtNC4zNjUtMi4zMjQtMS4zNjIgMC0yLjY4Mi40LTEuMzIzLjQtMi40MDQgMS40ODItMS4wOCAxLjA4LTEuNzYzIDMuMDQ1Yy0uNDU0IDEuMzA2LS42OCAzLjAwNC0uNjggNS4wODV2MjIuMzQ5YTM0LjYgMzQuNiAwIDAgMS01LjY4OC40OCAzNC42IDM0LjYgMCAwIDEtNS42ODgtLjQ4di0yMy4zOXEwLTQuMzI2LTEuMDgtNi42NDctMS4wODItMi4zMjQtNC4zNjYtMi4zMjRhOS43IDkuNyAwIDAgMC0yLjcyNC40cS0xLjM2LjQtMi40NDMgMS41NjItMS4wODEgMS4xNjEtMS43MjEgMy4yNDUtLjY0MiAyLjA4MS0uNjQyIDUuNDQ2djIxLjcwOHEtMi44ODMuNDgtNS42ODcuNDgtMi44MDMgMC01LjY4Ni0uNDhWMjkuMjc1YTIyIDIyIDAgMCAxIDIuMjQyLS4zNnExLjEyMS0uMTIgMi40ODQtLjEyYTIxIDIxIDAgMCAxIDIuNDAyLjEycTEuMDQyLjEyIDIuMTYzLjM2LjI0LjQwMS40NCAxLjE2MnQuMzYxIDEuNjAyLjI4IDEuNjQycS4xMi44MDEuMjAxIDEuMzYxLjY0LTEuMiAxLjY4Mi0yLjQwMyAxLjA0MS0xLjIgMi40ODMtMi4xNjJhMTMuNSAxMy41IDAgMCAxIDMuMjQ0LTEuNTYycTEuODAyLS42IDQuMDQ1LS42MDEgOS42OTIgMCAxMi40MTYgNy4zNyAxLjYtMi45NjQgNC41MjYtNS4xNjcgMi45MjMtMi4yMDMgNy40MS0yLjIwM3ptMTEwLjMzLTExLjEzNHYxMi4wOTVoOS42OTJhMTkgMTkgMCAwIDEgLjMyMSAyLjE2M3EuMDguOTYxLjA4IDIuMDAzYTI4IDI4IDAgMCAxLS4wOCAyLjE2MiAyMiAyMiAwIDAgMS0uMzIgMi4zMjNoLTkuNjkydjE2LjI2MXEwIDIuNDgzLjQgNC4wMDUuNCAxLjUyIDEuMTYxIDIuNDA0YTMuODMgMy44MyAwIDAgMCAxLjg4MyAxLjJxMS4xMjIuMzIxIDIuNjQzLjMyMSAxLjIgMCAyLjM2NC0uMiAxLjE2LS4yIDIuMDQxLS4zNmExNS41IDE1LjUgMCAwIDEgLjgwMSAzLjE2MyAyMC4yIDIwLjIgMCAwIDEgLjIgNC40MDcgMTUgMTUgMCAwIDEtLjExOSAxLjE2cS0zLjY4NC44ODItNy42MS44OC03LjI4OSAwLTExLjEzNC0zLjQwMi0zLjg0NS0zLjQwNi0zLjg0NS0xMS4wOTVWMzcuOTI2aC01LjIwNmwtLjQwMS0xLjYwMiAxNC45NzktMTkuMTQ0em0tNzMuNDY3IDIwLjAyNXEtNC40MDYgMC02LjM2OCAzLjMyNS0xLjk2NCAzLjMyNC0xLjk2NCA5LjU3MnQxLjk2NCA5LjU3MnExLjk2MiAzLjMyNCA2LjM2OCAzLjMyNCA0LjQ4NiAwIDYuNDQ3LTMuMzI0IDEuOTYzLTMuMzI0IDEuOTYzLTkuNTcydC0xLjk2My05LjU3MnEtMS45NjEtMy4zMjUtNi40NDctMy4zMjVNMTkyLjk2MyA1MS4zMDRxLTMuOTI1IDAtNi4yMDggMS40MDF0LTIuMjgzIDQuNTI2cTAgMi4wODMuODgyIDMuMjA0Ljg4MSAxLjEyMSAyLjEyMiAxLjY0MWE4LjcgOC43IDAgMCAwIDIuNjQzLjY0MnExLjQwNC4xMiAyLjQ0My4xMiAxLjIwMyAwIDIuNDAzLS4yYTEzNiAxMzYgMCAwIDAgMi4wODQtLjM2MVY1MS43MDRxLS45NjEtLjE2LTIuMDg0LS4yOC0xLjEyLS4xMi0yLjAwMi0uMTJNNTQuOTc2IDMuODg1Yy4xOTUuMDY3LjM1My4xOS40NjcuMzQzbC4wNjMuMDk2LjAyNC4wMzguMDIuMDQ0Yy4wNTYuMTA2LjEwMy4yMjYuMTI1LjM3NS4wNC4yNzEuMDYuODgyLjA3IDEuNTNsLjAwMy4zOTIuMDAyLjM4NnYuNjk5Yy0uMDAxLjM2OC0uMDA0LjYzMy0uMDA0LjY4N3YuMDFsLjE2NSA2LjIyMi4yNDQgNy4xOC4zMDUgMTIuNDh2LjA4NGMtLjAwMy43MjYtLjE1NCA1LjkzMy0zLjg1IDkuNTUzLTMuOTggMy45LTguODY4IDMuNTQyLTEyLjA0OCAyLjQ2Ni0zLjE4LTEuMDc3LTcuMjgtMy43NjMtOC4wNzQtOS4yNzgtLjc3OC01LjQxIDIuNjYzLTkuODI1IDIuNzkzLTkuOTlsLjAwMy0uMDA0IDcuODIzLTkuNzI4IDQuNTU2LTUuNTU1IDMuOTEtNC44NDJzMS43OTUtMi40MDQgMi4zMDYtMi45cS4xMDItLjA5Ny4yMDUtLjE1N2wuMTAyLS4wNTUuMDc1LS4wMzguMDEzLS4wMDVhLjk3Ljk3IDAgMCAxIC43MDItLjAzM20yMzUuNzcgMzMuMDhxLTQuMDA1IDAtNi4wODggMi4yNDMtMi4wODEgMi4yNDMtMi40ODMgNi4zMjloMTYuMThxLS4xNi0zLjg0Ni0yLjEyMy02LjIwOC0xLjk2Mi0yLjM2NC01LjQ4Ny0yLjM2NXoiLz48cGF0aCBmaWxsPSJyZ2JhKDAsIDAsIDAsIDApIiBkPSJNMCAwaDUxMnY4NUgweiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Mattermost",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 396,
+        "icon": "file:facebook.svg",
+        "name": "n8n-nodes-base.facebookTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "FB"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.facebooktrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/credentials/facebookapp/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Facebook Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MCA2MCI+PHBhdGggZmlsbD0iIzE4NzdmMiIgZD0iTTU5LjUgMzBDNTkuNSAxMy43MSA0Ni4yOS41IDMwIC41Uy41IDEzLjcxLjUgMzBjMCAxNC43MiAxMC43OSAyNi45MyAyNC44OSAyOS4xNFYzOC41M0gxNy45VjMwaDcuNDl2LTYuNWMwLTcuMzkgNC40LTExLjQ4IDExLjE0LTExLjQ4IDMuMjMgMCA2LjYuNTggNi42LjU4djcuMjZoLTMuNzJjLTMuNjYgMC00LjgxIDIuMjctNC44MSA0LjYxVjMwaDguMThsLTEuMzEgOC41M0gzNC42djIwLjYxQzQ4LjcxIDU2LjkzIDU5LjUgNDQuNzIgNTkuNSAzMCIvPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik00MS40OCAzOC41MyA0Mi43OSAzMGgtOC4xOHYtNS41M2MwLTIuMzMgMS4xNC00LjYxIDQuODEtNC42MWgzLjcyVjEyLjZzLTMuMzgtLjU4LTYuNi0uNThjLTYuNzQgMC0xMS4xNCA0LjA4LTExLjE0IDExLjQ4VjMwaC03LjV2OC41M2g3LjQ5djIwLjYxYzEuNS4yNCAzLjA0LjM2IDQuNjEuMzZzMy4xMS0uMTIgNC42MS0uMzZWMzguNTN6Ii8+PC9zdmc+"
+        },
+        "displayName": "Facebook Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 310,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/867d7ddeb358455796bb0486e922188c.png"
+      }
+    ]
+  }
+}

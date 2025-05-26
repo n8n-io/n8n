@@ -1,0 +1,491 @@
+{
+  "workflow": {
+    "id": 1055,
+    "name": "Validate emails in a table using Mailcheck",
+    "views": 998,
+    "recentViews": 0,
+    "totalViews": 998,
+    "createdAt": "2021-04-27T07:41:19.383Z",
+    "description": "This workflow allows you to validate emails stored in a table using the Mailcheck node.\n\n![workflow-screenshot](fileId:485)\n\n**Airtable node:** This node will list all the records from a table. Based on your use case, you might want to replace this node.\n\n**Mailcheck node:** This node will check the emails that got returned by the previous node.\n\n**Set node:** We will use the Set node to ensure that only the data that we set in this node gets passed on to the next nodes in the workflow.\n\n**Airtable1 node:** This node will update the Valid field in the table. Based on your use case, you might want to replace this node.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            470,
+            200
+          ],
+          "parameters": {
+            "table": "Table 1",
+            "operation": "list",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "airtableApi": ""
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Mailcheck",
+          "type": "n8n-nodes-base.mailcheck",
+          "position": [
+            670,
+            200
+          ],
+          "parameters": {
+            "email": "={{$json[\"fields\"][\"Email\"]}}"
+          },
+          "credentials": {
+            "mailcheckApi": "Mailcheck API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            870,
+            200
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "ID",
+                  "value": "={{$node[\"Airtable\"].json[\"id\"]}}"
+                }
+              ],
+              "boolean": [
+                {
+                  "name": "Valid",
+                  "value": "={{$json[\"mxExists\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Airtable1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1070,
+            200
+          ],
+          "parameters": {
+            "id": "={{$json[\"ID\"]}}",
+            "table": "=Table 1",
+            "fields": [
+              "Valid"
+            ],
+            "options": {},
+            "operation": "update",
+            "application": "={{$node[\"Airtable\"].parameter[\"application\"]}}",
+            "updateAllFields": false
+          },
+          "credentials": {
+            "airtableApi": "Airtable Credentials n8n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Set": {
+          "main": [
+            [
+              {
+                "node": "Airtable1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable": {
+          "main": [
+            [
+              {
+                "node": "Mailcheck",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Mailcheck": {
+          "main": [
+            [
+              {
+                "node": "Set",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.set": {
+          "count": 1
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 2
+        },
+        "n8n-nodes-base.mailcheck": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 481,
+        "icon": "file:mailcheck.svg",
+        "name": "n8n-nodes-base.mailcheck",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mailcheck/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mailcheck/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility",
+              "Marketing"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Mailcheck"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2MCIgaGVpZ2h0PSI2MCIgZmlsbD0ibm9uZSI+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSJ1cmwoI2EpIiByeD0iOCIvPjxwYXRoIGZpbGw9IiNmZmYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0ibTkuNTI0IDI1IDEuMTc1LTcuNDgzTDEzLjc1MyAyNWgxLjQxbDMuMjE3LTcuNDgzTDE5LjU1NSAyNWgzLjUyNGwtMi4zMTQtMTNIMTcuMjZsLTIuNzEgNi45MzFMMTEuODE4IDEySDguMzEzTDYgMjV6bTIwLjAyNS00LjgyOCAxLjU5LTQuMzI3IDEuNTkgNC4zMjd6TTM0LjQ4MyAyNWgzLjc3N2wtNS4xODctMTNoLTMuODY4TDI0LjAyIDI1aDMuNzc3bC44MTMtMi4yNTloNS4wNnptNS4zMzEtMTN2MTNoMy41NDJWMTJ6bTYuMzk3IDB2MTNINTR2LTIuODYyaC00LjI0N1YxMnpNMTMuOTY4IDM3LjUzOWE3LjQgNy40IDAgMCAwLTEuMjY1LS40MSA1LjggNS44IDAgMCAwLTEuMjItLjEyOXEtMS4wOTEgMC0yLjA4Ni40MDZhNS40NSA1LjQ1IDAgMCAwLTIuOTQ3IDIuODZBNS4zIDUuMyAwIDAgMCA2IDQyLjQ3M3EwIDEuMjA0LjQ1NiAyLjIyYTUuNyA1LjcgMCAwIDAgMS4yMSAxLjc1NUE1LjQyIDUuNDIgMCAwIDAgMTEuNDcgNDhhNS40IDUuNCAwIDAgMCAxLjA2My0uMTA1IDguNSA4LjUgMCAwIDAgMS4xNi0uMzIzbC4yNzYtLjA5N3YtMy4yMDZxLTEuMDM2IDEuMTA2LTIuMzMzIDEuMTA1YTIuNzcgMi43NyAwIDAgMS0yLjU5LTEuNzQgMyAzIDAgMCAxLS4yMTYtMS4xNDhxMC0uNjA4LjIxNS0xLjEzMy4yMTQtLjUyNi41ODYtLjkwNy4zNzEtLjM4Ljg5LS42MDIuNTE3LS4yMiAxLjEyNi0uMjIxIDEuMzgtLjAwMSAyLjMyIDEuMTQ3em00LjQxOS0uMjQ5SDE1LjY4djEwLjQyaDIuNzA3di00LjI5OGgzLjkwOHY0LjI5OEgyNVYzNy4yOWgtMi43MDZ2NC4wMjJoLTMuOTA4VjM3LjI5em0xNC43MiAwaC01LjkyNHYxMC40Mmg1LjkyNHYtMi4yOTRIMjkuODl2LTEuNzk3aDMuMDM4di0yLjI5NEgyOS44OXYtMS43NGgzLjIxN3ptOS40NDUuMjQ5YTcuNCA3LjQgMCAwIDAtMS4yNjItLjQxQTYgNiAwIDAgMCA0MC4wNjcgMzdxLTEuMDkxIDAtMi4wODUuNDA2YTUuNSA1LjUgMCAwIDAtMS43NDkgMS4xMzMgNS41IDUuNSAwIDAgMC0xLjIwMSAxLjcyOCA1LjMgNS4zIDAgMCAwLS40NDcgMi4yMDNxMCAxLjIwMy40NTUgMi4yMTlhNS43IDUuNyAwIDAgMCAxLjIxIDEuNzU1IDUuNDIgNS40MiAwIDAgMCA0Ljg2NiAxLjQ0OHEuNTQtLjEwNCAxLjE2LS4zMjNsLjI3Ni0uMDk3VjQ0LjI3cS0xLjAzNiAxLjEwNi0yLjMzMyAxLjEwNWEyLjc3IDIuNzcgMCAwIDEtMi41OS0xLjc0IDMgMyAwIDAgMS0uMjE2LTEuMTQ4cTAtLjYwOC4yMTUtMS4xMzMuMjE0LS41MjYuNTg2LS45MDcuMzcyLS4zOC44ODktLjYwMi41MTctLjIyIDEuMTI3LS4yMjEgMS4zOC0uMDAxIDIuMzIgMS4xNDdWMzcuNTR6bTQuNDItLjI0OWgtMi43MDd2MTAuNDJoMi43MDZ2LTQuNTJsMy41MjIgNC41MTlINTRsLTQuNTE2LTUuNDg2IDQuMTMtNC45MzRoLTMuMzQybC0zLjMgNC4yOTh6TTU0IDI5LjVINnYzaDQ4eiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iMCIgeDI9IjYwIiB5MT0iLTEiIHkyPSI2MCIgZ3JhZGllbnRVbml0cz0idXNlclNwYWNlT25Vc2UiPjxzdG9wIHN0b3AtY29sb3I9IiM0ODQ5QzIiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiMyMzI3QTUiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48L3N2Zz4="
+        },
+        "displayName": "Mailcheck",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 485,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/686a11f0a9a947df97d6675e0e548887.png"
+      }
+    ]
+  }
+}

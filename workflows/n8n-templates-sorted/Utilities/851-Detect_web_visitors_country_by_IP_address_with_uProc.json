@@ -1,0 +1,611 @@
+{
+  "workflow": {
+    "id": 851,
+    "name": "Detect web visitors country by IP address with uProc",
+    "views": 669,
+    "recentViews": 0,
+    "totalViews": 669,
+    "createdAt": "2020-12-28T09:18:06.470Z",
+    "description": "Do you want to know where a web visitor lives? \n\nThis workflow enriches any lead by IP address using the uProc.io [**Location By IP address tool**](https://app.uproc.io/#/tools/processor/get/location/by-ip) and sends an email in Spanish or English depending on the detected web visitor country.\n\n![workflow-screenshot](fileId:353)\n\nYou need to add your credentials (Email and API Key - real -) located at [**Integration section**](https://app.uproc.io/#/settings/integration) to n8n.\n\nNode \"Create IP and Email Item\" can be replaced by any other supported service with IP and Email values, like Mailchimp, Calendly, or MySQL.\n\nThe \"uProc\" node returns the location of the provided IP address. \n\n\"If\" node checks if the web visitor country code belongs to Spain (ES Isocode). If positive, we use the Spanish language in our emails. Otherwise, we will use the English language in our communications.\n\nDepending on the detected country code, we use the Amazon SES node to send the customized email adapted to the right language.",
+    "workflow": {
+      "id": "104",
+      "name": "location_by_ip",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            440,
+            510
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Get Location By IP",
+          "type": "n8n-nodes-base.uproc",
+          "position": [
+            850,
+            510
+          ],
+          "parameters": {
+            "ip": "={{$node[\"Create IP and Email Item\"].json[\"ip\"]}}",
+            "tool": "getLocationByIp",
+            "group": "geographic",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "uprocApi": "miquel-uproc"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "User in Spain?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1050,
+            510
+          ],
+          "parameters": {
+            "conditions": {
+              "string": [
+                {
+                  "value1": "={{$node[\"Get Location By IP\"].json[\"message\"][\"country_code\"]}}",
+                  "value2": "ES"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Create IP and Email Item",
+          "type": "n8n-nodes-base.functionItem",
+          "position": [
+            640,
+            510
+          ],
+          "parameters": {
+            "functionCode": "item.ip = \"83.46.131.46\";\nitem.email = \"miquel@uproc.io\";\n\nreturn item;"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Send English Email",
+          "type": "n8n-nodes-base.awsSes",
+          "position": [
+            1270,
+            650
+          ],
+          "parameters": {
+            "body": "Hi,\n\nThank you for your signup!",
+            "subject": "Welcome aboard",
+            "fromEmail": "sample@uproc.io",
+            "toAddresses": [
+              "={{$node[\"Create IP and Email Item\"].json[\"email\"]}}"
+            ],
+            "additionalFields": {}
+          },
+          "credentials": {
+            "aws": "ses"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Send Spanish Email",
+          "type": "n8n-nodes-base.awsSes",
+          "position": [
+            1270,
+            420
+          ],
+          "parameters": {
+            "body": "Hola,\n\n¡Gracias por registrarte!",
+            "subject": "Bienvenido a bordo",
+            "fromEmail": "sample@uproc.io",
+            "toAddresses": [
+              "={{$node[\"Create IP and Email Item\"].json[\"email\"]}}"
+            ],
+            "additionalFields": {}
+          },
+          "credentials": {
+            "aws": "ses"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "User in Spain?": {
+          "main": [
+            [
+              {
+                "node": "Send Spanish Email",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Send English Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get Location By IP": {
+          "main": [
+            [
+              {
+                "node": "User in Spain?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Create IP and Email Item",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create IP and Email Item": {
+          "main": [
+            [
+              {
+                "node": "Get Location By IP",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 1
+        },
+        "n8n-nodes-base.uproc": {
+          "count": 1
+        },
+        "n8n-nodes-base.awsSes": {
+          "count": 2
+        },
+        "n8n-nodes-base.functionItem": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Miquel Colomer",
+      "username": "mcolomer",
+      "bio": "As a passionate developer and AI agent creator, I’ve been at the forefront of automation, pioneering workflows and training AI to handle complex tasks seamlessly. I’m an early adopter and expert of n8n, having worked with its powerful capabilities to create automation solutions for diverse industries. I founded n8nhackers, the first AI-powered agency focused on n8n, where we help businesses transform their workflows with cutting-edge automation.",
+      "verified": true,
+      "links": [
+        "https://n8nhackers.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/c4974f5be3985d7f30465d2d963967905bcb2f9b8a8ecaf8ba4396bfbd034db2?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 15,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.functionItem",
+        "codex": {
+          "data": {
+            "alias": [
+              "Javascript",
+              "Code",
+              "Custom Code",
+              "JS"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function Item",
+          "color": "#ddbb33"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function Item",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 263,
+        "icon": "file:ses.svg",
+        "name": "n8n-nodes-base.awsSes",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.awsses/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/aws/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "AWS SES"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBmaWxsPSIjZmZmIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIHN0cm9rZT0iIzAwMCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiB2aWV3Qm94PSIwIDAgNzQuMzc1IDg1Ij48dXNlIHhsaW5rOmhyZWY9IiNhIiB4PSIyLjE4OCIgeT0iMi41Ii8+PHN5bWJvbCBpZD0iYSIgb3ZlcmZsb3c9InZpc2libGUiPjxnIHN0cm9rZT0ibm9uZSI+PHBhdGggZmlsbD0iIzg3NjkyOSIgZD0iTTE2LjU1OCAxMi43NSAwIDM4LjU5MWwxNi41NTggMjUuODQxIDEzLjIyNy0zLjMyNC42NTQtNDQuODY5eiIvPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Im0zNS4wNDkgNTkuNzg2LTE4LjQ5MSA0LjY0NVYxMi43NWwxOC40OTEgNC42NDV6Ii8+PGcgZmlsbD0iIzg3NjkyOSI+PHBhdGggZD0iTTMyLjg0OSAyMS42MTQgMzUuMDUgODAgNzAgNjIuODY3bC0uMDEtNDMuNjE1LTguOTE0IDEuNDQ4LTI4LjIyOC45MTN6Ii8+PHBhdGggZD0ibTQ2LjE4NCAzMy4xNDkgMTAuOTA2LS42MzIgMTAuNzc4LTE5LjE2NEw0MC42MTIgMCAzMC40MzkgNC4zNjR6Ii8+PC9nPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Im00MC42MTIgMCAyNy4yNTYgMTMuMzUzTDU3LjA5IDMyLjUxN3oiLz48cGF0aCBmaWxsPSIjODc2OTI5IiBkPSJNMzUuMDQ5IDUuNTM5IDU3LjA5IDQ0Ljc0MmwzLjc4OCAyMi41OTVMMzUuMDQ5IDgwbC0xMC40Ni01LjEzMVY5LjY0eiIvPjxwYXRoIGZpbGw9IiNkOWE3NDEiIGQ9Ik02OS45OTEgMTkuMjUxIDcwIDYyLjg2NyAzNS4wNSA4MFY1LjUzOWwyMi4wNDEgMzkuMjAzTDY5Ljk5IDE5LjI1MXoiLz48L2c+PC9zeW1ib2w+PC9zdmc+"
+        },
+        "displayName": "AWS SES",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 431,
+        "icon": "file:uproc.png",
+        "name": "n8n-nodes-base.uproc",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.uproc/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/uProc/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "uProc"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADwAAAA8CAYAAAA6/NlyAAAABmJLR0QA/wD/AP+gvaeTAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAB3RJTUUH5AcWAy0DPTaSawAAB1RJREFUaN7lmn1sVeUZwH/vube99ONSWujqmWIYgqCxfDiRLSQaRLPx1/5wixlWF4eYsWVZ5ja7JWM6FpDqEmK6ZJis6OZHHLBsiYJzAyzZktGFUS0TlToQCn3bUCiW297ej3Oe/XHOKbe1F27vfQttfZKbe+65977n+b3Px3me97xgTPSwTy+/3E9nZ1qJSEhEwv6rTETmiMgtInKrf1ye8X1IRJSIDBursbGfCSR65Odi6Cirq+udd/Jk+hERaRKRDrmynBGRF0RkrYjMF5GytrZU5NPX0hMGvAp0LejN0Hn2zjt75J13klKAnDtwINGwdGnPIuiceflJzl2swq2qrwd9N7AHaAN+BsyyLFCqoBmsOn7ceeL0aeddUG+CXgn6Bu8rO29oa+yQOrhgFehVwB+BZmC5aZ8JhYYmbRmwH9gJ+j7QMy9B6/G2sA3o5cAmYC+w4irGzZeAvwFPg/6yp8vYrG3lbl07OK4DdgDfuYYJYx2wC/RDY3XxcO6wOgp837fsRJDPA38APQdoBPsCaAW2FGDhIdhqoGECwWbKRuAZ0LYHq/N16WGwW66xC+fi4g2ga67k3uHs2dgGdAmwAXgEUExsqQNioOvBvjic47LAw37wXT9uJ4MoYD1w0rO2natLD91vv+7H7WSTLaAfyFaRWVni9ja/YgoxOeXnoBePFs/WKEVFKfAAcDuTV24Dvgm6fKRrj5alv+jN0KSXep9lNOChuK2eREkqF/kh6M9lMlojMvNc4BtTCPhrwE2ZjFaGdaPAo0w9WQ96emBlK8O6lcC3pyDwQ0BVYOUghi1gaf4LAhNeloEOZWbpaVMsWY2UHwCRTOAIsGoKA68ASjKT1o1MffkCaGX5RfeyzwDwcmAIuPYzAFwbtIfKrz2ntChYAqhwyEIJ3Oq6UxzYYqFSqLBlKYAa15Vx6snzFzGoUiikKgAVVkoU47B8E4koiosLGyOdBlOeFwCGZejQrIUrKhTl5YXN4+Cgi+OY1csSV0RciZu1r1BTYzFrVmGV6sWLQiplRiNXEBHEclxwXD427dLV1RbTphVm4e5uIR43Y2HHlVOOK1jikR8xi2tRVVV4H6K1Y8ylxeVd10UsP3j/a9Kd580LsXhxuOCRBgeN3iuPAGLV1FhSUaFaTY68ZEmYFSsKS9Ht7Q6dnUYTVisgVldXtaxeXdw2e7aZVri01GLlygglJYXF73vvpdDaNXnHPAyIpZTF+vVl5x9/vOwsuAU+tRfuuaeIBx8sKVi799936OpyTMFeAM4OrXjcdVdx6rHHSrevW1eGiJM37Pz5YTZtmk5FReFWOXEiRSplzKVfAlJDCwCxGInSUrWjoSHK2rXlgDvGQsSltraIV1+dwaJFhSerI0dStLWlTcbvS0ACwHIcIRpVAB2Vldb/tm6dTtP2GSxYUOSDjwYv/sshGlXU10f5818queOOIiPaNTenaGlJm4rfU8DHwWOXcCikgkL9vFL8IhpVr3zr4VLuXRXhxAmHffuSHPxXijNn0vQPQFERXHedxcKFYe6/fxpz54aw7VAwaQVLLCa0tib9CTUy5pNAr3doDx9RRObh7ZaZHZyLx71qJ52+1L2Ew1Bc7NXKynDbsWvXIHV1F0gkjAzXBdwN9rHgRNgHRXmaHweeApqCH5SUqIJvMTmn0gsue/cmSSSMWfeXPhPBk1ELCGBRSrnAP4CWa9GkNzcnef75flOw/wHeBjsduPNQlh7WNyrVDjx7tWE/+CDNxo1GN5E+C/aHn67yh8dwcLjnakJ/8omwbVs/ra2Dpqy7FXjjkitnAVZKBfEcB14E/jnesKkU/GlXnOeei6GUkQ0H//Z0t/uHb6i7zKJTkMRE5KvA74DrxwPWcWDHjjhr1vSilGViDUsD68DePRrsqDGcYWmllPor8GPgnGnY/n6hqWmANWt6ASOwvcBPfFiVbRdP1jpQKSW+pV8TkQjwa2CWCdhj7Wle2D7Ali0XMbRv5hxQD/Yrfsxmnb6cCl+l1O9FJI63jWlO3utKLuzcOchvtw1woDmOUiETlu0AngD7tUun7OwsV+yBfI18N78P+BHwlbFqtWd3gr/vTdDYOOAv2xjJxvuBZ8B+K9vOuzEDZ4Ar383n4j1Vf+pK/zl/3uX11xMcPJhk9xsJOk47Jhv6X3ldkN2eyy7aMQOPyN5h38rfA1ZntFDqo48cDh1K0tKS5PDhNEePOvT0OPlcbmR7Fvz5LeA33rudypaNjQCPqLsRkRuTSbl9377Ek01N8SVaO/T1QU+PS3e364eDMYu24W0VPgT2ycz6eCyS/5RngG/e3Dd7w4bYzY7DT0Hda/gOth94GjgG9ql8QQsGHj2b60oRZuA9fH6U/LdRvO0XPAe9+6vda0xHM8OMnHEdwts3EgJqgFtAFlgWN5SXWzMjEVWuQA0mJBaLuT2uyxlQHwJHgW7A8ZZkbCf7Nbj2Fh5dKe1fR1TIgukVlopEFAoYTAh9fa44DoDy143sHMbMX/4P9kdAD+7Wks4AAAAASUVORK5CYII="
+        },
+        "displayName": "uProc",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      },
+      {
+        "id": 27,
+        "name": "Marketing"
+      }
+    ],
+    "image": [
+      {
+        "id": 353,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/f561af9e86e141fb9031b0e9818c8a30.png"
+      }
+    ]
+  }
+}

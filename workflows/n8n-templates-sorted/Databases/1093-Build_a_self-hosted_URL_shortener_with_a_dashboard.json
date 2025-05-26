@@ -1,0 +1,1682 @@
+{
+  "workflow": {
+    "id": 1093,
+    "name": "Build a self-hosted URL shortener with a dashboard",
+    "views": 4979,
+    "recentViews": 0,
+    "totalViews": 4979,
+    "createdAt": "2021-05-24T15:34:17.911Z",
+    "description": "This workflow creates an automatic self-hosted URL shortener. It consists of three sub-workflows:\n\n1. **Short URL creation** for extracting the provided long URL, generating an ID, and saving the record in the database. It returns a short link as a result.\n2. **Redirection** for extracting the ID value, validating the existence of its correspondent record in the database, and returning a redirection page after updating the visits (click) count.\n3. **Dashboard** for calculating simple statistics about the saved record and displaying them on a dashboard.\n\nRead more about this use case and how to set up the workflow in the blog post [*How to build a low-code, self-hosted URL shortener in 3 steps*](https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/).\n\n## Prerequisites\n\n- A local proxy set up that redirects the n8n.ly domain to your n8n instance\n- An Airtable account and [credentials](https://docs.n8n.io/integrations/credentials/airtable/)\n- Basic knowledge of JavaScript, HTML, and CSS\n\n## Nodes\n\n- [Webhook nodes](https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/) trigger the sub-workflows on calls to a specified link.\n- [IF nodes](https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.if/) route the workflows based on specified query parameters.\n- [Set nodes](https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.set/) set the required values returned by the previous nodes (id, longUrl, and shortUrl).\n- [Airtable nodes](https://docs.n8n.io/integrations/nodes/n8n-nodes-base.airtable/) retrieve records (values) from or append records to the database.\n- [Function node](https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.function/) calculates statistics on link clicks to be displayed on the dashboard, as well as its design.\n- [Crypto node](https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.crypto/) generates a SHA256 hash.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            350,
+            70
+          ],
+          "webhookId": "727b4887-e7f9-405f-bf94-7889c82a8f0b",
+          "parameters": {
+            "path": "sh",
+            "options": {},
+            "responseMode": "lastNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Extract URL",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            650,
+            -80
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "url",
+                  "value": "={{$node[\"Webhook\"].json[\"query\"][\"url\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Check URL",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            500,
+            70
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{Object($node[\"Webhook\"].json[\"query\"]).hasOwnProperty(\"url\")}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Crypto",
+          "type": "n8n-nodes-base.crypto",
+          "position": [
+            800,
+            -80
+          ],
+          "parameters": {
+            "type": "SHA256",
+            "value": "={{$node[\"Extract URL\"].json[\"url\"]}}"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Airtable",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1550,
+            -30
+          ],
+          "parameters": {
+            "table": "YOUR TABLE NAME",
+            "options": {},
+            "operation": "append",
+            "application": "YOUR BASE ID"
+          },
+          "credentials": {
+            "airtableApi": "Personal Airtable API creds"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set ID,shortUrl,longUrl",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            950,
+            -80
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "id",
+                  "value": "={{$node[\"Crypto\"].json[\"data\"].substr(0,6)}}"
+                },
+                {
+                  "name": "longUrl",
+                  "value": "={{$node[\"Extract URL\"].json[\"url\"]}}"
+                },
+                {
+                  "name": "shortUrl",
+                  "value": "=http://n8n.ly/w/go?id={{$node[\"Crypto\"].json[\"data\"].substr(0,6)}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Find by ID",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1100,
+            -80
+          ],
+          "parameters": {
+            "limit": 1,
+            "table": "YOUR TABLE NAME",
+            "operation": "list",
+            "returnAll": false,
+            "application": "YOUR BASE ID",
+            "additionalOptions": {
+              "filterByFormula": "=id=\"{{$node[\"Set ID,shortUrl,longUrl\"].json[\"id\"]}}\""
+            }
+          },
+          "credentials": {
+            "airtableApi": "Personal Airtable API creds"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Already exists ?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1250,
+            -80
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{$node[\"Find by ID\"].json[\"id\"] != \"\" && $node[\"Find by ID\"].json[\"id\"] != null && $node[\"Find by ID\"].json[\"id\"] != undefined}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set Output",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1400,
+            -180
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "shortUrl",
+                  "value": "={{$node[\"Set ID,shortUrl,longUrl\"].json[\"shortUrl\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set Error output",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            650,
+            170
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "error",
+                  "value": "url parameter missing"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set Output1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1700,
+            -30
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "shortUrl",
+                  "value": "={{$node[\"Set ID,shortUrl,longUrl\"].json[\"shortUrl\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set input",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1400,
+            -30
+          ],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "clicks"
+                }
+              ],
+              "string": [
+                {
+                  "name": "id",
+                  "value": "={{$node[\"Crypto\"].json[\"data\"].substr(0,6)}}"
+                },
+                {
+                  "name": "longUrl",
+                  "value": "={{$node[\"Extract URL\"].json[\"url\"]}}"
+                },
+                {
+                  "name": "shortUrl",
+                  "value": "=http://n8n.ly/w/go?id={{$node[\"Crypto\"].json[\"data\"].substr(0,6)}}"
+                },
+                {
+                  "name": "host",
+                  "value": "={{(new URL($node[\"Extract URL\"].json[\"url\"])).host}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Webhook1",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            350,
+            430
+          ],
+          "webhookId": "727b4887-e7f9-405f-bf94-7889c82a8f0b",
+          "parameters": {
+            "path": "/go",
+            "options": {
+              "responseHeaders": {
+                "entries": [
+                  {
+                    "name": "Content-Type",
+                    "value": "text/html"
+                  }
+                ]
+              },
+              "responsePropertyName": "result"
+            },
+            "responseMode": "lastNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set Error output1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            640,
+            530
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "result",
+                  "value": "id parameter missing."
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Check Id",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            500,
+            430
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{Object($node[\"Webhook1\"].json[\"query\"]).hasOwnProperty(\"id\")}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Find by ID1",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            800,
+            330
+          ],
+          "parameters": {
+            "limit": 1,
+            "table": "YOUR TABLE NAME",
+            "operation": "list",
+            "returnAll": false,
+            "application": "YOUR BASE ID",
+            "additionalOptions": {
+              "filterByFormula": "=id=\"{{$node[\"Extract Id\"].json[\"id\"]}}\""
+            }
+          },
+          "credentials": {
+            "airtableApi": "Personal Airtable API creds"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Already exists ?1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            950,
+            330
+          ],
+          "parameters": {
+            "conditions": {
+              "boolean": [
+                {
+                  "value1": "={{$node[\"Find by ID1\"].json[\"id\"] != \"\" && $node[\"Find by ID1\"].json[\"id\"] != null && $node[\"Find by ID1\"].json[\"id\"] != undefined}}",
+                  "value2": true
+                }
+              ]
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set Output2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1400,
+            230
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "result",
+                  "value": "=<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n <meta charset=\"UTF-8\">\n <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n <title>Redirection</title>\n</head>\n<body>\n \n</body>\n<script>\n const load = function (){\n window.location.replace('{{$node[\"Find by ID1\"].json.fields[\"longUrl\"]}}');\n };\n window.onload = load;\n</script>\n</html>"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Extract Id",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            650,
+            330
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "id",
+                  "value": "={{$node[\"Webhook1\"].json[\"query\"][\"id\"]}}"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "404 Error",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1100,
+            430
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "result",
+                  "value": "=Short URL not found"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Update clicks",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            1250,
+            230
+          ],
+          "parameters": {
+            "id": "={{$node[\"Find by ID1\"].json[\"id\"]}}",
+            "table": "YOUR TABLE NAME",
+            "fields": [
+              "clicks"
+            ],
+            "options": {},
+            "operation": "update",
+            "application": "YOUR BASE ID",
+            "updateAllFields": false
+          },
+          "credentials": {
+            "airtableApi": "Personal Airtable API creds"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Prepare clicks count",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1100,
+            230
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "clicks",
+                  "value": "={{$node[\"Find by ID1\"].json[\"fields\"][\"clicks\"]+1}}"
+                }
+              ]
+            },
+            "options": {}
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Webhook2",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            350,
+            680
+          ],
+          "webhookId": "8ac18eb4-bcc5-4817-b76d-d93094755ed2",
+          "parameters": {
+            "path": "/dashboard",
+            "options": {
+              "responseHeaders": {
+                "entries": [
+                  {
+                    "name": "Content-Type",
+                    "value": "text/html"
+                  }
+                ]
+              },
+              "responsePropertyName": "dashboard"
+            },
+            "responseMode": "lastNode"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Find by ID2",
+          "type": "n8n-nodes-base.airtable",
+          "position": [
+            550,
+            680
+          ],
+          "parameters": {
+            "table": "YOUR TABLE NAME",
+            "operation": "list",
+            "application": "YOUR BASE ID",
+            "additionalOptions": {}
+          },
+          "credentials": {
+            "airtableApi": "Personal Airtable API creds"
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "name": "Extract stats",
+          "type": "n8n-nodes-base.function",
+          "position": [
+            750,
+            680
+          ],
+          "parameters": {
+            "functionCode": "\nitems = items.filter(item=> Object.keys(item.json).length !==0).map(item => item.json.fields);\nif(items.length === 0){\nreturn [{\n    json:{\n        totalLinks:0,\n        totalClick:0,\n        totalHosts:0\n    }\n}];\n}\nconst totalLinks = items.length;\nconst totalClick = items.map(item => item.clicks).reduce((acc,val) => acc+=val);\nconst hostsMap = new Map();\nconst hosts = items.map(item => item.host);\nhosts.forEach(host => { \n    hostsMap.set(host,hostsMap.get(host)!==undefined?hostsMap.get(host)+1:1)\n});\n\nconst totalHosts = [...hostsMap.keys()].length;\n\nreturn [{\n    json:{\n        totalLinks,\n        totalClick,\n        totalHosts\n    }\n}];"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Set dashboard",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            950,
+            680
+          ],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "dashboard",
+                  "value": "=<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n <meta charset=\"UTF-8\">\n <meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\">\n <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n <title>Dashboard</title>\n</head>\n<style>\n *{\n padding: 0;\n margin: 0;\n border: none;\n box-sizing: border-box;\n }\n body{\n font-family: Roboto;\n font-style: normal;\n }\n .main{\n padding: 3rem 15rem;\n width: 70vw;\n min-height: 100vh;\n display: flex;\n flex-direction: column;\n margin: 0 auto; \n }\n .header{\n display: flex;\n flex-direction: row;\n justify-content: space-between;\n align-items: center;\n padding: 1rem 0.5rem;\n\n }\n .dashboard{\n display: grid;\n grid-template-rows: repeat(2, 1fr);\n grid-template-columns: repeat(2, 1fr);\n column-gap: 50px;\n row-gap: 50px;\n min-height: 70vh;\n min-width: calc(100vw-5rem);\n }\n .primary-text{\n color: #FF6D5A;\n font-family: Roboto;\n font-style: initial;\n font-weight: 500;\n font-size: 18px;\n line-height: 28px;\n /* center */\n display: flex;\n align-items: center;\n justify-content: center;\n }\n .main-box{\n min-height: 100%;\n min-width: 100%;\n background-color: #FF6D5A;\n grid-column: 1 / span 2;\n /* center */\n display: flex;\n flex-direction: rows;\n align-items: center;\n justify-content: center;\n /* font style */\n font-weight: bold;\n font-size: 96px;\n line-height: 169px;\n color: #F5F5F5;\n\n }\n .secondary-box{\n min-height: 100%;\n min-width: 100%;\n background-color: #384D5B;\n /* center */\n display: flex;\n flex-direction: row;\n align-items: center;\n justify-content: center;\n /* font style */\n font-weight: bold;\n font-size: 72px;\n line-height: 112px;\n color: #F5F5F5;\n }\n .info-text{\n position: absolute;\n align-self: flex-start;\n margin-top: 0.51rem;\n font-weight: 400;\n font-size: 16px;\n line-height: 21px;\n color: #F5F5F5;\n \n }\n</style>\n\n<body>\n \n <main class=\"main\">\n <header class=\"header\">\n <a href=\"https://n8n.io\">\n <svg width=\"124px\" height=\"28px\" viewBox=\"0 0 124 28\" version=\"1.1\" xmlns=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\"><title>n8</title> <g id=\"nav-menu-(V1)\" stroke=\"none\" stroke-width=\"1\" fill=\"none\" fill-rule=\"evenodd\"><g id=\"nav-menu-(v1)\" transform=\"translate(-120.000000, -116.000000)\" fill-rule=\"nonzero\"><g id=\"n8\" transform=\"translate(120.000000, 116.000000)\"><path d=\"M48.7384906,0.190188679 C46.1577358,0.190188679 43.9864151,1.96792453 43.3735849,4.36113208 L35.6524528,4.36113208 C32.6226415,4.36113208 30.1581132,6.82566038 30.1581132,9.8554717 C30.1581132,11.3690566 28.9271698,12.6026415 27.4109434,12.6026415 L26.309434,12.6026415 C25.6966038,10.209434 23.5279245,8.43169811 20.9445283,8.43169811 C18.3637736,8.43169811 16.1924528,10.209434 15.5796226,12.6026415 L11.1683019,12.6026415 C10.5554717,10.209434 8.38679245,8.43169811 5.80339623,8.43169811 C2.74716981,8.43169811 0.258867925,10.9173585 0.258867925,13.9762264 C0.258867925,17.0324528 2.7445283,19.5207547 5.80339623,19.5207547 C8.38415094,19.5207547 10.5554717,17.7430189 11.1683019,15.3498113 L15.5849057,15.3498113 C16.1977358,17.7430189 18.3664151,19.5207547 20.9498113,19.5207547 C23.514717,19.5207547 25.6701887,17.769434 26.3015094,15.4 L27.4135849,15.4 C28.9271698,15.4 30.1607547,16.6309434 30.1607547,18.1471698 C30.1607547,21.1769811 32.625283,23.6415094 35.6550943,23.6415094 L37.4539623,23.6415094 C38.0667925,26.034717 40.2354717,27.8124528 42.8188679,27.8124528 C45.8750943,27.8124528 48.3633962,25.3267925 48.3633962,22.2679245 C48.3633962,19.2116981 45.8777358,16.7233962 42.8188679,16.7233962 C40.2381132,16.7233962 38.0667925,18.5011321 37.4539623,20.8943396 L35.6550943,20.8943396 C34.1415094,20.8943396 32.9079245,19.6633962 32.9079245,18.1471698 C32.9079245,16.4935849 32.1683019,15.0090566 31.0086792,14.0026415 C32.1709434,12.9935849 32.9079245,11.5116981 32.9079245,9.85811321 C32.9079245,8.3445283 34.1388679,7.1109434 35.6550943,7.1109434 L43.3762264,7.1109434 C43.9890566,9.50415094 46.1577358,11.2818868 48.7411321,11.2818868 C51.7973585,11.2818868 54.2856604,8.79622642 54.2856604,5.73735849 C54.2830189,2.67849057 51.794717,0.190188679 48.7384906,0.190188679 Z M5.80867925,16.7709434 C4.26603774,16.7709434 3.01132075,15.5162264 3.01132075,13.9735849 C3.01132075,12.4309434 4.26603774,11.1762264 5.80867925,11.1762264 C7.35132075,11.1762264 8.60603774,12.4309434 8.60603774,13.9735849 C8.60603774,15.5162264 7.35132075,16.7709434 5.80867925,16.7709434 Z M20.9498113,16.7709434 C19.4071698,16.7709434 18.1524528,15.5162264 18.1524528,13.9735849 C18.1524528,12.4309434 19.4071698,11.1762264 20.9498113,11.1762264 C22.4924528,11.1762264 23.7471698,12.4309434 23.7471698,13.9735849 C23.7471698,15.5162264 22.4924528,16.7709434 20.9498113,16.7709434 Z M42.8162264,19.4679245 C44.3588679,19.4679245 45.6135849,20.7226415 45.6135849,22.265283 C45.6135849,23.8079245 44.3588679,25.0626415 42.8162264,25.0626415 C41.2735849,25.0626415 40.0188679,23.8079245 40.0188679,22.265283 C40.0215094,20.7226415 41.2762264,19.4679245 42.8162264,19.4679245 Z M48.7384906,8.53207547 C47.1958491,8.53207547 45.9411321,7.27735849 45.9411321,5.73471698 C45.9411321,4.19207547 47.1958491,2.93735849 48.7384906,2.93735849 C50.2811321,2.93735849 51.5358491,4.19207547 51.5358491,5.73471698 C51.5358491,7.27735849 50.2811321,8.53207547 48.7384906,8.53207547 Z\" id=\"Shape\" fill=\"#FF6D5A\"></path> <g id=\"Group\" transform=\"translate(56.528302, 5.547170)\" fill=\"#384D5B\"><path d=\"M1.57962264,7.09773585 C1.57962264,6.76490566 1.40264151,6.6090566 1.0909434,6.6090566 L0.179622642,6.6090566 L0.179622642,4.76528302 L2.24792453,4.76528302 C3.20415094,4.76528302 3.67169811,5.18792453 3.67169811,6.00943396 L3.67169811,6.43207547 C3.67169811,6.78867925 3.62679245,7.07660377 3.62679245,7.07660377 L3.67169811,7.07660377 C4.1154717,6.09924528 5.44943396,4.49849057 7.8954717,4.49849057 C10.5633962,4.49849057 11.7626415,5.94339623 11.7626415,8.80943396 L11.7626415,13.6777358 C11.7626415,14.010566 11.9396226,14.1664151 12.2513208,14.1664151 L13.1626415,14.1664151 L13.1626415,16.0101887 L11.0283019,16.0101887 C10.0271698,16.0101887 9.6045283,15.5875472 9.6045283,14.5864151 L9.6045283,9.29811321 C9.6045283,7.71849057 9.29283019,6.47433962 7.49396226,6.47433962 C5.76113208,6.47433962 4.38226415,7.60754717 3.93849057,9.23207547 C3.78264151,9.67584906 3.73773585,10.1883019 3.73773585,10.7430189 L3.73773585,16.0101887 L1.58226415,16.0101887 L1.58226415,7.09773585 L1.57962264,7.09773585 Z\" id=\"Path\"></path> <path d=\"M17.6690566,7.49660377 L17.6690566,7.45169811 C17.6690566,7.45169811 15.7354717,6.42943396 15.7354717,4.25018868 C15.7354717,2.0709434 17.4683019,0.0501886792 20.6249057,0.0501886792 C23.6256604,0.0501886792 25.5381132,1.85169811 25.5381132,4.29509434 C25.5381132,6.60641509 23.649434,8.03018868 23.649434,8.03018868 L23.649434,8.07509434 C25.0732075,8.89660377 25.9845283,9.98754717 25.9845283,11.6754717 C25.9845283,14.1215094 23.7630189,16.2769811 20.5615094,16.2769811 C17.6056604,16.2769811 15.0935829,14.4332075 15.0935829,11.5196226 C15.0909434,8.94150943 17.6690566,7.49660377 17.6690566,7.49660377 Z M20.5588679,14.2535849 C22.2045283,14.2535849 23.7366038,13.165283 23.7366038,11.609434 C23.7366038,10.230566 22.5584906,9.6309434 21.0924528,9.03132075 C20.4928302,8.78566038 19.6475472,8.45283019 19.470566,8.45283019 C18.9158491,8.45283019 17.3362264,9.74188679 17.3362264,11.4086792 C17.3362264,13.165283 18.8471698,14.2535849 20.5588679,14.2535849 Z M21.7158491,7.14 C22.249434,7.14 23.3826415,5.82716981 23.3826415,4.42716981 C23.3826415,2.98226415 22.2256604,2.0709434 20.6275472,2.0709434 C18.9158491,2.0709434 17.914717,3.04830189 17.914717,4.29245283 C17.914717,5.67132075 19.0928302,6.20490566 20.4928302,6.75962264 C20.8045283,6.89698113 21.4490566,7.14 21.7158491,7.14 Z\" id=\"Shape\"></path> <path d=\"M29.405283,7.09773585 C29.405283,6.76490566 29.2283019,6.6090566 28.9166038,6.6090566 L28.005283,6.6090566 L28.005283,4.76528302 L30.0735849,4.76528302 C31.0298113,4.76528302 31.4973585,5.18792453 31.4973585,6.00943396 L31.4973585,6.43207547 C31.4973585,6.78867925 31.4524528,7.07660377 31.4524528,7.07660377 L31.4973585,7.07660377 C31.9411321,6.09924528 33.2750943,4.49849057 35.7211321,4.49849057 C38.3890566,4.49849057 39.5883019,5.94339623 39.5883019,8.80943396 L39.5883019,13.6777358 C39.5883019,14.010566 39.765283,14.1664151 40.0769811,14.1664151 L40.9883019,14.1664151 L40.9883019,16.0101887 L38.8539623,16.0101887 C37.8528302,16.0101887 37.4301887,15.5875472 37.4301887,14.5864151 L37.4301887,9.29811321 C37.4301887,7.71849057 37.1184906,6.47433962 35.3196226,6.47433962 C33.5867925,6.47433962 32.2079245,7.60754717 31.7641509,9.23207547 C31.6083019,9.67584906 31.5633962,10.1883019 31.5633962,10.7430189 L31.5633962,16.0101887 L29.4079245,16.0101887 L29.4079245,7.09773585 L29.405283,7.09773585 Z\" id=\"Path\"></path> <polygon id=\"Path\" points=\"43.54 13.72 45.7403774 13.72 45.7403774 16.0101887 43.54 16.0101887\"></polygon> <path d=\"M48.7173585,7.09773585 C48.7173585,6.76490566 48.5403774,6.6090566 48.2286792,6.6090566 L47.3173585,6.6090566 L47.3173585,4.76528302 L49.4279245,4.76528302 C50.4290566,4.76528302 50.8516981,5.18792453 50.8516981,6.1890566 L50.8516981,13.6803774 C50.8516981,14.0132075 51.0286792,14.1690566 51.3403774,14.1690566 L52.2516981,14.1690566 L52.2516981,16.0128302 L50.1411321,16.0128302 C49.14,16.0128302 48.7173585,15.5901887 48.7173585,14.5890566 L48.7173585,7.09773585 Z\" id=\"Path\"></path> <path d=\"M60.2316981,4.49584906 C63.5890566,4.49584906 66.2992453,6.96301887 66.2992453,10.365283 C66.2992453,13.7886792 63.5864151,16.2769811 60.2316981,16.2769811 C56.8743396,16.2769811 54.185283,13.7860377 54.185283,10.365283 C54.185283,6.96301887 56.8743396,4.49584906 60.2316981,4.49584906 Z M60.2316981,14.409434 C62.3660377,14.409434 64.0988679,12.7188679 64.0988679,10.3626415 C64.0988679,8.02754717 62.3660377,6.36075472 60.2316981,6.36075472 C58.1211321,6.36075472 56.3856604,8.02754717 56.3856604,10.3626415 C56.3856604,12.7215094 58.1184906,14.409434 60.2316981,14.409434 Z\" id=\"Shape\"></path></g> <path d=\"M106.230943,9.63886792 C105.124151,9.63886792 104.223396,8.73811321 104.223396,7.63132075 C104.223396,6.5245283 105.124151,5.62377358 106.230943,5.62377358 C107.337736,5.62377358 108.238491,6.5245283 108.238491,7.63132075 C108.238491,8.73811321 107.337736,9.63886792 106.230943,9.63886792 Z M106.230943,6.58792453 C105.657736,6.58792453 105.190189,7.0554717 105.190189,7.62867925 C105.190189,8.20188679 105.657736,8.66943396 106.230943,8.66943396 C106.804151,8.66943396 107.271698,8.20188679 107.271698,7.62867925 C107.271698,7.0554717 106.804151,6.58792453 106.230943,6.58792453 Z\" id=\"Shape\" fill=\"#FF6D5A\"></path></g></g></g></svg>\n </a>\n <h4 class=\"primary-text\">Dashboard</h4>\n </header>\n <section class=\"dashboard\">\n <div class=\"main-box\">\n <h5 class=\"info-text\">Total Clicks</h5>\n{{$node[\"Extract stats\"].json[\"totalClick\"]}}\n </div>\n <div class=\"secondary-box\">\n <h5 class=\"info-text\">Total Links</h5>\n{{$node[\"Extract stats\"].json[\"totalLinks\"]}}\n </div>\n <div class=\"secondary-box\">\n <h5 class=\"info-text\">Total Hosts</h5>\n{{$node[\"Extract stats\"].json[\"totalHosts\"]}}\n </div>\n </section>\n </main> \n</body>\n</html>"
+                }
+              ]
+            },
+            "options": {},
+            "keepOnlySet": true
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Crypto": {
+          "main": [
+            [
+              {
+                "node": "Set ID,shortUrl,longUrl",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Check URL",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Airtable": {
+          "main": [
+            [
+              {
+                "node": "Set Output1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check Id": {
+          "main": [
+            [
+              {
+                "node": "Extract Id",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Set Error output1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook1": {
+          "main": [
+            [
+              {
+                "node": "Check Id",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook2": {
+          "main": [
+            [
+              {
+                "node": "Find by ID2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Check URL": {
+          "main": [
+            [
+              {
+                "node": "Extract URL",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Set Error output",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set input": {
+          "main": [
+            [
+              {
+                "node": "Airtable",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract Id": {
+          "main": [
+            [
+              {
+                "node": "Find by ID1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find by ID": {
+          "main": [
+            [
+              {
+                "node": "Already exists ?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract URL": {
+          "main": [
+            [
+              {
+                "node": "Crypto",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find by ID1": {
+          "main": [
+            [
+              {
+                "node": "Already exists ?1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Find by ID2": {
+          "main": [
+            [
+              {
+                "node": "Extract stats",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Extract stats": {
+          "main": [
+            [
+              {
+                "node": "Set dashboard",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update clicks": {
+          "main": [
+            [
+              {
+                "node": "Set Output2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Already exists ?": {
+          "main": [
+            [
+              {
+                "node": "Set Output",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Set input",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Already exists ?1": {
+          "main": [
+            [
+              {
+                "node": "Prepare clicks count",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "404 Error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare clicks count": {
+          "main": [
+            [
+              {
+                "node": "Update clicks",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set ID,shortUrl,longUrl": {
+          "main": [
+            [
+              {
+                "node": "Find by ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 27,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 4
+        },
+        "n8n-nodes-base.set": {
+          "count": 12
+        },
+        "n8n-nodes-base.crypto": {
+          "count": 1
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 3
+        },
+        "n8n-nodes-base.airtable": {
+          "count": 5
+        },
+        "n8n-nodes-base.function": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "mohamed ali",
+      "username": "dali",
+      "bio": null,
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/f48c2016cc4933603989a1448d2ced781e53ca0ade0ffb76d08e77cafa83cd21?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 2,
+        "icon": "file:airtable.svg",
+        "name": "n8n-nodes-base.airtable",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.airtable/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/airtable/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Airtable"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyMDAgMTcwIj48cGF0aCBmaWxsPSIjZmNiNDAwIiBkPSJNODkgNC44IDE2LjIgMzQuOWMtNC4xIDEuNy00IDcuNC4xIDkuMWw3My4yIDI5YzYuNCAyLjYgMTMuNiAyLjYgMjAgMGw3My4yLTI5YzQuMS0xLjYgNC4xLTcuNC4xLTkuMWwtNzMtMzAuMUMxMDMuMiAyIDk1LjcgMiA4OSA0LjgiLz48cGF0aCBmaWxsPSIjMThiZmZmIiBkPSJNMTA1LjkgODguOXY3Mi41YzAgMy40IDMuNSA1LjggNi43IDQuNWw4MS42LTMxLjdjMS45LS43IDMuMS0yLjUgMy4xLTQuNVY1Ny4yYzAtMy40LTMuNS01LjgtNi43LTQuNUwxMDkgODQuM2MtMS45LjgtMy4xIDIuNi0zLjEgNC42Ii8+PHBhdGggZmlsbD0iI2Y4MmI2MCIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctMi41IDEuMkw5LjEgMTMwYy0zLjIgMS42LTcuNC0uOC03LjQtNC40VjU3LjVjMC0xLjMuNy0yLjQgMS42LTMuM3EuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNSA0LjMgNy4xLjUgOC45Ii8+PHBhdGggZmlsbD0iI2JhMWU0NSIgZD0ibTg2LjkgOTIuNi0yNC4yIDExLjctNTkuNC01MHEuNi0uNiAxLjItLjljMS4yLS43IDMtLjkgNC40LS4zbDc3LjUgMzAuN2M0IDEuNCA0LjMgNyAuNSA4LjgiLz48L3N2Zz4="
+        },
+        "displayName": "Airtable",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 14,
+        "icon": "fa:code",
+        "name": "n8n-nodes-base.function",
+        "codex": {
+          "data": {
+            "alias": [
+              "Code",
+              "Javascript",
+              "Custom Code",
+              "Script",
+              "cpde"
+            ],
+            "details": "The Function node allows you to execute JavaScript in your workflow. Unlike the Function Item node, this node does not operate on incoming node data per-item. Instead, you must iterate over multiple items of incoming data yourself. This can be useful if you're performing data transformation where you want to manipulate the number of items being outputted by the node (i.e. 1 item is inputted in with nested object, 10 items are outputted without any nested objects)",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-goals-level-up-your-vocabulary-with-vonage-and-n8n/",
+                  "icon": "🎯",
+                  "label": "2021 Goals: Level Up Your Vocabulary With Vonage and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-host-virtual-coffee-breaks-with-n8n/",
+                  "icon": "☕️",
+                  "label": "How to host virtual coffee breaks with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-triggers-for-n8n-workflows-using-polling/",
+                  "icon": "⏲",
+                  "label": "Creating triggers for n8n workflows using polling"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/tracking-time-spent-in-meetings-with-google-calendar-twilio-and-n8n/",
+                  "icon": "🗓",
+                  "label": "Tracking Time Spent in Meetings With Google Calendar, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-error-workflows-in-n8n/",
+                  "icon": "🌪",
+                  "label": "Creating Error Workflows in n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Function",
+          "color": "#FF9922"
+        },
+        "iconData": {
+          "icon": "code",
+          "type": "icon"
+        },
+        "displayName": "Function",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 264,
+        "icon": "fa:key",
+        "name": "n8n-nodes-base.crypto",
+        "codex": {
+          "data": {
+            "alias": [
+              "Encrypt",
+              "SHA",
+              "Hash"
+            ],
+            "details": "The Crypto node allows you to hash and Hmac string in a specified format and sign a string using a private key. Use this node when you want to encrypt your data.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.crypto/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Crypto",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "key",
+          "type": "icon"
+        },
+        "displayName": "Crypto",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      },
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": []
+  }
+}

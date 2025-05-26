@@ -1,0 +1,3563 @@
+{
+  "workflow": {
+    "id": 3177,
+    "name": "Sync Notion to Clockify including Clients Projects and Tasks",
+    "views": 563,
+    "recentViews": 3,
+    "totalViews": 563,
+    "createdAt": "2025-03-15T22:12:58.511Z",
+    "description": "## Purpose\n\nThis workflow synchronizes three entities from Notion to Clockify, allowing tracked time to be linked to client-related projects or tasks.\n\n## Demo & Explanation\n\n[![demo video](https://img.youtube.com/vi/qr0cvtAAMrc/0.jpg)](https://youtu.be/qr0cvtAAMrc)\n\n## How it works\n\n- On every run active Clients, Projects and Tasks are retrieved from both Notion and Clockify before being compared by the Clockify ID, which is again stored in Notion for reference\n- Potential differences are then applied to Clockify\n- If an item has been archived or closed in Notion, it is also marked as archived in Clockify\n- All entities are processed sequentially, since they are related hierarchically to each other\n- By default this workflow runs once per day or when called via webhook (e.g. embedded into a Notion Button)\n\n## Prerequisites\n\n- A set of Notion databases with a specific structure is required to use this workflow\n- You can either start with [this Notion Template](https://steadfast-banjo-d1f.notion.site/1ae82b476c84808e9409c08baf382c45) or adapt your system based on the requirements described in the big yellow sticky note of this workflow template\n\n## Setup\n\n- Clone the workflow and select the belonging credentials\n- Follow the instructions given in the yellow sticky notes\n- Activate the workflow\n\n## Related workflows:\n\n- [Backup Clockify to Github based on monthly reports](https://n8n.io/workflows/3147-backup-clockify-to-github-based-on-monthly-reports/)\n- [Prevent simultaneous workflow executions with Redis](https://n8n.io/workflows/2270-prevent-simultaneous-workflow-executions-with-redis/)\n",
+    "workflow": {
+      "id": "HpjjgJm3Ulnl1cJQ",
+      "meta": {
+        "instanceId": "fb8bc2e315f7f03c97140b30aa454a27bc7883a19000fa1da6e6b571bf56ad6d",
+        "templateCredsSetupCompleted": true
+      },
+      "name": "Notion to Clockify Sync Template",
+      "tags": [
+        {
+          "id": "RKga6I6NviNI12bx",
+          "name": "template",
+          "createdAt": "2024-09-19T19:09:21.997Z",
+          "updatedAt": "2024-09-19T19:09:21.997Z"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "e0e40960-a45f-44a2-91b8-d0f45c254679",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            -400,
+            -100
+          ],
+          "webhookId": "43028c1f-7331-4fbe-bf56-d6f47c92d9be",
+          "parameters": {
+            "path": "43028c1f-7331-4fbe-bf56-d6f47c92d9be",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "cda9abae-ede3-4ce1-8f2b-b2913eba887a",
+          "name": "Globals",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            40,
+            -200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "0955695f-888f-46bc-807d-979a0798114f",
+                  "name": "workspace_id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a3d588b2-f169-479e-801b-2534bffc47ed",
+          "name": "Schedule Trigger",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            -400,
+            -300
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "triggerAtHour": 4
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "73bccaca-2c54-4c40-9181-831c3a713f8a",
+          "name": "Get first workspace ID",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            -180,
+            -200
+          ],
+          "parameters": {
+            "limit": 1,
+            "resource": "workspace"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d6e6fa71-fd9a-40ed-a915-02fae1fa3d78",
+          "name": "Compare Datasets",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            920,
+            -220
+          ],
+          "parameters": {
+            "options": {},
+            "resolve": "mix",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "clockify_client_id",
+                  "field2": "clockify_client_id"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "00a30e3d-e966-4512-829f-5c7729027c04",
+          "name": "Stop and Error",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            2020,
+            -460
+          ],
+          "parameters": {
+            "errorMessage": "Could not update client in Notion (deleted in Clockify again)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "4dfe33a9-670c-400e-8ef9-090ca74b21f7",
+          "name": "Structure output",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1140,
+            -280
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "029e1297-3133-433f-a779-c3c1a6b5762c",
+          "name": "Map values",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            700,
+            -300
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "8e12edff-162e-49eb-84de-2b060c1050f3",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                },
+                {
+                  "id": "df7765a2-9452-4e67-a261-23ef5d2ad1f8",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": "={{ $json.property_archive }}"
+                },
+                {
+                  "id": "eb2692cb-e40f-45c8-a3e3-ca676a3b6df3",
+                  "name": "clockify_client_id",
+                  "type": "string",
+                  "value": "={{ $json.property_clockify_client_id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "4c7d62d1-9987-4f47-983a-e5d7c11d9f8f",
+          "name": "Map values1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            700,
+            -100
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "043540c8-8784-4445-93c5-b945de834696",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                },
+                {
+                  "id": "1cb47384-f444-484d-a1a1-41b4d7fe1d9a",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": "={{ $json.archived }}"
+                },
+                {
+                  "id": "04b62bab-0db7-4f03-8c2e-2c45b6d5d3b8",
+                  "name": "clockify_client_id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "c608bfe4-07f4-45d8-a37b-3153a2e659a5",
+          "name": "No Operation",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            260,
+            -200
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "92b717ba-9620-4fdf-abbc-1b2c5f9c3bf9",
+          "name": "Get active Clients from Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            480,
+            -300
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "key": "Archive|checkbox",
+                  "condition": "equals"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "matchType": "allFilters",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1a878e40-f803-80e4-bc79-e24747562817",
+              "cachedResultUrl": "https://www.notion.so/1a878e40f80380e4bc79e24747562817",
+              "cachedResultName": "Clients"
+            },
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "af035e80-835d-4099-85dd-f7a24d6b9e47",
+          "name": "Get active Clients from Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            480,
+            -100
+          ],
+          "parameters": {
+            "resource": "client",
+            "operation": "getAll",
+            "returnAll": true,
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}",
+            "additionalFields": {
+              "archived": false
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "872e869a-0e44-409d-8c3f-e3b24f28fbd2",
+          "name": "If unmapped in Notion",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1140,
+            -480
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "26af0d64-ef8d-492e-87ca-6a893e8f85a1",
+                  "operator": {
+                    "type": "string",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.clockify_client_id }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ca45be8c-7dc7-4c2e-a7a0-8f8f0621e488",
+          "name": "Set new values",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1360,
+            -20
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "bfc2ff08-56a1-49c1-b1db-475063f88032",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": true
+                },
+                {
+                  "id": "2e8b2166-149b-4eed-8bf2-dd08e9b98210",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b44b7ccd-316a-487c-841e-7a27a117285e",
+          "name": "Update Client in Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            1580,
+            -180
+          ],
+          "parameters": {
+            "name": "={{ $json.name }}",
+            "clientId": "={{ $('Compare Datasets').item.json.clockify_client_id }}",
+            "resource": "client",
+            "operation": "update",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}",
+            "updateFields": {
+              "archived": "={{ $json.archived }}"
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "6efa63a5-b242-4e25-87a9-9a6f90a923a7",
+          "name": "Get archived Client from Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            1140,
+            -20
+          ],
+          "parameters": {
+            "limit": 1,
+            "filters": {
+              "conditions": [
+                {
+                  "key": "Clockify Client ID|rich_text",
+                  "condition": "equals",
+                  "richTextValue": "={{ $json.clockify_client_id }}"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "getAll",
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1a878e40-f803-80e4-bc79-e24747562817",
+              "cachedResultUrl": "https://www.notion.so/1a878e40f80380e4bc79e24747562817",
+              "cachedResultName": "Clients"
+            },
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "alwaysOutputData": false,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "93fd7fa7-07fd-4ba4-a9c4-8043897e654e",
+          "name": "Create Client in Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            1360,
+            -580
+          ],
+          "parameters": {
+            "name": "={{ $json.name }}",
+            "resource": "client",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "ef51cbbf-2ea6-429b-a654-1510d28c4df3",
+          "name": "Store Clockify ID in Notion",
+          "type": "n8n-nodes-base.notion",
+          "onError": "continueErrorOutput",
+          "position": [
+            1580,
+            -580
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Get active Clients from Notion').item.json.id }}"
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Clockify Client ID|rich_text",
+                  "textContent": "={{ $json.id}}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "aff72e76-e59d-4402-a6e9-b21c07f1d3fc",
+          "name": "Remove Client from Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            1800,
+            -460
+          ],
+          "parameters": {
+            "clientId": "={{ $('Create Client in Clockify').item.json.id }}",
+            "resource": "client",
+            "operation": "delete",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "6d43bed2-af7c-450d-b4fd-42f84a9081a2",
+          "name": "Merge",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2240,
+            -280
+          ],
+          "parameters": {
+            "numberInputs": 3
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "a1046097-90ff-4447-a0d0-adb16ccc3c31",
+          "name": "No Operation, do nothing",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2020,
+            -680
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "3b9e2bb5-cc78-4495-880f-3702b9edfead",
+          "name": "Get active Projects from Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            480,
+            620
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "key": "Status|status",
+                  "condition": "does_not_equal",
+                  "statusValue": "Done"
+                },
+                {
+                  "key": "Status|status",
+                  "condition": "does_not_equal",
+                  "statusValue": "Obsolete"
+                },
+                {
+                  "key": "Clients|relation",
+                  "condition": "is_not_empty"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "matchType": "allFilters",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1a878e40-f803-80bf-a72a-d7373be374b2",
+              "cachedResultUrl": "https://www.notion.so/1a878e40f80380bfa72ad7373be374b2",
+              "cachedResultName": "Buckets"
+            },
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "17cdb708-b5cf-44d3-872e-fb3d2528dc85",
+          "name": "Get active Projects from Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            480,
+            820
+          ],
+          "parameters": {
+            "operation": "getAll",
+            "returnAll": true,
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}",
+            "additionalFields": {
+              "archived": false
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "0624cebc-7310-4559-ac35-4447212fb4b0",
+          "name": "Update Project in Clockify",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1580,
+            740
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/{{ $('Globals').item.json.workspace_id }}/projects/{{ $('Compare Datasets1').item.json.clockify_project_id }}",
+            "method": "PUT",
+            "options": {},
+            "jsonBody": "={\n  \"archived\": {{ $json.archived }},\n  \"clientId\": \"{{ $('Compare Datasets1').item.json.clockify_client_id }}\",\n  \"name\": \"{{ $json.name }}\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "clockifyApi"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 4.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "5edb9a80-5d3a-4c2d-80a7-6d545f02b053",
+          "name": "Get completed Project from Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            1140,
+            900
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "key": "Clockify Project ID|rich_text",
+                  "condition": "equals",
+                  "richTextValue": "={{ $json.clockify_project_id }}"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "matchType": "allFilters",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1a878e40-f803-80bf-a72a-d7373be374b2",
+              "cachedResultUrl": "https://www.notion.so/1a878e40f80380bfa72ad7373be374b2",
+              "cachedResultName": "Buckets"
+            },
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "079795a3-51bc-4077-8fe1-84ed16e88125",
+          "name": "Create Project in Clockify",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1360,
+            340
+          ],
+          "parameters": {
+            "url": "=https://api.clockify.me/api/v1/workspaces/{{ $('Globals').item.json.workspace_id }}/projects",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"archived\": {{ $json.archived }},\n  \"clientId\": \"{{ $json.clockify_client_id }}\",\n  \"name\": \"{{ $('Get active Projects from Notion').item.json.name }}\"\n}",
+            "sendBody": true,
+            "specifyBody": "json",
+            "authentication": "predefinedCredentialType",
+            "nodeCredentialType": "clockifyApi"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 4.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "53ad9719-ba0b-4858-846e-a338eae1d48e",
+          "name": "Remove Project from Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            1800,
+            440
+          ],
+          "parameters": {
+            "clientId": "={{ $('Compare Datasets1').item.json.clockify_project_id }}",
+            "resource": "client",
+            "operation": "delete",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "b6224074-8712-4134-bc94-7b5f127f0971",
+          "name": "Structure output1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1140,
+            640
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "247b31ae-7bdf-4813-aa60-08ddade1dd70",
+          "name": "No Operation1",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            260,
+            720
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "d92f6ced-133c-4881-98f1-f2dfd9b2c5d4",
+          "name": "Map values2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            700,
+            620
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "63fe0f05-c1b4-41b8-99e9-74f5ef2d51b6",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                },
+                {
+                  "id": "44339109-9634-451b-965c-b2767aa3c628",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": "={{ ['Done', 'Obsolete'].includes($json.property_status) }}"
+                },
+                {
+                  "id": "12f7a5b6-e98f-4fa7-ad67-208c54ab2924",
+                  "name": "clockify_project_id",
+                  "type": "string",
+                  "value": "={{ $json.property_clockify_project_id }}"
+                },
+                {
+                  "id": "bddd1a9b-df7c-4d2f-891e-501639c786cc",
+                  "name": "clockify_client_id",
+                  "type": "string",
+                  "value": "={{ $json.property_clockify_client_id[0] || \"\" }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "7644f331-e5ae-47d1-ac6c-bf026fde2e9c",
+          "name": "Map values3",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            700,
+            820
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b2bea7bb-8b70-4268-84dd-a0463f8a30c1",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                },
+                {
+                  "id": "bbe039ac-a0ac-4570-b4f6-e6728b1d68ff",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": "={{ $json.archived }}"
+                },
+                {
+                  "id": "2547d142-507f-4f8b-bc65-1556e217c801",
+                  "name": "clockify_project_id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "7342b5ea-7da7-4158-bdca-ca40d1cdb042",
+                  "name": "clockify_client_id",
+                  "type": "string",
+                  "value": "={{ $json.clientId }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "9e7d0b28-dc9c-476b-9da7-36ec2354c45d",
+          "name": "Compare Datasets1",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            920,
+            700
+          ],
+          "parameters": {
+            "options": {},
+            "resolve": "mix",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "clockify_project_id",
+                  "field2": "clockify_project_id"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "2b7ae0ca-0bac-4875-b5e4-e809938004fa",
+          "name": "If unmapped in Notion1",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1140,
+            440
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "26af0d64-ef8d-492e-87ca-6a893e8f85a1",
+                  "operator": {
+                    "type": "string",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.clockify_project_id }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "b118db13-1ee1-41ce-9232-dfd8eec40104",
+          "name": "Set new values1",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1360,
+            900
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "bfc2ff08-56a1-49c1-b1db-475063f88032",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": true
+                },
+                {
+                  "id": "2e8b2166-149b-4eed-8bf2-dd08e9b98210",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "49a65fbe-ba66-4127-a5af-f5fdf2cf8b37",
+          "name": "Store Clockify ID in Notion1",
+          "type": "n8n-nodes-base.notion",
+          "onError": "continueErrorOutput",
+          "position": [
+            1580,
+            340
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Get active Projects from Notion').item.json.id }}"
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Clockify Project ID|rich_text",
+                  "textContent": "={{ $json.id }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "d995e6e4-588e-4e26-9531-d40b5ba3ab86",
+          "name": "Stop and Error1",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            2020,
+            440
+          ],
+          "parameters": {
+            "errorMessage": "Could not update bucket in Notion (deleted in Clockify again)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "434a1c89-a388-4069-adf4-0f2da4e8ca3e",
+          "name": "Merge1",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            2240,
+            640
+          ],
+          "parameters": {
+            "numberInputs": 3
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "19ecbb3b-8007-4a78-bba2-f31e3afca794",
+          "name": "No Operation, do nothing2",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            2020,
+            240
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "30719262-f037-4d00-a7a4-2a85180c2a8c",
+          "name": "Get active Tasks from Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            700,
+            1440
+          ],
+          "parameters": {
+            "options": {},
+            "resource": "databasePage",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1a878e40-f803-80e6-8df1-cf50776752da",
+              "cachedResultUrl": "https://www.notion.so/1a878e40f80380e68df1cf50776752da",
+              "cachedResultName": "Tasks"
+            },
+            "filterJson": "={\n  \"and\": [\n    {\n      \"property\": \"Status\",\n      \"status\": {\n        \"does_not_equal\": \"Done\"\n      }\n    },\n    {\n      \"property\": \"Status\",\n      \"status\": {\n        \"does_not_equal\": \"Obsolete\"\n      }\n    },\n    {\n      \"property\": \"Clients\",\n      \"rollup\": {\n        \"any\": {\n          \"select\": {\n            \"is_not_empty\": true\n          }\n        }\n      }\n    }\n  ]\n}",
+            "filterType": "json"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "2cfb387a-f6fa-4ace-afdf-687680b1659d",
+          "name": "Get active Tasks from Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            700,
+            1640
+          ],
+          "parameters": {
+            "filters": {
+              "is-active": true
+            },
+            "resource": "task",
+            "operation": "getAll",
+            "projectId": "={{ $json.id }}",
+            "returnAll": true,
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "alwaysOutputData": false,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "938801f2-d5c6-4e95-970d-29fa3ba6ba4b",
+          "name": "Update Task in Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            1800,
+            1560
+          ],
+          "parameters": {
+            "taskId": "={{ $('Compare Datasets2').item.json.clockify_task_id }}",
+            "resource": "task",
+            "operation": "update",
+            "projectId": "={{ $('Compare Datasets2').item.json.clockify_project_id }}",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}",
+            "updateFields": {
+              "name": "={{ $json.name }}",
+              "status": "={{ $json.archived ? 'DONE' : 'ACTIVE' }}"
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "f77a17b6-da10-4fb9-9e7f-83866132ec0e",
+          "name": "Get completed Task from Notion",
+          "type": "n8n-nodes-base.notion",
+          "position": [
+            1360,
+            1720
+          ],
+          "parameters": {
+            "filters": {
+              "conditions": [
+                {
+                  "key": "Clockify Task ID|rich_text",
+                  "condition": "equals",
+                  "richTextValue": "={{ $json.clockify_task_id }}"
+                }
+              ]
+            },
+            "options": {},
+            "resource": "databasePage",
+            "matchType": "allFilters",
+            "operation": "getAll",
+            "returnAll": true,
+            "databaseId": {
+              "__rl": true,
+              "mode": "list",
+              "value": "1a878e40-f803-80e6-8df1-cf50776752da",
+              "cachedResultUrl": "https://www.notion.so/1a878e40f80380e68df1cf50776752da",
+              "cachedResultName": "Tasks"
+            },
+            "filterType": "manual"
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "da34def3-17ac-461e-bec3-5bcdbfdd3609",
+          "name": "Create Task in Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            1580,
+            1160
+          ],
+          "parameters": {
+            "name": "={{ $json.name }}",
+            "resource": "task",
+            "projectId": "={{ $json.clockify_project_id }}",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "c8adb686-8667-466e-a7f9-32e8dd7c1721",
+          "name": "Remove Task from Clockify",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            2020,
+            1260
+          ],
+          "parameters": {
+            "taskId": "={{ $('Compare Datasets2').item.json.clockify_task_id }}",
+            "resource": "task",
+            "operation": "delete",
+            "projectId": "={{ $('Compare Datasets2').item.json.clockify_project_id }}",
+            "workspaceId": "={{ $('Globals').item.json.workspace_id }}"
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "399e5ebc-65d6-4af2-94ba-b4016602df4f",
+          "name": "Structure output2",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            1360,
+            1460
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "63f911a9-f75e-46ae-91b1-ebbab6548471",
+          "name": "No Operation2",
+          "type": "n8n-nodes-base.noOp",
+          "position": [
+            260,
+            1540
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "7ca89d07-1e82-4bbf-8fa6-5becd996b0b9",
+          "name": "Map values4",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            920,
+            1440
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "63fe0f05-c1b4-41b8-99e9-74f5ef2d51b6",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                },
+                {
+                  "id": "44339109-9634-451b-965c-b2767aa3c628",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": "={{ ['Done', 'Obsolete'].includes($json.property_status) }}"
+                },
+                {
+                  "id": "bddd1a9b-df7c-4d2f-891e-501639c786cc",
+                  "name": "clockify_task_id",
+                  "type": "string",
+                  "value": "={{ $json.property_clockify_task_id }}"
+                },
+                {
+                  "id": "12f7a5b6-e98f-4fa7-ad67-208c54ab2924",
+                  "name": "clockify_project_id",
+                  "type": "string",
+                  "value": "={{ $json.property_clockify_project_id[0] || \"\" }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "a9dcf9f2-8cb1-4dc4-9136-25d25ec5033e",
+          "name": "Map values5",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            920,
+            1640
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "b2bea7bb-8b70-4268-84dd-a0463f8a30c1",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                },
+                {
+                  "id": "bbe039ac-a0ac-4570-b4f6-e6728b1d68ff",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": "={{ $json.status !== 'ACTIVE' }}"
+                },
+                {
+                  "id": "7342b5ea-7da7-4158-bdca-ca40d1cdb042",
+                  "name": "clockify_task_id",
+                  "type": "string",
+                  "value": "={{ $json.id }}"
+                },
+                {
+                  "id": "2547d142-507f-4f8b-bc65-1556e217c801",
+                  "name": "clockify_project_id",
+                  "type": "string",
+                  "value": "={{ $json.projectId }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "20b17136-fd8c-4e79-9d39-b31a149e9867",
+          "name": "Get active Projects from Clockify1",
+          "type": "n8n-nodes-base.clockify",
+          "position": [
+            480,
+            1640
+          ],
+          "parameters": {
+            "operation": "getAll",
+            "returnAll": true,
+            "workspaceId": "={{ $('Globals').first().json.workspace_id }}",
+            "additionalFields": {
+              "archived": false
+            }
+          },
+          "credentials": {
+            "clockifyApi": {
+              "id": "CMJ0LAYOs143GAXw",
+              "name": "Clockify (octionictest)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 1,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "ec63d256-5abb-49c6-b6c8-67daf653f67e",
+          "name": "Compare Datasets2",
+          "type": "n8n-nodes-base.compareDatasets",
+          "position": [
+            1140,
+            1520
+          ],
+          "parameters": {
+            "options": {},
+            "resolve": "mix",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "clockify_task_id",
+                  "field2": "clockify_task_id"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.3
+        },
+        {
+          "id": "c759e651-5c28-4b72-8f5f-628396e054a7",
+          "name": "If unmapped in Notion2",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1360,
+            1260
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "26af0d64-ef8d-492e-87ca-6a893e8f85a1",
+                  "operator": {
+                    "type": "string",
+                    "operation": "empty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.clockify_task_id }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "91d86b0f-8823-4eb6-9d62-c423134645ad",
+          "name": "Set new values2",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            1580,
+            1720
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "bfc2ff08-56a1-49c1-b1db-475063f88032",
+                  "name": "archived",
+                  "type": "boolean",
+                  "value": true
+                },
+                {
+                  "id": "2e8b2166-149b-4eed-8bf2-dd08e9b98210",
+                  "name": "name",
+                  "type": "string",
+                  "value": "={{ $json.name }}"
+                }
+              ]
+            },
+            "includeOtherFields": true
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ec95b97a-4bea-4726-8114-8cc352f11162",
+          "name": "Store Clockify ID in Notion2",
+          "type": "n8n-nodes-base.notion",
+          "onError": "continueErrorOutput",
+          "position": [
+            1800,
+            1160
+          ],
+          "parameters": {
+            "pageId": {
+              "__rl": true,
+              "mode": "id",
+              "value": "={{ $('Get active Tasks from Notion').item.json.id }}"
+            },
+            "options": {},
+            "resource": "databasePage",
+            "operation": "update",
+            "propertiesUi": {
+              "propertyValues": [
+                {
+                  "key": "Clockify Task ID|rich_text",
+                  "textContent": "={{ $json.id }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "notionApi": {
+              "id": "ObmaBA0dJss3JJPv",
+              "name": "Notion (Test)"
+            }
+          },
+          "retryOnFail": true,
+          "typeVersion": 2.2,
+          "waitBetweenTries": 5000
+        },
+        {
+          "id": "0baa8a13-7190-42c2-bfa6-e53771e48e65",
+          "name": "Stop and Error2",
+          "type": "n8n-nodes-base.stopAndError",
+          "position": [
+            2240,
+            1260
+          ],
+          "parameters": {
+            "errorMessage": "Could not update task in Notion (deleted in Clockify again)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "ecebad5d-0462-4501-915c-9e15792a3e99",
+          "name": "Limit",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            2460,
+            20
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "ff50b701-9bc3-4336-961c-fb2513cc401c",
+          "name": "Limit1",
+          "type": "n8n-nodes-base.limit",
+          "position": [
+            2460,
+            940
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "id": "4189d36a-72d2-47e2-b800-e9355f411717",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            220,
+            -700
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 2420,
+            "height": 880,
+            "content": "# Sync Clients"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "c9bafea6-74c6-4978-bd78-58312ab5e812",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            220,
+            220
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 2420,
+            "height": 880,
+            "content": "# Sync Projects"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "9537b98c-a70d-4d5a-902a-9809965e5ee2",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            220,
+            1140
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 2420,
+            "height": 780,
+            "content": "# Sync Tasks"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a38ec76e-c8e8-46fe-95af-a04dda8d8c08",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -20,
+            -360
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 320,
+            "content": "## Set Globals (optional)\nBy default the fist available workspace ID is set. This can be overridden here."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a366f477-87b5-4fe8-aed8-761f2941f2d1",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -460,
+            -460
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 520,
+            "content": "## Set triggers\nBy default this workflow runs once a day. Additionally a webhook allows for manual calls using a Notion button."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "2566cdd1-4fe2-4d61-b2a0-47ebdaf8c9a1",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1300,
+            1620
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 280,
+            "content": "## Select database\nChoose the tasks database."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "029ec90b-dacd-4d80-b78e-4983a646b3db",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            -400
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 280,
+            "content": "## Select database\nChoose the clients database."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1851f5ed-5c51-4545-a4f4-ef3fa268998c",
+          "name": "Sticky Note7",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1080,
+            -120
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 280,
+            "content": "## Select database\nChoose the clients database."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "a1562c09-033c-43df-9456-a9fe4775133f",
+          "name": "Sticky Note8",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1080,
+            800
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 280,
+            "content": "## Select database\nChoose the projects database."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "20a722ec-e89d-4801-903d-ab84635772e7",
+          "name": "Sticky Note9",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            420,
+            520
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 280,
+            "content": "## Select database\nChoose the projects database."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "67d3f286-9025-43a0-978c-74b9e1aee176",
+          "name": "Sticky Note10",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            640,
+            1340
+          ],
+          "parameters": {
+            "width": 220,
+            "height": 280,
+            "content": "## Select database\nChoose the tasks database."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "f90dc5a3-e824-4331-b68f-848dd3c11813",
+          "name": "Sticky Note11",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -460,
+            160
+          ],
+          "parameters": {
+            "width": 660,
+            "height": 1160,
+            "content": "# Setup\n## Prerequisites\nThis workflow expects a database structure with at least having the structure mentioned below. Alternatively start with [this Notion Template](https://steadfast-banjo-d1f.notion.site/1ae82b476c84808e9409c08baf382c45)\n### Clients\n- Name (Text)\n- Archive (Checkbox)\n- Clockify Client ID (Text)\n### Projects\n- Name (Text)\n- Status (Status)\n  - required options: \"Done\", \"Obsolete\" and at least one more\n  - recommended options: \"Backlog\", \"In progress\", \"On hold\"\n- Clockify Client ID (Rollup: Clients -> Clockify Client ID)\n- Clockify Project ID (Text)\n### Tasks\n- Name (Text)\n- Status (Status)\n  - required options: \"Done\", \"Obsolete\" and at least one more\n  - recommended options: \"Backlog\", \"In progress\", \"On hold\"\n- Clockify Project ID (Rollup: Projects -> Clockify Project ID)\n- Clockify Task ID (Text)\n- Clients (Rollup: Projects -> Clients)\n## Update this workflow\n- Set the credentials accordingly\n- Check for all other yellow sticky notes\n\n## Add report button in Notion (optional)\nAdd a Formula field named \"Clockify Report\" or similar to the projects database and insert the following value:\n```if(prop(\"Clockify Project ID\").length() > 0, link(style(\"⏱️ View open time logs\", \"grey_background\"), \"https://app.clockify.me/reports/detailed?start=\" + formatDate(dateSubtract(today(), 1, \"years\"), \"YYYY-MM-DD\") + \"T00:00:00.000Z&end=\" + formatDate(today(), \"YYYY-MM-DD\") + \"T23:59:59.999Z&filterValuesData=%7B%22tags%22:%5B%2267c381166730bf39cdcce516%22%5D,%22projects%22:%5B%22\" + prop(\"Clockify Project ID\") + \"%22%5D%7D&filterOptions=%7B%22tags%22:%7B%22status%22:%22ACTIVE%22,%22contains%22:%22DOES_NOT_CONTAIN%22%7D,%22projects%22:%7B%22status%22:%22ACTIVE%22%7D%7D&page=1&pageSize=50\"), \"\")```\n\n## Add sync button to Notion (optional)\n_This requires a paid Notion plan_\n- Grab the production URL of the Webhook Node\n- Create a button in Notion next to a view of the Clients Database\n- Add a webhook call action and paste copied URL\n- Name the button \"Sync to Clockify\" or similar"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "c3e4f66b-5501-434d-a9aa-bc6c68780891",
+      "connections": {
+        "Limit": {
+          "main": [
+            [
+              {
+                "node": "No Operation1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge": {
+          "main": [
+            [
+              {
+                "node": "Limit",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Limit1": {
+          "main": [
+            [
+              {
+                "node": "No Operation2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Merge1": {
+          "main": [
+            [
+              {
+                "node": "Limit1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Globals": {
+          "main": [
+            [
+              {
+                "node": "No Operation",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Get first workspace ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map values": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map values1": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Map values2": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map values3": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Map values4": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Map values5": {
+          "main": [
+            [
+              {
+                "node": "Compare Datasets2",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "No Operation": {
+          "main": [
+            [
+              {
+                "node": "Get active Clients from Notion",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get active Clients from Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "No Operation1": {
+          "main": [
+            [
+              {
+                "node": "Get active Projects from Notion",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get active Projects from Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "No Operation2": {
+          "main": [
+            [
+              {
+                "node": "Get active Projects from Clockify1",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Get active Tasks from Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set new values": {
+          "main": [
+            [
+              {
+                "node": "Update Client in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set new values1": {
+          "main": [
+            [
+              {
+                "node": "Update Project in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Set new values2": {
+          "main": [
+            [
+              {
+                "node": "Update Task in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Compare Datasets": {
+          "main": [
+            [
+              {
+                "node": "If unmapped in Notion",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Structure output",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Client in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get archived Client from Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Schedule Trigger": {
+          "main": [
+            [
+              {
+                "node": "Get first workspace ID",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structure output": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Compare Datasets1": {
+          "main": [
+            [
+              {
+                "node": "If unmapped in Notion1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Structure output1",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Project in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get completed Project from Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Compare Datasets2": {
+          "main": [
+            [
+              {
+                "node": "If unmapped in Notion2",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Structure output2",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Task in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Get completed Task from Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Structure output1": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "If unmapped in Notion": {
+          "main": [
+            [
+              {
+                "node": "Create Client in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Client in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get first workspace ID": {
+          "main": [
+            [
+              {
+                "node": "Globals",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If unmapped in Notion1": {
+          "main": [
+            [
+              {
+                "node": "Create Project in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Project in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If unmapped in Notion2": {
+          "main": [
+            [
+              {
+                "node": "Create Task in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Update Task in Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Task in Clockify": {
+          "main": [
+            [
+              {
+                "node": "Store Clockify ID in Notion2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "No Operation, do nothing": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Client in Clockify": {
+          "main": [
+            [
+              {
+                "node": "Store Clockify ID in Notion",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "No Operation, do nothing2": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remove Task from Clockify": {
+          "main": [
+            [
+              {
+                "node": "Stop and Error2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Client in Clockify": {
+          "main": [
+            [
+              {
+                "node": "Merge",
+                "type": "main",
+                "index": 2
+              }
+            ]
+          ]
+        },
+        "Create Project in Clockify": {
+          "main": [
+            [
+              {
+                "node": "Store Clockify ID in Notion1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Update Project in Clockify": {
+          "main": [
+            [
+              {
+                "node": "Merge1",
+                "type": "main",
+                "index": 2
+              }
+            ]
+          ]
+        },
+        "Remove Client from Clockify": {
+          "main": [
+            [
+              {
+                "node": "Stop and Error",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store Clockify ID in Notion": {
+          "main": [
+            [
+              {
+                "node": "No Operation, do nothing",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Remove Client from Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Tasks from Notion": {
+          "main": [
+            [
+              {
+                "node": "Map values4",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Remove Project from Clockify": {
+          "main": [
+            [
+              {
+                "node": "Stop and Error1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store Clockify ID in Notion1": {
+          "main": [
+            [
+              {
+                "node": "No Operation, do nothing2",
+                "type": "main",
+                "index": 0
+              }
+            ],
+            [
+              {
+                "node": "Remove Project from Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Store Clockify ID in Notion2": {
+          "main": [
+            [],
+            [
+              {
+                "node": "Remove Task from Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Clients from Notion": {
+          "main": [
+            [
+              {
+                "node": "Map values",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Tasks from Clockify": {
+          "main": [
+            [
+              {
+                "node": "Map values5",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get completed Task from Notion": {
+          "main": [
+            [
+              {
+                "node": "Set new values2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Projects from Notion": {
+          "main": [
+            [
+              {
+                "node": "Map values2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get archived Client from Notion": {
+          "main": [
+            [
+              {
+                "node": "Set new values",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Clients from Clockify": {
+          "main": [
+            [
+              {
+                "node": "Map values1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Projects from Clockify": {
+          "main": [
+            [
+              {
+                "node": "Map values3",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get completed Project from Notion": {
+          "main": [
+            [
+              {
+                "node": "Set new values1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Get active Projects from Clockify1": {
+          "main": [
+            [
+              {
+                "node": "Get active Tasks from Clockify",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 45,
+    "workflowInfo": {
+      "nodeCount": 68,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 3
+        },
+        "n8n-nodes-base.set": {
+          "count": 10
+        },
+        "n8n-nodes-base.noOp": {
+          "count": 8
+        },
+        "n8n-nodes-base.limit": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 2
+        },
+        "n8n-nodes-base.notion": {
+          "count": 9
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.clockify": {
+          "count": 12
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 12
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 2
+        },
+        "n8n-nodes-base.stopAndError": {
+          "count": 3
+        },
+        "n8n-nodes-base.compareDatasets": {
+          "count": 3
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Mario",
+      "username": "octionic",
+      "bio": "Workflow Optimization Expert | Software Architect. Use my link to book an initial consultation for custom built workflows using n8n.",
+      "verified": true,
+      "links": [
+        "https://octionic.com"
+      ],
+      "avatar": "https://gravatar.com/avatar/48bf351cec848d87566d8cc78c9a783ec4807408366648de04cfe955d7a5ba21?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 26,
+        "icon": "fa:arrow-right",
+        "name": "n8n-nodes-base.noOp",
+        "codex": {
+          "data": {
+            "alias": [
+              "nothing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.noop/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"organization\"]",
+        "defaults": {
+          "name": "No Operation, do nothing",
+          "color": "#b0b0b0"
+        },
+        "iconData": {
+          "icon": "arrow-right",
+          "type": "icon"
+        },
+        "displayName": "No Operation, do nothing",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 371,
+        "icon": "file:clockify.svg",
+        "name": "n8n-nodes-base.clockify",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.clockify/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/clockify/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Clockify"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0yNS44MDA1IDEzLjc0ODRMMzQuOTg0NCA0LjU1ODcyTDM3LjYxMzMgNy4xODczMUwyOC40MjkzIDE2LjM3NzJMMjUuODAwNSAxMy43NDg0Wk0yMi4wNzkxIDIzLjEzOThDMjAuMjgxOCAyMy4xMzk4IDE4LjgyNTcgMjEuNjc3MyAxOC44MjU3IDE5Ljg3MTRDMTguODI1NyAxOC4wNjczIDIwLjI4MTggMTYuNjAyOSAyMi4wNzkxIDE2LjYwMjlDMjMuODc2NSAxNi42MDI5IDI1LjMzMjYgMTguMDY3MyAyNS4zMzI2IDE5Ljg3MTRDMjUuMzMyNiAyMS42NzczIDIzLjg3NjUgMjMuMTM5OCAyMi4wNzkxIDIzLjEzOThaTTM3LjY1NjIgMzIuNjMyTDM1LjAyNzQgMzUuMjYyNUwyNS44NDMzIDI2LjA3MjVMMjguNDcyMiAyMy40NDJMMzcuNjU2MiAzMi42MzJaIiBmaWxsPSIjMjIyMjIyIi8+CjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBkPSJNMjIuMTczOSAzNC4wMDU4QzI0LjAyNTIgMzQuMDA1OCAyNS43ODg5IDMzLjYzNjQgMjcuNDA1NSAzMi45Nzk3TDMxLjg5MTEgMzcuNDcwM0MyOS4wMTQ0IDM5LjA3NjQgMjUuNzAzMSA0MCAyMi4xNzM5IDQwQzExLjEzNjYgNDAgMi4xODc1IDMxLjA0NTIgMi4xODc1IDIwLjAwMDlDMi4xODc1IDguOTU0ODQgMTEuMTM2NyAwIDIyLjE3MzkgMEMyNS42Njc4IDAgMjguOTQ5MiAwLjkwMTA5NCAzMS44MDUzIDIuNDc3NUwyNy4zOTQyIDYuODkzMjhDMjUuNzc5NyA2LjI0MDMxIDI0LjAyMTYgNS44NzA5NCAyMi4xNzM5IDUuODcwOTRDMTQuNDQ0MiA1Ljg3MDk0IDguMTc3ODEgMTIuMTY5MiA4LjE3NzgxIDE5LjkzOTRDOC4xNzc4MSAyNy43MDc1IDE0LjQ0NDEgMzQuMDA1OCAyMi4xNzM5IDM0LjAwNThaIiBmaWxsPSIjMDNBOUY0Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Clockify",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 487,
+        "icon": "file:notion.svg",
+        "name": "n8n-nodes-base.notion",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.notion/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/notion/"
+                }
+              ]
+            },
+            "categories": [
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Notion"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik03LjU4Mjc2IDYuOTc2NzlDOC44MjA0NyA3Ljk4MjM4IDkuMjg0NzkgNy45MDU2NiAxMS42MDkxIDcuNzUwNTdMMzMuNTIwNiA2LjQzNDg4QzMzLjk4NTMgNi40MzQ4OCAzMy41OTg5IDUuOTcxMjcgMzMuNDQzOSA1Ljg5NDIzTDI5LjgwNDkgMy4yNjM0OEMyOS4xMDc2IDIuNzIyMTMgMjguMTc4NiAyLjEwMjE3IDI2LjM5ODIgMi4yNTcyNkw1LjE4MTE1IDMuODA0NzZDNC40MDczNiAzLjg4MTQ4IDQuMjUyODIgNC4yNjgzNyA0LjU2MDk2IDQuNTc4NDdMNy41ODI3NiA2Ljk3Njc5Wk04Ljg5ODI5IDEyLjA4MzNWMzUuMTM4MUM4Ljg5ODI5IDM2LjM3NzEgOS41MTc0NiAzNi44NDA3IDEwLjkxMSAzNi43NjRMMzQuOTkxOSAzNS4zNzA2QzM2LjM4NjIgMzUuMjkzOSAzNi41NDE1IDM0LjQ0MTcgMzYuNTQxNSAzMy40MzUyVjEwLjUzNTFDMzYuNTQxNSA5LjUzMDE5IDM2LjE1NDkgOC45ODgyOSAzNS4zMDE0IDkuMDY1NjRMMTAuMTM2NyAxMC41MzUxQzkuMjA3OTkgMTAuNjEzMSA4Ljg5ODIxIDExLjA3NzcgOC44OTgyMSAxMi4wODMzSDguODk4MjlaTTMyLjY3MDggMTMuMzJDMzIuODI1MiAxNC4wMTcgMzIuNjcwOCAxNC43MTMzIDMxLjk3MjUgMTQuNzkxN0wzMC44MTIzIDE1LjAyMjlWMzIuMDQzNEMyOS44MDQ5IDMyLjU4NDggMjguODc1OSAzMi44OTQ0IDI4LjEwMTggMzIuODk0NEMyNi44NjI1IDMyLjg5NDQgMjYuNTUyMSAzMi41MDcyIDI1LjYyMzcgMzEuMzQ3NEwxOC4wMzQzIDE5LjQzMjlWMzAuOTYwNUwyMC40MzU5IDMxLjUwMjRDMjAuNDM1OSAzMS41MDI0IDIwLjQzNTkgMzIuODk0NCAxOC40OTgzIDMyLjg5NDRMMTMuMTU2OCAzMy4yMDQyQzEzLjAwMTYgMzIuODk0NCAxMy4xNTY4IDMyLjEyMTQgMTMuNjk4NiAzMS45NjY1TDE1LjA5MjUgMzEuNTgwMlYxNi4zMzg1TDEzLjE1NzIgMTYuMTgzNEMxMy4wMDE5IDE1LjQ4NjQgMTMuMzg4NSAxNC40ODE0IDE0LjQ3MzMgMTQuNDAzNUwyMC4yMDM1IDE0LjAxNzJMMjguMTAxOCAyNi4wODY4VjE1LjQwOTdMMjYuMDg4MSAxNS4xNzg2QzI1LjkzMzUgMTQuMzI2NSAyNi41NTIxIDEzLjcwNzggMjcuMzI2NSAxMy42MzExTDMyLjY3MDggMTMuMzJaTTMuMzk5NzMgMS43MTU5OEwyNS40Njg4IDAuMDkwNzQ1N0MyOC4xNzkgLTAuMTQxNjg4IDI4Ljg3NjMgMC4wMTQwMjQ1IDMwLjU3OTYgMS4yNTEzNUwzNy42MjQzIDYuMjAyNzZDMzguNzg2NyA3LjA1NDIxIDM5LjE3NDIgNy4yODYwMiAzOS4xNzQyIDguMjE0MTlWMzUuMzcwNkMzOS4xNzQyIDM3LjA3MjYgMzguNTU0MiAzOC4wNzkxIDM2LjM4NjUgMzguMjMzMUwxMC43NTc3IDM5Ljc4MDdDOS4xMzA0OSAzOS44NTgzIDguMzU2MDcgMzkuNjI2NCA3LjUwMzkyIDM4LjU0MjZMMi4zMTYwOCAzMS44MTE3QzEuMzg2NTggMzAuNTcyNiAxIDI5LjY0NTcgMSAyOC41NjEzVjQuNDIyODNDMSAzLjAzMTA1IDEuNjIwMTkgMS44NzAwNSAzLjM5OTczIDEuNzE1OThWMS43MTU5OFoiIGZpbGw9ImJsYWNrIi8+Cjwvc3ZnPgo="
+        },
+        "displayName": "Notion",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          }
+        ]
+      },
+      {
+        "id": 528,
+        "icon": "fa:exclamation-triangle",
+        "name": "n8n-nodes-base.stopAndError",
+        "codex": {
+          "data": {
+            "alias": [
+              "Throw error",
+              "Error",
+              "Exception"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.stopanderror/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Stop and Error",
+          "color": "#ff0000"
+        },
+        "iconData": {
+          "icon": "exclamation-triangle",
+          "type": "icon"
+        },
+        "displayName": "Stop and Error",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 836,
+        "icon": "file:compare.svg",
+        "name": "n8n-nodes-base.compareDatasets",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Compare",
+              "Dataset",
+              "Split",
+              "Sync",
+              "Syncing"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.comparedatasets/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Compare Datasets"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzODQiIGhlaWdodD0iNTEyIj48cGF0aCBmaWxsPSIjZWQyMzBkIiBkPSJNMzUyIDQ0OEgzMmMtMTcuNjkgMC0zMiAxNC4zMS0zMiAzMnMxNC4zMSAzMS4xIDMyIDMxLjFoMzIwYzE3LjY5IDAgMzItMTQuMzEgMzItMzEuMXMtMTQuMy0zMi0zMi0zMiIvPjxwYXRoIGZpbGw9IiM2MmY3MzAiIGQ9Ik00OCAyMDhoMTEydjExMS4xYzAgMTcuNjkgMTQuMzEgMzEuMSAzMiAzMS4xczMyLTE0LjMxIDMyLTMxLjFWMjA4aDExMmMxNy42OSAwIDMyLTE0LjMyIDMyLTMyLjAxUzM1My42OSAxNDQgMzM2IDE0NEgyMjRWMzJjMC0xNy42OS0xNC4zMS0zMi4wMS0zMi0zMi4wMXMtMzIgMTQuMzQtMzIgMzIuMDJ2MTEySDQ4Yy0xNy42OSAwLTMyIDE0LjMxLTMyIDMxLjk5czE0LjMxIDMyIDMyIDMyIi8+PC9zdmc+"
+        },
+        "displayName": "Compare Datasets",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1237,
+        "icon": "file:limit.svg",
+        "name": "n8n-nodes-base.limit",
+        "codex": {
+          "data": {
+            "alias": [
+              "Limit",
+              "Remove",
+              "Slice",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.limit/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Limit"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjMkZCNjdDIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcGF0aD0idXJsKCNhKSIgY2xpcC1ydWxlPSJldmVub2RkIj48cGF0aCBkPSJNNTEyIDQ1OGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEyaC02OGMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDY4YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6bS0xNDAgMGMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDEyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoNjhjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMTUyLTIyMmMtNi42MjcgMC0xMi01LjM3My0xMi0xMlYzMGMwLTYuNjI3IDUuMzczLTEyIDEyLTEyaDI0YzYuNjI3IDAgMTIgNS4zNzMgMTIgMTJ2MTk0YzAgNi42MjctNS4zNzMgMTItMTIgMTJ6Ii8+PHBhdGggZD0iTTE0OS41NzcgMTQ2Ljk4MmM5LjM5OC05LjM0NiAyNC41OTQtOS4zMDQgMzMuOTQxLjA5NUwyNTYgMjE5Ljk2NGw3Mi40ODItNzIuODg3YzkuMzQ3LTkuMzk5IDI0LjU0My05LjQ0MSAzMy45NDEtLjA5NXM5LjQ0MSAyNC41NDMuMDk1IDMzLjk0MWwtODkuNSA5MGEyNCAyNCAwIDAgMS0zNC4wMzYgMGwtODkuNS05MGMtOS4zNDYtOS4zOTgtOS4zMDQtMjQuNTk0LjA5NS0zMy45NDFNMCAzNTBjMC02LjYyNyA1LjM3My0xMiAxMi0xMmg0ODhjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnYyNGMwIDYuNjI3LTUuMzczIDEyLTEyIDEySDEyYy02LjYyNyAwLTEyLTUuMzczLTEyLTEyeiIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik0wIDBoNTEydjUxMkgweiIvPjwvY2xpcFBhdGg+PC9kZWZzPjwvc3ZnPg=="
+        },
+        "displayName": "Limit",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      },
+      {
+        "id": 17,
+        "name": "HR"
+      }
+    ],
+    "image": []
+  }
+}

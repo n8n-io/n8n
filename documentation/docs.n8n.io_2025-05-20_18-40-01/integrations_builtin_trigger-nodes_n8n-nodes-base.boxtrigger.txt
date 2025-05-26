@@ -1,0 +1,34 @@
+URL: https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.boxtrigger/
+Scraped_At: 2025-05-20T19:05:38.351004
+
+Box Trigger node
+#
+Box
+is a cloud computing company which provides file sharing, collaborating, and other tools for working with files uploaded to its servers.
+Credentials
+You can find authentication information for this node
+here
+.
+Examples and templates
+For usage examples and templates to help you get started, refer to n8n's
+Box Trigger integrations
+page.
+Find your Box Target ID
+#
+To get your Target ID in Box:
+Open the file/folder that you would like to monitor.
+Copy the string of characters after
+folder/
+in your URL. This is the target ID. For example, if the URL is
+https://app.box.com/folder/12345
+, then
+12345
+is the target ID.
+Paste it in the
+Target ID
+field in n8n.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

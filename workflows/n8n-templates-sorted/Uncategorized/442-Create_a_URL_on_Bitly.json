@@ -1,0 +1,204 @@
+{
+  "workflow": {
+    "id": 442,
+    "name": "Create a URL on Bitly",
+    "views": 310,
+    "recentViews": 0,
+    "totalViews": 310,
+    "createdAt": "2020-07-01T23:44:39.465Z",
+    "description": "![workflow-screenshot](fileId:53)",
+    "workflow": {
+      "id": "5",
+      "name": "new",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            490,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Bitly",
+          "type": "n8n-nodes-base.bitly",
+          "position": [
+            830,
+            300
+          ],
+          "parameters": {
+            "longUrl": "https://calendar.usc.edu/event/curricular_practical_training_cpt_information_session_8120?utm_campaign=widget&utm_medium=widget&utm_source=USC+Event+Calendar#.Xv0UlpNKhQK",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "bitlyApi": "test"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Bitly",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 2,
+      "nodeTypes": {
+        "n8n-nodes-base.bitly": {
+          "count": 1
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "sshaligr",
+      "username": "shraddha",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ecff5dc00cb5fa3e3365819f6b208663d8564580fa03b9aec987be3b16c81a0?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 217,
+        "icon": "file:bitly.svg",
+        "name": "n8n-nodes-base.bitly",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.bitly/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/bitly/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "Bitly"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCI+PHBhdGggZmlsbD0ibm9uZSIgZD0iTTAgMGgxMjh2MTI4SDB6Ii8+PHBhdGggZmlsbD0iI0RENUEyQiIgZD0iTTYzLjcwOCAwQzI4LjQ0MyAwIDAgMjguMzA2IDAgNjUuMzIyYzAgMTkuMTkzIDEwLjI2NiAzNy43MzYgMjQuNzAzIDQ4Ljg3NyAyLjc4IDIuMTQ1IDYuMDkxIDEuOTQ5IDcuOTg5LjEwOSAxLjU5OS0xLjU1IDEuNDY3LTUuMjgyLTEuNTA3LTcuODk3LTExLjU0MS0xMC4xNDktMTkuNTItMjUuNTE0LTE5LjUyLTQwLjg2MSAwLTI3LjU2NCAyNC40NzQtNTAuNzU2IDUyLjA0NC01MC43NTYgMzMuNTU4IDAgNTEuNTAzIDI3LjI1MiA1MS41MDMgNTAuMzUxIDAgMTQuMTE0LTYuOTAyIDMxLjE1NS0xOS4zNjEgNDIuMDI1LjAxOS0uMDQ5IDIuNTg4LTUuMTAxIDIuNTg4LTE0Ljk0IDAtMTYuNzQ4LTEwLjYxMi0yNS44MjEtMjIuOTI2LTI1LjgyMS04LjkxNCAwLTE0LjI1MSAzLjE4Ny0xNy44ODMgNi4xNTggMC02LjgyMi4yMjgtMTkuNTYzLjIyOC0xOS41NjMgMC04LjQwOS0yLjk0Ni0xNS4xNC0xMy4yMTMtMTUuMjg3LTUuOTQzLS4wODQtMTAuMzUzIDIuNjQxLTEzLjEwMyA4LjgwMy0uOTkxIDIuMzExLS42MjYgNC44MjIgMS4zMzMgNS45NiAxLjYyMS45NDEgNC4yODcuMjQzIDUuNjA2LTEuNTE3Ljg4MS0xLjEgMS4zNzUtMS4zMzUgMi4xNDEtMS4yNTIgMS4yNjEuMTM2IDEuMzA5IDIuMTY4IDEuMzU5IDMuNDY4LjAzOC45OTggMS4wMDggMTUuNDk0LjQ3NyA1Mi43NDYgMCAxMC4yNzUgOC4wNTkgMjIuMDc3IDI3LjM1NSAyMi4wNzcgOC4zMDcgMCAxNC42ODYtMi4zMjIgMjMuOTUzLTcuNTg3QzEwNy44NzEgMTEyLjM5OCAxMjggOTQuNjIgMTI4IDY0LjU1IDEyOCAyNi45NzcgOTcuNTcyIDAgNjMuNzA4IDBtNi4wNTIgMTEzLjYwMmMtNy4xODMuMTI2LTEyLjQyMi0yLjE4My0xMi43NDMtOC40NjEtLjEyLTIuMzU2LS4wODItNC44NjUuMDMzLTYuMzc4LjY5NS05LjE3NCA3LjExLTE1Ljc3NCAxMy40NDMtMTcuMDQxIDcuODc2LTEuNTc2IDEzLjEyMyAyLjAyNiAxMy4xMjMgMTIuMzM3LS4wMDEgNi45NjgtMS45MzUgMTkuMzM0LTEzLjg1NiAxOS41NDMiLz48L2c+PC9zdmc+"
+        },
+        "displayName": "Bitly",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 20,
+        "name": "Building Blocks"
+      }
+    ],
+    "image": [
+      {
+        "id": 53,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/0e72c56eeab24ee3b952e7d14f66ce8d.png"
+      }
+    ]
+  }
+}

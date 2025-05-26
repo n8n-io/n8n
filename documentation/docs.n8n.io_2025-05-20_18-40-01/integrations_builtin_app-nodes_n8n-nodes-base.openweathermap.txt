@@ -1,0 +1,38 @@
+URL: https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.openweathermap/
+Scraped_At: 2025-05-20T18:50:28.120711
+
+OpenWeatherMap node
+#
+Use the OpenWeatherMap node to automate work in OpenWeatherMap, and integrate OpenWeatherMap with other applications. n8n supports retrieving current and upcoming weather data with OpenWeatherMap.
+On this page, you'll find a list of operations the OpenWeatherMap node supports and links to more resources.
+Credentials
+Refer to
+OpenWeatherMap credentials
+for guidance on setting up authentication.
+This node can be used as an AI tool
+This node can be used to enhance the capabilities of an AI agent. When used in this way, many parameters can be set automatically, or with information directed by AI - find out more in the
+AI tool parameters documentation
+.
+Operations
+#
+Returns the current weather data
+Returns the weather data for the next 5 days
+Templates and examples
+#
+Get Weather Forecast via Telegram
+by tanaypant
+View template details
+Get information about the weather for any city
+by amudhan
+View template details
+Receive the weather information of any city
+by Harshil Agrawal
+View template details
+Browse OpenWeatherMap integration templates
+, or
+search all templates
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

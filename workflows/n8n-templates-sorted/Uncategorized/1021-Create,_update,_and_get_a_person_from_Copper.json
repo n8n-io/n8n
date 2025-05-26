@@ -1,0 +1,283 @@
+{
+  "workflow": {
+    "id": 1021,
+    "name": "Create, update, and get a person from Copper",
+    "views": 267,
+    "recentViews": 0,
+    "totalViews": 267,
+    "createdAt": "2021-04-06T15:09:35.116Z",
+    "description": "This workflow allows you to create, update, and get a person from Copper.\n\n![workflow-screenshot](fileId:466)\n\n**Copper node:** This node will create a new person in Copper.\n\n**Copper1 node:** This node will update the information of the person that we created using the previous node.\n\n**Copper2 node:** This node will retrieve the information of the person that we created earlier.",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            250,
+            320
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Copper",
+          "type": "n8n-nodes-base.copper",
+          "position": [
+            450,
+            320
+          ],
+          "parameters": {
+            "name": "Harshil",
+            "resource": "person",
+            "additionalFields": {
+              "emails": {
+                "emailFields": [
+                  {
+                    "email": "harshil@n8n.io",
+                    "category": "work"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "copperApi": "Copper API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Copper1",
+          "type": "n8n-nodes-base.copper",
+          "position": [
+            650,
+            320
+          ],
+          "parameters": {
+            "personId": "={{$json[\"id\"]}}",
+            "resource": "person",
+            "operation": "update",
+            "updateFields": {
+              "phone_numbers": {
+                "phoneFields": [
+                  {
+                    "number": "1234567890",
+                    "category": "work"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "copperApi": "Copper API Credentials"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Copper2",
+          "type": "n8n-nodes-base.copper",
+          "position": [
+            850,
+            320
+          ],
+          "parameters": {
+            "personId": "={{$json[\"id\"]}}",
+            "resource": "person",
+            "operation": "get"
+          },
+          "credentials": {
+            "copperApi": "Copper API Credentials"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "Copper": {
+          "main": [
+            [
+              {
+                "node": "Copper1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Copper1": {
+          "main": [
+            [
+              {
+                "node": "Copper2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Copper",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.copper": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 475,
+        "icon": "file:copper.svg",
+        "name": "n8n-nodes-base.copper",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.copper/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/copper/"
+                }
+              ]
+            },
+            "categories": [
+              "Marketing",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Copper"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAuMDQ5OSIgY3k9IjIwLjA0OTkiIHI9IjE1LjUxMTgiIGZpbGw9IndoaXRlIi8+CjxwYXRoIGQ9Ik0xNy43OSAwLjEzNjkwNUMxNS40MjQ3IDAuNDIyOTM4IDEzLjQxMTQgMS4wMTcwMSAxMS4zNTQyIDIuMDE4MTJDNy4xMDc3MiA0LjA4NjM2IDMuODk1MzUgNy4zMjA3MyAxLjkzNzEzIDExLjQ2ODJDMC40NzM5NTcgMTQuNTkyNiAtMC4yMzAxMjQgMTguMzc3IDAuMDY2OTEwNSAyMS41MDE0QzAuMjMxOTMgMjMuMjUwNiAwLjQ3Mzk1NyAyNC40NDk3IDEuMDU3MDIgMjYuMzg1OUMxLjQ4NjA3IDI3Ljc5NDEgMi44OTQyNCAzMC41MTE0IDMuOTYxMzYgMzEuOTMwNkM0LjY1NDQ0IDMyLjg2NTcgNi42Njc2NyAzNC45MTE5IDcuNzIzNzkgMzUuNzQ4QzguOTk5OTQgMzYuNzcxMSAxMC43NzExIDM3Ljc3MjIgMTIuNzg0NCAzOC42NDEzQzEzLjk4MzUgMzkuMTU4NCAxNi42MTI4IDM5Ljc0MTUgMTguNDk0IDM5LjkxNzVDMTkuNjM4MiA0MC4wMjc1IDIwLjI3NjIgNDAuMDI3NSAyMS40MzE0IDM5LjkxNzVDMjguMDc2MSAzOS4zMjM0IDMzLjYwOTggMzUuOTM1IDM3LjA3NTIgMzAuMzM1NEMzOS4xNzY0IDI2LjkyNSA0MC4yNzY1IDIyLjM4MTUgMzkuOTEzNSAxOC41NDJDMzkuNzcwNSAxNi45MTM4IDM5LjM5NjQgMTUuMDg3NiAzOC45MTI0IDEzLjYyNDVDMzcuMjUxMiA4LjU4NTg4IDMzLjMzNDcgNC4xNzQzNyAyOC41NzEyIDEuOTg1MTJDMjcuOTk5MSAxLjcyMTA5IDI3LjQ0OTEgMS40NTcwNiAyNy4zNjExIDEuNDEzMDVDMjcuMTUyIDEuMzAzMDQgMjUuMTgyOCAwLjY5Nzk2OSAyNC41MDA3IDAuNTMyOTVDMjIuMjU2NSAwLjAwNDg4OTQxIDIwLjAwMTIgLTAuMTM4MTI3IDE3Ljc5IDAuMTM2OTA1Wk0yNC4yMjU3IDguNzUwOUMyNS45ODU5IDkuMjM0OTUgMjcuODU2MSAxMC4zMjQxIDI4Ljg0NjIgMTEuNDM1MkMyOS4xMjEzIDExLjc1NDIgMjkuNTcyMyAxMi40NTgzIDI5LjgzNjMgMTMuMDA4NEMzMC44ODE1IDE1LjE2NDYgMzAuNjgzNCAxNy4xODg5IDI5LjI5NzMgMTguNTc1QzI4LjUyNzIgMTkuMzQ1MSAyOC4xMzExIDE5LjQ4ODEgMjYuODExIDE5LjQ5OTFDMjUuNzk4OSAxOS40OTkxIDI1LjU4OTkgMTkuNDY2MSAyNS4xMjc4IDE5LjIzNTFDMjQuMzY4NyAxOC44MzkxIDIzLjU5ODYgMTcuOTgxIDIzLjMwMTYgMTcuMTg4OUMyMi45Mjc1IDE2LjIwOTggMjIuOTYwNSAxNS4yNzQ2IDIzLjQxMTYgMTMuNzEyNUMyNC4xMjY3IDExLjI0ODIgMjMuODQwNyA5Ljk4MzA0IDIyLjQxMDUgOS4yNjc5NkMyMS45NDg0IDkuMDI1OTMgMjAuNzcxMyA4Ljk5MjkzIDIwLjE4ODIgOS4yMDE5NUMxOS4yOTcxIDkuNDk4OTggMTguMjUyIDEwLjY1NDEgMTcuNjEzOSAxMi4wMTgzQzE2Ljg4NzggMTMuNTkxNSAxNi41MDI4IDE1Ljc5MTcgMTYuNjEyOCAxNy44Mzc5QzE2LjczMzggMjAuMjU4MiAxNy4zMDU5IDIxLjkxOTQgMTguNTA1IDIzLjQxNTZDMjAuMTk5MiAyNS41MDU4IDIzLjAzNzYgMjYuMzQxOSAyNi4xMjg5IDI1LjY0ODhDMjcuNDE2MSAyNS4zNjI4IDI4LjY4MTIgMjQuNjgwNyAyOS45MjQ0IDIzLjU5MTZDMzAuNTI5NCAyMy4wNjM1IDMwLjcxNjQgMjIuOTUzNSAzMC45MzY1IDIzLjAwODVDMzEuMDkwNSAyMy4wNTI1IDMxLjIxMTUgMjMuMTQwNiAzMS4yMTE1IDIzLjIxNzZDMzEuMjExNSAyMy40MjY2IDMwLjI3NjQgMjUuMTk3OCAyOS43MDQzIDI2LjA5OTlDMjguNDE3MiAyOC4wODAxIDI2LjM4MTkgMjkuOTE3MyAyNC41NTU3IDMwLjcyMDRDMjIuNzE4NSAzMS41MzQ1IDIwLjE4ODIgMzEuODA5NiAxNy44NzggMzEuNDM1NUMxNS42ODg3IDMxLjA4MzUgMTMuNDQ0NSAyOS45MzkzIDExLjg0OTMgMjguMzU1MkM4LjYxNDkgMjUuMTA5OCA3Ljc1NjggMTkuODQwMiA5Ljc0ODAzIDE1LjQzOTdDMTEuMjU1MiAxMi4xMDYzIDE0LjUxMTYgOS41MjA5OSAxOC4yODUgOC42NjI4OUMxOS41OTQyIDguMzY1ODUgMjIuOTgyNiA4LjQyMDg2IDI0LjIyNTcgOC43NTA5WiIgZmlsbD0iI0ZGMjU2NCIvPgo8L3N2Zz4K"
+        },
+        "displayName": "Copper",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 27,
+            "name": "Marketing"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 2,
+        "name": "Sales"
+      }
+    ],
+    "image": [
+      {
+        "id": 466,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/0de647846f464602b93819d7f3ef7b59.png"
+      }
+    ]
+  }
+}

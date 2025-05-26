@@ -1,0 +1,540 @@
+{
+  "workflow": {
+    "id": 2371,
+    "name": "Request and Receive Zigbee backup from zigbee2mqtt and save it via SFTP",
+    "views": 1315,
+    "recentViews": 0,
+    "totalViews": 1315,
+    "createdAt": "2024-08-03T00:26:43.219Z",
+    "description": "A single workflow with 2 flows/paths that combine to handle the backup sequence for Zigbee device configuration from HomeAssistant / zigbee2mqtt.  This provides a way to automate a periodic capture of Zigbee coordinators and device pairings to speed the recovery process when/if the HomeAssistant instance needs to be rebuilt.  Setting up similar automation without n8n (e.g. shell scripts and system timers) is consiterably more challenging.  n8n makes it easy and this template should remove any other excuse not to do it.\n\n## Flow 1\n* Triggered by Cron/Timer\n  * set whatever interval for backups\n  * sends mqtt message to request zigbee2mqtt backup (via separate message)\n\n## Flow 2\n* Triggered by zigbee2mqtt backup message\n* Extracts zip file from the message and stores somewhere, with a date-stamp in the filename, via sftp\n\n## Setup\n* Create a MQTT connection named **\"MQTT Account\"** with the appropriate protocol (mqtt), host, port (1883), username, and password\n* Create an sftp connection named **\"SFTP Zigbee Backups\"** with the appropriate host, port (22), username, and password or key.\n\n## Reference\n* [This article](https://home-assistant-guide.com/changelog/zigbee2mqtt/zigbee2mqtt-1-26-0/you-can-now-back-up-your-complete-zigbee2mqtt-configuration/) describes the mqtt parts.\n",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "SFTP zip file content",
+          "type": "n8n-nodes-base.ftp",
+          "position": [
+            1520,
+            680
+          ],
+          "parameters": {
+            "path": "=zigbee_backups/zigbee_backup_{{ new Date().toISOString().replaceAll(':','_') }}.zip",
+            "protocol": "sftp",
+            "operation": "upload"
+          },
+          "credentials": {
+            "sftp": {
+              "name": "SFTP Zigbee Backups"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "CRON Monday 2:45 am",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "position": [
+            860,
+            440
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "cronExpression",
+                  "expression": "45 2 * * 1"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "name": "Send Zigbee2MQTT backup request",
+          "type": "n8n-nodes-base.mqtt",
+          "position": [
+            1040,
+            440
+          ],
+          "parameters": {
+            "topic": "zigbee2mqtt/bridge/request/backup",
+            "message": "getbackup",
+            "options": {},
+            "sendInputData": false
+          },
+          "credentials": {
+            "mqtt": {
+              "name": "MQTT account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "MQTT Trigger - Backup Response",
+          "type": "n8n-nodes-base.mqttTrigger",
+          "position": [
+            860,
+            680
+          ],
+          "parameters": {
+            "topics": "zigbee2mqtt/bridge/response/backup",
+            "options": {}
+          },
+          "credentials": {
+            "mqtt": {
+              "name": "MQTT account"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Parse JSON Object from Message Text",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1080,
+            680
+          ],
+          "parameters": {
+            "mode": "runOnceForEachItem",
+            "jsCode": "\nlet containerObject = JSON.parse($json.message);\nlet messageObject = containerObject.data;\nreturn messageObject;"
+          },
+          "typeVersion": 2
+        },
+        {
+          "name": "Convert to File - base64 to binary",
+          "type": "n8n-nodes-base.convertToFile",
+          "position": [
+            1300,
+            680
+          ],
+          "parameters": {
+            "options": {},
+            "operation": "toBinary",
+            "sourceProperty": "zip"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {
+        "CRON Monday 2:45 am": {
+          "main": [
+            [
+              {
+                "node": "Send Zigbee2MQTT backup request",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "MQTT Trigger - Backup Response": {
+          "main": [
+            [
+              {
+                "node": "Parse JSON Object from Message Text",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Convert to File - base64 to binary": {
+          "main": [
+            [
+              {
+                "node": "SFTP zip file content",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Parse JSON Object from Message Text": {
+          "main": [
+            [
+              {
+                "node": "Convert to File - base64 to binary",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 6,
+      "nodeTypes": {
+        "n8n-nodes-base.ftp": {
+          "count": 1
+        },
+        "n8n-nodes-base.code": {
+          "count": 1
+        },
+        "n8n-nodes-base.mqtt": {
+          "count": 1
+        },
+        "n8n-nodes-base.mqttTrigger": {
+          "count": 1
+        },
+        "n8n-nodes-base.convertToFile": {
+          "count": 1
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Hubschrauber",
+      "username": "hubschrauber",
+      "bio": "Software developer specializing in \"back-end plumbing\" to connect and sync data between large corporate systems, enabling application distribution/migration, scaling, and containerization.  Using n8n for various orchestration tasks both at home and \"on the job.\"",
+      "verified": true,
+      "links": [
+        ""
+      ],
+      "avatar": "https://gravatar.com/avatar/937647d994a5af6961d76103821d84448e970d74e6d0d303e8a76b56fd1da695?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 350,
+        "icon": "fa:server",
+        "name": "n8n-nodes-base.ftp",
+        "codex": {
+          "data": {
+            "alias": [
+              "SFTP",
+              "FTP",
+              "Binary",
+              "File",
+              "Transfer"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ftp/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/ftp/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes",
+              "Data & Storage",
+              "Development",
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "FTP",
+          "color": "#303050"
+        },
+        "iconData": {
+          "icon": "server",
+          "type": "icon"
+        },
+        "displayName": "FTP",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 7,
+            "name": "Utility"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 364,
+        "icon": "file:mqtt.svg",
+        "name": "n8n-nodes-base.mqttTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.mqtttrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mqtt/"
+                }
+              ]
+            },
+            "categories": [
+              "Communication",
+              "Development"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "MQTT Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGJhc2VQcm9maWxlPSJ0aW55IiBvdmVyZmxvdz0idmlzaWJsZSIgdmVyc2lvbj0iMS4yIiB2aWV3Qm94PSIwIDAgMzIwIDMyMCI+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTcuMSAxMzMuOXY0Ni43YzczLjguMSAxMzQgNTkuMyAxMzUgMTMyLjRoNDUuNWMtMS4xLTk4LjQtODEuNS0xNzguMi0xODAuNS0xNzkuMSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik03LjEgMzcuM1Y4NGMxMjcuNC4xIDIzMS4xIDEwMi41IDIzMi4xIDIyOC45aDQ1LjVjLTEtMTUxLjUtMTI1LTI3NC42LTI3Ny42LTI3NS42Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMxMi45IDE5My41Vjk3LjZjLTExLjgtMTYuMS0yNS45LTMzLjQtNDAuNC00Ny44LTE2LTE1LjktMzQuMS0zMC4xLTUyLjMtNDIuN0gxMTljODguMyAzMS44IDE1OS4xIDEwMC4xIDE5My45IDE4Ni40Ii8+PHBhdGggZmlsbD0iIzYwNiIgZD0iTTcuMSAxODAuNnYxMTcuMWMwIDguNCA2LjggMTUuMyAxNS4zIDE1LjNIMTQyYy0xLTczLjItNjEuMS0xMzIuMy0xMzQuOS0xMzIuNG0wLTk2LjV2NDkuOGM5OSAuOSAxNzkuNCA4MC43IDE4MC40IDE3OS4xaDUxLjdDMjM4LjIgMTg2LjYgMTM0LjUgODQuMiA3LjEgODQuMW0zMDUuOCAyMTMuNVYxOTMuNUMyNzguMSAxMDcuMiAyMDcuMyAzOC45IDExOSA3LjFIMjIuNEMxNCA3LjEgNy4xIDEzLjkgNy4xIDIyLjR2MTVjMTUyLjYuOSAyNzYuNiAxMjQgMjc3LjYgMjc1LjZoMTNjOC40LS4xIDE1LjItNi45IDE1LjItMTUuNE0yNzIuNiA0OS44YzE0LjUgMTQuNCAyOC42IDMxLjcgNDAuNCA0Ny44VjIyLjRjMC04LjQtNi44LTE1LjMtMTUuMy0xNS4zaC03Ny4zYzE4IDEyLjYgMzYuMiAyNi44IDUyLjIgNDIuNyIvPjwvc3ZnPg=="
+        },
+        "displayName": "MQTT Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 485,
+        "icon": "file:mqtt.svg",
+        "name": "n8n-nodes-base.mqtt",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mqtt/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/mqtt/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Communication"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "MQTT"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGJhc2VQcm9maWxlPSJ0aW55IiBvdmVyZmxvdz0idmlzaWJsZSIgdmVyc2lvbj0iMS4yIiB2aWV3Qm94PSIwIDAgMzIwIDMyMCI+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTcuMSAxMzMuOXY0Ni43YzczLjguMSAxMzQgNTkuMyAxMzUgMTMyLjRoNDUuNWMtMS4xLTk4LjQtODEuNS0xNzguMi0xODAuNS0xNzkuMSIvPjxwYXRoIGZpbGw9IiNGRkYiIGQ9Ik03LjEgMzcuM1Y4NGMxMjcuNC4xIDIzMS4xIDEwMi41IDIzMi4xIDIyOC45aDQ1LjVjLTEtMTUxLjUtMTI1LTI3NC42LTI3Ny42LTI3NS42Ii8+PHBhdGggZmlsbD0iI0ZGRiIgZD0iTTMxMi45IDE5My41Vjk3LjZjLTExLjgtMTYuMS0yNS45LTMzLjQtNDAuNC00Ny44LTE2LTE1LjktMzQuMS0zMC4xLTUyLjMtNDIuN0gxMTljODguMyAzMS44IDE1OS4xIDEwMC4xIDE5My45IDE4Ni40Ii8+PHBhdGggZmlsbD0iIzYwNiIgZD0iTTcuMSAxODAuNnYxMTcuMWMwIDguNCA2LjggMTUuMyAxNS4zIDE1LjNIMTQyYy0xLTczLjItNjEuMS0xMzIuMy0xMzQuOS0xMzIuNG0wLTk2LjV2NDkuOGM5OSAuOSAxNzkuNCA4MC43IDE4MC40IDE3OS4xaDUxLjdDMjM4LjIgMTg2LjYgMTM0LjUgODQuMiA3LjEgODQuMW0zMDUuOCAyMTMuNVYxOTMuNUMyNzguMSAxMDcuMiAyMDcuMyAzOC45IDExOSA3LjFIMjIuNEMxNCA3LjEgNy4xIDEzLjkgNy4xIDIyLjR2MTVjMTUyLjYuOSAyNzYuNiAxMjQgMjc3LjYgMjc1LjZoMTNjOC40LS4xIDE1LjItNi45IDE1LjItMTUuNE0yNzIuNiA0OS44YzE0LjUgMTQuNCAyOC42IDMxLjcgNDAuNCA0Ny44VjIyLjRjMC04LjQtNi44LTE1LjMtMTUuMy0xNS4zaC03Ny4zYzE4IDEyLjYgMzYuMiAyNi44IDUyLjIgNDIuNyIvPjwvc3ZnPg=="
+        },
+        "displayName": "MQTT",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 6,
+            "name": "Communication"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1234,
+        "icon": "file:convertToFile.svg",
+        "name": "n8n-nodes-base.convertToFile",
+        "codex": {
+          "data": {
+            "alias": [
+              "CSV",
+              "Spreadsheet",
+              "Excel",
+              "xls",
+              "xlsx",
+              "ods",
+              "tabular",
+              "encode",
+              "encoding",
+              "Move Binary Data",
+              "Binary",
+              "File",
+              "JSON",
+              "HTML",
+              "ICS",
+              "iCal",
+              "RTF",
+              "64",
+              "Base64"
+            ],
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.converttofile/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Files",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Convert to File"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEzLjc2MTkgMkMxMy4yNDM3IDIgMTIuODIzNiAyLjQyMDA5IDEyLjgyMzYgMi45MzgzMVYxNS4yNTI2QzEzLjMxOTkgMTUuNDY0MyAxMy43ODUxIDE1Ljc3MiAxNC4xOTEgMTYuMTc1N0wyMS4yMjgzIDIzLjE3MzlDMjIuMDU0OCAyMy45OTU4IDIyLjUxOTUgMjUuMTEzMiAyMi41MTk1IDI2LjI3ODhDMjIuNTE5NSAyNy40NDQzIDIyLjA1NDggMjguNTYxOCAyMS4yMjgzIDI5LjM4MzdMMTQuMTkxIDM2LjM4MTlDMTMuNzg1IDM2Ljc4NTYgMTMuMzE5OSAzNy4wOTMyIDEyLjgyMzYgMzcuMzA1VjM3LjM1MjdDMTIuODIzNiAzNy44NzA5IDEzLjI0MzcgMzguMjkxIDEzLjc2MTkgMzguMjkxSDM5LjA2MTdDMzkuNTc5OSAzOC4yOTEgNDAgMzcuODcwOSA0MCAzNy4zNTI3TDQwIDE1Ljc5NEgyNy4xNDQzQzI2LjYyNjEgMTUuNzk0IDI2LjIwNiAxNS4zNzM5IDI2LjIwNiAxNC44NTU3VjJIMTMuNzYxOVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTI4Ljg2NDUgMkMyOC43NzgxIDIgMjguNzA4MSAyLjA3MDAyIDI4LjcwODEgMi4xNTYzOVYxMi44MjI3QzI4LjcwODEgMTMuMDgxOCAyOC45MTgyIDEzLjI5MTkgMjkuMTc3MyAxMy4yOTE5SDM5Ljg0MzZDMzkuOTMgMTMuMjkxOSA0MCAxMy4yMjE5IDQwIDEzLjEzNTVMNDAgMTIuNjI2M0M0MCAxMi4zNzc4IDM5LjkwMTQgMTIuMTM5NSAzOS43MjYgMTEuOTYzNkwzMC4wNjEgMi4yNzU2MUMyOS44ODUgMi4wOTkxNiAyOS42NDYgMiAyOS4zOTY3IDJIMjguODY0NVoiIGZpbGw9IiMzQTQyRTkiLz4KPHBhdGggZD0iTTkuNzcyNjggMzQuNjAwM0M5LjA0MTg2IDMzLjg2NTQgOS4wNDUxNyAzMi42NzcyIDkuNzgwMDcgMzEuOTQ2NEwxMy42MzE1IDI4LjExNjNMMC45MzgzMTEgMjguMTE2M0MwLjQyMDA5NiAyOC4xMTYzIC0yLjI2NTE5ZS0wOCAyNy42OTYyIDAgMjcuMTc4TDguMjAyOTdlLTA4IDI1LjMwMTRDMS4wNDY4MmUtMDcgMjQuNzgzMiAwLjQyMDA5NSAyNC4zNjMxIDAuOTM4MzExIDI0LjM2MzFIMTMuNTUyOUw5Ljc4MDA3IDIwLjYxMTJDOS4wNDUxNyAxOS44ODA0IDkuMDQxODYgMTguNjkyMiA5Ljc3MjY4IDE3Ljk1NzNDMTAuNTAzNSAxNy4yMjI0IDExLjY5MTcgMTcuMjE5MSAxMi40MjY2IDE3Ljk0OTlMMTkuNDYzOSAyNC45NDgxQzE5LjgxODEgMjUuMzAwNCAyMC4wMTczIDI1Ljc3OTMgMjAuMDE3MyAyNi4yNzg4QzIwLjAxNzMgMjYuNzc4MyAxOS44MTgxIDI3LjI1NzIgMTkuNDYzOSAyNy42MDk1TDEyLjQyNjYgMzQuNjA3N0MxMS42OTE3IDM1LjMzODUgMTAuNTAzNSAzNS4zMzUyIDkuNzcyNjggMzQuNjAwM1oiIGZpbGw9IiMzQTQyRTkiLz4KPC9zdmc+Cg=="
+        },
+        "displayName": "Convert to File",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 16,
+        "name": "DevOps"
+      }
+    ],
+    "image": []
+  }
+}

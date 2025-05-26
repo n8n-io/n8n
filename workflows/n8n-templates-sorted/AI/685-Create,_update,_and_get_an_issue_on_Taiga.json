@@ -1,0 +1,270 @@
+{
+  "workflow": {
+    "id": 685,
+    "name": "Create, update, and get an issue on Taiga",
+    "views": 808,
+    "recentViews": 0,
+    "totalViews": 808,
+    "createdAt": "2020-09-21T08:02:31.271Z",
+    "description": "![workflow-screenshot](fileId:254)",
+    "workflow": {
+      "id": "69",
+      "name": "Create, update, and get an issue on Taiga",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            430,
+            260
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "Taiga",
+          "type": "n8n-nodes-base.taiga",
+          "position": [
+            630,
+            260
+          ],
+          "parameters": {
+            "subject": "n8n-docs",
+            "projectId": 385605,
+            "additionalFields": {}
+          },
+          "credentials": {
+            "taigaCloudApi": "taiga"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Taiga1",
+          "type": "n8n-nodes-base.taiga",
+          "position": [
+            830,
+            260
+          ],
+          "parameters": {
+            "issueId": "={{$node[\"Taiga\"].json[\"id\"]}}",
+            "operation": "update",
+            "projectId": "={{$node[\"Taiga\"].json[\"project\"]}}",
+            "updateFields": {
+              "description": "This ticket is for the documentation for the Taiga node"
+            }
+          },
+          "credentials": {
+            "taigaCloudApi": "taiga"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "Taiga2",
+          "type": "n8n-nodes-base.taiga",
+          "position": [
+            1030,
+            260
+          ],
+          "parameters": {
+            "issueId": "={{$node[\"Taiga\"].json[\"id\"]}}",
+            "operation": "get"
+          },
+          "credentials": {
+            "taigaCloudApi": "taiga"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "Taiga": {
+          "main": [
+            [
+              {
+                "node": "Taiga1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Taiga1": {
+          "main": [
+            [
+              {
+                "node": "Taiga2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "Taiga",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.taiga": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 369,
+        "icon": "file:taiga.svg",
+        "name": "n8n-nodes-base.taiga",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.taiga/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/taiga/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Taiga"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNTAwIiBoZWlnaHQ9IjI1MDAiIHByZXNlcnZlQXNwZWN0UmF0aW89InhNaW5ZTWluIG1lZXQiIHZpZXdCb3g9IjAgMCAyNTYgMjU2Ij48cGF0aCBmaWxsPSIjQTI5NUFFIiBkPSJtMjI0LjI4OCA0My45MTYtMTEuOTYzIDg0LjItODQuMi0xMS45NjMgMTEuOTYzLTg0LjJ6IiBvcGFjaXR5PSIuOCIvPjxwYXRoIGZpbGw9IiM1RDZGNkQiIGQ9Im0zMS44ODUgMjEyLjI5MSAxMS45NjMtODQuMiA4NC4yIDExLjk2My0xMS45NjMgODQuMnoiIG9wYWNpdHk9Ii44Ii8+PHBhdGggZmlsbD0iIzhDRDU5MiIgZD0ibTQzLjg0OCAzMi4wNjUgODQuMiAxMS45NjItMTEuOTYzIDg0LjItODQuMi0xMS45NjN6IiBvcGFjaXR5PSIuOCIvPjxwYXRoIGZpbGw9IiM2NjVFNzQiIGQ9Im0yMTIuMjI2IDIyNC4yNjQtODQuMi0xMS45NjMgMTEuOTYzLTg0LjIgODQuMiAxMS45NjN6IiBvcGFjaXR5PSIuOCIvPjxwYXRoIGZpbGw9IiMzQzM2NDciIGQ9Im0xMTkuNjQyIDI1NS41OTUtNTEuMDgtNjcuOTk3IDY3Ljk5OC01MS4wOCA1MS4wOCA2Ny45OTgtNjcuOTk4IDUxLjA4eiIgb3BhY2l0eT0iLjgiLz48cGF0aCBmaWxsPSIjODM3MTkzIiBkPSJtMjU1LjQ2MyAxMzYuMzktNjcuOTk3IDUxLjA3OS01MS4wOC02Ny45OTcgNjcuOTk4LTUxLjA4IDUxLjA4IDY3Ljk5OHoiIG9wYWNpdHk9Ii44Ii8+PHBhdGggZmlsbD0iI0EyRjRBQyIgZD0ibTEzNi40MzcuNTU0IDUxLjA3OSA2Ny45OTctNjcuOTk3IDUxLjA4LTUxLjA4LTY3Ljk5OEwxMzYuNDM3LjU1M3oiIG9wYWNpdHk9Ii44Ii8+PHBhdGggZmlsbD0iIzdFQTY4NSIgZD0ibS40NjMgMTE5LjcgNjcuOTk4LTUxLjA4IDUxLjA3OSA2Ny45OTgtNjcuOTk3IDUxLjA4eiIgb3BhY2l0eT0iLjgiLz48cGF0aCBmaWxsPSIjM0MzNjQ3IiBkPSJtMTI3Ljk2MyA5NS43NDIgMzIuMzMyIDMyLjMzMy0zMi4zMzIgMzIuMzMyLTMyLjMzMi0zMi4zMzJ6Ii8+PC9zdmc+"
+        },
+        "displayName": "Taiga",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 254,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/2fa2ba717cc44749a039469cd6893382.png"
+      }
+    ]
+  }
+}

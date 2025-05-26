@@ -1,0 +1,121 @@
+URL: https://docs.n8n.io/hosting/installation/npm/
+Scraped_At: 2025-05-20T18:44:23.959340
+
+npm
+#
+npm is a quick way to get started with n8n on your local machine. You must have
+Node.js
+installed. n8n requires Node.js 18 or above.
+Latest and Next versions
+n8n releases a new minor version most weeks. The
+latest
+version is for production use.
+next
+is the most recent release. You should treat
+next
+as a beta: it may be unstable. To report issues, use the
+forum
+.
+Current
+latest
+: 1.93.0
+Current
+next
+: 1.94.0
+Try n8n with npx
+#
+You can try n8n without installing it using npx.
+From the terminal, run:
+1
+npx
+n8n
+This command will download everything that's needed to start n8n. You can then access n8n and start building workflows by opening
+http://localhost:5678
+.
+Install globally with npm
+#
+To install n8n globally, use npm:
+1
+npm
+install
+n8n
+-g
+To install or update to a specific version of n8n use the
+@
+syntax to specify the version. For example:
+1
+npm
+install
+-g
+n8n@0.126.1
+To install
+next
+:
+1
+npm
+install
+-g
+n8n@next
+After the installation, start n8n by running:
+1
+2
+3
+n8n
+# or
+n8n
+start
+Next steps
+#
+Try out n8n using the
+Quickstarts
+.
+Updating
+#
+To update your n8n instance to the
+latest
+version, run:
+1
+npm
+update
+-g
+n8n
+To install the
+next
+version:
+1
+npm
+install
+-g
+n8n@next
+n8n with tunnel
+#
+Danger
+Use this for local development and testing. It isn't safe to use it in production.
+To use webhooks for trigger nodes of external services like GitHub, n8n has to be reachable from the web. n8n runs a
+tunnel service
+that can redirect requests from n8n's servers to your local n8n instance.
+Start n8n with
+--tunnel
+by running:
+1
+n8n
+start
+--tunnel
+Reverting an upgrade
+#
+Install the older version that you want to go back to.
+If the upgrade involved a database migration:
+Check the feature documentation and release notes to see if there are any manual changes you need to make.
+Run
+n8n db:revert
+on your current version to roll back the database. If you want to revert more than one database migration, you need to repeat this process.
+Windows troubleshooting
+#
+If you are experiencing issues running n8n on Windows, make sure your Node.js environment is correctly set up. Follow Microsoft's guide to
+Install NodeJS on Windows
+.
+Was this page helpful?
+Thanks for your feedback!
+Thanks for your feedback! Help us improve this page by submitting an issue or a fix in our
+GitHub repo
+.

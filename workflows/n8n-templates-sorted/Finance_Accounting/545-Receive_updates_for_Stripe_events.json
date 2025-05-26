@@ -1,0 +1,119 @@
+{
+  "workflow": {
+    "id": 545,
+    "name": "Receive updates for Stripe events",
+    "views": 1611,
+    "recentViews": 0,
+    "totalViews": 1611,
+    "createdAt": "2020-07-21T11:09:42.530Z",
+    "description": "Companion workflow for Stripe Trigger node docs\n\n![workflow-screenshot](fileId:143)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Stripe Trigger",
+          "type": "n8n-nodes-base.stripeTrigger",
+          "position": [
+            890,
+            400
+          ],
+          "webhookId": "4b359a40-a292-4c58-bc15-842b4d8eb3ca",
+          "parameters": {
+            "events": [
+              "*"
+            ]
+          },
+          "credentials": {
+            "stripeApi": "stripe_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.stripeTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 54,
+        "icon": "file:stripe.svg",
+        "name": "n8n-nodes-base.stripeTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-your-customer-journey-with-n8n-an-interview-with-blent-ai/",
+                  "icon": "🚀",
+                  "label": "Automate your customer journey with n8n: An interview with Blent.ai"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.stripetrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/stripe/"
+                }
+              ]
+            },
+            "categories": [
+              "Finance & Accounting",
+              "Sales"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Stripe Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjU0IC04MCAzNjAgMzYwIj48cGF0aCBkPSJNNDE0IDExMy40YzAtMjUuNi0xMi40LTQ1LjgtMzYuMS00NS44LTIzLjggMC0zOC4yIDIwLjItMzguMiA0NS42IDAgMzAuMSAxNyA0NS4zIDQxLjQgNDUuMyAxMS45IDAgMjAuOS0yLjcgMjcuNy02LjV2LTIwYy02LjggMy40LTE0LjYgNS41LTI0LjUgNS41LTkuNyAwLTE4LjMtMy40LTE5LjQtMTUuMmg0OC45YzAtMS4zLjItNi41LjItOC45bS00OS40LTkuNWMwLTExLjMgNi45LTE2IDEzLjItMTYgNi4xIDAgMTIuNiA0LjcgMTIuNiAxNnptLTYzLjUtMzYuM2MtOS44IDAtMTYuMSA0LjYtMTkuNiA3LjhsLTEuMy02LjJoLTIydjExNi42bDI1LTUuMy4xLTI4LjNjMy42IDIuNiA4LjkgNi4zIDE3LjcgNi4zIDE3LjkgMCAzNC4yLTE0LjQgMzQuMi00Ni4xLS4xLTI5LTE2LjYtNDQuOC0zNC4xLTQ0LjhtLTYgNjguOWMtNS45IDAtOS40LTIuMS0xMS44LTQuN2wtLjEtMzcuMWMyLjYtMi45IDYuMi00LjkgMTEuOS00LjkgOS4xIDAgMTUuNCAxMC4yIDE1LjQgMjMuMyAwIDEzLjQtNi4yIDIzLjQtMTUuNCAyMy40bS03MS4zLTc0LjggMjUuMS01LjRWMzZsLTI1LjEgNS4zem0wIDcuNmgyNS4xdjg3LjVoLTI1LjF6bS0yNi45IDcuNC0xLjYtNy40aC0yMS42djg3LjVoMjVWOTcuNWM1LjktNy43IDE1LjktNi4zIDE5LTUuMnYtMjNjLTMuMi0xLjItMTQuOS0zLjQtMjAuOCA3LjRtLTUwLTI5LjEtMjQuNCA1LjItLjEgODAuMWMwIDE0LjggMTEuMSAyNS43IDI1LjkgMjUuNyA4LjIgMCAxNC4yLTEuNSAxNy41LTMuM1YxMzVjLTMuMiAxLjMtMTkgNS45LTE5LTguOVY5MC42aDE5VjY5LjNoLTE5ek03OS4zIDk0LjdjMC0zLjkgMy4yLTUuNCA4LjUtNS40IDcuNiAwIDE3LjIgMi4zIDI0LjggNi40VjcyLjJjLTguMy0zLjMtMTYuNS00LjYtMjQuOC00LjZDNjcuNSA2Ny42IDU0IDc4LjIgNTQgOTUuOWMwIDI3LjYgMzggMjMuMiAzOCAzNS4xIDAgNC42LTQgNi4xLTkuNiA2LjEtOC4zIDAtMTguOS0zLjQtMjcuMy04djIzLjhjOS4zIDQgMTguNyA1LjcgMjcuMyA1LjcgMjAuOCAwIDM1LjEtMTAuMyAzNS4xLTI4LjItLjEtMjkuOC0zOC4yLTI0LjUtMzguMi0zNS43IiBzdHlsZT0iZmlsbC1ydWxlOmV2ZW5vZGQ7Y2xpcC1ydWxlOmV2ZW5vZGQ7ZmlsbDojNjM1YmZmIi8+PC9zdmc+"
+        },
+        "displayName": "Stripe Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 2,
+            "name": "Sales"
+          },
+          {
+            "id": 8,
+            "name": "Finance & Accounting"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 8,
+        "name": "Finance"
+      }
+    ],
+    "image": [
+      {
+        "id": 143,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/a4d1044472c7491c880fafb5ee4a16bc.png"
+      }
+    ]
+  }
+}

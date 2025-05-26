@@ -1,0 +1,1791 @@
+{
+  "workflow": {
+    "id": 3081,
+    "name": "Sync Dartagnan Email Templates to Braze",
+    "views": 149,
+    "recentViews": 1,
+    "totalViews": 149,
+    "createdAt": "2025-03-04T20:29:56.887Z",
+    "description": "# Sync Dartagnan Email Templates to Braze\n\n## Why Use This Workflow\n\nEmail marketing demands consistency across platforms. This workflow automatically synchronizes your email templates from Dartagnan to Braze, eliminating manual transfers and ensuring brand consistency. Perfect for marketing teams who need to maintain a unified email experience while leveraging the strengths of both platforms.\n\n## Business Benefits\n\n- **Save Time**: Eliminate hours of manual template copying and formatting between platforms\n- **Maintain Consistency**: Ensure your email templates look identical across Dartagnan and Braze\n- **Reduce Errors**: Automated synchronization prevents human error in template transfers\n- **Streamline Workflows**: Create once in Dartagnan, use everywhere through Braze's distribution power\n- **Preserve Image Assets**: Keep images hosted on Dartagnan while properly formatting them for Braze\n\n## How It Works\n\nThis workflow performs a bi-directional sync between your Dartagnan email templates and Braze platform. It intelligently handles:\n\n1. **Template Updates**: Automatically updates existing templates in Braze when modified in Dartagnan\n2. **New Template Creation**: Creates new templates in Braze when added to Dartagnan\n3. **Image URL Transformation**: Properly embeds and formats image URLs to meet Braze requirements while keeping assets on Dartagnan infrastructure\n\n## Technical Implementation\n\nThe workflow uses a scheduled trigger to check for template changes and then processes them in batches:\n\n1. **Authentication**: Securely connects to both Dartagnan and Braze APIs\n2. **Template Retrieval**: Fetches current templates from Dartagnan\n3. **Comparison Logic**: Determines which templates need updating or creation in Braze\n4. **Content Transformation**: Processes HTML content and image URLs to ensure compatibility\n5. **API Integration**: Pushes changes to Braze through their Content Blocks API\n\n## Customization Options\n\nThis workflow can be customized to meet your specific needs:\n\n- **Sync Frequency**: Adjust the schedule to run hourly, daily, or on any custom schedule\n- **Template Filtering**: Add conditions to sync only specific templates based on tags or categories\n- **Error Handling**: Configure notification emails when synchronization issues occur\n- **Logging**: Enable detailed logs for troubleshooting and auditing\n\n## Setup Requirements\n\nSetting up this workflow takes approximately 20-30 minutes and requires:\n\n### Dartagnan Requirements\n- API Client ID\n- API Client Secret\n- Template access permissions\n\n### Braze Requirements\n- Braze Instance URL\n- API Key with content block permissions\n- Appropriate rate limits configured\n\n## Common Use Cases\n\n- **Email Campaign Coordination**: Maintain consistent templates across platforms for multi-channel campaigns\n- **Agency Work**: Design in Dartagnan, deploy through client's Braze instance\n- **Rebranding Projects**: Update templates once and propagate changes automatically\n- **International Marketing**: Maintain language variants across platforms with automatic synchronization\n\n## Get Started\n\nOnce installed, configure your API credentials, set your desired synchronization schedule, and let the workflow handle the rest. The initial sync will create all your templates in Braze, with subsequent runs only updating what's changed.",
+    "workflow": {
+      "meta": {
+        "instanceId": "4bcdfa475d937e8c2fc1d40936bca36ec49bdb2525076e1bd53cc12fc6c8756d"
+      },
+      "name": "My workflow 2",
+      "tags": [],
+      "nodes": [
+        {
+          "id": "1562791c-33a9-425c-a774-32e328bd4715",
+          "name": "Token Request",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "Get the token from Dartagnan that expires after 60 minutes",
+          "position": [
+            60,
+            200
+          ],
+          "parameters": {
+            "url": "https://app.dartagnan.io/oauth/v2/token",
+            "method": "POST",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendBody": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "client_id",
+                  "value": "={{ $('Assign Credentials').item.json.client_id }}"
+                },
+                {
+                  "name": "client_secret",
+                  "value": "={{ $('Assign Credentials').item.json.client_secret }}"
+                },
+                {
+                  "name": "grant_type",
+                  "value": "client_credentials"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "2d81394c-9898-419a-a832-339e66d56a29",
+          "name": "Assign Credentials",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            -400,
+            300
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "debe5309-40f6-411d-8c4d-3b282cf1bba9",
+                  "name": "client_id",
+                  "type": "string",
+                  "value": "Enter your Dartagnan client_id"
+                },
+                {
+                  "id": "6028c0c0-a701-449e-952e-46895280e4ef",
+                  "name": "client_secret",
+                  "type": "string",
+                  "value": "Enter your Dartagnan client_secret"
+                },
+                {
+                  "id": "7e82aa01-18ff-4b76-802b-cc8cae987614",
+                  "name": "instance_url",
+                  "type": "string",
+                  "value": "Enter your Braze instance_url like https://rest.fra-02.braze.eu for example"
+                },
+                {
+                  "id": "a3c641d7-fdbd-4e96-a845-e2c5aad93398",
+                  "name": "api_key",
+                  "type": "string",
+                  "value": "Enter your Braze API key"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "b80a8eda-bbf6-4560-8665-5128a97db217",
+          "name": "Dartagnan Project list",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            360,
+            200
+          ],
+          "parameters": {
+            "url": "https://app.dartagnan.io/api/public/projects",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $json.access_token }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "909eb4f9-d67e-4f5e-bdb6-67ef2da813a4",
+          "name": "Create email template",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2420,
+            400
+          ],
+          "parameters": {
+            "url": "=https://{{ $item(\"0\").$node[\"Assign Credentials\"].json[\"instance_url\"] }}/templates/email/create",
+            "method": "POST",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "jsonBody": "={\n  \"template_name\": \"{{ $('Filter Braze vs Dartagnan').item.json.unified_name }}\",\n  \"subject\": \"Subject Line\",\n  \"body\": {{ $json.encoded_html }},\n  \"plaintext_body\":{{ $json.encoded_plaintext_body }}\n}",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $item(\"0\").$node[\"Assign Credentials\"].json[\"api_key\"] }}"
+                },
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "0820220a-5ea6-42eb-bfd2-f697dcf37a8a",
+          "name": "List Available Email Template Braze",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            60,
+            420
+          ],
+          "parameters": {
+            "url": "=https://{{ $('Assign Credentials').item.json.instance_url }}/templates/email/list ",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer {{ $('Assign Credentials').item.json.api_key }}"
+                }
+              ]
+            }
+          },
+          "executeOnce": false,
+          "typeVersion": 4.2
+        },
+        {
+          "id": "dcfec31d-c42c-4545-91a0-3b2e3350d375",
+          "name": "Filtered Project Campaign",
+          "type": "n8n-nodes-base.httpRequest",
+          "notes": "POC Avec la derniere valeur avant iteration sur une boucle for dans la v2",
+          "position": [
+            640,
+            200
+          ],
+          "parameters": {
+            "url": "=https://app.dartagnan.io/api/public/projects/{{ $json.id }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendHeaders": true,
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer  {{ $('Token Request').item.json.access_token }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "1aba6e4c-d3b0-49f8-8bcb-bece8cce4b4d",
+          "name": "Filtering Dartagnan Campaigns",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            840,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "e82823f9-e094-48e6-9d10-8d10c126ffa8",
+                  "name": "id",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].id }}"
+                },
+                {
+                  "id": "31ddce2b-7366-448c-a68f-bfea4dcb057b",
+                  "name": "campaign_name",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].name }}"
+                },
+                {
+                  "id": "0eb93a91-fbd5-45f9-b47c-89340f716909",
+                  "name": "=unified_name",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].name }}-{{ $json.campaigns[0].id }}"
+                },
+                {
+                  "id": "e784ad19-301f-45f7-b90b-27bcce06b6dc",
+                  "name": "creation_date",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].created }}"
+                },
+                {
+                  "id": "8e99802a-1342-4482-afc7-fbe22df6cffc",
+                  "name": "update_date",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].updated }}"
+                },
+                {
+                  "id": "f5814048-5cb6-465f-a95a-c56913c9ed2d",
+                  "name": "created_by",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].createdBy.firstname }} {{ $json.campaigns[0].createdBy.lastname }}"
+                },
+                {
+                  "id": "19442a15-bf61-47e1-987f-709de70f8f08",
+                  "name": "modified_by",
+                  "type": "string",
+                  "value": "={{ $json.campaigns[0].updatedBy.firstname }} {{ $json.campaigns[0].updatedBy.lastname }}"
+                },
+                {
+                  "id": "b75db148-0006-4327-a418-49347da5b970",
+                  "name": "access_token",
+                  "type": "string",
+                  "value": "={{ $('Token Request').item.json.access_token }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "ee26ca98-2c42-4e69-ab34-cc2d737c22f8",
+          "name": "Split Out",
+          "type": "n8n-nodes-base.splitOut",
+          "position": [
+            360,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "fieldToSplitOut": "templates"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "08d8372f-38cb-4722-95aa-c89bfcc36dff",
+          "name": "Filtering Braze Email Template",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            800,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "920fd95b-bf48-494d-9d55-d5d961fd459f",
+                  "name": "braze_template_name",
+                  "type": "string",
+                  "value": "={{ $json.template_name }}"
+                },
+                {
+                  "id": "8425c3c2-07c3-4c3d-a58e-e8d1460fea9c",
+                  "name": "email_template_id",
+                  "type": "string",
+                  "value": "={{ $json.email_template_id }}"
+                },
+                {
+                  "id": "1944b20a-147b-4b4d-9558-f2927de9b2f2",
+                  "name": "created_at",
+                  "type": "string",
+                  "value": "={{ $json.created_at }}"
+                },
+                {
+                  "id": "850a4a0a-d27b-43cb-a8a3-2d810a5fdc13",
+                  "name": "updated_at",
+                  "type": "string",
+                  "value": "={{ $json.updated_at }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "3e07fa37-8afd-4d88-85a3-53a4f000f898",
+          "name": "Not existing In Braze",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1160,
+            420
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "advanced": true,
+            "joinMode": "keepNonMatches",
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "unified_name",
+                  "field2": "braze_template_name"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "210a9d44-f58f-4788-89bd-934dfc0fca41",
+          "name": "Existing In Braze",
+          "type": "n8n-nodes-base.merge",
+          "position": [
+            1140,
+            200
+          ],
+          "parameters": {
+            "mode": "combine",
+            "options": {},
+            "advanced": true,
+            "mergeByFields": {
+              "values": [
+                {
+                  "field1": "unified_name",
+                  "field2": "braze_template_name"
+                }
+              ]
+            }
+          },
+          "typeVersion": 3
+        },
+        {
+          "id": "59f8270b-b988-452b-aaf0-0e7b35490449",
+          "name": "Dartagnan HTML & MEDIA To Update",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1740,
+            180
+          ],
+          "parameters": {
+            "url": "=https://app.dartagnan.io/api/public/campaigns/{{ $json.id }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer  {{ $('Token Request').item.json.access_token }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "04b26314-cb00-4a90-a7fe-019936a5ba2a",
+          "name": "Encode Content To Update",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2180,
+            180
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "fb308822-842f-4559-b5c9-96853c79e00e",
+                  "name": "encoded_html",
+                  "type": "string",
+                  "value": "={{JSON.stringify( $json.html  )}} "
+                },
+                {
+                  "id": "390b747b-967d-45f4-9faf-3aaed605d769",
+                  "name": "encoded_plaintext_body",
+                  "type": "string",
+                  "value": "={{JSON.stringify($json.text)}} "
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "1455fd2e-85ee-4844-8c4b-755870dc9cee",
+          "name": "Dartagnan HTML & MEDIA Campagne to Create",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            1760,
+            400
+          ],
+          "parameters": {
+            "url": "=https://app.dartagnan.io/api/public/campaigns/{{ $json.id }}",
+            "options": {
+              "redirect": {
+                "redirect": {}
+              }
+            },
+            "sendQuery": true,
+            "sendHeaders": true,
+            "queryParameters": {
+              "parameters": [
+                {}
+              ]
+            },
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer  {{ $('Token Request').item.json.access_token }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        },
+        {
+          "id": "214d8b4b-c512-4d1f-8115-8491f6fc9272",
+          "name": "Encode Content to Create",
+          "type": "n8n-nodes-base.set",
+          "position": [
+            2200,
+            400
+          ],
+          "parameters": {
+            "options": {},
+            "assignments": {
+              "assignments": [
+                {
+                  "id": "fb308822-842f-4559-b5c9-96853c79e00e",
+                  "name": "encoded_html",
+                  "type": "string",
+                  "value": "={{JSON.stringify( $json.html  )}} "
+                },
+                {
+                  "id": "390b747b-967d-45f4-9faf-3aaed605d769",
+                  "name": "encoded_plaintext_body",
+                  "type": "string",
+                  "value": "={{JSON.stringify($json.text)}} "
+                }
+              ]
+            }
+          },
+          "typeVersion": 3.4
+        },
+        {
+          "id": "90158667-eeda-4d44-b45c-c6e7fa02e664",
+          "name": "If campaign is modified recently",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1420,
+            200
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "7e9c9fd3-2ef9-47ce-bccb-9b3320472d36",
+                  "operator": {
+                    "type": "dateTime",
+                    "operation": "after"
+                  },
+                  "leftValue": "={{ $json.update_date }}",
+                  "rightValue": "={{ $json.updated_at }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "55aecc9b-d5a6-4a6b-a986-3ddfae200b94",
+          "name": "Filter Braze vs Dartagnan",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            1440,
+            420
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "version": 2,
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "7e9c9fd3-2ef9-47ce-bccb-9b3320472d36",
+                  "operator": {
+                    "type": "string",
+                    "operation": "exists",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.unified_name }}",
+                  "rightValue": "="
+                }
+              ]
+            }
+          },
+          "typeVersion": 2.2
+        },
+        {
+          "id": "ff2a47df-983f-42f5-9c96-431fccbdb8ef",
+          "name": "Embed image in HTML",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1960,
+            180
+          ],
+          "parameters": {
+            "jsCode": "// n8n Code Node: HTML Image URL Replacer\n// This script replaces all image references in HTML with their direct URLs\n// It's designed to work with the data structure you provided\n\n/**\n * Main function to process the incoming data in n8n\n * Expects an item with html and medias properties\n */\nfunction processData(item) {\n  // Extract the HTML and media mappings from the item\n  const { html, medias } = item.json;\n\n  // Process the HTML and replace all image references\n  const processedHtml = replaceImageReferences(html, medias);\n\n  // Return the processed data\n  return {\n    json: {\n      ...item.json,\n      html: processedHtml\n    }\n  };\n}\n\n/**\n * Replace all image references in HTML with direct URLs\n * @param {string} html - The HTML content to process\n * @param {Object} medias - Key-value pairs mapping image paths to direct URLs\n * @returns {string} - Processed HTML with direct URLs\n */\nfunction replaceImageReferences(html, medias) {\n  if (!html || !medias) {\n    throw new Error('Missing required parameters: html or medias');\n  }\n  \n  let updatedHtml = html;\n  \n  // Process each media URL\n  Object.entries(medias).forEach(([imagePath, directUrl]) => {\n    // For safety, escape special regex characters in the image path\n    const escapedPath = imagePath.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n    \n    // 1. Replace in img src attributes\n    updatedHtml = updatedHtml.replace(\n      new RegExp(`src=[\"']${escapedPath}[\"']`, 'g'), \n      match => match.replace(imagePath, directUrl)\n    );\n    \n    // 2. Replace in background attributes\n    updatedHtml = updatedHtml.replace(\n      new RegExp(`background=[\"']${escapedPath}[\"']`, 'g'), \n      match => match.replace(imagePath, directUrl)\n    );\n    \n    // 3. Replace in v:fill src attributes (for Outlook)\n    updatedHtml = updatedHtml.replace(\n      new RegExp(`<v:fill[^>]*src=[\"']${escapedPath}[\"'][^>]*>`, 'g'), \n      match => match.replace(imagePath, directUrl)\n    );\n    \n    // 4. Replace in CSS background and background-image styles\n    // Handle various quote styles and syntax patterns\n    const backgroundPatterns = [\n      `background-image:\\\\s*url\\\\(['\"]?${escapedPath}['\"]?\\\\)`,\n      `background:\\\\s*url\\\\(['\"]?${escapedPath}['\"]?\\\\)`,\n      `background:\\\\s*[^;]*url\\\\(['\"]?${escapedPath}['\"]?\\\\)`,\n    ];\n    \n    backgroundPatterns.forEach(pattern => {\n      updatedHtml = updatedHtml.replace(\n        new RegExp(pattern, 'g'),\n        match => match.replace(imagePath, directUrl)\n      );\n    });\n    \n    // 5. Replace in CSS class references\n    // This is more complex and depends on your HTML structure\n    // Extract file name for matching class names\n    const fileNameMatch = imagePath.match(/\\/([^\\/]+)\\.([^\\.]+)$/);\n    if (fileNameMatch) {\n      const fileName = fileNameMatch[1];\n      const fileExt = fileNameMatch[2];\n      \n      // Handle class names like \"bgiurlimagesdiv2dpng\"\n      const classPatterns = [\n        `bgiurlimagesdiv${fileName}d${fileExt}`,\n        `bgurlimagesdiv${fileName}d${fileExt}`\n      ];\n      \n      classPatterns.forEach(pattern => {\n        // Replace the class name and also update the associated styles if needed\n        updatedHtml = updatedHtml.replace(\n          new RegExp(`class=[\"'][^\"']*${pattern}[^\"']*[\"']`, 'g'),\n          match => match.replace(pattern, `direct-url-${Date.now()}`)\n        );\n      });\n    }\n  });\n  \n  return updatedHtml;\n}\n\n// This is the main execution for n8n\n// It processes each item in the incoming array and returns the results\nreturn items.map(processData);"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "0fbdb7d6-64a3-40ae-8187-8afcb76451e8",
+          "name": "Embed image in HTML 1",
+          "type": "n8n-nodes-base.code",
+          "position": [
+            1960,
+            400
+          ],
+          "parameters": {
+            "jsCode": "// n8n Code Node: HTML Image URL Replacer\n// This script replaces all image references in HTML with their direct URLs\n// It's designed to work with the data structure you provided\n\n/**\n * Main function to process the incoming data in n8n\n * Expects an item with html and medias properties\n */\nfunction processData(item) {\n  // Extract the HTML and media mappings from the item\n  const { html, medias } = item.json;\n\n  // Process the HTML and replace all image references\n  const processedHtml = replaceImageReferences(html, medias);\n\n  // Return the processed data\n  return {\n    json: {\n      ...item.json,\n      html: processedHtml\n    }\n  };\n}\n\n/**\n * Replace all image references in HTML with direct URLs\n * @param {string} html - The HTML content to process\n * @param {Object} medias - Key-value pairs mapping image paths to direct URLs\n * @returns {string} - Processed HTML with direct URLs\n */\nfunction replaceImageReferences(html, medias) {\n  if (!html || !medias) {\n    throw new Error('Missing required parameters: html or medias');\n  }\n  \n  let updatedHtml = html;\n  \n  // Process each media URL\n  Object.entries(medias).forEach(([imagePath, directUrl]) => {\n    // For safety, escape special regex characters in the image path\n    const escapedPath = imagePath.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\n    \n    // 1. Replace in img src attributes\n    updatedHtml = updatedHtml.replace(\n      new RegExp(`src=[\"']${escapedPath}[\"']`, 'g'), \n      match => match.replace(imagePath, directUrl)\n    );\n    \n    // 2. Replace in background attributes\n    updatedHtml = updatedHtml.replace(\n      new RegExp(`background=[\"']${escapedPath}[\"']`, 'g'), \n      match => match.replace(imagePath, directUrl)\n    );\n    \n    // 3. Replace in v:fill src attributes (for Outlook)\n    updatedHtml = updatedHtml.replace(\n      new RegExp(`<v:fill[^>]*src=[\"']${escapedPath}[\"'][^>]*>`, 'g'), \n      match => match.replace(imagePath, directUrl)\n    );\n    \n    // 4. Replace in CSS background and background-image styles\n    // Handle various quote styles and syntax patterns\n    const backgroundPatterns = [\n      `background-image:\\\\s*url\\\\(['\"]?${escapedPath}['\"]?\\\\)`,\n      `background:\\\\s*url\\\\(['\"]?${escapedPath}['\"]?\\\\)`,\n      `background:\\\\s*[^;]*url\\\\(['\"]?${escapedPath}['\"]?\\\\)`,\n    ];\n    \n    backgroundPatterns.forEach(pattern => {\n      updatedHtml = updatedHtml.replace(\n        new RegExp(pattern, 'g'),\n        match => match.replace(imagePath, directUrl)\n      );\n    });\n    \n    // 5. Replace in CSS class references\n    // This is more complex and depends on your HTML structure\n    // Extract file name for matching class names\n    const fileNameMatch = imagePath.match(/\\/([^\\/]+)\\.([^\\.]+)$/);\n    if (fileNameMatch) {\n      const fileName = fileNameMatch[1];\n      const fileExt = fileNameMatch[2];\n      \n      // Handle class names like \"bgiurlimagesdiv2dpng\"\n      const classPatterns = [\n        `bgiurlimagesdiv${fileName}d${fileExt}`,\n        `bgurlimagesdiv${fileName}d${fileExt}`\n      ];\n      \n      classPatterns.forEach(pattern => {\n        // Replace the class name and also update the associated styles if needed\n        updatedHtml = updatedHtml.replace(\n          new RegExp(`class=[\"'][^\"']*${pattern}[^\"']*[\"']`, 'g'),\n          match => match.replace(pattern, `direct-url-${Date.now()}`)\n        );\n      });\n    }\n  });\n  \n  return updatedHtml;\n}\n\n// This is the main execution for n8n\n// It processes each item in the incoming array and returns the results\nreturn items.map(processData);"
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "89acf2f3-940b-47e9-81e3-2d458d3018ee",
+          "name": "Sticky Note",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -460,
+            80
+          ],
+          "parameters": {
+            "height": 400,
+            "content": "## Authentication Set Up\n\nObtain an access token from Dartagnan\nPrepare credentials for both Dartagnan and Braze"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "317cd699-6686-42a0-ba6d-8f6405338356",
+          "name": "Sticky Note1",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            60,
+            480
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 960,
+            "height": 380,
+            "content": "\n\n\n\n\n\n\n\n\n\n\n\n\n\n## Template Discovery\n\n\nList all existing email templates in Braze"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "d59b0dac-439e-4160-8879-b306ccd18773",
+          "name": "Sticky Note2",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            0,
+            0
+          ],
+          "parameters": {
+            "width": 260,
+            "height": 380,
+            "content": "## Authentication Token\n\nObtain an access token from Dartagnan"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "dc38ec97-ca50-4944-89f1-535f23420cfc",
+          "name": "Sticky Note3",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            300,
+            0
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 460,
+            "height": 380,
+            "content": "## Template Discovery\n\nRetrieve project and campaign details from Dartagnan\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "5fd7d7dc-f314-411a-ba0a-4af14874f96b",
+          "name": "Sticky Note4",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1040,
+            0
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 600,
+            "height": 680,
+            "content": "## Comparison and Sync\n\nCompare Dartagnan templates with existing Braze templates\nIdentify templates to update (top Branch) or create ( Lower Branch)"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "e198dca0-0278-4b67-9807-90796ff2d644",
+          "name": "Sticky Note5",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            1660,
+            0
+          ],
+          "parameters": {
+            "color": 5,
+            "width": 980,
+            "height": 680,
+            "content": "## Template Processing\n\nExtract HTML and media from Dartagnan templates\nReplace image references with direct URLs\nPrepare templates for Braze\nUpdate existing templates in Braze ( upper branch ) \nCreate new templates in Braze as needed ( lower branch ) "
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "321eb50a-66a2-4951-b61b-e0869a91b6a0",
+          "name": "Sticky Note6",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            -980,
+            80
+          ],
+          "parameters": {
+            "color": 4,
+            "width": 460,
+            "height": 380,
+            "content": "## Trigger\n\nTrigger is scheduled to run every 5 minutes, you can change this, but bear in mind to stay in the API rate limits of each vendor\n"
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "8e0984c5-ec70-4ca5-97fe-0bdd24acd95c",
+          "name": "Every 5 minutes start",
+          "type": "n8n-nodes-base.scheduleTrigger",
+          "notes": "This node is a scheduled trigger that will synchronize ever",
+          "position": [
+            -660,
+            300
+          ],
+          "parameters": {
+            "rule": {
+              "interval": [
+                {
+                  "field": "minutes"
+                }
+              ]
+            }
+          },
+          "typeVersion": 1.2
+        },
+        {
+          "id": "adb2c227-d27e-44fc-8f6e-0b3d02952ef9",
+          "name": "Update existing email template in Braze",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [
+            2400,
+            180
+          ],
+          "parameters": {
+            "url": "=https://{{ $('Assign Credentials').item.json.instance_url }}/templates/email/update ",
+            "method": "POST",
+            "options": {},
+            "jsonBody": "={\n  \"email_template_id\": {{ $('If campaign is modified recently').item.json.campaign_name }},\n  \"template_name\": \"{{ $('If campaign is modified recently').item.json.unified_name }}\",\n  \"subject\": \"Subject Line\",\n  \"body\":{{ $json.encoded_html }} ,\n  \"plaintext_body\": {{ $json.encoded_plaintext_body }}\n} ",
+            "sendBody": true,
+            "sendHeaders": true,
+            "specifyBody": "json",
+            "headerParameters": {
+              "parameters": [
+                {
+                  "name": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "name": "Authorization",
+                  "value": "=Bearer  {{ $('Assign Credentials').item.json.api_key }}"
+                }
+              ]
+            }
+          },
+          "typeVersion": 4.2
+        }
+      ],
+      "active": false,
+      "pinData": {},
+      "settings": {
+        "executionOrder": "v1"
+      },
+      "versionId": "",
+      "connections": {
+        "Split Out": {
+          "main": [
+            [
+              {
+                "node": "Filtering Braze Email Template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Token Request": {
+          "main": [
+            [
+              {
+                "node": "Dartagnan Project list",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Existing In Braze": {
+          "main": [
+            [
+              {
+                "node": "If campaign is modified recently",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Assign Credentials": {
+          "main": [
+            [
+              {
+                "node": "List Available Email Template Braze",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Token Request",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embed image in HTML": {
+          "main": [
+            [
+              {
+                "node": "Encode Content To Update",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Embed image in HTML 1": {
+          "main": [
+            [
+              {
+                "node": "Encode Content to Create",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Every 5 minutes start": {
+          "main": [
+            [
+              {
+                "node": "Assign Credentials",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Not existing In Braze": {
+          "main": [
+            [
+              {
+                "node": "Filter Braze vs Dartagnan",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Dartagnan Project list": {
+          "main": [
+            [
+              {
+                "node": "Filtered Project Campaign",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Encode Content To Update": {
+          "main": [
+            [
+              {
+                "node": "Update existing email template in Braze",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Encode Content to Create": {
+          "main": [
+            [
+              {
+                "node": "Create email template",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filter Braze vs Dartagnan": {
+          "main": [
+            [
+              {
+                "node": "Dartagnan HTML & MEDIA Campagne to Create",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filtered Project Campaign": {
+          "main": [
+            [
+              {
+                "node": "Filtering Dartagnan Campaigns",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filtering Dartagnan Campaigns": {
+          "main": [
+            [
+              {
+                "node": "Existing In Braze",
+                "type": "main",
+                "index": 0
+              },
+              {
+                "node": "Not existing In Braze",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Filtering Braze Email Template": {
+          "main": [
+            [
+              {
+                "node": "Existing In Braze",
+                "type": "main",
+                "index": 1
+              },
+              {
+                "node": "Not existing In Braze",
+                "type": "main",
+                "index": 1
+              }
+            ]
+          ]
+        },
+        "Dartagnan HTML & MEDIA To Update": {
+          "main": [
+            [
+              {
+                "node": "Embed image in HTML",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "If campaign is modified recently": {
+          "main": [
+            [
+              {
+                "node": "Dartagnan HTML & MEDIA To Update",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "List Available Email Template Braze": {
+          "main": [
+            [
+              {
+                "node": "Split Out",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Dartagnan HTML & MEDIA Campagne to Create": {
+          "main": [
+            [
+              {
+                "node": "Embed image in HTML 1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 45,
+    "workflowInfo": {
+      "nodeCount": 28,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.set": {
+          "count": 5
+        },
+        "n8n-nodes-base.code": {
+          "count": 2
+        },
+        "n8n-nodes-base.merge": {
+          "count": 2
+        },
+        "n8n-nodes-base.splitOut": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 7
+        },
+        "n8n-nodes-base.httpRequest": {
+          "count": 8
+        },
+        "n8n-nodes-base.scheduleTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Vincent LE ROUX",
+      "username": "vincent-ux-tech",
+      "bio": "",
+      "verified": false,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/bc3e8cd24df6dda4e9673f164191cb7b229a65e749fc39a6039b8b0fda295dea?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 19,
+        "icon": "file:httprequest.svg",
+        "name": "n8n-nodes-base.httpRequest",
+        "codex": {
+          "data": {
+            "alias": [
+              "API",
+              "Request",
+              "URL",
+              "Build",
+              "cURL"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/world-poetry-day-workflow/",
+                  "icon": "📜",
+                  "label": "Celebrating World Poetry Day with a daily poem in Telegram"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-designs-with-bannerbear-and-n8n/",
+                  "icon": "🎨",
+                  "label": "Automate Designs with Bannerbear and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/automations-for-activists/",
+                  "icon": "✨",
+                  "label": "How Common Knowledge use workflow automation for activism"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-scheduled-text-affirmations-with-n8n/",
+                  "icon": "🤟",
+                  "label": "Creating scheduled text affirmations with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"output\"]",
+        "defaults": {
+          "name": "HTTP Request",
+          "color": "#0004F5"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00MCAyMEM0MCA4Ljk1MzE0IDMxLjA0NjkgMCAyMCAwQzguOTUzMTQgMCAwIDguOTUzMTQgMCAyMEMwIDMxLjA0NjkgOC45NTMxNCA0MCAyMCA0MEMzMS4wNDY5IDQwIDQwIDMxLjA0NjkgNDAgMjBaTTIwIDM2Ljk0NThDMTguODg1MiAzNi45NDU4IDE3LjEzNzggMzUuOTY3IDE1LjQ5OTggMzIuNjk4NUMxNC43OTY0IDMxLjI5MTggMTQuMTk2MSAyOS41NDMxIDEzLjc1MjYgMjcuNjg0N0gyNi4xODk4QzI1LjgwNDUgMjkuNTQwMyAyNS4yMDQ0IDMxLjI5MDEgMjQuNTAwMiAzMi42OTg1QzIyLjg2MjIgMzUuOTY3IDIxLjExNDggMzYuOTQ1OCAyMCAzNi45NDU4Wk0xMi45MDY0IDIwQzEyLjkwNjQgMjEuNjA5NyAxMy4wMDg3IDIzLjE2NCAxMy4yMDAzIDI0LjYzMDVIMjYuNzk5N0MyNi45OTEzIDIzLjE2NCAyNy4wOTM2IDIxLjYwOTcgMjcuMDkzNiAyMEMyNy4wOTM2IDE4LjM5MDMgMjYuOTkxMyAxNi44MzYgMjYuNzk5NyAxNS4zNjk1SDEzLjIwMDNDMTMuMDA4NyAxNi44MzYgMTIuOTA2NCAxOC4zOTAzIDEyLjkwNjQgMjBaTTIwIDMuMDU0MTlDMjEuMTE0OSAzLjA1NDE5IDIyLjg2MjIgNC4wMzA3OCAyNC41MDAxIDcuMzAwMzlDMjUuMjA2NiA4LjcxNDA4IDI1LjgwNzIgMTAuNDA2NyAyNi4xOTIgMTIuMzE1M0gxMy43NTAxQzE0LjE5MzMgMTAuNDA0NyAxNC43OTQyIDguNzEyNTQgMTUuNDk5OCA3LjMwMDY0QzE3LjEzNzcgNC4wMzA4MyAxOC44ODUxIDMuMDU0MTkgMjAgMy4wNTQxOVpNMzAuMTQ3OCAyMEMzMC4xNDc4IDE4LjQwOTkgMzAuMDU0MyAxNi44NjE3IDI5LjgyMjcgMTUuMzY5NUgzNi4zMDQyQzM2LjcyNTIgMTYuODQyIDM2Ljk0NTggMTguMzk2NCAzNi45NDU4IDIwQzM2Ljk0NTggMjEuNjAzNiAzNi43MjUyIDIzLjE1OCAzNi4zMDQyIDI0LjYzMDVIMjkuODIyN0MzMC4wNTQzIDIzLjEzODMgMzAuMTQ3OCAyMS41OTAxIDMwLjE0NzggMjBaTTI2LjI3NjcgNC4yNTUxMkMyNy42MzY1IDYuMzYwMTkgMjguNzExIDkuMTMyIDI5LjM3NzQgMTIuMzE1M0gzNS4xMDQ2QzMzLjI1MTEgOC42NjggMzAuMTA3IDUuNzgzNDYgMjYuMjc2NyA0LjI1NTEyWk0xMC42MjI2IDEyLjMxNTNINC44OTI5M0M2Ljc1MTQ3IDguNjY3ODQgOS44OTM1MSA1Ljc4MzQxIDEzLjcyMzIgNC4yNTUxM0MxMi4zNjM1IDYuMzYwMjEgMTEuMjg5IDkuMTMyMDEgMTAuNjIyNiAxMi4zMTUzWk0zLjA1NDE5IDIwQzMuMDU0MTkgMjEuNjAzIDMuMjc3NDMgMjMuMTU3NSAzLjY5NDg0IDI0LjYzMDVIMTAuMTIxN0M5Ljk0NjE5IDIzLjE0MiA5Ljg1MjIyIDIxLjU5NDMgOS44NTIyMiAyMEM5Ljg1MjIyIDE4LjQwNTcgOS45NDYxOSAxNi44NTggMTAuMTIxNyAxNS4zNjk1SDMuNjk0ODRDMy4yNzc0MyAxNi44NDI1IDMuMDU0MTkgMTguMzk3IDMuMDU0MTkgMjBaTTI2LjI3NjYgMzUuNzQyN0MyNy42MzY1IDMzLjYzOTMgMjguNzExIDMwLjg2OCAyOS4zNzc0IDI3LjY4NDdIMzUuMTA0NkMzMy4yNTEgMzEuMzMyMiAzMC4xMDY4IDM0LjIxNzkgMjYuMjc2NiAzNS43NDI3Wk0xMy43MjM0IDM1Ljc0MjdDOS44OTM2OSAzNC4yMTc5IDYuNzUxNTUgMzEuMzMyNCA0Ljg5MjkzIDI3LjY4NDdIMTAuNjIyNkMxMS4yODkgMzAuODY4IDEyLjM2MzUgMzMuNjM5MyAxMy43MjM0IDM1Ljc0MjdaIiBmaWxsPSIjM0E0MkU5Ii8+Cjwvc3ZnPgo="
+        },
+        "displayName": "HTTP Request",
+        "typeVersion": 4,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 24,
+        "icon": "file:merge.svg",
+        "name": "n8n-nodes-base.merge",
+        "codex": {
+          "data": {
+            "alias": [
+              "Join",
+              "Concatenate",
+              "Wait"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/how-to-sync-data-between-two-systems/",
+                  "icon": "🏬",
+                  "label": "How to synchronize data between two systems (one-way vs. two-way sync"
+                },
+                {
+                  "url": "https://n8n.io/blog/supercharging-your-conference-registration-process-with-n8n/",
+                  "icon": "🎫",
+                  "label": "Supercharging your conference registration process with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/migrating-community-metrics-to-orbit-using-n8n/",
+                  "icon": "📈",
+                  "label": "Migrating Community Metrics to Orbit using n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/build-your-own-virtual-assistant-with-n8n-a-step-by-step-guide/",
+                  "icon": "👦",
+                  "label": "Build your own virtual assistant with n8n: A step by step guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Merge"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTc3XzUxOCkiPgo8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZD0iTTAgNDhDMCAyMS40OTAzIDIxLjQ5MDMgMCA0OCAwSDExMkMxMzguNTEgMCAxNjAgMjEuNDkwMyAxNjAgNDhWNTZIMTk2LjI1MkMyNDAuNDM1IDU2IDI3Ni4yNTIgOTEuODE3MiAyNzYuMjUyIDEzNlYxOTJDMjc2LjI1MiAyMTQuMDkxIDI5NC4xNjEgMjMyIDMxNi4yNTIgMjMySDM1MlYyMjRDMzUyIDE5Ny40OSAzNzMuNDkgMTc2IDQwMCAxNzZINDY0QzQ5MC41MSAxNzYgNTEyIDE5Ny40OSA1MTIgMjI0VjI4OEM1MTIgMzE0LjUxIDQ5MC41MSAzMzYgNDY0IDMzNkg0MDBDMzczLjQ5IDMzNiAzNTIgMzE0LjUxIDM1MiAyODhWMjgwSDMxNi4yNTJDMjk0LjE2MSAyODAgMjc2LjI1MiAyOTcuOTA5IDI3Ni4yNTIgMzIwVjM3NkMyNzYuMjUyIDQyMC4xODMgMjQwLjQzNSA0NTYgMTk2LjI1MiA0NTZIMTYwVjQ2NEMxNjAgNDkwLjUxIDEzOC41MSA1MTIgMTEyIDUxMkg0OEMyMS40OTAzIDUxMiAwIDQ5MC41MSAwIDQ2NFY0MDBDMCAzNzMuNDkgMjEuNDkwMyAzNTIgNDggMzUySDExMkMxMzguNTEgMzUyIDE2MCAzNzMuNDkgMTYwIDQwMFY0MDhIMTk2LjI1MkMyMTMuOTI1IDQwOCAyMjguMjUyIDM5My42NzMgMjI4LjI1MiAzNzZWMzIwQzIyOC4yNTIgMjk0Ljc4NCAyMzguODU5IDI3Mi4wNDQgMjU1Ljg1MyAyNTZDMjM4Ljg1OSAyMzkuOTU2IDIyOC4yNTIgMjE3LjIxNiAyMjguMjUyIDE5MlYxMzZDMjI4LjI1MiAxMTguMzI3IDIxMy45MjUgMTA0IDE5Ni4yNTIgMTA0SDE2MFYxMTJDMTYwIDEzOC41MSAxMzguNTEgMTYwIDExMiAxNjBINDhDMjEuNDkwMyAxNjAgMCAxMzguNTEgMCAxMTJWNDhaTTEwNCA0OEMxMDguNDE4IDQ4IDExMiA1MS41ODE3IDExMiA1NlYxMDRDMTEyIDEwOC40MTggMTA4LjQxOCAxMTIgMTA0IDExMkg1NkM1MS41ODE3IDExMiA0OCAxMDguNDE4IDQ4IDEwNFY1NkM0OCA1MS41ODE3IDUxLjU4MTcgNDggNTYgNDhIMTA0Wk00NTYgMjI0QzQ2MC40MTggMjI0IDQ2NCAyMjcuNTgyIDQ2NCAyMzJWMjgwQzQ2NCAyODQuNDE4IDQ2MC40MTggMjg4IDQ1NiAyODhINDA4QzQwMy41ODIgMjg4IDQwMCAyODQuNDE4IDQwMCAyODBWMjMyQzQwMCAyMjcuNTgyIDQwMy41ODIgMjI0IDQwOCAyMjRINDU2Wk0xMTIgNDA4QzExMiA0MDMuNTgyIDEwOC40MTggNDAwIDEwNCA0MDBINTZDNTEuNTgxNyA0MDAgNDggNDAzLjU4MiA0OCA0MDhWNDU2QzQ4IDQ2MC40MTggNTEuNTgxNyA0NjQgNTYgNDY0SDEwNEMxMDguNDE4IDQ2NCAxMTIgNDYwLjQxOCAxMTIgNDU2VjQwOFoiIGZpbGw9IiM1NEI4QzkiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTc3XzUxOCI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Merge",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 38,
+        "icon": "fa:pen",
+        "name": "n8n-nodes-base.set",
+        "codex": {
+          "data": {
+            "alias": [
+              "Set",
+              "JS",
+              "JSON",
+              "Filter",
+              "Transform",
+              "Map"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/database-monitoring-and-alerting-with-n8n/",
+                  "icon": "📡",
+                  "label": "Database Monitoring and Alerting with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-adding-expense-receipts-to-google-sheets-with-telegram-mindee-twilio-and-n8n/",
+                  "icon": "🧾",
+                  "label": "Automatically Adding Expense Receipts to Google Sheets with Telegram, Mindee, Twilio, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/building-an-expense-tracking-app-in-10-minutes/",
+                  "icon": "📱",
+                  "label": "Building an expense tracking app in 10 minutes"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-membership-development-manager-automates-his-work-and-investments/",
+                  "icon": "📈",
+                  "label": "How a Membership Development Manager automates his work and investments"
+                },
+                {
+                  "url": "https://n8n.io/blog/a-low-code-bitcoin-ticker-built-with-questdb-and-n8n-io/",
+                  "icon": "📈",
+                  "label": "A low-code bitcoin ticker built with QuestDB and n8n.io"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.set/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Edit Fields"
+        },
+        "iconData": {
+          "icon": "pen",
+          "type": "icon"
+        },
+        "displayName": "Edit Fields (Set)",
+        "typeVersion": 3,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 834,
+        "icon": "file:code.svg",
+        "name": "n8n-nodes-base.code",
+        "codex": {
+          "data": {
+            "alias": [
+              "cpde",
+              "Javascript",
+              "JS",
+              "Python",
+              "Script",
+              "Custom Code",
+              "Function"
+            ],
+            "details": "The Code node allows you to execute JavaScript in your workflow.",
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers",
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Code"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgdmlld0JveD0iMCAwIDUxMiA1MTIiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxnIGNsaXAtcGF0aD0idXJsKCNjbGlwMF8xMTcxXzQ0MSkiPgo8cGF0aCBkPSJNMTcwLjI4MyA0OEgxOTYuNUMyMDMuMTI3IDQ4IDIwOC41IDQyLjYyNzQgMjA4LjUgMzZWMTJDMjA4LjUgNS4zNzI1OCAyMDMuMTI3IDAgMTk2LjUgMEgxNzAuMjgzQzEyNi4xIDAgOTAuMjgzIDM1LjgxNzIgOTAuMjgzIDgwVjE3NkM5MC4yODMgMjA2LjkyOCA2NS4yMTA5IDIzMiAzNC4yODMgMjMySDIzQzE2LjM3MjYgMjMyIDExIDIzNy4zNzIgMTEgMjQ0VjI2OEMxMSAyNzQuNjI3IDE2LjM3MjQgMjgwIDIyLjk5OTYgMjgwTDM0LjI4MyAyODBDNjUuMjEwOSAyODAgOTAuMjgzIDMwNS4wNzIgOTAuMjgzIDMzNlY0NDBDOTAuMjgzIDQ3OS43NjQgMTIyLjUxOCA1MTIgMTYyLjI4MyA1MTJIMTk2LjVDMjAzLjEyNyA1MTIgMjA4LjUgNTA2LjYyNyAyMDguNSA1MDBWNDc2QzIwOC41IDQ2OS4zNzMgMjAzLjEyNyA0NjQgMTk2LjUgNDY0SDE2Mi4yODNDMTQ5LjAyOCA0NjQgMTM4LjI4MyA0NTMuMjU1IDEzOC4yODMgNDQwVjMzNkMxMzguMjgzIDMwOS4wMjIgMTI4LjAxMSAyODQuNDQzIDExMS4xNjQgMjY1Ljk2MUMxMDYuMTA5IDI2MC40MTYgMTA2LjEwOSAyNTEuNTg0IDExMS4xNjQgMjQ2LjAzOUMxMjguMDExIDIyNy41NTcgMTM4LjI4MyAyMDIuOTc4IDEzOC4yODMgMTc2VjgwQzEzOC4yODMgNjIuMzI2OSAxNTIuNjEgNDggMTcwLjI4MyA0OFoiIGZpbGw9IiNGRjk5MjIiLz4KPHBhdGggZD0iTTMwNSAzNkMzMDUgNDIuNjI3NCAzMTAuMzczIDQ4IDMxNyA0OEgzNDIuOTc5QzM2MC42NTIgNDggMzc0Ljk3OCA2Mi4zMjY5IDM3NC45NzggODBWMTc2QzM3NC45NzggMjAyLjk3OCAzODUuMjUxIDIyNy41NTcgNDAyLjA5OCAyNDYuMDM5QzQwNy4xNTMgMjUxLjU4NCA0MDcuMTUzIDI2MC40MTYgNDAyLjA5OCAyNjUuOTYxQzM4NS4yNTEgMjg0LjQ0MyAzNzQuOTc4IDMwOS4wMjIgMzc0Ljk3OCAzMzZWNDMyQzM3NC45NzggNDQ5LjY3MyAzNjAuNjUyIDQ2NCAzNDIuOTc5IDQ2NEgzMTdDMzEwLjM3MyA0NjQgMzA1IDQ2OS4zNzMgMzA1IDQ3NlY1MDBDMzA1IDUwNi42MjcgMzEwLjM3MyA1MTIgMzE3IDUxMkgzNDIuOTc5QzM4Ny4xNjEgNTEyIDQyMi45NzggNDc2LjE4MyA0MjIuOTc4IDQzMlYzMzZDNDIyLjk3OCAzMDUuMDcyIDQ0OC4wNTEgMjgwIDQ3OC45NzkgMjgwSDQ5MEM0OTYuNjI3IDI4MCA1MDIgMjc0LjYyOCA1MDIgMjY4VjI0NEM1MDIgMjM3LjM3MyA0OTYuNjI4IDIzMiA0OTAgMjMyTDQ3OC45NzkgMjMyQzQ0OC4wNTEgMjMyIDQyMi45NzggMjA2LjkyOCA0MjIuOTc4IDE3NlY4MEM0MjIuOTc4IDM1LjgxNzIgMzg3LjE2MSAwIDM0Mi45NzkgMEgzMTdDMzEwLjM3MyAwIDMwNSA1LjM3MjU4IDMwNSAxMlYzNloiIGZpbGw9IiNGRjk5MjIiLz4KPC9nPgo8ZGVmcz4KPGNsaXBQYXRoIGlkPSJjbGlwMF8xMTcxXzQ0MSI+CjxyZWN0IHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJ3aGl0ZSIvPgo8L2NsaXBQYXRoPgo8L2RlZnM+Cjwvc3ZnPgo="
+        },
+        "displayName": "Code",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 839,
+        "icon": "fa:clock",
+        "name": "n8n-nodes-base.scheduleTrigger",
+        "codex": {
+          "data": {
+            "alias": [
+              "Time",
+              "Scheduler",
+              "Polling",
+              "Cron",
+              "Interval"
+            ],
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.scheduletrigger/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\",\"schedule\"]",
+        "defaults": {
+          "name": "Schedule Trigger",
+          "color": "#31C49F"
+        },
+        "iconData": {
+          "icon": "clock",
+          "type": "icon"
+        },
+        "displayName": "Schedule Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 1239,
+        "icon": "file:splitOut.svg",
+        "name": "n8n-nodes-base.splitOut",
+        "codex": {
+          "data": {
+            "alias": [
+              "Split",
+              "Nested",
+              "Transform",
+              "Array",
+              "List",
+              "Item"
+            ],
+            "details": "",
+            "resources": {
+              "generic": [],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.splitout/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Data Transformation"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "Split Out"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI1MTIiIGhlaWdodD0iNTEyIiBmaWxsPSJub25lIj48ZyBmaWxsPSIjOUI2REQ1IiBjbGlwLXBhdGg9InVybCgjYSkiPjxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ4MCAxNDhjMC02LjYyNy01LjM3My0xMi0xMi0xMkgzMjJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxNDZjNi42MjcgMCAxMi01LjM3MyAxMi0xMnptMCA5NmMwLTYuNjI3LTUuMzczLTEyLTEyLTEySDMyMmMtNi42MjcgMC0xMiA1LjM3My0xMiAxMnYyNGMwIDYuNjI3IDUuMzczIDEyIDEyIDEyaDE0NmM2LjYyNyAwIDEyLTUuMzczIDEyLTEyem0wIDk2YzAtNi42MjctNS4zNzMtMTItMTItMTJIMzIyYy02LjYyNyAwLTEyIDUuMzczLTEyIDEydjI0YzAgNi42MjcgNS4zNzMgMTIgMTIgMTJoMTQ2YzYuNjI3IDAgMTItNS4zNzMgMTItMTJ6IiBjbGlwLXJ1bGU9ImV2ZW5vZGQiLz48cGF0aCBkPSJNNDM4IDc2YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtMTcuNjczIDAtMzIgMTQuMzI3LTMyIDMydjU2YzAgMjYuOTc4LTEwLjI3MiA1MS41NTctMjcuMTE5IDcwLjAzOS01LjA1NSA1LjU0NS01LjA1NSAxNC4zNzcgMCAxOS45MjIgMTYuODQ3IDE4LjQ4MiAyNy4xMTkgNDMuMDYxIDI3LjExOSA3MC4wMzl2NTZjMCAxNy42NzMgMTQuMzI3IDMyIDMyIDMySDQyNmM2LjYyNyAwIDEyIDUuMzczIDEyIDEydjI0YzAgNi42MjctNS4zNzMgMTItMTIgMTJIMzA5Ljc4M2MtNDQuMTgzIDAtODAtMzUuODE3LTgwLTgwdi01NmMwLTMwLjkyOC0yNS4wNzItNTYtNTYtNTZhNS43ODMgNS43ODMgMCAwIDEtNS43ODMtNS43ODN2LTM2LjQzNGE1Ljc4MyA1Ljc4MyAwIDAgMSA1Ljc4My01Ljc4M2MzMC45MjggMCA1Ni0yNS4wNzIgNTYtNTZ2LTU2YzAtNDQuMTgzIDM1LjgxNy04MCA4MC04MEg0MjZjNi42MjcgMCAxMiA1LjM3MyAxMiAxMnoiLz48cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xMzYgMjQ0YzAtNi42MjctNS4zNzMtMTItMTItMTJIMTJjLTYuNjI3IDAtMTIgNS4zNzMtMTIgMTJ2MjRjMCA2LjYyNyA1LjM3MyAxMiAxMiAxMmgxMTJjNi42MjcgMCAxMi01LjM3MyAxMi0xMnoiIGNsaXAtcnVsZT0iZXZlbm9kZCIvPjwvZz48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiPjxwYXRoIGZpbGw9IiNmZmYiIGQ9Ik01MTIgMEgwdjUxMmg1MTJ6Ii8+PC9jbGlwUGF0aD48L2RlZnM+PC9zdmc+"
+        },
+        "displayName": "Split Out",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [],
+    "image": []
+  }
+}

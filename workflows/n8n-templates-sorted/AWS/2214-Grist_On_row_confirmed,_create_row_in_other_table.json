@@ -1,0 +1,660 @@
+{
+  "workflow": {
+    "id": 2214,
+    "name": "Grist: On row confirmed, create row in other table",
+    "views": 627,
+    "recentViews": 0,
+    "totalViews": 627,
+    "createdAt": "2024-04-05T09:40:08.227Z",
+    "description": "In Grist, when I mark a row as confirmed (via a toggle):\n![image.png](fileId:787)\n\na webhook is set up to notify n8n, and this workflow will create derived records in the destination table.\n\n### Design decisions\n#### Confirmation-based\nIn the source table **there is a boolean column \"Confirmed\" that will trigger the transfer**.\nThis way there is a manual check involved & it's a conscious step to trigger the workflow.\n#### Runs once\nIf the destination table already contains an entry, **we will not re-create/update** it (as it might've already been changed manually)\n\n\n### Setup\n1. Create a boolean column `Confirmed` in source table\n2. **Add a webhook** in [Grist Settings](https://support.getgrist.com/newsletters/2023-05/#webhooks)\n3. Add grist **API credentials** in n8n\n4. Set **document ID** & source **table ID/Name** in the '**get existing**' node\n3. Set **docID**, the destination **table ID/Name** - and the **columns & values** you want in the **Create Row** node",
+    "workflow": {
+      "meta": {
+        "instanceId": "11cdc3de0458a725de3bc4f700573556888270388b4b36af8a7651aaafd542a8"
+      },
+      "nodes": [
+        {
+          "id": "93eba4f0-218d-47d3-a55f-09d490d5e0bb",
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [
+            100,
+            320
+          ],
+          "webhookId": "03e24572-a381-455e-a5b8-ae697647f7d4",
+          "parameters": {
+            "path": "03e24572-a381-455e-a5b8-ae697647f7d4",
+            "options": {},
+            "httpMethod": "POST"
+          },
+          "typeVersion": 1.1
+        },
+        {
+          "id": "e2c8d43e-79f9-45a4-9d6d-37e8768e7f81",
+          "name": "Create Row",
+          "type": "n8n-nodes-base.grist",
+          "position": [
+            940,
+            240
+          ],
+          "parameters": {
+            "docId": "",
+            "tableId": "",
+            "operation": "create",
+            "fieldsToSend": {
+              "properties": [
+                {
+                  "fieldId": "Source",
+                  "fieldValue": "={{ $json.body[0].id }}"
+                }
+              ]
+            }
+          },
+          "credentials": {
+            "gristApi": {
+              "id": "2",
+              "name": "Grist"
+            }
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "1e6e741e-2890-4e08-a97a-efae1812d507",
+          "name": "Confirmed?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            300,
+            320
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "df1c1dba-dc96-42e9-86ee-8ccd4c82b048",
+                  "operator": {
+                    "type": "boolean",
+                    "operation": "true",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json.body[0].Confirmed }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "notesInFlow": true,
+          "typeVersion": 2
+        },
+        {
+          "id": "c6b1b482-6121-4484-b524-bc3e7e175fe8",
+          "name": "get existing",
+          "type": "n8n-nodes-base.grist",
+          "position": [
+            560,
+            160
+          ],
+          "parameters": {
+            "docId": "",
+            "tableId": "",
+            "additionalOptions": {
+              "filter": {
+                "filterProperties": [
+                  {
+                    "field": "Source",
+                    "values": "={{ $json.body[0].id }}"
+                  }
+                ]
+              }
+            }
+          },
+          "credentials": {
+            "gristApi": {
+              "id": "2",
+              "name": "Grist"
+            }
+          },
+          "typeVersion": 1,
+          "alwaysOutputData": true
+        },
+        {
+          "id": "a52e000c-73ef-4f2d-811d-cbcaf45e2b75",
+          "name": "has existing?",
+          "type": "n8n-nodes-base.if",
+          "position": [
+            700,
+            160
+          ],
+          "parameters": {
+            "options": {},
+            "conditions": {
+              "options": {
+                "leftValue": "",
+                "caseSensitive": true,
+                "typeValidation": "strict"
+              },
+              "combinator": "and",
+              "conditions": [
+                {
+                  "id": "6f08b500-956e-493c-abbe-845b5352110c",
+                  "operator": {
+                    "type": "object",
+                    "operation": "notEmpty",
+                    "singleValue": true
+                  },
+                  "leftValue": "={{ $json }}",
+                  "rightValue": ""
+                }
+              ]
+            }
+          },
+          "typeVersion": 2
+        },
+        {
+          "id": "fe609754-3dd6-4bbd-932a-a30f7d100911",
+          "name": "Confirmation-based",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            460,
+            420
+          ],
+          "parameters": {
+            "width": 346.820338983051,
+            "height": 144.13559322033893,
+            "content": "## Confirmation-based\nIn the source table there is a boolean column \"Confirmed\" that will trigger the transfer.\nThis way there is a manual check involved & it's a conscious step to trigger the workflow."
+          },
+          "typeVersion": 1
+        },
+        {
+          "id": "edb074f6-b264-45ec-87e2-cf91063ca63b",
+          "name": "Runs once",
+          "type": "n8n-nodes-base.stickyNote",
+          "position": [
+            900,
+            60
+          ],
+          "parameters": {
+            "width": 253.74915254237288,
+            "height": 139.9050847457627,
+            "content": "## Runs once\nIf the destination table already contains an entry, **we will not re-create/update** it (as it might've already been changed manually)\n"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "pinData": {
+        "Webhook": [
+          {
+            "body": [
+              {
+                "id": 2,
+                "Datum": 1712275200,
+                "Confirmed": true,
+                "manualSort": 2
+              }
+            ],
+            "query": {},
+            "params": {},
+            "headers": {
+              "host": "wh.n8n.zt.ax",
+              "accept": "*/*",
+              "x-real-ip": "52.2.246.35",
+              "user-agent": "node-fetch/1.0 (+https://github.com/bitinn/node-fetch)",
+              "content-type": "application/json",
+              "content-length": "1097",
+              "accept-encoding": "gzip,deflate",
+              "x-forwarded-for": "52.2.246.35",
+              "x-forwarded-host": "wh.n8n.zt.ax",
+              "x-forwarded-port": "443",
+              "x-forwarded-proto": "https",
+              "x-forwarded-server": "5d1c8421e216"
+            }
+          }
+        ]
+      },
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Confirmed?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Confirmed?": {
+          "main": [
+            [
+              {
+                "node": "get existing",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "get existing": {
+          "main": [
+            [
+              {
+                "node": "has existing?",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "has existing?": {
+          "main": [
+            null,
+            [
+              {
+                "node": "Create Row",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 16,
+    "workflowInfo": {
+      "nodeCount": 7,
+      "nodeTypes": {
+        "n8n-nodes-base.if": {
+          "count": 2
+        },
+        "n8n-nodes-base.grist": {
+          "count": 2
+        },
+        "n8n-nodes-base.webhook": {
+          "count": 1
+        },
+        "n8n-nodes-base.stickyNote": {
+          "count": 2
+        }
+      }
+    },
+    "user": {
+      "name": "Manu",
+      "username": "tennox",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "https://txlab.io"
+      ],
+      "avatar": "https://gravatar.com/avatar/2d81612cea16a74b43a68c932b1519d95d075a9176396649fdd837c68e2de12b?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 20,
+        "icon": "fa:map-signs",
+        "name": "n8n-nodes-base.if",
+        "codex": {
+          "data": {
+            "alias": [
+              "Router",
+              "Filter",
+              "Condition",
+              "Logic",
+              "Boolean",
+              "Branch"
+            ],
+            "details": "The IF node can be used to implement binary conditional logic in your workflow. You can set up one-to-many conditions to evaluate each item of data being inputted into the node. That data will either evaluate to TRUE or FALSE and route out of the node accordingly.\n\nThis node has multiple types of conditions: Bool, String, Number, and Date & Time.",
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-to-automate-your-factorys-incident-reporting-a-step-by-step-guide/",
+                  "icon": "🏭",
+                  "label": "Learn to Automate Your Factory's Incident Reporting: A Step by Step Guide"
+                },
+                {
+                  "url": "https://n8n.io/blog/2021-the-year-to-automate-the-new-you-with-n8n/",
+                  "icon": "☀️",
+                  "label": "2021: The Year to Automate the New You with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/create-a-toxic-language-detector-for-telegram/",
+                  "icon": "🤬",
+                  "label": "Create a toxic language detector for Telegram in 4 step"
+                },
+                {
+                  "url": "https://n8n.io/blog/no-code-ecommerce-workflow-automations/",
+                  "icon": "store",
+                  "label": "6 e-commerce workflows to power up your Shopify s"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-your-data-processing-pipeline-in-9-steps-with-n8n/",
+                  "icon": "⚙️",
+                  "label": "Automate your data processing pipeline in 9 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-get-started-with-crm-automation-and-no-code-workflow-ideas/",
+                  "icon": "👥",
+                  "label": "How to get started with CRM automation (with 3 no-code workflow ideas"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                },
+                {
+                  "url": "https://n8n.io/blog/automation-for-maintainers-of-open-source-projects/",
+                  "icon": "🏷️",
+                  "label": "How to automatically manage contributions to open-source projects"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-uproc-scraped-a-multi-page-website-with-a-low-code-workflow/",
+                  "icon": " 🕸️",
+                  "label": "How uProc scraped a multi-page website with a low-code workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-automated-congratulations-with-google-sheets-twilio-and-n8n/",
+                  "icon": "🙌",
+                  "label": "Sending Automated Congratulations with Google Sheets, Twilio, and n8n "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-set-up-a-ci-cd-pipeline-with-no-code/",
+                  "icon": "🎡",
+                  "label": "How to set up a no-code CI/CD pipeline with GitHub and TravisCI"
+                },
+                {
+                  "url": "https://n8n.io/blog/benefits-of-automation-and-n8n-an-interview-with-hubspots-hugh-durkin/",
+                  "icon": "🎖",
+                  "label": "Benefits of automation and n8n: An interview with HubSpot's Hugh Durkin"
+                },
+                {
+                  "url": "https://n8n.io/blog/aws-workflow-automation/",
+                  "label": "7 no-code workflow automations for Amazon Web Services"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.if/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Flow"
+              ]
+            }
+          }
+        },
+        "group": "[\"transform\"]",
+        "defaults": {
+          "name": "If",
+          "color": "#408000"
+        },
+        "iconData": {
+          "icon": "map-signs",
+          "type": "icon"
+        },
+        "displayName": "If",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 47,
+        "icon": "file:webhook.svg",
+        "name": "n8n-nodes-base.webhook",
+        "codex": {
+          "data": {
+            "alias": [
+              "HTTP",
+              "API",
+              "Build",
+              "WH"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-automatically-cross-post-your-content-with-n8n/",
+                  "icon": "✍️",
+                  "label": "Learn how to automatically cross-post your content with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/running-n8n-on-ships-an-interview-with-maranics/",
+                  "icon": "🛳",
+                  "label": "Running n8n on ships: An interview with Maranics"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-build-a-low-code-self-hosted-url-shortener/",
+                  "icon": "🔗",
+                  "label": "How to build a low-code, self-hosted URL shortener in 3 steps"
+                },
+                {
+                  "url": "https://n8n.io/blog/what-are-apis-how-to-use-them-with-no-code/",
+                  "icon": " 🪢",
+                  "label": "What are APIs and how to use them with no code"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-tasks-you-can-automate-with-notion-api/",
+                  "icon": "⚡️",
+                  "label": "5 tasks you can automate with the new Notion API "
+                },
+                {
+                  "url": "https://n8n.io/blog/how-a-digital-strategist-uses-n8n-for-online-marketing/",
+                  "icon": "💻",
+                  "label": "How a digital strategist uses n8n for online marketing"
+                },
+                {
+                  "url": "https://n8n.io/blog/the-ultimate-guide-to-automate-your-video-collaboration-with-whereby-mattermost-and-n8n/",
+                  "icon": "📹",
+                  "label": "The ultimate guide to automate your video collaboration with Whereby, Mattermost, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-automatically-give-kudos-to-contributors-with-github-slack-and-n8n/",
+                  "icon": "👏",
+                  "label": "How to automatically give kudos to contributors with GitHub, Slack, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/5-workflow-automations-for-mattermost-that-we-love-at-n8n/",
+                  "icon": "🤖",
+                  "label": "5 workflow automations for Mattermost that we love at n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-this-product-manager-loves-workflow-automation-with-n8n/",
+                  "icon": "🧠",
+                  "label": "Why this Product Manager loves workflow automation with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/creating-custom-incident-response-workflows-with-n8n/",
+                  "label": "How to automate every step of an incident response workflow"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-to-build-powerful-api-endpoints-using-webhooks/",
+                  "icon": "🧰",
+                  "label": "Learn to Build Powerful API Endpoints Using Webhooks"
+                },
+                {
+                  "url": "https://n8n.io/blog/learn-how-to-use-webhooks-with-mattermost-slash-commands/",
+                  "icon": "🦄",
+                  "label": "Learn how to use webhooks with Mattermost slash commands"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-goomer-automated-their-operations-with-over-200-n8n-workflows/",
+                  "icon": "🛵",
+                  "label": "How Goomer automated their operations with over 200 n8n workflows"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Webhook"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCI+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTM1IDM3Yy0yLjIgMC00LTEuOC00LTRzMS44LTQgNC00IDQgMS44IDQgNC0xLjggNC00IDQiLz48cGF0aCBmaWxsPSIjMzc0NzRmIiBkPSJNMzUgNDNjLTMgMC01LjktMS40LTcuOC0zLjdsMy4xLTIuNWMxLjEgMS40IDIuOSAyLjMgNC43IDIuMyAzLjMgMCA2LTIuNyA2LTZzLTIuNy02LTYtNmMtMSAwLTIgLjMtMi45LjdsLTEuNyAxTDIzLjMgMTZsMy41LTEuOSA1LjMgOS40YzEtLjMgMi0uNSAzLS41IDUuNSAwIDEwIDQuNSAxMCAxMFM0MC41IDQzIDM1IDQzIi8+PHBhdGggZmlsbD0iIzM3NDc0ZiIgZD0iTTE0IDQzQzguNSA0MyA0IDM4LjUgNCAzM2MwLTQuNiAzLjEtOC41IDcuNS05LjdsMSAzLjlDOS45IDI3LjkgOCAzMC4zIDggMzNjMCAzLjMgMi43IDYgNiA2czYtMi43IDYtNnYtMmgxNXY0SDIzLjhjLS45IDQuNi01IDgtOS44IDgiLz48cGF0aCBmaWxsPSIjZTkxZTYzIiBkPSJNMTQgMzdjLTIuMiAwLTQtMS44LTQtNHMxLjgtNCA0LTQgNCAxLjggNCA0LTEuOCA0LTQgNCIvPjxwYXRoIGZpbGw9IiMzNzQ3NGYiIGQ9Ik0yNSAxOWMtMi4yIDAtNC0xLjgtNC00czEuOC00IDQtNCA0IDEuOCA0IDQtMS44IDQtNCA0Ii8+PHBhdGggZmlsbD0iI2U5MWU2MyIgZD0ibTE1LjcgMzQtMy40LTIgNS45LTkuN2MtMi0xLjktMy4yLTQuNS0zLjItNy4zIDAtNS41IDQuNS0xMCAxMC0xMHMxMCA0LjUgMTAgMTBjMCAuOS0uMSAxLjctLjMgMi41bC0zLjktMWMuMS0uNS4yLTEgLjItMS41IDAtMy4zLTIuNy02LTYtNnMtNiAyLjctNiA2YzAgMi4xIDEuMSA0IDIuOSA1LjFsMS43IDF6Ii8+PC9zdmc+"
+        },
+        "displayName": "Webhook",
+        "typeVersion": 2,
+        "nodeCategories": [
+          {
+            "id": 5,
+            "name": "Development"
+          },
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 523,
+        "icon": "file:grist.svg",
+        "name": "n8n-nodes-base.grist",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.grist/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/grist/"
+                }
+              ]
+            },
+            "categories": [
+              "Data & Storage"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Grist"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48ZyBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGZpbGw9IiNkNGQ0ZDQiIGQ9Ik0xNDIuNTQgMTc0LjI5NmMuMTE4IDIzLjk0Ni40MzggMzMuMDg1IDEuMzA5IDM3LjMwNC4xNTkuNzcuMzA2IDEuNDkuMzI2IDEuNnMuMTQ5LjM4LjI4NS42LjM3NCAxLjE2NS41MjkgMi4xLjQyOCAxLjcuNjA2IDEuN2MuMTc5IDAgLjU0MS45LjgwNSAycy42NDIgMiAuODQgMiAuMzYuMzQ3LjM2Ljc3MS4yMzUgMS4wMS41MjIgMS4zYy41OTcuNjA0IDEuMjM4IDEuOTc4IDEuMTM4IDIuNDQtLjAzNy4xNzEuMjA0LjQxNi41MzYuNTQzcy42MDQuNDg4LjYwNC44MDEuMjU0LjY2Ny41NjQuNzg2Yy4zMS4xMi42NjMuNjA5Ljc4NSAxLjA4OC4yMTcuODUzIDEuMzU4IDIuNDg4IDIuNzUxIDMuOTQxLjM4NS40MDEuNy43ODUuNy44NTIgMCAuMzI4IDQuODEzIDUuMDI0IDYuMjA4IDYuMDU3Ljg3NS42NDggMS43MiAxLjM2OCAxLjg3NyAxLjZzLjQ3OS40MjEuNzE1LjQyMS41NTguMTk4LjcxNS40NGMuMzUxLjU0MiAyLjE3NSAxLjU2MSAyLjU4NSAxLjQ0NS4xNjUtLjA0Ny4zLjA5MS4zLjMwNyAwIC4zMTMgMi43NjcgMi4wMTkgMy42IDIuMjIuMTEuMDI3IDEuMzk5LjYyIDIuODY1IDEuMzE4IDEuNDY1LjY5OSAzIDEuMjcgMy40MTEgMS4yNy40MSAwIDEuMTE2LjI1OSAxLjU2OC41NzZzMi40MjcuNzc5IDQuMzg5IDEuMDI4YzEuOTYyLjI1IDMuODguNjIxIDQuMjYyLjgyNS40MTEuMjIgMTQuNzc3LjM3MSAzNS4yODguMzcxaDM0LjU5NWwuMDE2LTI2LjA1MmMuMDEzLTIwLjQxNy0uMDkyLTI2LjE4OC0uNDg5LTI2LjY3Ny0uNDIyLS41MjItLjQwNy0uNTY3LjA5NS0uMjcxLjQ3OS4yODMuNTExLjIzOC4xNTUtLjIyMy0uMjQ1LS4zMTctLjU2Mi0yLjQ2Ny0uNzA1LTQuNzc3LS4yNTMtNC4xMTUtMS4yOTUtOS4wMDYtMi40My0xMS40MDktLjMxNC0uNjY1LS42NjYtMS43MzEtLjc4Mi0yLjM2OHMtLjM4Mi0xLjI2NS0uNTkyLTEuMzk1LS41MDYtLjcyOS0uNjU4LTEuMzMyYy0uMTUxLS42MDMtLjQxNi0xLjA5Ni0uNTg4LTEuMDk2cy0uNDMxLS40NjgtLjU3NC0xLjA0Yy0uMjUzLTEuMDA3LTEuNjc5LTMuMzA2LTIuMzYtMy44MDUtLjE4NC0uMTM0LS4zMTctLjQwNC0uMjk3LS42cy0uMjc0LS43MTUtLjY1NS0xLjE1NWMtMS44MjktMi4xMTEtNS4zOS02LjQtNS42MzctNi43ODktLjE1Mi0uMjQxLTEuNzE3LTEuNjAxLTMuNDc3LTMuMDI0cy0zLjMzMi0yLjc2Ny0zLjQ5NC0yLjk4Ny0uMjk3LS4yNjctLjMtLjEwNGMtLjAwNi4yOS00LjAxLTEuOTk5LTQuNDA2LTIuNTE4LS4xMS0uMTQ0LS44NzUtLjQ4Mi0xLjctLjc1MXMtMS41LS42NDctMS41LS44NC0uNjMtLjQ2OS0xLjQtLjYxMy0xLjQtLjQtMS40LS41NjctLjg1NS0uNTM0LTEuOS0uODE3LTIuMDk0LS42NjMtMi4zMzItLjg0NGMtLjIzNy0uMTgyLTIuMTcyLS41NTEtNC4zLS44MTktMi4xMjctLjI2OS0zLjg2OC0uNjI5LTMuODY4LS43OTlzLTE1LjY1Ny0uMzE3LTM0Ljc5NC0uMzI0bC0zNC43OTUtLjAxMnptMTg5LjA2LTI1Ljk1NGMwIC4xODgtMS4xMjUuNDU1LTIuNS41OTJzLTMuMDQuMzY0LTMuNy41MDQtMS40MTcuMjY0LTEuNjgyLjI3NWMtLjI2Ni4wMTEtLjQwMy4xNS0uMzA0LjMwOS4wOTguMTU5LS42My40MS0xLjYxOC41NThzLTEuNzk2LjQzMi0xLjc5Ni42MzItLjI3LjI1OS0uNi4xMzNjLS4zMy0uMTI3LS42LS4wMzEtLjYuMjEyIDAgLjI0NC0uNDM3LjQ0My0uOTcxLjQ0My0uNTM1IDAtMS4yMS4yMzMtMS41LjUxN3MtMS4xNTkuNzcyLTEuOTI5IDEuMDgzLTEuNjM4Ljc5OS0xLjkyOSAxLjA4M2MtLjI5LjI4NC0uNzg1LjUxNy0xLjEuNTE3LS4zMTQgMC0uNTcxLjE1OC0uNTcxLjM1MSAwIC4xOTQtLjU0LjU3Ni0xLjIuODQ5cy0xLjIuNjQzLTEuMi44MjItLjMxNS40MjUtLjcuNTQ4LTEuNDA4Ljg1Ni0yLjI3MyAxLjYyN2MtLjg2NS43NzItMS43MyAxLjQwMy0xLjkyMyAxLjQwM3MtLjI0LjE4LS4xMDQuNC4wNjkuNC0uMTQ5LjRjLS4yMTcgMC0xLjE3My44MTktMi4xMjMgMS44MmwtMy4xODkgMy4zNmMtLjgwMy44NDgtMS41ODEgMS45MjEtMS43MjggMi4zODZzLS40MDkuNzU5LS41ODEuNjUyYy0uMjkzLS4xOC0xLjE3NyAxLjMwOC0xLjA3NiAxLjgxMS4wMjUuMTI1LS4yNjkuNTQzLS42NTQuOTI4cy0uNy45NDItLjcgMS4yMzgtLjEzNS41OTgtLjMuNjcyYy0uMzkzLjE3NC0yLjUgNC40NzEtMi41IDUuMDk3IDAgLjI2Ni0uMTUuMzkxLS4zMzMuMjc3cy0uMzM5LjAxMS0uMzQ1LjI3N2MtLjAwNi4yNjUtLjQ4NiAxLjg4MS0xLjA2NiAzLjU5LS41ODEgMS43MS0xLjA1NiAzLjU1NS0xLjA1NiA0LjEgMCAuNTQ2LS4xNS45OTItLjMzMy45OTJzLS4zNTIuMjI1LS4zNzMuNS0uMjI5IDIuNTctLjQ2MSA1LjFjLS4yNDIgMi42NTMtLjQyMyAxNS44MTctLjQyNiAzMS4xTDI4NiAyNTJoMzQuNDA1YzIwLjQ4NiAwIDM0LjY4Ny0uMTUxIDM1LjEtLjM3My4zODItLjIwNSAyLjM2LS41OTEgNC4zOTUtLjg1OHMzLjctLjYxIDMuNy0uNzYzLjk5LS41MTYgMi4yLS44MDYgMi4yLS42NTkgMi4yLS44MTljMC0uMTYxLjYzLS40MSAxLjQtLjU1NS43Ny0uMTQ0IDEuNC0uNDIgMS40LS42MTIgMC0uMTkzLjUzOC0uNDY5IDEuMTk1LS42MTMuNjU4LS4xNDQgMS4zLS40MzEgMS40MjgtLjYzOC4xMjctLjIwNi44MDQtLjY0OSAxLjUwNC0uOTgzIDIuNDE4LTEuMTU2IDMuNDczLTEuODI1IDMuNDczLTIuMjAyIDAtLjIwOC4yNDEtLjM3OC41MzctLjM3OC42ODYgMCAxLjkwNi0xLjAzIDUuOTc1LTUuMDQ0IDMuMjI4LTMuMTg1IDUuNTc1LTUuNzU2IDUuMjUzLTUuNzU2LS4wOSAwIC42MzYtMS4wODYgMS42MTMtMi40MTNzMS44ODktMi43NjcgMi4wMjYtMy4yYy4xMzgtLjQzMy40MTgtLjc4Ny42MjMtLjc4N3MuMzczLS4yMDIuMzczLS40NWMwLS40NTUgMS42NTMtNC41MTIgMi41ODgtNi4zNS4yOC0uNTUuNjM4LTEuNzIuNzk2LTIuNnMuNDMxLTEuNzguNjA2LTJjLjk2Ny0xLjIxNCAxLjIxLTguNTQ0IDEuMjEtMzYuNDY0VjE0OGgtMzQuMmMtMTguODEgMC0zNC4yLjE1NC0zNC4yLjM0Mk0xNDIuNDE0IDMwNy43NjhjLS4wMDQgMTQuODQ0LjE0NCAyNy4wODIuMzMgMjcuMTk3LjE4NS4xMTUuNDYzIDIuMzIzLjYxOCA0LjkwN3MuNDI4IDQuODg0LjYwNyA1LjExM2MuMTc5LjIyOC41NTMgMS40MDUuODMxIDIuNjE1cy42MyAyLjM4Ljc4MiAyLjZjLjI5Mi40MiAxLjM1NCAzLjkxNyAxLjI1IDQuMTE0LS4wMzMuMDYzLjIxNi4zOTEuNTU0LjcyOXMuNjE0Ljg3MS42MTQgMS4xODYuMTY2LjU3MS4zNjguNTcxYy4yMDMgMCAuNDg3LjUzOS42MzEgMS4xOThzLjQ4NSAxLjMzMy43NTYgMS41Yy4yNy4xNjYuNzIyLjg3MiAxLjAwMyAxLjU2OS4yODIuNjk3IDEuMDMgMS44NjcgMS42NjQgMi42czEuMzQ2IDEuNTU4IDEuNTgxIDEuODMzYy4yMzYuMjc1LjM1NC41LjI2My41LS4wOTIgMCAuNjk0Ljg4OCAxLjc0NSAxLjk3MnMxLjgwOCAyLjA3NSAxLjY4MyAyLjJjLS4xMjUuMTI2LjA0LjIyOC4zNjcuMjI4cy45NjEuNDA1IDEuNDA5LjljMS41OTYgMS43NjMgNS4wMzUgNC41MTEgNi40NzEgNS4xNy44MDIuMzY5IDEuMjc5LjY4NyAxLjA1OS43MDYtLjU2My4wNSA3LjAxIDMuNzc2IDcuOTc0IDMuOTIzLjQzNS4wNjcuODg5LjI1MiAxLjAwOS40MTEuNDI3LjU3MSA1LjQ2MSAyLjA3OSA3LjgxNyAyLjM0MyAxLjMyLjE0NyAyLjUyOC40NjYgMi42ODUuNzA4LjQzMy42NjYgNjkuNzQxLjg4MSA3MC41NC4yMTguNzA4LS41ODguODctNTMuMTc5LjE2NC01My4xNzktLjIxNCAwLS4zOTMtMS4yMTUtLjM5Ny0yLjctLjAwOS0zLjE5Ny0uNjYxLTguMDU5LTEuMTYzLTguNjY5LS4xOTUtLjIzNy0uNDgxLTEuMjg2LS42MzctMi4zMzFzLS40MTQtMS45LS41NzQtMS45LS41MS0uOTc4LS43NzctMi4xNzRjLS4yNjgtMS4xOTYtLjYxMi0yLjIzMS0uNzY0LTIuM3MtLjgxNy0xLjIwNi0xLjQ3Ny0yLjUyNi0xLjI5Mi0yLjQ5LTEuNDA0LTIuNmMtLjM5NS0uMzg4LTIuNTM4LTMuOC0yLjM4Ni0zLjguMjggMC0xLjcyMy0yLjI5OS01Ljc4Ni02LjY0MS0uOTQ3LTEuMDEyLTIuNDItMi4zNjEtMy4yNzMtMi45OTgtLjg1My0uNjM2LTEuNjQxLTEuMjU5LTEuNzUxLTEuMzg1LS4zNTEtLjQwMS0zLjkzNC0yLjc3Ni00LjE4OS0yLjc3Ni0uMjI0IDAtLjQ4NS0uMTkxLTEuOTI1LTEuNDEyLS4yNjctLjIyNy0xLjI1MS0uNjYxLTIuMTg2LS45NjQtLjkzNS0uMzA0LTEuNy0uNzAzLTEuNy0uODg4cy0uMTk4LS4zMzYtLjQ0LS4zMzZjLS4yNDEgMC0xLjAwNi0uMjU0LTEuNy0uNTY0LTIuNjk2LTEuMjA2LTkuMDA0LTIuODgxLTEyLjY2LTMuMzYxLS43Ny0uMTAxLTE2Ljc0LS4yNTQtMzUuNDg5LS4zNGwtMzQuMDg5LS4xNTZ6TTMzMi40IDI4MS4xNWMwIC4xODMtLjY3NS4zNDEtMS41LjM1Mi0yLjE3Ni4wMjYtNS42NzIuNzc5LTYuNDE0IDEuMzgtLjU0LjQzNy0uNTg1LjQyNS0uMjg2LS4wODIuMjgzLS40OC4yMzgtLjUxLS4yMjMtLjE1Mi0uMzE3LjI0Ny0xLjUyMi42ODYtMi42NzcuOTc2cy0yLjEuNjY1LTIuMS44MzNjMCAuMTY5LS42My40MjUtMS40LjU2OS0uNzcuMTQ1LTEuNC4zOTQtMS40LjU1NHMtLjcyLjUzLTEuNi44Mi0xLjYuNjU4LTEuNi44MTdjMCAuMjM4LS43NzYuNTU4LTEuODA5Ljc0OC0uMTA1LjAxOS0uNTIxLjM1LS45MjUuNzM1cy0xLjE0Ni45Ny0xLjY0OSAxLjMtMS4xNjMuODM4LTEuNDY2IDEuMTI5Yy0uMzAzLjI5LS41NTEuNDI0LS41NTEuMjk2IDAtLjMzMi0yLjAyNSAxLjQ4Ny01Ljg2IDUuMjY1LTEuODM3IDEuODEtMy4zNCAzLjQ3NS0zLjM0IDMuN2EuNDEuNDEgMCAwIDEtLjQwOS40MWMtLjIyNCAwLS42MjcuNDk1LS44OTMgMS4xLS4yNjcuNjA1LS44MTkgMS4zNDYtMS4yMjYgMS42NDdzLTEuMDg2IDEuMjktMS41MDcgMi4yYTM2IDM2IDAgMCAxLTEuNTU4IDIuOTUzYy0uNDM1LjcxNS0uNjU5IDEuMzAzLS40OTkgMS4zMDZzLjExLjEzOC0uMTEyLjNjLS42MS40NDQtMi4xNDIgNC4wOTQtMi40MyA1Ljc5LS4xMzkuODI0LS4zOTcgMS40MDgtLjU3MiAxLjNzLS40NDguNzQ4LS42MDUgMS45MDQtLjQzNCAyLjE5NC0uNjE0IDIuMzA5Yy0uODM1LjUzMi0xLjIwNyAxMy4zOTktMS4wOTQgMzcuNzkxbC4xMTkgMjUuNmgzNS4xMTVjMjMuODk5IDAgMzUuMjA2LS4xMzMgMzUuNC0uNDE3LjE1Ny0uMjI5IDEuNzkyLS42MyAzLjYzNS0uODkyIDEuODQyLS4yNjEgMy41NTItLjYzNCAzLjgtLjgyOC40OTctLjM4OSAyLjY3Ny0xLjAzMiAzLjE1LS45MjkuMTY1LjAzNi4zLS4wOTQuMy0uMjkxIDAtLjMxNiAxLjEyLS43NTQgMi43Ni0xLjA3OS4zMDgtLjA2MS42NjgtLjI3OS44LS40ODMuMTMyLS4yMDUuNjktLjUxMiAxLjI0LS42ODJzMS43NTItLjgyNCAyLjY3Mi0xLjQ1NCAxLjg1NS0xLjE0NSAyLjA3Ny0xLjE0NWMuMjIzIDAgLjY1Ny0uMzU5Ljk2NC0uNzk3cy42NTMtLjcwMy43NjktLjU4OGMuMTE1LjExNi42MzktLjI0MiAxLjE2NC0uNzk2LjUyNS0uNTUzIDEuMDk1LTEuMDA4IDEuMjY3LTEuMDEyLjUxMS0uMDExIDcuMjA0LTYuODc5IDguMjg4LTguNTA0LjU0OS0uODI0IDEuMTM0LTEuNDk5IDEuMjk5LTEuNS4xNjUtLjAwMi4zLS4xOTYuMy0uNDMyIDAtLjIzNS4yMjUtLjY3OS41LS45ODYgMS4xMzctMS4yNjggMS41LTEuNzY4IDEuNTAxLTIuMDY4LjAwMS0uMTc0LjYzMi0xLjM2NCAxLjQwMy0yLjY0My43NzItMS4yNzkgMS4yNDktMi4yMyAxLjA2MS0yLjExNHMuMDc3LS42MTYuNTg5LTEuNjI2Yy41MTEtMS4wMS44MzMtMS45OTQuNzE0LTIuMTg2LS4xMTgtLjE5MS0uMDQ2LS4zNDguMTYxLS4zNDhzLjYwNy0uODU1Ljg5LTEuOWMuNTgyLTIuMTUzLjU2My0yLjA5Ljg5OS0yLjkuODY5LTIuMDk1IDEuMDgyLTkuMjIxIDEuMDgyLTM2LjIzM3YtMjkuMzc1bC0zMy44LjAxM2MtMTguNTkuMDA3LTMzLjguMTYyLTMzLjguMzQ1Ii8+PHBhdGggZmlsbD0iIzJjYjNhYyIgZD0iTTE0Mi42OTYgMTUuMDM4Yy0uNDY4LjQ2OC0uMzY1IDUzLjY3Mi4xMDQgNTMuOTYyLjIyLjEzNi40IDEuMjU5LjQgMi40OTcgMCAzLjEyNS44MzIgOS4zMDMgMS4yNTIgOS4zMDMuMTkyIDAgLjM1NC40OTUuMzYyIDEuMS4wMDcuNjA1LjM2MSAxLjgyLjc4NiAyLjdzLjc3OSAxLjgyNi43ODYgMi4xMDFjLjAwOC4yNzYuMzc0IDEuMTc0LjgxNCAxLjk5NS40NC44Mi44IDEuNzIuOCAxLjk5OHMuMTQ0LjUwNi4zMi41MDZjLjE3NSAwIC41NDcuNjMuODI2IDEuNHMuNjc0IDEuNC44OCAxLjQuMzc0LjIzNy4zNzQuNTI4YzAgLjI5LjcyOSAxLjUwNSAxLjYyIDIuN2EyOTAgMjkwIDAgMCAxIDIuMyAzLjEyYzEuMTI4IDEuNTcyIDUuNDI0IDUuNzgzIDcuNzIyIDcuNTY4IDEuMTg3LjkyMiAyLjM3NiAxLjg1OSAyLjY0MyAyLjA4MnMuOTg3LjYyOCAxLjYuODk5Yy42MTMuMjcyIDEuMzM0LjY3NiAxLjYwMS44OTguMjY3LjIyMy43MjguNjA1IDEuMDIzLjg0OC4yOTUuMjQ0IDEuMjAxLjY2MyAyLjAxNC45MzEuODEyLjI2OSAxLjQ3Ny42NCAxLjQ3Ny44MjUgMCAuMTg2LjU0Mi40NTYgMS4yMDQuNjAyczEuNzM3LjUzIDIuMzg4Ljg1NSAxLjg2NC42OTggMi42OTYuODI5Yy44MzEuMTMxIDEuNjAyLjM2NyAxLjcxMi41MjQuMTkuMjcxIDIuNTUuODA0IDcgMS41ODMgMS4xLjE5MiAxNy4zNDUuMzYzIDM2LjEuMzc5bDM0LjEuMDI5VjkyLjYyNGMwLTE3LjI4Ny0uMTQtMjYuNjYzLS40LTI2LjgyNC0uMjItLjEzNi0uNC0xLjM5NC0uNC0yLjc5NSAwLTIuOTYzLS43MjctOC42MjMtMS4xODMtOS4yMDUtLjE3Mi0uMjItLjQzMy0xLjA2Ny0uNTgtMS44ODNzLS41MjktMS45ODYtLjg0OS0yLjZjLS4zMjEtLjYxNC0uNTg0LTEuMzA1LS41ODYtMS41MzUtLjAwMy0uNjE1LTMuMjktNy4xNTktMy42NzQtNy4zMTUtLjE4LS4wNzQtLjMyOC0uMzE2LS4zMjgtLjUzOSAwLTEuODYzLTguODAyLTExLjcxLTEyLjgwNy0xNC4zMjgtLjUwNC0uMzMtMS4yLS45MTUtMS41NDQtMS4zcy0uODI5LS43LTEuMDc3LS43Yy0uMjQ3IDAtLjg2NS0uMzYtMS4zNzItLjhzLTEuMDg4LS44LTEuMjktLjgtLjY0Ni0uMjc5LS45ODctLjYyLTEuMTM4LS43MjMtMS43NzEtLjg1Yy0uNjM0LS4xMjYtMS4xNTItLjM2OC0xLjE1Mi0uNTM3IDAtLjE2OC0uNDg5LS40MjktMS4wODYtLjU3OXMtMS44NDgtLjYxOS0yLjc3OC0xLjA0M2MtLjkzMS0uNDI0LTEuOTcyLS43NzEtMi4zMTQtLjc3MXMtLjYyMi0uMTUxLS42MjItLjMzNmMwLS4xODQtMS41NzUtLjU1OC0zLjUtLjgzMXMtMy44Ni0uNzA3LTQuMy0uOTY1Yy0uOTA5LS41MzItNjkuNzgxLS45NTQtNzAuMzA0LS40M20xOTAuODA0LjA1OWMtMS43MDUuMDc1LTMuMS4zMDktMy4xLjUycy0uNi4zODMtMS4zMzMuMzgzYy0xLjc1NiAwLTUuOTY1LjgyLTYuNDQ3IDEuMjU2LS4yMDkuMTg5LS42MzIuMzQ0LS45NC4zNDRzLTEuMTI2LjI1NC0xLjgyLjU2NWMtLjY5My4zMTEtMi40MyAxLjA2Ni0zLjg2IDEuNjc4LTEuNDMuNjEzLTMuMDI5IDEuNDM4LTMuNTU0IDEuODM1cy0xLjIuNzIyLTEuNS43MjItLjU0Ni4xNTEtLjU0Ni4zMzZjMCAuMTg0LS40NTcuNTQ0LTEuMDE1Ljc5OC0xLjEwNC41MDMtMS44NzcgMS4wOC0yLjkwMiAyLjE2Ni0uMzYzLjM4NS0uODQ2LjcwMS0xLjA3Mi43MDItLjQ0My4wMDEtNy44MTEgNy4yOTgtNy44MTEgNy43MzUgMCAuMTQ0LS4zMTUuNjAyLS43IDEuMDE2LTEuMjM4IDEuMzMtMi4xIDIuNTk3LTIuMSAzLjA4NiAwIC4yNjEtLjI3LjU3OS0uNi43MDYtLjMzLjEyNi0uNi40OTMtLjYuODE0cy0uMjMyLjgyMi0uNTE1IDEuMTEyYy0uNzQ2Ljc2Ny0yLjY4NSA0LjYwOS0yLjY4NSA1LjMyMiAwIC4zMzQtLjE2Mi42MDctLjM2LjYwN3MtLjU4Mi45NDUtLjg1MiAyLjFjLS4yNzEgMS4xNTUtLjYyOSAyLjI4LS43OTUgMi41cy0uNDMzIDEuMjEtLjU5MyAyLjItLjQ0MiAxLjk4OS0uNjI4IDIuMjJDMjg2LjM1OSA1Ni44MzIgMjg2IDY4LjE5NiAyODYgOTIuODc0djI2LjM1OGwzNS41MzktLjExNmMyNS40MTItLjA4MyAzNS42OTgtLjI0MyAzNi4xLS41NjMuMzA4LS4yNDYgMS41NDctLjU3MiAyLjc1MS0uNzI1IDEuMjA1LS4xNTQgMi4zNzUtLjQxOCAyLjYtLjU4N3MxLjQ0NS0uNTQ2IDIuNzEtLjgzOCAyLjMtLjY2MiAyLjMtLjgyMmMwLS4xNjEuNjMtLjQxIDEuNC0uNTU1Ljc3LS4xNDQgMS40LS40MiAxLjQtLjYxMiAwLS4xOTMuNTI1LS40NjYgMS4xNjctLjYwN3MxLjU3LS42MDUgMi4wNjEtMS4wMzJjLjQ5Mi0uNDI2IDEuMTM3LS43NzUgMS40MzMtLjc3NXMuNTM5LS4xNjguNTM5LS4zNzMuMzU5LS40ODcuNzk4LS42MjZjLjQzOC0uMTM5IDEuMDIzLS40NzQgMS4zLS43NDQuMjc2LS4yNjkuODg5LS43NTcgMS4zNjItMS4wODMgMi44NjItMS45NzUgOC4xNC02Ljg1NyA4LjE0LTcuNTMgMC0uMjU4LjI0Ny0uNTY0LjU0OS0uNjhzMS4xNS0xLjA1NSAxLjg4Ni0yLjA4N2MuNzM1LTEuMDMyIDEuNTY4LTIuMTE1IDEuODUxLTIuNDA2cy41MTQtLjc4NS41MTQtMS4xYzAtLjMxNC4xNjgtLjU3MS4zNzQtLjU3MXMuNjAyLS42My44OC0xLjRjLjI3OS0uNzcuNjM2LTEuNC43OTUtMS40LjE1OCAwIC40MDYtLjU0LjU1MS0xLjJzLjQtMS4yLjU2OC0xLjIuNTQ0LS43NjUuODM4LTEuNy42ODItMS44NzEuODY0LTIuMDguMzMtLjYzMi4zMy0uOTQuMjU3LTEuMTI2LjU3LTEuODJjMS41MDEtMy4zMTggMS41NjItNC42MTYgMS43MTgtMzYuNzZsLjE1Mi0zMS41LTMxLjcyLjA4Yy0xNy40NDYuMDQ1LTMzLjExNS4xNDItMzQuODIuMjE3Ii8+PHBhdGggZmlsbD0iI2ZjYWM0NCIgZD0iTS4wMDIgMTc3LjVjLjAwMyAyOS43ODkuMjg5IDM2LjU1MSAxLjYwMSAzNy44NjMuMjE4LjIxOC4zOTcuNzM5LjM5NyAxLjE1NyAwIC43NTUuMTggMS4yMTggMi4xNjEgNS41NTUuNTcxIDEuMjUyIDEuMDM5IDIuNDY3IDEuMDM5IDIuN3MuMTM1LjQyNi4zLjQyNmMuMTY1LjAwMS44MzQuOTkxIDEuNDg2IDIuMnMxLjMwNSAyLjE5OSAxLjQ1MSAyLjE5OS40ODQuNTI3Ljc1MSAxLjE3MS43MzkgMS4yNjkgMS4wNDkgMS4zODguNTYzLjQxMy41NjMuNjU0YzAgLjM3NCA2LjYwOCA3LjA1NSA4LjQwNyA4LjUgMS4yNTEgMS4wMDUgMy45ODYgMi43NDcgNS41OTMgMy41NjMuNTUuMjc5IDEuMDkuNjE0IDEuMi43NDMuNDE4LjQ5MyA3LjM3OCAzLjU4IDguMDc4IDMuNTgzLjI4Ny4wMDIuOTg3LjI0NiAxLjU1NS41NDJzMi41NDguNzYyIDQuNCAxLjAzNCAzLjY4LjY1OSA0LjA2Mi44NThjLjQwMS4yMSAxNS4zMTkuMzY0IDM1LjMuMzY0SDExNHYtMjYuMzQyYzAtMjQuNjEtLjM3LTM2LjMzLTEuMTYyLTM2Ljg0NS0uMTgtLjExNy0uNDU5LTEuMTEzLS42Mi0yLjIxM3MtLjQzMy0yLjE4LS42MDQtMi40LS41NDgtMS4zNDUtLjgzOC0yLjUtLjY2Ni0yLjEtLjgzNi0yLjEtLjUyNC0uNzItLjc4Ny0xLjZjLS4yNjQtLjg4LS42MTItMS42LS43NzMtMS42cy0uNDE3LS40OTMtLjU2OC0xLjA5NmMtLjE1Mi0uNjAzLS40MDUtMS4xODgtLjU2My0xLjNzLS44MDMtMS4xMDQtMS40MzItMi4yMDRjLS42My0xLjEtMS4zODYtMi4xNDQtMS42ODEtMi4zMnMtLjUzNi0uNTA3LS41MzYtLjczNmMwLS44OTMtNi43NzMtNy44MTMtOS43MTQtOS45MjUtMS4wMzctLjc0NS0xLjg4Ni0xLjQ4Mi0xLjg4Ni0xLjYzOHMtLjU4NS0uNTIxLTEuMy0uODEtMS4zOS0uNjM1LTEuNS0uNzY5Yy0uMzczLS40NTUtMi45OTQtMS45MDktMy45ODEtMi4yMDktLjU0LS4xNjQtMS4yMjgtLjU0NS0xLjUyOS0uODQ2cy0uODg0LS41NDctMS4yOTUtLjU0Ny0uODQ4LS4xNjItLjk3LS4zNi0xLjE2OC0uNTg0LTIuMzI0LS44NTgtMi4xOTUtLjY0MS0yLjMwOS0uODE1Yy0uMTE1LS4xNzUtMS44MjUtLjUyNy0zLjgtLjc4My0xLjk3Ni0uMjU1LTMuOTA1LS42MjYtNC4yODctLjgyNC0uMzk1LS4yMDUtMTUuMzQ2LS4zNi0zNC43LS4zNkgwem0uMTEgMTM0LjhjLjE1MSAzMS4wOTguMjg2IDM0LjM0IDEuNDg5IDM1LjkuMTcuMjIuNDM1IDEuMTY1LjU4OSAyLjFzLjQzIDEuNy42MTMgMS43Yy4xODQgMCAuNDYuNTg1LjYxNSAxLjMuMjY0IDEuMjEzIDEuNjkzIDQuMjQ3IDIuMjE0IDQuNjk5LjEyOC4xMS40ODcuNzg2Ljc5OCAxLjUwMXMuNzAxIDEuMy44NjggMS4zYy4xNjYgMCAuMzAyLjI3Ni4zMDIuNjEzcy4yNy43MTYuNi44NDJjLjMzLjEyNy42MDIuNDM2LjYwNS42ODguMDE4IDEuNDg3IDEwLjA2MiAxMS40NjYgMTMuNTQ1IDEzLjQ1Ny41NzguMzMgMS4xMS43MzUgMS4xODMuOS4wNzQuMTY1LjMxNi4zLjUzOS4zLjIyMiAwIC44OTMuMzQ4IDEuNDkxLjc3My41OTcuNDI2IDEuNTcuODk1IDIuMTYxIDEuMDQ0LjU5Mi4xNDggMS4wNzYuNDIzIDEuMDc2LjYxIDAgLjE4OC43NjUuNTY0IDEuNy44MzcuOTM1LjI3NCAxLjc5LjYgMS45LjcyNy40NTEuNTE4IDYuMDIxIDIuMDY5IDguMjI4IDIuMjkxIDEuMzA1LjEzMSAyLjUuNDM2IDIuNjU3LjY3OC4yMDMuMzEzIDEwLjQ2Ny40NzcgMzUuNS41NjlsMzUuMjE1LjEyOXYtMjYuNjA3YzAtMjQuOTQxLS4zNzItMzYuNTI5LTEuMTg5LTM3LjA1MS0uMTczLS4xMS0uNDQzLTEuMTQ1LS42LTIuM3MtLjQzMy0yLjEtLjYxMy0yLjEtLjQ0Ny0uNzA2LS41OTMtMS41NjhjLS43NjUtNC41MzItNy4wNTgtMTQuNTI0LTEyLjQwNS0xOS42OTktLjY2LS42MzgtMS44NDktMS43ODUtMi42NDEtMi41NDctLjc5My0uNzYyLTEuNjQ4LTEuMzg2LTEuOS0xLjM4Ni0uMjUzIDAtLjQ1OS0uMTQ4LS40NTktLjMyOSAwLS4zNjgtMy4wNzgtMi40NzEtMy42MTYtMi40NzEtLjE4OSAwLS40ODgtLjIyNy0uNjY0LS41MDQtLjM2NS0uNTc1LTQuNDc3LTIuNjk2LTUuMjI2LTIuNjk2LS4yNzIgMC0uNDk0LS4xOC0uNDk0LS40cy0uMjI1LS40MDEtLjUtLjQwMi0xLjAxLS4yNjktMS42MzMtLjU5NGMtLjYyNC0uMzI1LTEuODg0LS43ODItMi44LTEuMDE0LS45MTctLjIzMy0yLjAyNy0uNTkzLTIuNDY3LS44MDFzLTEuODgtLjU2OC0zLjItLjgtMy4yMS0uNTg0LTQuMi0uNzgyLTE2Ljg4NC0uMzctMzUuMzItLjM4M0wtLjA0IDI4MC44eiIvPjwvZz48L3N2Zz4="
+        },
+        "displayName": "Grist",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 3,
+            "name": "Data & Storage"
+          }
+        ]
+      },
+      {
+        "id": 565,
+        "icon": "fa:sticky-note",
+        "name": "n8n-nodes-base.stickyNote",
+        "codex": {
+          "data": {
+            "alias": [
+              "Comments",
+              "Notes",
+              "Sticky"
+            ],
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0",
+            "subcategories": {
+              "Core Nodes": [
+                "Helpers"
+              ]
+            }
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Sticky Note",
+          "color": "#FFD233"
+        },
+        "iconData": {
+          "icon": "sticky-note",
+          "type": "icon"
+        },
+        "displayName": "Sticky Note",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 11,
+        "name": "Other"
+      }
+    ],
+    "image": [
+      {
+        "id": 787,
+        "url": "https://n8niostorageaccount.blob.core.windows.net/n8nio-strapi-blobs-prod/assets/image_bebf08a4c8.png"
+      }
+    ]
+  }
+}

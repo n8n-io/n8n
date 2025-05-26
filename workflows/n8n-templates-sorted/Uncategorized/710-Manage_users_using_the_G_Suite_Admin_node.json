@@ -1,0 +1,278 @@
+{
+  "workflow": {
+    "id": 710,
+    "name": "Manage users using the G Suite Admin node",
+    "views": 1868,
+    "recentViews": 0,
+    "totalViews": 1868,
+    "createdAt": "2020-10-09T12:27:48.732Z",
+    "description": "![workflow-screenshot](fileId:272)",
+    "workflow": {
+      "id": "215",
+      "name": "Create, update, and get a user using the G Suite Admin node",
+      "nodes": [
+        {
+          "name": "On clicking 'execute'",
+          "type": "n8n-nodes-base.manualTrigger",
+          "position": [
+            240,
+            300
+          ],
+          "parameters": {},
+          "typeVersion": 1
+        },
+        {
+          "name": "G Suite Admin",
+          "type": "n8n-nodes-base.gSuiteAdmin",
+          "position": [
+            440,
+            300
+          ],
+          "parameters": {
+            "domain": "n8n.io",
+            "lastName": "Nat",
+            "password": "sjhdjsdhbajshdb",
+            "username": "nat",
+            "firstName": "Nathan",
+            "additionalFields": {}
+          },
+          "credentials": {
+            "gSuiteAdminOAuth2Api": "Google"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "G Suite Admin1",
+          "type": "n8n-nodes-base.gSuiteAdmin",
+          "position": [
+            640,
+            300
+          ],
+          "parameters": {
+            "userId": "={{$node[\"G Suite Admin\"].json[\"id\"]}}",
+            "operation": "update",
+            "updateFields": {
+              "lastName": "Nate"
+            }
+          },
+          "credentials": {
+            "gSuiteAdminOAuth2Api": "Google"
+          },
+          "typeVersion": 1
+        },
+        {
+          "name": "G Suite Admin2",
+          "type": "n8n-nodes-base.gSuiteAdmin",
+          "position": [
+            840,
+            300
+          ],
+          "parameters": {
+            "userId": "={{$node[\"G Suite Admin\"].json[\"id\"]}}",
+            "options": {},
+            "operation": "get"
+          },
+          "credentials": {
+            "gSuiteAdminOAuth2Api": "Google"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "active": false,
+      "settings": {},
+      "connections": {
+        "G Suite Admin": {
+          "main": [
+            [
+              {
+                "node": "G Suite Admin1",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "G Suite Admin1": {
+          "main": [
+            [
+              {
+                "node": "G Suite Admin2",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "On clicking 'execute'": {
+          "main": [
+            [
+              {
+                "node": "G Suite Admin",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "lastUpdatedBy": 11,
+    "workflowInfo": {
+      "nodeCount": 4,
+      "nodeTypes": {
+        "n8n-nodes-base.gSuiteAdmin": {
+          "count": 3
+        },
+        "n8n-nodes-base.manualTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "Harshil Agrawal",
+      "username": "harshil1712",
+      "bio": "",
+      "verified": true,
+      "links": [
+        "harshil.dev"
+      ],
+      "avatar": "https://gravatar.com/avatar/1060ec3113fdd8cafb191f3728c0ac39436b3cd46be4dd518923e242fb708ef1?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 42,
+        "icon": "fa:play",
+        "name": "n8n-nodes-base.start",
+        "codex": {
+          "data": {
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/why-business-process-automation-with-n8n-can-change-your-daily-life/",
+                  "icon": "🧬",
+                  "label": "Why business process automation with n8n can change your daily life"
+                },
+                {
+                  "url": "https://n8n.io/blog/why-i-chose-n8n-over-zapier-in-2020/",
+                  "icon": "😍",
+                  "label": "Why I chose n8n over Zapier in 2020"
+                },
+                {
+                  "url": "https://n8n.io/blog/automatically-pulling-and-visualizing-data-with-n8n/",
+                  "icon": "📈",
+                  "label": "Automatically pulling and visualizing data with n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/how-to-use-the-http-request-node-the-swiss-army-knife-for-workflow-automation/",
+                  "icon": "🧰",
+                  "label": "How to use the HTTP Request Node - The Swiss Army Knife for Workflow Automation"
+                },
+                {
+                  "url": "https://n8n.io/blog/sending-sms-the-low-code-way-with-airtable-twilio-programmable-sms-and-n8n/",
+                  "icon": "📱",
+                  "label": "Sending SMS the Low-Code Way with Airtable, Twilio Programmable SMS, and n8n"
+                },
+                {
+                  "url": "https://n8n.io/blog/automating-conference-organization-processes-with-n8n/",
+                  "icon": "🙋‍♀️",
+                  "label": "Automating Conference Organization Processes with n8n"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.start/"
+                }
+              ]
+            },
+            "categories": [
+              "Core Nodes"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Start",
+          "color": "#00e000"
+        },
+        "iconData": {
+          "icon": "play",
+          "type": "icon"
+        },
+        "displayName": "Start",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 9,
+            "name": "Core Nodes"
+          }
+        ]
+      },
+      {
+        "id": 373,
+        "icon": "file:google-workspace-admin.png",
+        "name": "n8n-nodes-base.gSuiteAdmin",
+        "codex": {
+          "data": {
+            "alias": [
+              "Workspaces"
+            ],
+            "resources": {
+              "generic": [
+                {
+                  "url": "https://n8n.io/blog/automate-google-apps-for-productivity/",
+                  "icon": "💡",
+                  "label": "15 Google apps you can combine and automate to increase productivity"
+                }
+              ],
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.gsuiteadmin/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/"
+                }
+              ]
+            },
+            "categories": [
+              "Utility"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"input\"]",
+        "defaults": {
+          "name": "Google Workspace Admin"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/png;base64,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"
+        },
+        "displayName": "Google Workspace Admin",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 7,
+            "name": "Utility"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 28,
+        "name": "IT Ops"
+      }
+    ],
+    "image": [
+      {
+        "id": 272,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/304f77bfa15549bfb19e1b4a37e3bc9e.png"
+      }
+    ]
+  }
+}

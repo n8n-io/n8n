@@ -1,0 +1,114 @@
+{
+  "workflow": {
+    "id": 529,
+    "name": "Receive updates for Bitbucket events",
+    "views": 1099,
+    "recentViews": 0,
+    "totalViews": 1099,
+    "createdAt": "2020-07-16T11:30:35.189Z",
+    "description": "Companion workflow for Bitbucket Trigger node docs\n\n![workflow-screenshot](fileId:130)",
+    "workflow": {
+      "nodes": [
+        {
+          "name": "Bitbucket Trigger",
+          "type": "n8n-nodes-base.bitbucketTrigger",
+          "position": [
+            880,
+            390
+          ],
+          "webhookId": "97ca8044-5835-4547-801d-c27dd7f10c2d",
+          "parameters": {
+            "events": [
+              "repo:push"
+            ],
+            "resource": "repository",
+            "repository": "test"
+          },
+          "credentials": {
+            "bitbucketApi": "bitbucket_creds"
+          },
+          "typeVersion": 1
+        }
+      ],
+      "connections": {}
+    },
+    "lastUpdatedBy": null,
+    "workflowInfo": {
+      "nodeCount": 1,
+      "nodeTypes": {
+        "n8n-nodes-base.bitbucketTrigger": {
+          "count": 1
+        }
+      }
+    },
+    "user": {
+      "name": "amudhan",
+      "username": "sm-amudhan",
+      "bio": null,
+      "verified": true,
+      "links": [],
+      "avatar": "https://gravatar.com/avatar/7ee0febc0cbec2f1f6b24ddec3c4322e27c82c91dc729cfecf6ce12bfddd058d?r=pg&d=retro&size=200"
+    },
+    "nodes": [
+      {
+        "id": 119,
+        "icon": "file:bitbucket.svg",
+        "name": "n8n-nodes-base.bitbucketTrigger",
+        "codex": {
+          "data": {
+            "resources": {
+              "primaryDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.bitbuckettrigger/"
+                }
+              ],
+              "credentialDocumentation": [
+                {
+                  "url": "https://docs.n8n.io/integrations/builtin/credentials/bitbucket/"
+                }
+              ]
+            },
+            "categories": [
+              "Development",
+              "Productivity"
+            ],
+            "nodeVersion": "1.0",
+            "codexVersion": "1.0"
+          }
+        },
+        "group": "[\"trigger\"]",
+        "defaults": {
+          "name": "Bitbucket Trigger"
+        },
+        "iconData": {
+          "type": "file",
+          "fileBuffer": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0OCIgaGVpZ2h0PSI0OCIgZmlsbD0ibm9uZSI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJhIiB4MT0iLjc2MiIgeDI9Ii4zMyIgeTE9Ii0uMTciIHkyPSIuNjU2Ij48c3RvcCBvZmZzZXQ9Ii4xOCIgc3RvcC1jb2xvcj0iIzAwNTJDQyIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzI2ODRGRiIvPjwvbGluZWFyR3JhZGllbnQ+PC9kZWZzPjxwYXRoIGZpbGw9IiMyNjg0RkYiIGZpbGwtcnVsZT0iZXZlbm9kZCIgc3Ryb2tlPSJudWxsIiBkPSJNMS43MjEgMy44NzNhMS40NyAxLjQ3IDAgMCAxIDEuMTI5LS41MDlsNDIuNzcyLjAwN2ExLjQ2NiAxLjQ2NiAwIDAgMSAxLjQ2NiAxLjdsLTYuMjIyIDM4LjE5M2ExLjQ2NiAxLjQ2NiAwIDAgMS0xLjQ2NSAxLjIzMUg5LjU1NWExLjk5IDEuOTkgMCAwIDEtMS45NS0xLjY2M0wxLjM4NiA1LjA2NGMtLjA3LS40MjcuMDUzLS44NjMuMzM2LTEuMTkxem0xNy44IDI2Ljc4N2g5LjUyNmwyLjMwOC0xMy40NzVIMTYuOTQxeiIgY2xpcC1ydWxlPSJldmVub2RkIi8+PHBhdGggZmlsbD0idXJsKCNhKSIgc3Ryb2tlPSJudWxsIiBkPSJNNDQuNDE4IDE4LjQzN2gtMTIuNjRsLTIuMTIgMTIuMzgzaC04Ljc1NUwxMC41NjcgNDMuMDljLjMyNy4yODMuNzQ1LjQ0IDEuMTc4LjQ0NEgzOS4xOGExLjM1IDEuMzUgMCAwIDAgMS4zNDctMS4xMzJsMy44OTItMjMuOTY1eiIvPjwvc3ZnPg=="
+        },
+        "displayName": "Bitbucket Trigger",
+        "typeVersion": 1,
+        "nodeCategories": [
+          {
+            "id": 4,
+            "name": "Productivity"
+          },
+          {
+            "id": 5,
+            "name": "Development"
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "id": 5,
+        "name": "Engineering"
+      }
+    ],
+    "image": [
+      {
+        "id": 130,
+        "url": "https://f000.backblazeb2.com/file/n8n-website-images/58e7ac88e2e04e05b9a4196d4738665f.png"
+      }
+    ]
+  }
+}
